@@ -126,12 +126,27 @@ export function ImpactMetricsBlock({
           <BorderBeam size={200} duration={16} delay={4} />
           <dl className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
             {metrics.map((m) => (
-              <div key={m.label}>
+              <div key={m.label} className="min-w-0">
                 <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   {m.label}
                 </dt>
+                {/* Full 6-figure value where it fits (sm+); compact K/M on
+                    narrow viewports so a wide number (e.g. 113,313) can't
+                    overflow into the adjacent grid cell. */}
                 <dd className="mt-2 text-3xl font-semibold tabular-nums sm:text-4xl">
-                  <NumberTicker value={m.value} startValue={0} delay={0.1} />
+                  <NumberTicker
+                    value={m.value}
+                    startValue={0}
+                    delay={0.1}
+                    notation="compact"
+                    className="sm:hidden"
+                  />
+                  <NumberTicker
+                    value={m.value}
+                    startValue={0}
+                    delay={0.1}
+                    className="hidden sm:inline"
+                  />
                 </dd>
               </div>
             ))}

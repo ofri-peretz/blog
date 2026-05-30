@@ -25,6 +25,12 @@ interface NumberTickerProps extends ComponentPropsWithoutRef<"span"> {
   decimalPlaces?: number;
   /** Duration of animation in ms (default: 1500) */
   duration?: number;
+  /**
+   * Number notation. `"standard"` (default) renders the full grouped value
+   * (e.g. `113,313`). `"compact"` falls back to K/M (e.g. `113K`, `1.2M`) — use
+   * it where the full figure would overflow its container (narrow viewports).
+   */
+  notation?: "standard" | "compact";
 }
 
 /**
@@ -42,6 +48,7 @@ export function NumberTicker({
   className,
   decimalPlaces = 0,
   duration = 1500,
+  notation = "standard",
   ...props
 }: NumberTickerProps) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -53,11 +60,17 @@ export function NumberTicker({
   // Format number with locale (memoized to prevent useEffect recreation)
   const formatNumber = useCallback(
     (num: number) =>
-      Intl.NumberFormat("en-US", {
-        minimumFractionDigits: decimalPlaces,
-        maximumFractionDigits: decimalPlaces,
-      }).format(Number(num.toFixed(decimalPlaces))),
-    [decimalPlaces],
+      notation === "compact"
+        ? Intl.NumberFormat("en-US", {
+            notation: "compact",
+            compactDisplay: "short",
+            maximumFractionDigits: 1,
+          }).format(num)
+        : Intl.NumberFormat("en-US", {
+            minimumFractionDigits: decimalPlaces,
+            maximumFractionDigits: decimalPlaces,
+          }).format(Number(num.toFixed(decimalPlaces))),
+    [decimalPlaces, notation],
   );
 
   // Reduced-motion: jump straight to the final value — no easing, no observer.
