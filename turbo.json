@@ -1,0 +1,23 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "DEVTO_API_KEY",
+        "GITHUB_TOKEN",
+        "REVALIDATE_SECRET",
+        "NEXT_PUBLIC_SITE_URL",
+        "VERCEL_URL",
+        "VERCEL_PROJECT_PRODUCTION_URL",
+        "PORT"
+      ]
+    },
+    "test": { "dependsOn": ["build"] },
+    "lint": { "dependsOn": [] },
+    "dev": { "cache": false, "persistent": true }
+  }
+}

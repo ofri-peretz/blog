@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+# lockfile intentionally not committed — exact versions are pinned via .npmrc
+# (save-exact=true); a macOS-generated lockfile breaks linux native bindings
+# (@tailwindcss/oxide) on CI/Vercel, which both `npm install` fresh.
+package-lock.json
+
+# build / turbo / next
+.next/
+out/
+dist/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel/
+
+# env (NEVER commit secrets)
+.env
+.env.*
+!.env.example
+
+# test
+coverage/
+
+# os / editor
+.DS_Store
+*.log

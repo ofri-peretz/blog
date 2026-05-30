@@ -1,0 +1,166 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --radius: 0.625rem;
+  /* Brand accents — every literal must be a token (COLOR_PHILOSOPHY). */
+  --brand-snappy: oklch(0.59 0.21 280);
+  /* Chart palette — replaces ad-hoc oklch() literals in charts/*.tsx. */
+  --chart-1: oklch(0.62 0.16 264);
+  --chart-2: oklch(0.7 0.18 60);
+  --chart-3: oklch(0.6 0.18 145);
+  --chart-4: oklch(0.62 0.16 320);
+  --chart-5: oklch(0.55 0.18 30);
+  /* Decorative-primitive tokens — replace baked-in hex defaults inside
+     ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
+  --beam-from: oklch(0.75 0.18 65);
+  --beam-to: oklch(0.55 0.25 295);
+  /* Meteor trail palette — Nuxt blog-old port. Hex source `#e9d5ff`
+     (purple-lavender at ~89% lightness) → oklch(0.89 0.07 308). Fade
+     stop is 50% alpha, glow rim is ~31% alpha. */
+  --meteor-trail: oklch(0.89 0.07 308);
+  --meteor-trail-fade: oklch(0.89 0.07 308 / 0.5);
+  --meteor-glow: oklch(0.89 0.07 308 / 0.31);
+  --particles-default: oklch(0.985 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  /* AA-safe lift for the indigo brand on a near-black surface. */
+  --brand-snappy: oklch(0.72 0.18 280);
+  --chart-1: oklch(0.72 0.17 264);
+  --chart-2: oklch(0.78 0.18 60);
+  --chart-3: oklch(0.7 0.18 145);
+  --chart-4: oklch(0.7 0.16 320);
+  --chart-5: oklch(0.65 0.18 30);
+  /* Decorative-primitive tokens — dark-mode tuning. The meteor trail
+     reads as the same purple-lavender at ~89% lightness in both themes
+     (the Nuxt source did not tint differently per theme); only the glow
+     is lifted slightly in dark mode to keep the head visible against
+     the cosmic gradient. */
+  --beam-from: oklch(0.8 0.18 65);
+  --beam-to: oklch(0.62 0.22 295);
+  --meteor-trail: oklch(0.89 0.07 308);
+  --meteor-trail-fade: oklch(0.89 0.07 308 / 0.5);
+  --meteor-glow: oklch(0.89 0.07 308 / 0.4);
+  --particles-default: oklch(0.985 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-brand-snappy: var(--brand-snappy);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-beam-from: var(--beam-from);
+  --color-beam-to: var(--beam-to);
+  --color-meteor-trail: var(--meteor-trail);
+  --color-meteor-trail-fade: var(--meteor-trail-fade);
+  --color-meteor-glow: var(--meteor-glow);
+  --color-particles-default: var(--particles-default);
+  /* Fumadocs-prefixed aliases so the baseline `ui/` primitives work in this
+     blog. The baseline expects `fd-*` token names; we keep the canonical
+     shadcn names as the source of truth and alias them here. */
+  --color-fd-background: var(--background);
+  --color-fd-foreground: var(--foreground);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--muted-foreground);
+  --color-fd-border: var(--border);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--card-foreground);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--accent-foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+@theme inline {
+  --animate-meteor: meteor 5s linear infinite;
+  --animate-sunny-pulse: sunny-pulse 12s ease-in-out infinite;
+}
+
+@keyframes meteor {
+  0% {
+    transform: rotate(215deg) translateX(0);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(215deg) translateX(-500px);
+    opacity: 0;
+  }
+}
+
+@keyframes sunny-pulse {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateX(-50%) translateY(2vh) scale(1.05);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-meteor,
+  .animate-sunny-pulse {
+    animation: none !important;
+  }
+}
+
+.bg-gradient-radial {
+  background-image: radial-gradient(var(--tw-gradient-stops));
+}

@@ -1,0 +1,28 @@
+{
+  "name": "ofri-peretz-blog",
+  "private": true,
+  "version": "0.0.0",
+  "description": "ofriperetz.dev — blog + scorecard. A shadcn Next.js app powered by the Interlace design-system registry.",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*"
+  ],
+  "packageManager": "npm@11.6.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "prettier --check \"**/*.{md,mdx,ts,tsx,js,mjs,json,yml,yaml}\"",
+    "format:write": "prettier --write \"**/*.{md,mdx,ts,tsx,js,mjs,json,yml,yaml}\"",
+    "publish:devto": "node apps/web/scripts/publish-to-devto.mjs",
+    "publish:devto:dry": "node apps/web/scripts/publish-to-devto.mjs --dry-run"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.0"
+  }
+}

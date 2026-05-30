@@ -1,0 +1,47 @@
+name: Publish to Dev.to
+
+# Publishes/updates dev.to articles when article markdown changes on main.
+# Replaces the (disabled) publish-to-devto workflow that used to run in the
+# private agents monorepo and burn the 2,000-min Actions cap.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/content/articles/**.md"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview without calling the Dev.to API"
+        type: boolean
+        default: true
+
+concurrency:
+  group: publish-devto
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund --include=optional
+      - name: Validate DEVTO_API_KEY
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: |
+          if [ -z "${DEVTO_API_KEY:-}" ]; then
+            echo "::error::DEVTO_API_KEY secret is not set"; exit 1
+          fi
+      - name: Publish
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            npm run publish:devto:dry
+          else
+            npm run publish:devto
+          fi

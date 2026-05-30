@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # No npm cache / npm ci: the lockfile is intentionally uncommitted
+      # (exact versions pinned via .npmrc) to avoid cross-platform native-binding
+      # breaks (@tailwindcss/oxide). Install fresh on linux.
+      - run: npm install --no-audit --no-fund --include=optional
+      - run: npm run build
+      - run: npm run test
+      - run: npm run lint
