@@ -5,7 +5,7 @@ The blog + scorecard for [ofriperetz.dev](https://ofriperetz.dev) — a [shadcn]
 Turborepo with a single app:
 
 ```
-apps/web/        # Next.js 16 (App Router, RSC) — blog, /scorecard, /api/* data routes
+apps/blog/        # Next.js 16 (App Router, RSC) — blog, /scorecard, /api/* data routes
   content/articles/   # article markdown (canonical source)
   src/components/ui/  # UI pulled from the @interlace shadcn registry
   scripts/            # publish-to-devto (publish existing articles only)
@@ -15,7 +15,7 @@ apps/web/        # Next.js 16 (App Router, RSC) — blog, /scorecard, /api/* dat
 
 ```bash
 npm install
-cp .env.example apps/web/.env.local   # fill in values (see .env.example)
+cp .env.example apps/blog/.env.local   # fill in values (see .env.example)
 npm run dev
 ```
 
@@ -32,12 +32,12 @@ npm run lint
 Components come from our design-system registry. Add one with:
 
 ```bash
-cd apps/web && npx shadcn@latest add @interlace/<name>
+cd apps/blog && npx shadcn@latest add @interlace/<name>
 ```
 
 ## Publishing articles
 
-Article content lives in `apps/web/content/articles/`. Pushing to `main` runs the
+Article content lives in `apps/blog/content/articles/`. Pushing to `main` runs the
 dev.to publish workflow; or run it manually:
 
 ```bash
