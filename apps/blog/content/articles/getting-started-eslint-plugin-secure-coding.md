@@ -1,6 +1,6 @@
 ---
-title: "Automated Compliance: The Secure Coding Static Analysis Standard"
-description: "The core engineering standard for secure software development. Map your entire fleet to OWASP Top 10 with 89 engineering-led static analysis rules."
+title: "A Hardcoded sk_live_ Key Passes Code Review. It Won't Pass These 27 ESLint Rules."
+description: "Hardcoded secrets, unsafe deserialization, LDAP/XPath/GraphQL injection, prototype pollution — language-level bugs that pass review and tests, then become CVEs. 27 CWE-mapped ESLint rules that catch them in CI, framework-agnostic."
 slug: "getting-started-eslint-plugin-secure-coding"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure-coding-1eda"
@@ -9,15 +9,12 @@ published_at: "2025-12-31T21:31:41Z"
 edited_at: "2026-01-11T10:21:50Z"
 cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Fgetting-started-eslint-plugin-secure-coding.png"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-secure-coding.png"
-reading_time_minutes: 3
+reading_time_minutes: 9
 tags:
   - "eslint"
   - "security"
   - "javascript"
   - "tutorial"
-reactions: 0
-comments: 0
-views: 0
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -26,222 +23,311 @@ author:
 series: "The Hardened Stack"
 ---
 
-**Standardizing code quality across 100+ repos is impossible without automation. Here is the core engineering standard for secure coding, mapping your entire codebase to the OWASP Top 10 automatically.**
+A reviewer approves this diff in four seconds:
 
-## Quick Install
+```ts
+const stripe = new Stripe("sk_live_51H8xY2eZvKf...");
+```
+
+It passes the type-checker. It passes every unit test. It ships. Three weeks
+later it's in a public commit, a security researcher greps your org's repos for
+`sk_live_`, and you're rotating keys at 2am.
+
+Hardcoded secrets are **CWE-798**. They're not a logic bug a test can catch —
+the code _works_. They're a property of the source text, which is exactly what
+a linter is good at. The problem is that the linters most teams run check
+_style_: quotes, semicolons, unused vars. They have nothing to say about
+`sk_live_`.
+
+**`eslint-plugin-secure-coding` is the layer that does.** It's 27 rules for
+_language-level_ security bugs — hardcoded credentials, unsafe deserialization,
+LDAP/XPath/GraphQL/XXE injection, prototype pollution, insecure comparison,
+ReDoS — every one pinned to a CWE and carrying a CVSS score and compliance
+tags. It's deliberately framework-agnostic: no Express, no Nest, no AWS
+specifics (those live in dedicated plugins). Just the mistakes you can make in
+plain JavaScript or TypeScript that turn into CVEs.
+
+This is the getting-started guide: how the flagship rule actually decides what
+a credential is, the full 27-rule map, install/config across all package
+managers, and the exact ESLint/Oxlint versions it runs under.
+
+---
+
+## TL;DR
+
+- **27 rules**, every one carrying a `CWE` id, a CVSS score, and compliance
+  tags (SOC2 / PCI-DSS / HIPAA / GDPR / …).
+- **4 presets**: `flagship` (the 2 ecosystem-flagship rules), `recommended`
+  (18 rules), `strict` (all 27), `owasp-top-10` (12 rules mapped to OWASP
+  categories — the mapping is checkable below).
+- **Framework-agnostic.** "Pure coding security": language-level vulns only.
+  Framework-specific checks (Express, NestJS, Lambda, Postgres, …) live in
+  their own plugins — this one is the base layer underneath them.
+- **Flat-config**, CommonJS package, ESLint `8 || 9 || 10`, Node `>= 18`. No
+  runtime peer deps — it lints source, not your dependency tree.
+
+---
+
+## The flagship rule: how `no-hardcoded-credentials` actually decides
+
+A naive secret scanner greps for `password` and high-entropy strings, then
+drowns you in false positives on UUIDs, test fixtures, and base64 blobs. The
+reason this rule is usable in CI is that it makes **two different decisions**
+depending on what it's looking at.
+
+**1. Registered key formats fire anywhere — no context needed.** Some token
+shapes are unambiguous: their prefix is owned by a vendor and means exactly one
+thing. The rule matches these structurally, wherever they appear:
+
+```ts
+// ❌ no-hardcoded-credentials (CWE-798) — structural match, fires anywhere
+const stripe = new Stripe("sk_live_51H8xY2eZvKf..."); // Stripe secret key
+const aws = { accessKeyId: "AKIAIOSFODNN7EXAMPLE" }; // AWS access key
+```
+
+The pattern set covers Stripe (`sk_live_`/`sk_test_`/`pk_live_`/`pk_test_`/
+`rk_live_`/`rk_test_`), AWS (`AKIA…`), and generic 32+ char API-key shapes.
+Because `sk_test_` and `pk_test_` are _also_ registered prefixes, a test key in
+a fixture **will** trip the rule — that's intentional (a leaked test key is
+still a leak), and it's why the `allowInTests` option and per-line disables
+exist (see below).
+
+**2. Everything else needs a credential-named context.** For generic secrets
+(a literal assigned to something), firing on every long string would bury you.
+So the rule only flags a literal when the surrounding identifier _names_ a
+credential and it clears `minLength`:
+
+```ts
+// ❌ flagged: identifier names a credential + length >= minLength (default 8)
+const apiKey = "a8f5f167f44f4964e6c998dee827110c";
+const dbPassword = "hunter2-prod-x9";
+
+// ✅ NOT flagged: same-shaped string, no credential-named context
+const requestId = "a8f5f167f44f4964e6c998dee827110c";
+const greeting = "welcome to the dashboard";
+```
+
+This identifier-name gate is what keeps the false-positive rate low enough to
+run as a CI error instead of a warning everyone ignores.
+
+**The fix it wants** — pull the value out of source entirely:
+
+```ts
+// ✅
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+```
+
+**Where the CWE/CVSS/compliance tags come from.** The rule declares
+`CWE-798`; the shared CWE map in the engine enriches that into the OWASP
+category (`A04:2025`), a CVSS score (`9.8`), and the compliance frameworks the
+weakness touches (`SOC2, PCI-DSS, HIPAA, GDPR, …`). So the finding isn't a bare
+"bad" — it's an audit-ready line your compliance reviewer can map directly.
+Tune it for your repo:
+
+```js
+"secure-coding/no-hardcoded-credentials": ["error", {
+  allowInTests: true,   // don't flag in *.test.* / __tests__ (default: false)
+  minLength: 12,          // raise the generic-secret length floor (default: 8)
+  detectDatabaseStrings: true,
+  ignorePatterns: ["^EXAMPLE_"], // regexes to skip
+}]
+```
+
+For a known-safe fixture, a scoped disable is honest and self-documenting:
+
+```ts
+// eslint-disable-next-line secure-coding/no-hardcoded-credentials -- documented test fixture
+const EXAMPLE_KEY = "pk_test_example";
+```
+
+---
+
+## A second bug a test won't catch: `no-unsafe-deserialization`
+
+Deserialization of untrusted data (**CWE-502**) is the quiet RCE. The code
+round-trips fine in every test because your tests feed it trusted input:
+
+```ts
+// ❌ no-unsafe-deserialization (CWE-502) — eval as a deserializer = RCE
+const obj = eval("(" + untrustedJson + ")");
+```
+
+```ts
+// ✅ the rule's own fix
+const obj = JSON.parse(untrustedJson); // and validate shape/size before use
+```
+
+The rule flags `eval`-as-parser and unsafe deserialization sinks, and (notably)
+treats **AI model/tool output** as untrusted too — the fix message reminds you
+to validate it via schema and size limits before deserializing.
+
+---
+
+## The full rule set
+
+All 27, grouped, with each rule's declared CWE:
+
+| Rule                               | Catches                                | CWE      |
+| ---------------------------------- | -------------------------------------- | -------- |
+| `no-hardcoded-credentials`         | Secrets/keys in source                 | CWE-798  |
+| `no-hardcoded-session-tokens`      | Session/JWT tokens in source           | CWE-798  |
+| `no-sensitive-data-exposure`       | Secrets/PII in logs, responses, errors | CWE-532  |
+| `no-pii-in-logs`                   | Email/SSN/card in console logs         | CWE-359  |
+| `no-unsafe-deserialization`        | Deserializing untrusted data           | CWE-502  |
+| `no-graphql-injection`             | GraphQL injection / DoS                | CWE-89   |
+| `no-ldap-injection`                | LDAP injection                         | CWE-90   |
+| `no-xpath-injection`               | XPath injection                        | CWE-643  |
+| `no-xxe-injection`                 | XML external entity                    | CWE-611  |
+| `no-format-string-injection`       | Format-string injection                | CWE-134  |
+| `no-directive-injection`           | Template directive injection           | CWE-96   |
+| `detect-object-injection`          | `obj[userKey]` / prototype pollution   | CWE-915  |
+| `detect-non-literal-regexp`        | `RegExp(variable)`                     | CWE-400  |
+| `no-unsafe-regex-construction`     | Regex built from user input            | CWE-400  |
+| `no-redos-vulnerable-regex`        | Catastrophic-backtracking regex        | ReDoS¹   |
+| `no-missing-authentication`        | Route handler with no auth check       | CWE-287  |
+| `require-backend-authorization`    | Missing server-side authz              | CWE-602  |
+| `no-privilege-escalation`          | Privilege-escalation patterns          | CWE-269  |
+| `detect-weak-password-validation`  | Weak password requirements             | CWE-521  |
+| `no-weak-password-recovery`        | Weak password-reset flows              | CWE-640  |
+| `no-improper-sanitization`         | Incomplete input sanitization          | CWE-116  |
+| `no-improper-type-validation`      | Missing/loose type validation          | CWE-1287 |
+| `no-insecure-comparison`           | `==`/`!=` on security values           | CWE-697  |
+| `no-unchecked-loop-condition`      | Unbounded loop → DoS                   | CWE-400  |
+| `no-unlimited-resource-allocation` | Unbounded allocation → DoS             | CWE-770  |
+| `no-electron-security-issues`      | Insecure Electron config               | CWE-16   |
+| `require-secure-defaults`          | Insecure-by-default config             | CWE-1188 |
+
+¹ `no-redos-vulnerable-regex` targets the MITRE ReDoS class (CWE-1333); the
+others above carry the CWE declared in their rule metadata.
+
+---
+
+## Install
 
 ```bash
+# npm
 npm install --save-dev eslint-plugin-secure-coding
+# yarn
+yarn add --dev eslint-plugin-secure-coding
+# pnpm
+pnpm add --save-dev eslint-plugin-secure-coding
+# bun
+bun add --dev eslint-plugin-secure-coding
 ```
 
-## Flat Config (ESLint 9+)
+Flat config (`eslint.config.js`):
 
-```javascript
-// eslint.config.js
-import secureCoding from "eslint-plugin-secure-coding";
-
-export default [secureCoding.configs.recommended];
-```
-
-## Run ESLint
-
-```bash
-npx eslint .
-```
-
-You'll see output like:
-
-```bash
-src/auth.ts
-  15:3  error  🔒 CWE-798 OWASP:A02 CVSS:7.5 | Hardcoded credential detected
-               Fix: Use environment variable: process.env.DATABASE_PASSWORD
-
-src/utils.ts
-  42:5  error  🔒 CWE-95 OWASP:A03 CVSS:9.8 | Dangerous eval() with expression
-               Fix: Replace eval() with safer alternatives like JSON.parse()
-```
-
-## Available Presets
-
-```javascript
-// Balanced for most projects
-secureCoding.configs.recommended;
-
-// Maximum security (all  89 rules as errors)
-secureCoding.configs.strict;
-
-// Web application compliance
-secureCoding.configs["owasp-top-10"];
-
-// Mobile apps (React Native)
-secureCoding.configs["owasp-mobile-top-10"];
-```
-
-## Rule Overview
-
-| Category             | Rules | Examples                                 |
-| -------------------- | ----- | ---------------------------------------- |
-| Injection Prevention | 11    | eval(), command injection, GraphQL       |
-| Cryptography         | 6     | Weak hashes, random, timing attacks      |
-| Authentication       | 3     | Hardcoded credentials, weak passwords    |
-| Session/Cookies      | 3     | Insecure cookies, session fixation       |
-| Data Exposure        | 5     | PII in logs, debug code, secrets         |
-| Input Validation     | 8     | XSS, path traversal, prototype pollution |
-| OWASP Mobile         | 30    | Insecure storage, certificate validation |
-
-## Customizing Rules
-
-```javascript
-// eslint.config.js
-import secureCoding from "eslint-plugin-secure-coding";
+```js
+// `configs` is a NAMED export; the default export is the plugin object.
+import { configs } from "eslint-plugin-secure-coding";
 
 export default [
-  secureCoding.configs.recommended,
+  configs.recommended, // 18 rules — the sane default
+  // configs.flagship,    // the 2 ecosystem-flagship rules only
+  // configs.strict,      // all 27 as errors
+  // configs["owasp-top-10"], // the 12 OWASP-mapped rules
+];
+```
 
-  // Override specific rules
+Tune any rule inline — the preset already registers the `secure-coding`
+namespace, so a later config object can reference it directly:
+
+```js
+import { configs } from "eslint-plugin-secure-coding";
+
+export default [
+  configs.recommended,
   {
     rules: {
-      // Downgrade to warning
       "secure-coding/no-pii-in-logs": "warn",
-
-      // Disable if not applicable
-      "secure-coding/detect-non-literal-fs-filename": "off",
-
-      // Configure options
       "secure-coding/no-hardcoded-credentials": [
         "error",
-        {
-          allowTestFiles: true,
-        },
+        { allowInTests: true },
       ],
     },
   },
 ];
 ```
 
-## Ignoring False Positives
-
-```javascript
-// eslint-disable-next-line secure-coding/no-hardcoded-credentials
-const EXAMPLE_KEY = "pk_test_example"; // Test fixture
-```
-
-Or in config:
-
-```javascript
-{
-  files: ['**/*.test.ts'],
-  rules: {
-    'secure-coding/no-hardcoded-credentials': 'off',
-  },
-}
-```
-
-## CI/CD Integration
-
-### GitHub Actions
-
-```yaml
-# .github/workflows/security.yml
-name: Security Lint
-
-on: [push, pull_request]
-
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-      - run: npm ci
-      - run: npx eslint . --max-warnings 0
-```
-
-### Pre-commit Hook
+Run it:
 
 ```bash
-npm install --save-dev husky lint-staged
-npx husky init
-```
-
-```json
-// package.json
-{
-  "lint-staged": {
-    "*.{js,ts}": "eslint --max-warnings 0"
-  }
-}
-```
-
-## IDE Integration
-
-### VS Code
-
-ESLint extension will show errors inline:
-
-```text
-🔒 CWE-798 | Hardcoded credential detected
-```
-
-### Cursor/Copilot
-
-AI assistants read the structured errors and can auto-fix:
-
-```text
-CWE-89 → Parameterized query fix
-CWE-798 → Environment variable fix
-```
-
-## Quick Reference
-
-```bash
-# Install
-npm install --save-dev eslint-plugin-secure-coding
-
-# Config (eslint.config.js)
-import secureCoding from 'eslint-plugin-secure-coding';
-export default [secureCoding.configs.recommended];
-
-# Run
 npx eslint .
-
-# Fix auto-fixable issues
-npx eslint . --fix
 ```
 
-## Next Steps
+Each finding carries the CWE, OWASP category, CVSS, severity, compliance tags,
+and the fix:
 
-1. **Read the rules**: Each rule has detailed docs with examples
-2. **Try strict mode**: `secureCoding.configs.strict`
-3. **Add to CI**: Block PRs with security issues
-4. **Combine plugins**: Add `eslint-plugin-pg`, `eslint-plugin-jwt` for specialized coverage
+```text
+src/payments.ts
+  4:24  error  🔒 CWE-798 OWASP:A04-Cryptographic CVSS:9.8 | Hard-coded API key detected | CRITICAL [SOC2,PCI-DSS,HIPAA,GDPR]
+               Fix: Use environment variable: process.env.STRIPE_SECRET_KEY or secret management service | https://cwe.mitre.org/data/definitions/798.html
+```
 
 ---
 
-📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding)
-📖 [Full Rule List](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)
+## Compatibility
+
+| Surface              | Support                                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Package managers** | npm, yarn, pnpm, bun — plain dev dependency                                                                                                                                                            |
+| **Node**             | `>= 18.0.0`                                                                                                                                                                                            |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                                                                                                                                         |
+| **Module system**    | CommonJS — loads from both `eslint.config.js` and `eslint.config.mjs`                                                                                                                                  |
+| **Runtime peers**    | None — the rules read source AST; nothing to install at runtime                                                                                                                                        |
+| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-secure-coding` port; the flagship rules are wired into the Oxlint config and parity-checked in CI. The full 27-rule set runs on ESLint today. |
+
+---
+
+## Honest scope — what "27 rules" means and what it doesn't
+
+- **It's 27 rules, not "89."** Earlier copy floated bigger numbers; the
+  published `recommended` enables 18, `strict` turns on all 27, and that's the
+  whole plugin. The breadth is in CWE _coverage_, not rule count.
+- **"OWASP coverage" is the `owasp-top-10` preset, and it's checkable.** That
+  preset wires 12 rules — `no-missing-authentication`, `no-privilege-escalation`,
+  `no-hardcoded-credentials`, `no-sensitive-data-exposure`, `no-graphql-injection`,
+  `no-xxe-injection`, `no-xpath-injection`, `no-ldap-injection`,
+  `no-weak-password-recovery`, `no-improper-type-validation`,
+  `no-insecure-comparison`, `no-unsafe-deserialization` — each mapped to an
+  OWASP category (the 12 are listed right here; the per-rule CWE/OWASP detail
+  lives in the [rule docs](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)).
+  No "100% of everything" claim.
+- **Static analysis is a floor.** These rules prove a dangerous _shape_ isn't
+  in your source. They can't prove your auth logic is correct or your validator
+  is complete — pair them with reviews and runtime controls. They run on every
+  commit and never get tired; that's the value.
+
+---
+
+## Where this sits in the ecosystem
+
+The widely-used generic linters (`eslint-plugin-security` and friends) overlap
+some of this surface but emit a bare rule id. `secure-coding` adds the depth a
+security or compliance reviewer actually needs: a CWE, a CVSS, compliance tags,
+and a heuristic (like the two-mode credential detector above) tuned to stay
+quiet on fixtures. It's the framework-agnostic base layer of the
+[Interlace](https://eslint.interlace.tools) family — the per-framework plugins
+(`eslint-plugin-pg`, `-jwt`, `-express-security`, `-nestjs-security`,
+`-lambda-security`, …) sit _on top_ of it for stack-specific coverage.
+
+---
+
+## Links
+
+- 📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding)
+- 📖 [Full rule docs (per-rule CWE + OWASP mapping)](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub
-::
-📖 [OWASP Coverage Matrix](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding#owasp-coverage-matrix)
-
-::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub
+⭐ Star on GitHub if this caught something your code review wouldn't.
 ::
 
 ---
 
-**The Interlace ESLint Ecosystem**
-Interlace is a high-fidelity suite of static code analyzers designed to automate security, performance, and reliability for the modern Node.js stack. With over 330 rules across 18 specialized plugins, it provides 100% coverage for OWASP Top 10, LLM Security, and Database Hardening.
+I'm **Ofri Peretz**, a security engineering leader and the author of the
+Interlace ESLint ecosystem — domain-specific static analysis for security,
+reliability, and performance on the Node.js stack. `secure-coding` is its
+framework-agnostic base layer.
 
-## [Explore the full Documentation](https://eslint.interlace.tools)
-
-© 2026 Ofri Peretz. All rights reserved.
-
----
-
-**Build Securely.**
-I'm Ofri Peretz, a Security Engineering Leader and the architect of the Interlace Ecosystem. I build static analysis standards that automate security and performance for Node.js fleets at scale.
-
-[ofriperetz.dev](https://ofriperetz.dev) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
+[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
