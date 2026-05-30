@@ -1,0 +1,19 @@
+# gitleaks config for the public blog repo.
+# Extends the default ruleset; allowlists the documented FAKE example secrets
+# used as vulnerability demonstrations inside published security articles.
+# These are illustrative placeholders (already public on dev.to), not real
+# credentials. The allowlist is scoped to article markdown + the exact fake
+# values, so a real secret pasted anywhere else still trips the gate.
+
+title = "ofriperetz.dev blog gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fake/example secrets in security article content (teaching demos)"
+paths = ['''apps/web/content/articles/.*\.md$''']
+regexes = [
+  '''sk-prod-abc123def456ghi789jkl012mno345pqr678''',
+  '''sk_live_abc123xyz789''',
+]
