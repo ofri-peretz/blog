@@ -41,6 +41,21 @@ const nextConfig: NextConfig = {
       // so search and inbound links land in the right place.
       { source: "/stats", destination: "/scorecard", permanent: true },
       { source: "/analytics", destination: "/scorecard", permanent: true },
+      // Benchmark-series duplicate consolidation: each canonical comparison
+      // absorbed its twin (the two local files shared one dev.to post).
+      // Redirect the retired slugs to the kept canonical.
+      {
+        source:
+          "/articles/sonarjs-has-269-rules-it-still-misses-65-of-security-vulnerabilities-3jh",
+        destination: "/articles/benchmark-sonarjs-vs-interlace",
+        permanent: true,
+      },
+      {
+        source:
+          "/articles/microsofts-eslint-security-plugin-catches-10-of-vulnerabilities-heres-what-it-misses",
+        destination: "/articles/benchmark-microsoft-sdl-vs-interlace",
+        permanent: true,
+      },
     ];
   },
 };
