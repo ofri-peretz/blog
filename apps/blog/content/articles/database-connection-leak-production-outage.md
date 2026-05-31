@@ -1,6 +1,6 @@
 ---
-title: "Post-Mortem: The Connection Leak Outage (And the Static Analysis Standard)"
-description: "A technical breakdown of a production outage caused by node-postgres leaks. Learn the static analysis standard we built to prevent it forever."
+title: "A Missing client.release() Exhausted Our Postgres Pool at 3 AM. The ESLint Rule That Catches It."
+description: "A node-postgres connection leak took our API down: 100 connections gone in 2 minutes on normal traffic. The post-mortem, the finally/pool.query fix, and the structural ESLint rule that flags a checked-out client that's never released — before it merges."
 slug: "database-connection-leak-production-outage"
 canonical_url: "https://ofriperetz.dev/articles/database-connection-leak-production-outage"
 devto_url: "https://dev.to/ofri-peretz/the-connection-leak-that-took-down-our-production-database-3bal"
@@ -9,7 +9,7 @@ published_at: "2025-12-31T21:35:53Z"
 edited_at: "2026-01-11T10:21:49Z"
 cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Fdatabase-connection-leak-production-outage.png"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/database-connection-leak-production-outage.png"
-reading_time_minutes: 2
+reading_time_minutes: 5
 tags:
   - "eslint"
   - "postgres"
@@ -26,51 +26,48 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-**Connection leaks aren't just bugs—they are production-killing events. Here is the post-mortem of an outage we survived, and the automated static analysis standard we built to make it biologically impossible to repeat.**
+3 AM. PagerDuty. Every API request returning 500.
 
-It was 3 AM. PagerDuty woke me up. Our API was returning 500 errors.
+The database was healthy — CPU fine, memory fine, disk fine. But every query
+timed out against the same error:
 
-The database was fine. CPU was fine. Memory was fine. But every query was timing out.
-
-## The Problem
-
-```yaml
+```text
 FATAL: too many connections for role "app_user"
 ```
 
-We had exhausted our 100-connection limit. But our traffic was normal. Where were all the connections going?
+We had a 100-connection pool and _normal_ traffic. So where had all 100
+connections gone?
 
-## The Leak
+## The leak
 
-After hours of debugging, we found it:
+After too long staring at logs, here it was — a single helper, called on a hot
+path:
 
 ```javascript
-// ❌ The connection leak hiding in our codebase
+// ❌ the leak
 async function getUserOrders(userId) {
   const client = await pool.connect();
   const orders = await client.query("SELECT * FROM orders WHERE user_id = $1", [
     userId,
   ]);
   return orders.rows;
-  // Where's client.release()? 🤔
+  // client.release() never runs — the connection is gone for good
 }
 ```
 
-Every call leaked a connection. With 50 requests/minute, we exhausted the pool in 2 minutes.
+`pool.connect()` checks a connection _out_ of the pool. Without
+`client.release()`, it's never returned. At ~50 req/min, a 100-connection pool
+is empty in **two minutes** — and then every other part of the app that needs
+the database is dead too. The blast radius of one missing line is the whole
+service.
 
-## Why This Happens
+## The fix: release in `finally`, or don't check out at all
 
-| Scenario                        | Result                          |
-| ------------------------------- | ------------------------------- |
-| Forgot `release()` entirely     | Connection never returned       |
-| Early return before `release()` | Connection leaked               |
-| Exception thrown                | `finally` block missing         |
-| Async error                     | Unhandled rejection, no cleanup |
-
-## The Correct Pattern
+Two patterns close the hole. First — if you need an explicit client, release it
+in a `finally` so it returns **even when the query throws**:
 
 ```javascript
-// ✅ Always release in finally block
+// ✅ finally guarantees the release
 async function getUserOrders(userId) {
   const client = await pool.connect();
   try {
@@ -80,93 +77,121 @@ async function getUserOrders(userId) {
     );
     return orders.rows;
   } finally {
-    client.release(); // Always executes
+    client.release();
   }
 }
 ```
 
-Or even better—don't use `connect()` at all for simple queries:
+Better still — a single-shot query doesn't need a manual checkout at all.
+`pool.query()` borrows and returns a connection for you:
 
 ```javascript
-// ✅ Best pattern: use pool.query() directly
+// ✅ best for single queries — no client to leak
 async function getUserOrders(userId) {
-  const orders = await pool.query("SELECT * FROM orders WHERE user_id = $1", [
+  const { rows } = await pool.query("SELECT * FROM orders WHERE user_id = $1", [
     userId,
   ]);
-  return orders.rows;
+  return rows;
 }
 ```
 
-## Let ESLint Catch This
+## The rule: `no-missing-client-release` (CWE-404)
+
+You don't find this leak at 3 AM. You find it at write-time:
 
 ```bash
 npm install --save-dev eslint-plugin-pg
 ```
 
-```javascript
-import pg from "eslint-plugin-pg";
-export default [pg.configs.recommended];
+```js
+// eslint.config.js — `configs` is a NAMED export (default export is the plugin)
+import { configs } from "eslint-plugin-pg";
+
+export default [configs.recommended];
 ```
 
-Now every missing release is caught:
-
-```bash
-src/orders.ts
-  3:17  error  🔒 CWE-772 | Missing client.release() detected
-               Fix: Add client.release() in finally block or use pool.query() for simple queries
+```text
+src/orders.js
+  3:9  error  ⚡ CWE-404 OWASP:A05-Injection | PG client acquired but not released. | HIGH
+             Fix: Ensure "client.release()" is called in a finally block to return the client to the pool.
 ```
 
-## The Rule: [`no-missing-client-release`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-missing-client-release)
+> **What it actually checks — and what it doesn't.** The rule is deliberately
+> AST-structural: it finds `const client = await pool.connect()` and flags it
+> when **no `client.release()` call references that client anywhere in scope** —
+> the overwhelmingly common leak (the release that was simply never written). It
+> does _not_ prove your release runs on every branch or sits in a `finally` —
+> that's why you pair the rule with the patterns above. It catches the omission;
+> the `finally`/`pool.query()` shape makes the placement correct. (It also keys
+> off a plain `const client = …` assignment, so destructured checkouts are out
+> of scope.)
 
-This rule tracks:
+## The connection-lifecycle family
 
-- Every `pool.connect()` call
-- Every code path through the function
-- Whether `client.release()` is called on all paths
-- Whether it's in a `finally` block (recommended)
+`no-missing-client-release` is one of a small set in `eslint-plugin-pg` that
+guard the borrow→use→return lifecycle:
 
-## Production Impact
+| Rule                                                                                                                  | CWE     | Catches                                                           |
+| --------------------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------- |
+| [`no-missing-client-release`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-missing-client-release) | CWE-404 | a checked-out client that's never released                        |
+| [`prefer-pool-query`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/prefer-pool-query)                 | CWE-400 | a manual checkout for a single-shot query — use `pool.query()`    |
+| [`no-floating-query`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-floating-query)                 | CWE-391 | a query promise neither `await`ed nor `return`ed                  |
+| [`prevent-double-release`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/prevent-double-release)       | —       | `client.release()` called more than once on the same client       |
+| [`no-transaction-on-pool`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-transaction-on-pool)       | —       | `BEGIN`/`COMMIT` issued on the pool instead of a dedicated client |
 
-After deploying this rule:
-
-- **0 connection leaks** in 6 months
-- **No more 3 AM pages** for connection exhaustion
-- **CI catches issues** before they reach staging
-
-## Quick Install
-
-```bash
-npm install --save-dev eslint-plugin-pg
-```
-
-```javascript
-import pg from "eslint-plugin-pg";
-export default [pg.configs.recommended];
-```
-
-Don't wait for the 3 AM wake-up call.
+`—` = no CWE in the emitted finding; these two carry a CWE only in their
+`meta.docs` metadata, not in the lint message itself.
 
 ---
 
-📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
-📖 [Rule docs: no-missing-client-release](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-pg/docs/rules/no-missing-client-release.md)
+## Compatibility
+
+| Surface              | Support                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| **Package managers** | npm, yarn, pnpm, bun                                                                  |
+| **Node**             | `>= 18.0.0`                                                                           |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                        |
+| **`pg` driver**      | peer `^6 \|\| ^7 \|\| ^8`; AST-based, lints regardless of installed version           |
+| **Module system**    | CommonJS — `eslint.config.js` or `.mjs`                                               |
+| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-pg` port, parity-gated in CI |
+
+```bash
+# npm / yarn / pnpm / bun
+npm install --save-dev eslint-plugin-pg
+yarn add -D eslint-plugin-pg
+pnpm add -D eslint-plugin-pg
+bun add -d eslint-plugin-pg
+```
+
+---
+
+## Where this fits
+
+`no-missing-client-release` is the availability member of `eslint-plugin-pg` —
+the same plugin that catches SQL injection and the N+1 insert loop. The deeper
+dives:
+
+- [The full `eslint-plugin-pg` set](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — all 13 rules
+- [The N+1 insert loop](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance) — the other "fine in dev, melts in prod" pattern
+- [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the obscure A05 attack
+
+---
+
+## Links
+
+- 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📖 [Rule docs: no-missing-client-release](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-missing-client-release)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub
+⭐ Star on GitHub if a missing `client.release()` has ever paged you at 3 AM.
 ::
 
 ---
 
-**The Interlace ESLint Ecosystem**
-Interlace is a high-fidelity suite of static code analyzers designed to automate security, performance, and reliability for the modern Node.js stack. With over 330 rules across 18 specialized plugins, it provides 100% coverage for OWASP Top 10, LLM Security, and Database Hardening.
+I'm **Ofri Peretz**, a security engineering leader and the author of the
+Interlace ESLint ecosystem — domain-specific static analysis for security,
+reliability, and performance on the Node.js stack. `eslint-plugin-pg` is its
+node-postgres layer.
 
-## [Explore the full Documentation](https://eslint.interlace.tools)
-
-© 2026 Ofri Peretz. All rights reserved.
-
----
-
-**Build Securely.**
-I'm Ofri Peretz, a Security Engineering Leader and the architect of the Interlace Ecosystem. I build static analysis standards that automate security and performance for Node.js fleets at scale.
-
-[ofriperetz.dev](https://ofriperetz.dev) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
+[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
