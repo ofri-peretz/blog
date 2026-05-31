@@ -1,6 +1,6 @@
 ---
-title: "Benchmark Report: Why Most Security Linters Miss 80% of Vulnerabilities"
-description: "A head-to-head performance and detection benchmark. Measurable proof of how deep static analysis identifies vulnerabilities that incumbent tools miss."
+title: "Same Vulnerable File, 4 Linters: Oxlint Native Caught 1, eslint-plugin-security 21, Interlace 46"
+description: "A 4-way benchmark on one fixture (12 vulnerability classes): Oxlint's built-in rules, eslint-plugin-security, the Interlace plugins on ESLint, and the same Interlace rules on Oxlint. Real current numbers, the false-positive breakdown, and the parity proof that the rules run on both engines."
 slug: "your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
 canonical_url: "https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
 devto_url: "https://dev.to/ofri-peretz/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof-2lpm"
@@ -9,15 +9,12 @@ published_at: "2025-12-20T16:25:32Z"
 edited_at: "2026-01-11T10:22:06Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof.jpg"
-reading_time_minutes: 5
+reading_time_minutes: 7
 tags:
   - "eslint"
   - "security"
   - "javascript"
   - "webdev"
-reactions: 0
-comments: 0
-views: 0
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -25,375 +22,198 @@ author:
   twitter: "ofriperetzdev"
 series: "The Security Engineering Protocol"
 ---
-**Generic linting creates a false sense of security. We benchmarked the industry's leading tools and found they miss 80% of critical vulnerabilities. Here is the data-driven case for deep static analysis.**
 
-I ran a rigorous benchmark comparing the two major ESLint security plugins. This article covers the full methodology, test files, and results—including why **0 false positives** matters more than raw speed.
+I took one file with **12 classes of real vulnerabilities** and ran it through
+four linter configurations — two engines (ESLint, Oxlint) crossed with the rules
+you'd actually reach for. The detection spread on the same file:
 
-## Benchmark Methodology
+- **Oxlint built-in rules: 1** finding
+- **Interlace flagship rules (on Oxlint): 5** — the portability subset (see below)
+- **eslint-plugin-security: 21**
+- **Interlace plugins (on ESLint): 46**
 
-### The Test Files
+The takeaway isn't "tool X wins." It's that **the engine is a commodity and the
+rules are the product** — and the rules you pick should run on whichever engine
+you choose. Here's the data, the false positives, and the parity proof.
 
-**vulnerable.js** (218 lines) - Contains 12 categories of real vulnerabilities:
+## The four configurations
 
-```javascript
-// 1. Command Injection
-exec(`ls -la ${userInput}`);
-execSync('echo ' + userInput);
-spawn('bash', ['-c', userInput]);
+1. **Oxlint built-in** — the fast Rust engine's _own_ rules, no security plugin.
+2. **eslint-plugin-security** — the generic incumbent (~1.6M weekly), on ESLint.
+3. **Interlace @ ESLint** — the domain plugins (`secure-coding` + `node-security`
+   - `pg` + `browser-security`) combined, so the scope fairly matches the
+     incumbent's monolith.
+4. **Interlace @ Oxlint** — the _same_ Interlace flagship rules, loaded into
+   Oxlint's JS-plugin runner.
 
-// 2. Path Traversal
-fs.readFile(filename, 'utf8', callback);
-fs.readFileSync(filename);
+## Detection — `vulnerable.js` (12 vulnerability classes)
 
-// 3. Object Injection
-obj[key] = value;
-data[key][value] = 'test';
+| Config                               | Engine | Findings | Notes                           |
+| ------------------------------------ | ------ | -------- | ------------------------------- |
+| Oxlint built-in                      | Oxlint | **1**    | `no-eval` only                  |
+| Interlace flagship (3 wired rules)   | Oxlint | **5**    | the rules that are parity-wired |
+| eslint-plugin-security (recommended) | ESLint | **21**   | the classic generic patterns    |
+| Interlace (4 plugins, recommended)   | ESLint | **46**   | across 20 distinct rules        |
 
-// 4. SQL Injection
-db.query('SELECT * FROM users WHERE id = ' + userId);
+Oxlint's native ruleset caught a single security issue (`no-eval`) — because
+**Oxlint is an engine, not a security ruleset.** You pick it for speed, not
+coverage. The generic incumbent caught the well-known 21. The domain plugins, run
+together, caught 46 across 20 rules — SQL injection (`pg/no-unsafe-query`),
+unsafe deserialization, ReDoS, weak hashing, `Math.random()` for crypto, unsafe
+`innerHTML`, insecure comparisons, and more that a generic ruleset has no rule
+for.
 
-// 5. Code Execution
-eval(code);
-new Function(code);
+## False positives — `safe-patterns.js` (validated-safe code)
 
-// 6. Regex DoS
-const evilRegex = /^(a+)+$/;
-new RegExp(userInput);
+Detection only counts if precision holds. Run against a file of _deliberately
+safe_ patterns:
 
-// 7. Weak Cryptography
-crypto.createHash('md5').update(password);
-Math.random().toString(36);
+| Config                 | False positives | On what                                                                                                               |
+| ---------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Oxlint built-in        | **0**           | —                                                                                                                     |
+| Interlace @ Oxlint     | **0**           | —                                                                                                                     |
+| Interlace @ ESLint     | 3               | `pg/no-select-all` (a perf/clarity rule) ×2, conservative `browser-security/no-innerhtml` ×1                          |
+| eslint-plugin-security | **5**           | `detect-object-injection` on allowlist-validated keys ×3, `detect-non-literal-fs-filename` on path-validated reads ×2 |
 
-// 8. Timing Attacks
-if (inputToken === storedToken) {
-  return true;
-}
+This is the honest difference. The incumbent's 5 are **genuine false positives**
+— it flags `obj[key]` even after `VALID_KEYS.includes(key)`, and
+`fs.readFileSync(p)` even after `path.basename` + `startsWith` validation,
+because it pattern-matches the sink without seeing the guard. The Interlace "3"
+aren't security false positives: `no-select-all` is a performance/clarity rule
+firing on `SELECT *`, and `no-innerhtml` is conservative by design (it flags
+`innerHTML` even when the value is DOMPurify-sanitized — a deliberate choice you
+can disable with a documented comment).
 
-// 9. XSS
-document.getElementById('output').innerHTML = userContent;
+## The parity proof: the same rule, both engines
 
-// 10. Insecure Cookies
-document.cookie = `${name}=${value}`;
+This is the part that matters most. The Interlace flagship rules don't just _also
+exist_ on Oxlint — they emit the **identical CWE-tagged finding** on both
+engines. `pg/no-unsafe-query` on the same line, under ESLint and under Oxlint:
 
-// 11. Dynamic Require
-require(moduleName);
-
-// 12. Buffer Issues
-const buf = new Buffer(size);
+```text
+🔒 CWE-89 OWASP:A03-Injection CVSS:9.8 | Unsafe SQL query detected. Variable interpolation found. | CRITICAL [SOC2,PCI-DSS,NIST-CSF]
+   Fix: Use parameterized queries ($1, $2) instead of string concatenation. | https://node-postgres.com/features/queries#parameterized-queries
 ```
 
-**safe-patterns.js** (167 lines) - Contains defensive patterns that should NOT trigger warnings:
+Same CWE, same OWASP category, same CVSS, same compliance tags — character for
+character. So you are **not
+locked to an engine**: run the full domain set on ESLint today, run the
+flagship rules on Oxlint for editor-speed feedback, and get the same security
+signal either way. (The full 119-rule set is ESLint-first; the flagship rules are
+the ones wired + parity-gated on Oxlint so far.)
 
-```javascript
-// Safe: Validated key access with allowlist
-const VALID_KEYS = ['name', 'email', 'age'];
-if (VALID_KEYS.includes(key)) {
-  return obj[key];
-}
+## How to read this (it's a landscape, not a leaderboard)
 
-// Safe: hasOwnProperty check
-if (Object.prototype.hasOwnProperty.call(obj, key)) {
-  return obj[key];
-}
+- **Oxlint** is the right call when you want a fast engine — pair it with real
+  security rules, because its built-in set isn't one.
+- **eslint-plugin-security** is the familiar generic floor; it catches the
+  classics but pattern-matches sinks, so it costs you false positives on
+  validated code.
+- **The domain plugins** add depth (database, crypto, DOM, deserialization) the
+  generic set has no rules for — that's the gap, not a verdict.
+- **Portability** is the point: pick rules that run on both engines so the engine
+  decision stays a performance choice, not a coverage lock-in.
 
-// Safe: Path validation with startsWith
-if (!safePath.startsWith(SAFE_DIR)) throw new Error('Invalid');
-fs.readFileSync(safePath);
+## Methodology — reproduce it
 
-// Safe: Timing-safe comparison
-crypto.timingSafeEqual(bufA, bufB);
+Honest disclosure: the fixtures are **team-authored** (`vulnerable.js`, 12
+vulnerability classes; `safe-patterns.js`, validated-safe patterns), so these
+numbers measure coverage of the surface we designed the rules around — run it on
+your own code for an unbiased read. Versions: `eslint@9.39.4`, `oxlint@1.67.0`,
+`eslint-plugin-secure-coding@3.2.0` (27 rules), `node-security@4.2.0` (34),
+`pg@1.4.3` (13), `browser-security@1.2.3` (45), `eslint-plugin-security@4.0.0`.
+Method: each plugin's `recommended` preset, `--format json`, counted by `ruleId`
+(restricted to the four plugins' rule IDs — a raw run also surfaces a couple of
+core/TypeScript notices from the fixture).
+The fixtures and the `eslint-plugin-security` config live in the repo's
+[`packages/eslint-plugin-secure-coding/benchmark/`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding/benchmark);
+the flagship Oxlint config is `.oxlintrc.flagship.json` at the repo root.
 
-// Safe: DOMPurify sanitization
-const clean = DOMPurify.sanitize(userContent);
-element.innerHTML = clean;
+The Interlace side combines the four plugins (fair scope vs the monolith) in one
+flat config:
+
+```js
+// eslint.config.mjs
+import secureCoding from "eslint-plugin-secure-coding";
+import nodeSecurity from "eslint-plugin-node-security";
+import pg from "eslint-plugin-pg";
+import browserSecurity from "eslint-plugin-browser-security";
+
+export default [
+  {
+    files: ["**/*.js"],
+    plugins: {
+      "secure-coding": secureCoding,
+      "node-security": nodeSecurity,
+      pg,
+      "browser-security": browserSecurity,
+    },
+    rules: {
+      ...secureCoding.configs.recommended.rules,
+      ...nodeSecurity.configs.recommended.rules,
+      ...pg.configs.recommended.rules,
+      ...browserSecurity.configs.recommended.rules,
+    },
+  },
+];
 ```
-
-### Benchmark Configuration
-
-- **Iterations**: 5 runs per test
-- **Metrics**: Average time, min/max time, issues found, rules triggered
-- **Assumption**: Run-to-run variance estimated at ≤15%; reported differences (2.83x, 3.8x) exceed this margin
-
----
-
-## Test 1: Fair Fight (Same 14 Rules)
-
-First, I tested both plugins with **only the 14 equivalent rules** that exist in both packages. This ensures an apples-to-apples comparison.
-
-### Results
-
-| Metric                | `secure-coding` | `security` | Winner           |
-| --------------------- | --------------- | ---------- | ---------------- |
-| **Performance/Issue** | **24.95ms**     | 25.12ms    | 🟢 secure-coding |
-| **Total Time**        | 723.54ms        | 527.58ms   | 🔵 security      |
-| **Issues Found**      | 29              | 21         | 🟢 secure-coding |
-| **Detection Rate**    | 138%            | 100%       | 🟢 secure-coding |
-
-### Rule-by-Rule Detection
-
-| Rule Category           | `security` | `secure-coding` | Diff   |
-| ----------------------- | ---------- | --------------- | ------ |
-| Timing Attacks          | 1          | **5**           | +4 🟢  |
-| Child Process           | 2          | **4**           | +2 🟢  |
-| Non-literal Regexp      | 1          | **3**           | +2 🟢  |
-| Eval/Code Execution     | 1          | **2**           | +1 🟢  |
-| Insufficient Randomness | 0          | **1**           | +1 🟢  |
-| FS Path Traversal       | 5          | 5               | =      |
-| Object Injection        | 5          | 5               | =      |
-| Dynamic Require         | 2          | 2               | =      |
-| Unsafe Regex            | 2          | 2               | =      |
-| Buffer APIs             | 2          | 0               | -2 🔵  |
-| **TOTAL**               | **21**     | **29**          | **+8** |
-
-**Key Finding**: With the same rule categories, `secure-coding` finds **38% more issues** while maintaining nearly identical efficiency per issue.
-
----
-
-## Test 2: Recommended Presets
-
-Next, I tested each plugin's recommended configuration—the out-of-box experience.
-
-### Results
-
-| Metric                | `secure-coding` | `security` | Winner           |
-| --------------------- | --------------- | ---------- | ---------------- |
-| **Performance/Issue** | **9.95ms**      | 28.16ms    | 🟢 secure-coding |
-| **Total Time**        | 795.99ms        | 591.41ms   | 🔵 security      |
-| **Issues Found**      | 80              | 21         | 🟢 secure-coding |
-| **Rules Triggered**   | 30              | 10         | 🟢 secure-coding |
-| **Total Rules**       | 89              | 14         | 🟢 secure-coding |
-
-### Detection Breakdown
-
-`secure-coding` rules triggered on vulnerable.js:
-
-```
-• no-unvalidated-user-input: 8 issues
-• detect-non-literal-fs-filename: 5 issues
-• detect-object-injection: 5 issues
-• no-timing-attack: 5 issues
-• detect-child-process: 4 issues
-• database-injection: 4 issues
-• no-unsafe-deserialization: 4 issues
-• no-sql-injection: 3 issues
-• detect-non-literal-regexp: 3 issues
-• no-hardcoded-credentials: 2 issues
-• detect-eval-with-expression: 2 issues
-• no-weak-crypto: 2 issues
-... and 18 more categories
-```
-
-`security` rules triggered:
-
-```
-• detect-non-literal-fs-filename: 5 issues
-• detect-object-injection: 5 issues
-• detect-child-process: 2 issues
-• detect-unsafe-regex: 2 issues
-... and 6 more categories
-```
-
----
-
-## Test 3: False Positive Analysis
-
-This is where precision matters. I ran both plugins against safe-patterns.js—a file with **only safe, validated code**.
-
-### Results
-
-| Plugin          | False Positives | Precision |
-| --------------- | --------------- | --------- |
-| `secure-coding` | **0**           | **100%**  |
-| `security`      | 4               | 84%       |
-
-### The 4 False Positives from `eslint-plugin-security`
-
-**FP #1: Validated key access** (line 38)
-
-```javascript
-// Pattern: Allowlist validation before access
-const VALID_KEYS = ['name', 'email', 'age'];
-function getField(obj, key) {
-  if (VALID_KEYS.includes(key)) {
-    return obj[key]; // ⚠️ security flags "Generic Object Injection Sink"
-  }
-}
-```
-
-The developer validated `key` against an allowlist. This is a safe pattern.
-
-**FP #2: hasOwnProperty check** (line 45)
-
-```javascript
-// Pattern: Property existence check before access
-function safeGet(obj, key) {
-  if (Object.prototype.hasOwnProperty.call(obj, key)) {
-    return obj[key]; // ⚠️ security flags "Generic Object Injection Sink"
-  }
-}
-```
-
-`hasOwnProperty` ensures `key` exists on the object itself, not the prototype chain.
-
-**FP #3: Guard clause with throw** (line 153)
-
-```javascript
-// Pattern: Early exit guard clause
-const ALLOWED_THEMES = ['light', 'dark', 'system'];
-function setTheme(userTheme) {
-  if (!ALLOWED_THEMES.includes(userTheme)) {
-    throw new Error('Invalid theme');
-  }
-  config[userTheme] = true; // ⚠️ security flags despite throw guard
-}
-```
-
-The `throw` acts as a guard—execution cannot reach line 153 with an invalid theme.
-
-**FP #4: Path validation** (line 107)
-
-```javascript
-// Pattern: basename + startsWith validation
-function safeReadFile(userFilename) {
-  const safeName = path.basename(userFilename);
-  const safePath = path.join(SAFE_DIR, safeName);
-
-  if (!safePath.startsWith(SAFE_DIR)) {
-    throw new Error('Invalid path');
-  }
-
-  return fs.readFileSync(safePath); // ⚠️ security flags "non literal argument"
-}
-```
-
-The path is fully validated: `basename` strips traversal, `startsWith` confirms the directory.
-
-### Why `secure-coding` Avoids These
-
-We use **AST-based validation detection**:
-
-| Pattern                   | Detection Method                               |
-| ------------------------- | ---------------------------------------------- |
-| `allowlist.includes(key)` | Check for includes() in enclosing if-statement |
-| `hasOwnProperty(key)`     | Check for hasOwnProperty/hasOwn call           |
-| Guard clause + throw      | Detect preceding IfStatement with early exit   |
-| `startsWith()` validation | Detect path validation patterns                |
-
----
-
-## OWASP Coverage Comparison
-
-| Coverage            | `secure-coding` | `security`   |
-| ------------------- | --------------- | ------------ |
-| OWASP Web Top 10    | 10/10 (100%)    | ~3/10 (~30%) |
-| OWASP Mobile Top 10 | 10/10 (100%)    | 0/10 (0%)    |
-| **Total**           | **20/20**       | **~3/20**    |
-
----
-
-## LLM/AI Message Comparison
-
-Security rules are increasingly consumed by AI coding assistants. Compare the messages:
-
-**`eslint-plugin-security`**:
-
-```
-Found child_process.exec() with non Literal first argument
-```
-
-**`eslint-plugin-secure-coding`**:
-
-```
-🔒 CWE-78 OWASP:A03-Injection CVSS:9.8 | Command injection detected | CRITICAL
-   Fix: Use execFile/spawn with {shell: false} and array args
-   📚 https://owasp.org/www-community/attacks/Command_Injection
-```
-
-| Feature            | `secure-coding` | `security` |
-| ------------------ | --------------- | ---------- |
-| CWE ID             | ✅              | ❌         |
-| OWASP Category     | ✅              | ❌         |
-| CVSS Score         | ✅              | ❌         |
-| Fix Instructions   | ✅              | ❌         |
-| Documentation Link | ✅              | ❌         |
-
----
-
-## Feature & Documentation Comparison
-
-Beyond detection metrics, here's the full feature comparison:
-
-| Feature                  | `secure-coding`              | `security`       |
-| ------------------------ | ---------------------------- | ---------------- |
-| **Total Rules**          | 89                           | 14               |
-| **Documentation**        | Comprehensive (per-rule)     | Basic            |
-| **Fix Suggestions/Rule** | 3-6 suggestions              | 0                |
-| **CWE References**       | ✅ All rules                 | ❌ None          |
-| **CVSS Scores**          | ✅ Yes                       | ❌ No            |
-| **OWASP Mapping**        | ✅ Web + Mobile              | ❌ None          |
-| **TypeScript Support**   | ✅ Full                      | ⚠️ Partial       |
-| **Flat Config Support**  | ✅ Native                    | ✅ Native        |
-| **Presets**              | minimal, recommended, strict | recommended      |
-| **Last Updated**         | Active                       | Maintenance mode |
-
----
-
-## Final Verdict
-
-| Category          | `secure-coding` | `security` | Winner           |
-| ----------------- | --------------- | ---------- | ---------------- |
-| Performance/Issue | **9.95ms**      | 28.16ms    | 🟢 secure-coding |
-| Detection         | 80 issues       | 21 issues  | 🟢 secure-coding |
-| False Positives   | **0**           | 4          | 🟢 secure-coding |
-| Precision         | **100%**        | 84%        | 🟢 secure-coding |
-| Total Rules       | 89              | 14         | 🟢 secure-coding |
-| OWASP Coverage    | 20/20           | ~3/20      | 🟢 secure-coding |
-| Documentation     | Comprehensive   | Basic      | 🟢 secure-coding |
-| Fix Suggestions   | 3-6 per rule    | 0          | 🟢 secure-coding |
-| LLM Optimization  | ⭐⭐⭐⭐⭐      | ⭐⭐       | 🟢 secure-coding |
-
-### Key Insights
-
-1. **Performance per issue matters** — `secure-coding` is 2.83x more efficient per detected issue.
-
-2. **"Speed advantage" = detection gap** — The incumbent is faster because it misses vulnerabilities.
-
-3. **0 false positives** — Every flagged issue is a real vulnerability.
-
-4. **6x more rules** — 89 rules vs 14, covering web, mobile, API, and AI security.
-
-5. **Developer experience** — Every rule includes CWE/OWASP references, CVSS scores, and 3-6 fix suggestions.
-
----
-
-## Try It Yourself
 
 ```bash
-npm install eslint-plugin-secure-coding --save-dev
+# install the engines + the plugins
+npm i -D eslint@9 oxlint eslint-plugin-secure-coding eslint-plugin-node-security \
+  eslint-plugin-pg eslint-plugin-browser-security eslint-plugin-security
+
+# 1) Interlace @ ESLint — the eslint.config.mjs above
+npx eslint test-files/vulnerable.js --format json
+
+# 2) the incumbent — same shape, one plugin:
+#    plugins: { security }, rules: { ...security.configs.recommended.rules }
+npx eslint --config eslint.config.security.mjs test-files/vulnerable.js --format json
+
+# 3) Oxlint built-in (npm-installed — reproducible as-is)
+npx oxlint test-files/vulnerable.js
 ```
 
-```javascript
-// eslint.config.js
-import secureCoding from 'eslint-plugin-secure-coding';
+Config 4 (**Interlace @ Oxlint**) is the only step that needs the repo rather
+than npm: the `interlace-*` Oxlint shims load each plugin's built `dist/`, so
+reproduce it from a clone —
+`git clone https://github.com/ofri-peretz/eslint && npx turbo run build`, then
+`npx oxlint -c .oxlintrc.flagship.json <file>` from the repo root.
 
-export default [secureCoding.configs.recommended];
+---
+
+## Compatibility
+
+| Surface              | Support                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| **Package managers** | npm, yarn, pnpm, bun                                                                       |
+| **Node**             | `>= 18.0.0`                                                                                |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                             |
+| **Oxlint**           | flagship rules run via the `interlace-*` JS-plugin ports, ESLint↔Oxlint parity-gated in CI |
+| **Module system**    | Plugins ship CommonJS; your config can be `eslint.config.js` or `.mjs`                     |
+
+```bash
+# the four plugins benchmarked here
+npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-browser-security
+# yarn add -D … · pnpm add -D … · bun add -d …
 ```
 
-The benchmark code is open source: [benchmark on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding/benchmark)
+---
+
+## Links
+
+- 📦 [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
+- 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools)
+- 💻 [Source + benchmark on GitHub](https://github.com/ofri-peretz/eslint)
+
+::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
+⭐ Star on GitHub if you'd rather run security rules that aren't locked to one engine.
+::
 
 ---
 
-**The Interlace ESLint Ecosystem**
-Interlace is a high-fidelity suite of static code analyzers designed to automate security, performance, and reliability for the modern Node.js stack. With over 330 rules across 18 specialized plugins, it provides 100% coverage for OWASP Top 10, LLM Security, and Database Hardening.
+I'm **Ofri Peretz**, a security engineering leader and the author of the
+Interlace ESLint ecosystem — domain-specific static analysis for security,
+reliability, and performance on the Node.js stack.
 
-[Explore the full Documentation](https://eslint.interlace.tools)
----
-
-© 2026 Ofri Peretz. All rights reserved.
-
----
-
-**Build Securely.**
-I'm Ofri Peretz, a Security Engineering Leader and the architect of the Interlace Ecosystem. I build static analysis standards that automate security and performance for Node.js fleets at scale.
-
-[ofriperetz.dev](https://ofriperetz.dev) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
+[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
