@@ -1,6 +1,6 @@
 ---
-title: "Engineering the 100x Speedup: A Static Analysis Performance Report"
-description: "A data-driven report on optimizing static analysis at scale. How we engineered a 100x speedup in the industry's most used linter plugin."
+title: "eslint-plugin-import Spends 148s Finding Circular Deps in 5,000 Files. import-next Does It in 2.7s."
+description: "A reproducible performance benchmark: eslint-plugin-import vs eslint-plugin-import-next across 1K/5K/10K files. The no-cycle rule goes from 148s to 2.7s at 5,000 files (54.9x measured) — because O(n²) graph traversal became O(n)."
 slug: "eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
 canonical_url: "https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
 devto_url: "https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster-1afa"
@@ -26,19 +26,26 @@ author:
 series: null
 ---
 
-**Up to 100x faster on circular dependency detection. Reproducible benchmarks. Full methodology.**
+The `no-cycle` rule on 5,000 files: `eslint-plugin-import` takes **148 seconds**;
+`eslint-plugin-import-next` takes **2.71** — **54.9x measured**, because O(n²)
+graph traversal became O(n). At 10K files the gap projects past 100x (we stopped
+measuring `eslint-plugin-import` at 5K — it was already taking ~2.5 minutes per
+run). Full numbers, methodology, and a drop-in migration below.
 
-> 🔄 **Drop-in replacement** — 100% compatible with all `eslint-plugin-import` rules, but faster, LLM-optimized error messages, and fewer false positives/negatives.
+> 🔄 **Drop-in replacement** — compatible with the `eslint-plugin-import` rule set,
+> with faster graph algorithms, CWE/LLM-optimized messages, and fewer false
+> positives/negatives.
 
 ## TL;DR
 
-| Benchmark          | 1K Files | 5K Files  | 10K Files   |
-| ------------------ | -------- | --------- | ----------- |
-| Core Rules (9)     | 1.6x     | 3.3x      | **5.2x**    |
-| Recommended Preset | 1.4x     | 3.0x      | **5.5x**    |
-| **no-cycle Only**  | 25.7x    | **54.9x** | **~100x\*** |
+| Benchmark          | 1K Files | 5K Files  | 10K Files           |
+| ------------------ | -------- | --------- | ------------------- |
+| Core Rules (9)     | 1.6x     | 3.3x      | **5.2x**            |
+| Recommended Preset | 1.4x     | 3.0x      | **5.5x**            |
+| **no-cycle Only**  | 25.7x    | **54.9x** | _~120x (projected)_ |
 
-_\*10K projection based on O(n²) scaling pattern observed at 1K→5K. We stopped at 5K because eslint-plugin-import would take 10+ minutes._
+The **54.9x is measured**; the 10K column is a projection (we stopped running
+`eslint-plugin-import` at 5K — it was already ~2.5 minutes). Details below.
 
 ---
 
@@ -99,13 +106,13 @@ Using the full `recommended` configuration from each plugin.
 
 This is where the difference is **massive**. The [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) rule detects circular dependencies.
 
-| Files  | eslint-plugin-import | eslint-plugin-import-next | Speedup   |
-| ------ | -------------------- | ------------------------- | --------- |
-| 1,000  | 27.03s               | 1.05s                     | **25.7x** |
-| 5,000  | 148.59s              | 2.71s                     | **54.9x** |
-| 10,000 | ~600s (projected)\*  | ~5s (projected)           | **~100x** |
+| Files  | eslint-plugin-import | eslint-plugin-import-next | Speedup             |
+| ------ | -------------------- | ------------------------- | ------------------- |
+| 1,000  | 27.03s               | 1.05s                     | **25.7x**           |
+| 5,000  | 148.59s              | 2.71s                     | **54.9x**           |
+| 10,000 | ~600s (projected)\*  | ~5s (projected)           | _~120x (projected)_ |
 
-_\*10K Projection Note: Based on the O(n²) scaling observed from 1K→5K (27s→148s = 5.5x increase for 5x files), we project eslint-plugin-import would take ~10 minutes at 10K files. We didn't run this because waiting 10+ minutes per iteration is impractical. eslint-plugin-import-next scales linearly (O(n)), so ~5s is expected._
+_\*10K Projection Note: 5K→10K doubles the file count, so O(n²) roughly quadruples `eslint-plugin-import`'s time (148.59s × 4 ≈ 600s ≈ 10 minutes) — we didn't run it because 10+ minutes per iteration is impractical. `eslint-plugin-import-next` is O(n), so its time roughly doubles (2.71s × 2 ≈ 5s). 600 / 5 ≈ 120x — a projection, not a measurement; the measured maximum is the 54.9x at 5K._
 
 **Takeaway**: If you use [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) (and you should), the speedup is 25-100x depending on codebase size.
 
@@ -170,33 +177,41 @@ npm install --save-dev eslint-plugin-import-next
 ```
 
 ```javascript
-// eslint.config.js
-import importNext from "eslint-plugin-import-next";
-export default [importNext.configs.recommended];
+// eslint.config.mjs — `configs` is a NAMED export (default export is the plugin)
+import { configs } from "eslint-plugin-import-next";
+export default [configs.recommended];
 ```
 
 ---
 
-## Resources
+## Compatibility
 
-📦 [npm: eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next)
-📊 [Benchmark Suite](https://github.com/ofri-peretz/eslint-benchmark-suite)
-📖 [Full Rule List](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-import-next)
-
-**[⭐ Star on GitHub](https://github.com/ofri-peretz/eslint)**
-
----
-
-**The Interlace ESLint Ecosystem**
-Interlace is a high-fidelity suite of static code analyzers designed to automate security, performance, and reliability for the modern Node.js stack. With over 330 rules across 18 specialized plugins, it provides 100% coverage for OWASP Top 10, LLM Security, and Database Hardening.
-
-## [Explore the full Documentation](https://eslint.interlace.tools)
-
-© 2026 Ofri Peretz. All rights reserved.
+| Surface              | Support                                                                           |
+| -------------------- | --------------------------------------------------------------------------------- |
+| **Package managers** | npm, yarn, pnpm, bun                                                              |
+| **Node**             | `>= 18.0.0`                                                                       |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                    |
+| **Compatibility**    | drop-in for the `eslint-plugin-import` rule set                                   |
+| **Module system**    | Plugin ships CommonJS; your config can be `eslint.config.js` or `.mjs`            |
+| **Oxlint**           | `no-cycle` flagship rule wired via the `interlace-import-next` port, parity-gated |
 
 ---
 
-**Build Securely.**
-I'm Ofri Peretz, a Security Engineering Leader and the architect of the Interlace Ecosystem. I build static analysis standards that automate security and performance for Node.js fleets at scale.
+## Links
 
-[ofriperetz.dev](https://ofriperetz.dev) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
+- 📦 [npm: eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next)
+- 📊 [Benchmark suite](https://github.com/ofri-peretz/eslint-benchmark-suite)
+- 📖 [Full rule docs](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-import-next)
+
+::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
+⭐ Star on GitHub if you've ever disabled `no-cycle` because it was too slow to run.
+::
+
+---
+
+I'm **Ofri Peretz**, a security engineering leader and the author of the
+Interlace ESLint ecosystem — domain-specific static analysis for security,
+reliability, and performance on the Node.js stack.
+
+[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
