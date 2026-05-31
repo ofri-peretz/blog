@@ -40,9 +40,9 @@ you choose. Here's the data, the false positives, and the parity proof.
 
 1. **Oxlint built-in** — the fast Rust engine's _own_ rules, no security plugin.
 2. **eslint-plugin-security** — the generic incumbent (~1.6M weekly), on ESLint.
-3. **Interlace @ ESLint** — the domain plugins (`secure-coding` + `node-security`
-   - `pg` + `browser-security`) combined, so the scope fairly matches the
-     incumbent's monolith.
+3. **Interlace @ ESLint** — the domain plugins (`secure-coding`, `node-security`,
+   `pg`, `browser-security`) combined, so the scope fairly matches the incumbent's
+   monolith.
 4. **Interlace @ Oxlint** — the _same_ Interlace flagship rules, loaded into
    Oxlint's JS-plugin runner.
 
