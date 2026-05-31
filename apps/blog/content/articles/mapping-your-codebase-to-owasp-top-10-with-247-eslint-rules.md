@@ -1,6 +1,6 @@
 ---
-title: "The OWASP Compliance Protocol: Mapping 247 Static Analysis Rules"
-description: "A comprehensive engineering standard for OWASP Top 10 compliance. Map your entire Node.js fleet to security standards using automated static analysis."
+title: "8 of the OWASP Top 10 Are ESLint Rules. 2 Aren't — and That's the Honest Audit Answer."
+description: "A real, auditable mapping of the OWASP Top 10 (2021) to ten domain-security ESLint plugins: which categories a CWE-tagged rule genuinely catches in CI, and the two (Insecure Design, Vulnerable Components) that need controls beyond source analysis."
 slug: "mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules"
 canonical_url: "https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules"
 devto_url: "https://dev.to/ofri-peretz/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules-25f0"
@@ -26,287 +26,205 @@ author:
 series: null
 ---
 
-**Governance at scale requires more than a checklist. Here is the engineering standard for mapping your entire Node.js fleet to the OWASP Top 10 through 247 automated static analysis rules.**
+"How do you address the OWASP Top 10?" is now a line item on every enterprise
+security questionnaire. The honest answer is more useful than a "100% covered"
+checkbox — because **static analysis genuinely catches 8 of the 10 web
+categories at the source, and the other 2 are not source patterns at all.**
+Knowing which is which is the difference between a control you can _audit_ and a
+compliance-theater slide.
 
-Your security audit asks: "How do you address OWASP Top 10?"
+No single plugin covers it. SQL injection needs database-aware rules; JWT
+attacks need token-aware rules; DOM XSS needs browser-aware rules. So the map
+below spans **ten domain-security plugins** (part of the 19-plugin
+[Interlace](https://eslint.interlace.tools) ecosystem). Every rule carries a
+CWE, and most findings carry the classic OWASP category the CWE rolls up to, so
+the evidence is greppable, not hand-waved.
 
-Here's how to answer with **automated evidence** using 332 rules across 18 specialized ESLint plugins.
+> This is the **web** OWASP Top 10 (2021). The AI/LLM list is mapped separately
+> in [the OWASP LLM Top 10 piece](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) —
+> also honestly, 8 of 10.
 
-## The Multi-Plugin Approach
+---
 
-One plugin can't cover everything. SQL injection needs database-aware rules. JWT attacks need token-specific detection. Here's the complete mapping:
+## The map: OWASP Top 10 (2021) → plugins → rules
 
-## OWASP Top 10 2025 → Plugin Coverage
+| #                                                                                   | Category                          | Plugins                                                       | Representative rules                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [A01](https://owasp.org/Top10/A01_2021-Broken_Access_Control/)                      | Broken Access Control             | `secure-coding`, `nestjs-security`, `lambda-security`         | [`no-missing-authentication`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-missing-authentication), [`require-guards`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/require-guards), [`no-missing-authorization-check`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-missing-authorization-check) |
+| [A02](https://owasp.org/Top10/A02_2021-Cryptographic_Failures/)                     | Cryptographic Failures            | `node-security`, `jwt`                                        | [`no-weak-hash-algorithm`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-weak-hash-algorithm), [`no-ecb-mode`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-ecb-mode), [`no-weak-secret`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-weak-secret)                                                           |
+| [A03](https://owasp.org/Top10/A03_2021-Injection/)                                  | Injection                         | `pg`, `mongodb-security`, `secure-coding`, `browser-security` | [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-query), [`no-operator-injection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-operator-injection), [`no-innerhtml`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-innerhtml)                                                    |
+| [A04](https://owasp.org/Top10/A04_2021-Insecure_Design/)                            | Insecure Design _(partial)_       | `secure-coding`, `nestjs-security`                            | [`require-secure-defaults`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/require-secure-defaults), [`no-missing-validation-pipe`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/no-missing-validation-pipe)                                                                                                                           |
+| [A05](https://owasp.org/Top10/A05_2021-Security_Misconfiguration/)                  | Security Misconfiguration         | `express-security`, `browser-security`, `pg`                  | [`require-helmet`](https://eslint.interlace.tools/docs/security/plugin-express-security/rules/require-helmet), [`require-csp-headers`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/require-csp-headers), [`no-unsafe-search-path`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-search-path)                                        |
+| [A06](https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components/)         | Vulnerable Components _(partial)_ | `node-security`                                               | [`detect-suspicious-dependencies`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/detect-suspicious-dependencies), [`require-dependency-integrity`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/require-dependency-integrity), [`lock-file`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/lock-file)         |
+| [A07](https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/) | Authentication Failures           | `jwt`, `secure-coding`, `express-security`                    | [`no-algorithm-none`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-algorithm-none), [`no-algorithm-confusion`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-algorithm-confusion), [`no-insecure-cookie-options`](https://eslint.interlace.tools/docs/security/plugin-express-security/rules/no-insecure-cookie-options)                              |
+| [A08](https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/)       | Data Integrity Failures           | `secure-coding`, `node-security`                              | [`no-unsafe-deserialization`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-unsafe-deserialization), [`no-zip-slip`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-zip-slip), [`no-unsafe-dynamic-require`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-unsafe-dynamic-require)                     |
+| [A09](https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/)   | Logging Failures                  | `secure-coding`, `lambda-security`                            | [`no-pii-in-logs`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-pii-in-logs), [`no-env-logging`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-env-logging), [`no-error-swallowing`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-error-swallowing)                                             |
+| [A10](https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_SSRF/)           | SSRF                              | `node-security`, `lambda-security`, `browser-security`        | [`no-ssrf`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-ssrf), [`no-user-controlled-requests`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-user-controlled-requests), [`require-url-validation`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/require-url-validation)                          |
 
-| #                                                                                        | Category                  | Risk     | Plugins                                                  | Key Rules                                                                                                                                                                                                                                                                                                                                                                                |
-| ---------------------------------------------------------------------------------------- | ------------------------- | -------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [A01](https://owasp.org/Top10/A01_2021-Broken_Access_Control/)                      | Broken Access Control     | High     | `secure-coding`, `nestjs-security`, `lambda-security`    | [`no-privilege-escalation`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-privilege-escalation), [`require-guards`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/require-guards), [`no-missing-authorization-check`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-missing-authorization-check) |
-| [A02](https://owasp.org/Top10/A02_2021-Cryptographic_Failures/)                     | Cryptographic Failures    | High     | `node-security`, `pg`, `jwt`                             | [`no-weak-hash-algorithm`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-weak-hash-algorithm), [`no-hardcoded-credentials`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-hardcoded-credentials), [`no-weak-secret`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-weak-secret)                             |
-| [A03](https://owasp.org/Top10/A03_2021-Injection/)                                  | Injection                 | Critical | `secure-coding`, `pg`, `browser-security`                | [`detect-eval-with-expression`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/detect-eval-with-expression), [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-query), [`no-innerhtml`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-innerhtml)                         |
-| [A04](https://owasp.org/Top10/A04_2021-Insecure_Design/)                            | Insecure Design           | Medium   | `secure-coding`, `nestjs-security`                       | [`no-improper-type-validation`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-improper-type-validation), [`no-missing-validation-pipe`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/no-missing-validation-pipe)                                                                                                               |
-| [A05](https://owasp.org/Top10/A05_2021-Security_Misconfiguration/)                  | Security Misconfiguration | High     | `express-security`, `lambda-security`                    | [`require-helmet`](https://eslint.interlace.tools/docs/security/plugin-express-security/rules/require-helmet), [`no-permissive-cors`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-permissive-cors), [`no-exposed-error-details`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-exposed-error-details)                   |
-| [A06](https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components/)         | Vulnerable Components     | Medium   | `secure-coding`, `import-next`                           | [`detect-suspicious-dependencies`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/detect-suspicious-dependencies), [`no-extraneous-dependencies`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-extraneous-dependencies)                                                                                                              |
-| [A07](https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/) | Auth Failures             | High     | `jwt`, `express-security`                                | [`no-algorithm-none`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-algorithm-none), [`no-algorithm-confusion`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-algorithm-confusion), [`no-insecure-cookie-options`](https://eslint.interlace.tools/docs/security/plugin-express-security/rules/no-insecure-cookie-options)                          |
-| [A08](https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/)       | Integrity Failures        | Medium   | `secure-coding`                                          | [`no-unsafe-deserialization`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-unsafe-deserialization), [`no-unsafe-dynamic-require`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-unsafe-dynamic-require)                                                                                                                       |
-| [A09](https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/)   | Logging Failures          | Medium   | `secure-coding`, `lambda-security`                       | [`no-pii-in-logs`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-pii-in-logs), [`no-error-swallowing`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-error-swallowing)                                                                                                                                                       |
-| [A10](https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_SSRF/)           | SSRF                      | High     | `secure-coding`, `lambda-security`, `vercel-ai-security` | [`require-url-validation`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/require-url-validation), [`no-user-controlled-requests`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-user-controlled-requests)                                                                                                                    |
+Each row lists representative rules, not the whole set — A03 alone spans SQL,
+NoSQL, LDAP, XPath, and DOM injection across the four plugins above, plus
+command/eval (`node-security`) and prompt injection (the AI layer) elsewhere in
+the ecosystem.
 
-## Modular Installation: Build your Security Protocol
+---
 
-Don't install everything—choose the layers that match your stack. Every protocol starts with the Core, then adds specialized coverage.
+## A04 and A06: where source analysis hands off to another control
 
-### 1. The Core (Mandatory)
+This is where "100% OWASP coverage" decks lie. Two of the ten are **not source
+patterns at a call site**, so no source linter — this one included — fully
+covers them. Naming the right control instead of faking a rule is what a
+security reviewer actually wants:
 
-```bash
-# General OWASP coverage (89 rules)
-npm install -D eslint-plugin-secure-coding
+- **A04 Insecure Design** — a missing rate limit on a money-moving endpoint, a
+  trust boundary in the wrong place, a workflow that can be replayed. That's an
+  _architectural_ problem. A few rules nudge toward safe defaults
+  (`require-secure-defaults`, `no-missing-validation-pipe`), but the real
+  control is **threat modeling and design review**, not a linter.
+- **A06 Vulnerable & Outdated Components** — a transitive dependency with a
+  published CVE. That's a _Software Composition Analysis_ problem.
+  `node-security` covers the **source-hygiene slice** — suspicious install
+  scripts (`detect-suspicious-dependencies`), integrity/lockfile drift
+  (`require-dependency-integrity`, `lock-file`) — but the CVE graph itself
+  belongs to `npm audit`, Dependabot, or Snyk. Use both; they answer different
+  questions.
+
+Anyone selling you "automated 100% OWASP" is mapping a defaults rule to
+"Insecure Design" and hoping you don't open the OWASP page. You should.
+
+---
+
+## What a finding looks like
+
+Findings are deterministic strings — each carries the CWE, the OWASP category
+the CWE rolls up to, a CVSS, the severity, and the compliance tags, then the
+fix:
+
+```text
+src/db/tenants.ts
+  8:15  error  🔒 CWE-426 OWASP:A05-Security CVSS:7.5 | Unsafe "SET search_path" detected. | CRITICAL [SOC2,PCI-DSS]
+              Fix: Do not use dynamic values for search_path. Use static strings or strict validation.
+
+src/app/chat/route.ts
+  6:11  error  🔒 CWE-74 OWASP:A03-Injection CVSS:9 | User input "userMessage" passed directly to generateText prompt without validation | CRITICAL [SOC2,GDPR]
+              Fix: Validate input before use: generateText({ prompt: validateInput(userInput) })
 ```
 
-### 2. Specialized Security (Add as needed)
-
-```bash
-npm install -D eslint-plugin-node-security    # Cryptography & System leaks
-npm install -D eslint-plugin-jwt            # Token security
-npm install -D eslint-plugin-pg             # PostgreSQL hardening
-```
-
-### 3. Environment & Framework (Choose your stack)
-
-```bash
-# Frontend
-npm install -D eslint-plugin-browser-security  # DOM/XSS prevention
-
-# Backend Frameworks
-npm install -D eslint-plugin-express-security  # Express.js protocols
-npm install -D eslint-plugin-nestjs-security   # NestJS security pipes
-npm install -D eslint-plugin-lambda-security   # Serverless/AWS Lambda
-```
-
-## The Complete Config
+The inline `OWASP:Axx` tag is the classic web category the rule's CWE maps to
+(CWE-74 → `A03 Injection`). Because it's a stable token, you can turn a lint run
+into **audit evidence** — a coverage count per OWASP category:
 
 ```javascript
-// eslint.config.js - Full OWASP Top 10 Coverage
-import secureCoding from "eslint-plugin-secure-coding";
-import nodeSecurity from "eslint-plugin-node-security";
-import jwt from "eslint-plugin-jwt";
-import pg from "eslint-plugin-pg";
-import browserSecurity from "eslint-plugin-browser-security";
-import expressSecurity from "eslint-plugin-express-security";
-
-export default [
-  // Core OWASP preset (A01-A10 general coverage)
-  secureCoding.configs["owasp-top-10"],
-
-  // A02: Cryptographic Failures - specialized detection
-  nodeSecurity.configs.recommended,
-
-  // A07: Authentication Failures - JWT-specific
-  jwt.configs.recommended,
-
-  // A03: Injection - PostgreSQL-specific SQL injection
-  {
-    files: ["**/db/**", "**/repositories/**", "**/models/**"],
-    ...pg.configs.recommended,
-  },
-
-  // A03: Injection - DOM XSS for frontend
-  {
-    files: ["**/components/**", "**/pages/**", "src/**/*.tsx"],
-    ...browserSecurity.configs.recommended,
-  },
-
-  // A05: Security Misconfiguration - Express-specific
-  {
-    files: ["**/routes/**", "**/middleware/**", "app.ts", "server.ts"],
-    ...expressSecurity.configs.recommended,
-  },
-];
-```
-
-## Example Output
-
-```bash
-src/db/users.ts
-  42:15  error  🔒 CWE-89 OWASP:A03 | SQL Injection detected
-                [pg/no-unsafe-query] Use parameterized query: client.query($1, [id])
-
-src/auth/jwt.ts
-  18:3   error  🔒 CWE-347 OWASP:A07 | Algorithm confusion vulnerability
-                [jwt/no-algorithm-confusion] Specify algorithms: { algorithms: ['RS256'] }
-
-src/api/crypto.ts
-  55:10  error  🔒 CWE-328 OWASP:A02 | Weak hash algorithm: MD5
-                [node-security/no-weak-hash-algorithm] Use SHA-256 or SHA-3
-
-src/components/Comment.tsx
-  12:5   error  🔒 CWE-79 OWASP:A03 | XSS via innerHTML
-                [browser-security/no-innerhtml] Use textContent or sanitize with DOMPurify
-```
-
-## A03 Injection: Multi-Layer Protection
-
-Injection is #1 for a reason. Here's complete coverage:
-
-| Attack Vector              | Plugin               | Rule                                                                                                                                                                                                       |
-| -------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SQL Injection (PostgreSQL) | `pg`                 | [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-query)                                                                                            |
-| SQL Injection (general)    | `secure-coding`      | [`detect-eval-with-expression`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/detect-eval-with-expression)                                                                       |
-| Command Injection          | `secure-coding`      | [`detect-child-process`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/detect-child-process)                                                                                     |
-| LDAP Injection             | `secure-coding`      | [`no-ldap-injection`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-ldap-injection)                                                                                           |
-| XPath Injection            | `secure-coding`      | [`no-xpath-injection`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-xpath-injection)                                                                                         |
-| XXE Injection              | `secure-coding`      | [`no-xxe-injection`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-xxe-injection)                                                                                             |
-| DOM XSS                    | `browser-security`   | [`no-innerhtml`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-innerhtml), [`no-eval`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-eval) |
-| Prompt Injection           | `vercel-ai-security` | [`require-validated-prompt`](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security/rules/require-validated-prompt)                                                                        |
-
-## A02 Cryptographic Failures: 31 Specialized Rules
-
-```javascript
-// node-security plugin catches what generic plugins miss
-import nodeSecurity from "eslint-plugin-node-security";
-
-// Detects:
-// - CVE-2023-46809 (Marvin Attack) via no-insecure-rsa-padding
-// - CVE-2020-36732 (CryptoJS) via no-cryptojs-weak-random
-// - Weak algorithms: MD5, SHA1, DES, RC4, Blowfish
-// - Static IVs, ECB mode, predictable salts
-```
-
-## A07 Auth Failures: JWT-Specific Detection
-
-```javascript
-// jwt plugin catches token-specific vulnerabilities
-import jwt from "eslint-plugin-jwt";
-
-// Detects:
-// - Algorithm "none" attack
-// - Algorithm confusion (CVE-2022-23540)
-// - jwt.decode() without verify
-// - Weak/hardcoded secrets
-// - Missing expiration
-```
-
-## For OWASP Mobile Top 10
-
-```javascript
-import secureCoding from "eslint-plugin-secure-coding";
-
-export default [
-  {
-    files: ["apps/mobile/**", "**/*.native.ts"],
-    ...secureCoding.configs["owasp-mobile-top-10"],
-  },
-];
-```
-
-Covers all 10 mobile categories:
-
-| #   | Category                    | Rules                                                                                                                                                                                                                                                                                                                                                               |
-| --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M1  | Improper Credential Usage   | [`require-secure-credential-storage`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/require-secure-credential-storage)                                                                                                                                                                                                                    |
-| M2  | Inadequate Supply Chain     | [`detect-suspicious-dependencies`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/detect-suspicious-dependencies), `require-package-lock`                                                                                                                                                                                                  |
-| M3  | Insecure Auth               | [`no-client-side-auth-logic`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-client-side-auth-logic), [`require-backend-authorization`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/require-backend-authorization)                                                                                       |
-| M4  | Insufficient I/O Validation | `no-unvalidated-user-input`, [`no-unvalidated-deeplinks`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-unvalidated-deeplinks)                                                                                                                                                                                                      |
-| M5  | Insecure Communication      | [`no-http-urls`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-http-urls), [`require-https-only`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/require-https-only), [`no-allow-arbitrary-loads`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-allow-arbitrary-loads) |
-| M6  | Inadequate Privacy          | [`no-pii-in-logs`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-pii-in-logs), [`no-tracking-without-consent`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/no-tracking-without-consent)                                                                                                                 |
-| M7  | Binary Protection           | [`require-code-minification`](https://eslint.interlace.tools/docs/quality/plugin-operability/rules/require-code-minification)                                                                                                                                                                                                                                       |
-| M8  | Security Misconfiguration   | [`require-secure-defaults`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/require-secure-defaults), [`no-verbose-error-messages`](https://eslint.interlace.tools/docs/quality/plugin-operability/rules/no-verbose-error-messages)                                                                                                         |
-| M9  | Insecure Data Storage       | [`require-storage-encryption`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/require-storage-encryption), [`no-data-in-temp-storage`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-data-in-temp-storage)                                                                                                    |
-| M10 | Insufficient Crypto         | Use `eslint-plugin-node-security`                                                                                                                                                                                                                                                                                                                                   |
-
-## For OWASP LLM Top 10
-
-Building AI applications? Add the Vercel AI Security plugin:
-
-```javascript
-import vercelAI from "eslint-plugin-vercel-ai-security";
-
-export default [
-  {
-    files: ["**/ai/**", "**/agents/**"],
-    ...vercelAI.configs.recommended,
-  },
-];
-```
-
-**100% OWASP LLM Top 10 2025 coverage** with 22 rules.
-
-## Getting Audit Evidence
-
-Run ESLint with JSON output:
-
-```bash
-npx eslint . --format json > security-report.json
-```
-
-Parse for OWASP tags:
-
-```javascript
+// npx eslint . --format json > security-report.json
 const report = require("./security-report.json");
 
-const owaspFindings = report
+const byCategory = report
   .flatMap((file) => file.messages)
-  .filter((msg) => msg.message.includes("OWASP:"));
+  .map((m) => m.message.match(/OWASP:(A\d+)/)?.[1])
+  .filter(Boolean)
+  .reduce((acc, cat) => ((acc[cat] = (acc[cat] || 0) + 1), acc), {});
 
-// Group by OWASP category
-const byCategory = owaspFindings.reduce((acc, finding) => {
-  const match = finding.message.match(/OWASP:(A\d+)/);
-  if (match) {
-    acc[match[1]] = (acc[match[1]] || 0) + 1;
-  }
-  return acc;
-}, {});
-
-console.log("OWASP Coverage Report:", byCategory);
+console.log("OWASP findings by category:", byCategory);
+// → { A03: 12, A05: 4, A02: 2, ... }
 ```
 
-## Rule Count Summary
-
-| Plugin                             | Rules   | Focus               |
-| ---------------------------------- | ------- | ------------------- |
-| `eslint-plugin-secure-coding`      | 89      | Core OWASP coverage |
-| `eslint-plugin-node-security`      | 31      | Cryptography        |
-| `eslint-plugin-jwt`                | 13      | JWT/Authentication  |
-| `eslint-plugin-pg`                 | 15      | PostgreSQL          |
-| `eslint-plugin-browser-security`   | 52      | Browser/DOM         |
-| `eslint-plugin-vercel-ai-security` | 22      | AI/LLM              |
-| `eslint-plugin-express-security`   | 14      | Express.js          |
-| `eslint-plugin-lambda-security`    | 16      | AWS Lambda          |
-| `eslint-plugin-nestjs-security`    | 10      | NestJS              |
-| `eslint-plugin-import-next`        | 61      | Import/Dependencies |
-| **Total**                          | **332** |                     |
-
-Turn compliance questions into automated answers.
+That JSON is the artifact you hand the auditor — not a slide.
 
 ---
 
-📦 **All Plugins:**
+## Build your config, layer by layer
 
-- [eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) — Core OWASP coverage
-- [eslint-plugin-node-security](https://www.npmjs.com/package/eslint-plugin-node-security) — Cryptography
-- [eslint-plugin-jwt](https://www.npmjs.com/package/eslint-plugin-jwt) — JWT security
-- [eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) — PostgreSQL
-- [eslint-plugin-browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) — Browser/DOM
-- [eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) — AI/LLM
-- [eslint-plugin-express-security](https://www.npmjs.com/package/eslint-plugin-express-security) — Express.js
-- [eslint-plugin-lambda-security](https://www.npmjs.com/package/eslint-plugin-lambda-security) — AWS Lambda
-- [eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) — NestJS
-- [eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next) — Import management
+Don't install everything. Start with the core, then add the plugins that match
+your stack. `configs` is a **named export** on every plugin (the default export
+is the plugin object):
 
-**[⭐ Star on GitHub — 18 plugins, 332 rules](https://github.com/ofri-peretz/eslint)**
+```bash
+# core + the specialized layers you actually run — pick your manager
+npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt eslint-plugin-pg
+yarn add -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt eslint-plugin-pg
+pnpm add -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt eslint-plugin-pg
+bun add -d eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt eslint-plugin-pg
+```
+
+```js
+// eslint.config.js — flat config
+import { configs as secureCoding } from "eslint-plugin-secure-coding";
+import { configs as nodeSecurity } from "eslint-plugin-node-security";
+import { configs as jwt } from "eslint-plugin-jwt";
+import { configs as pg } from "eslint-plugin-pg";
+
+export default [
+  secureCoding.recommended, // A01/A03/A04/A08/A09 — general source patterns
+  nodeSecurity.recommended, // A02/A06/A08/A10 — crypto, supply-chain, SSRF
+  jwt.recommended, // A02/A07 — token & signature security
+
+  // scope database rules to where queries live
+  { files: ["**/db/**", "**/repositories/**"], ...pg.recommended },
+];
+```
+
+> Name the file `eslint.config.mjs` if your `package.json` isn't
+> `"type": "module"` — the `import` syntax above needs ESM (the plugins
+> themselves are CommonJS and load fine either way via Node's CJS↔ESM interop).
+
+Add `eslint-plugin-browser-security` (frontend, A03/A05/A07), then
+`eslint-plugin-express-security` / `eslint-plugin-nestjs-security` /
+`eslint-plugin-lambda-security` / `eslint-plugin-mongodb-security` as your
+backend stack dictates. `eslint-plugin-vercel-ai-security` adds the LLM layer —
+see [its honest OWASP-LLM map](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk).
+
+> `eslint-plugin-crypto` is **deprecated** — its weak-algorithm / insecure-random
+> rules were consolidated into `eslint-plugin-node-security`. Install
+> node-security, not crypto.
+
+```yaml
+# CI — fail the PR on any new OWASP-tagged finding
+- run: npx eslint . --max-warnings 0
+```
 
 ---
 
-**The Interlace ESLint Ecosystem**
-Interlace is a high-fidelity suite of static code analyzers designed to automate security, performance, and reliability for the modern Node.js stack. With over 330 rules across 18 specialized plugins, it provides 100% coverage for OWASP Top 10, LLM Security, and Database Hardening.
+## Compatibility
 
-[Explore the full Documentation](https://eslint.interlace.tools)
+Every plugin in the map ships the same contract:
+
+| Surface              | Support                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Package managers** | npm, yarn, pnpm, bun — plain dev dependencies                                                                      |
+| **Node**             | `>= 18.0.0`                                                                                                        |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                                                     |
+| **Module system**    | CommonJS — loads from `eslint.config.js` or `.mjs`                                                                 |
+| **Targets**          | AST-based — they read your source; the framework/driver peer is optional, never a runtime dep                      |
+| **Oxlint**           | flagship rules wired via the `interlace-*` ports with ESLint↔Oxlint parity gated in CI; full sets run ESLint-first |
+
 ---
 
-© 2026 Ofri Peretz. All rights reserved.
+## Where this fits
+
+This is the ecosystem-level OWASP view. Each plugin has a deep-dive that walks
+its full rule set and the attacks behind them:
+
+- [`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) — the `alg:none` bypass and 12 more auth rules
+- [`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — SQL injection, connection leaks, the N+1 insert loop
+- [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the A05 attack most teams have never heard of
+- [OWASP LLM Top 10](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the AI list, mapped just as honestly
 
 ---
 
-**Build Securely.**
-I'm Ofri Peretz, a Security Engineering Leader and the architect of the Interlace Ecosystem. I build static analysis standards that automate security and performance for Node.js fleets at scale.
+## Links
 
-[ofriperetz.dev](https://ofriperetz.dev) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
+- 📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) (core) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt) · [pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📖 [Full rule docs (per-rule CWE + OWASP)](https://eslint.interlace.tools)
+- 🔐 [OWASP Top 10 (2021)](https://owasp.org/www-project-top-ten/)
+- 💻 [Source on GitHub — the 19-plugin ecosystem](https://github.com/ofri-peretz/eslint)
+
+::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
+⭐ Star on GitHub if "how do you cover the OWASP Top 10?" has ever landed in your inbox.
+::
+
+---
+
+I'm **Ofri Peretz**, a security engineering leader and the author of the
+Interlace ESLint ecosystem — domain-specific static analysis for security,
+reliability, and performance on the Node.js stack.
+
+[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
