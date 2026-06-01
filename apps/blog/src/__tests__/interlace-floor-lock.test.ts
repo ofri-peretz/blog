@@ -41,6 +41,7 @@ const TIER_C = new Set(
   [
     path.join(SRC, "app", "og", "route.tsx"),
     path.join(SRC, "app", "og", "article", "[slug]", "route.tsx"),
+    path.join(SRC, "app", "og", "cover", "[slug]", "route.tsx"),
   ].map((p) => p.replace(/\\/g, "/")),
 );
 
