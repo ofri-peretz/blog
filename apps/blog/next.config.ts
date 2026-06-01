@@ -56,6 +56,29 @@ const nextConfig: NextConfig = {
         destination: "/articles/benchmark-microsoft-sdl-vs-interlace",
         permanent: true,
       },
+      // eslint-plugin-security: the `-abandoned` twin shared one dev.to post
+      // (devto_id 3237157) with the kept `-96h` canonical and carried the
+      // now-corrected "unmaintained" framing. Retire it to the canonical.
+      {
+        source: "/articles/eslint-plugin-security-abandoned",
+        destination:
+          "/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h",
+        permanent: true,
+      },
+      // import-next perf cluster: the post-mortem + the (corrupted) getting-started
+      // duplicate the kept benchmark canonical. Redirect both to it.
+      {
+        source: "/articles/why-eslint-plugin-import-slow-fix",
+        destination:
+          "/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster",
+        permanent: true,
+      },
+      {
+        source: "/articles/getting-started-with-eslint-plugin-import-next",
+        destination:
+          "/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster",
+        permanent: true,
+      },
     ];
   },
 };
