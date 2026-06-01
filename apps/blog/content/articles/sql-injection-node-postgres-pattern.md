@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-patter
 devto_id: 3137480
 published_at: "2025-12-31T05:50:50Z"
 edited_at: "2026-01-11T10:22:01Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Fsql-injection-node-postgres-pattern.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/sql-injection-node-postgres-pattern.png"
+cover_image: "https://ofriperetz.dev/og/cover/sql-injection-node-postgres-pattern"
+social_image: "https://ofriperetz.dev/og/article/sql-injection-node-postgres-pattern"
 reading_time_minutes: 6
 tags:
   - "eslint"

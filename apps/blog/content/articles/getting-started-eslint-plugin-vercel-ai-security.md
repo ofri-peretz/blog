@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-vercel
 devto_id: 3139002
 published_at: "2025-12-31T21:49:06Z"
 edited_at: "2026-01-11T10:21:46Z"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/rxxfvuudvh7r4bny4jxn.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-vercel-ai-security.png"
+cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-vercel-ai-security"
+social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-vercel-ai-security"
 reading_time_minutes: 9
 tags:
   - "eslint"

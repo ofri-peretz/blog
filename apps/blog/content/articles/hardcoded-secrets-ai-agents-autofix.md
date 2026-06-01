@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-
 devto_id: 3137474
 published_at: "2025-12-31T05:39:36Z"
 edited_at: "2026-01-11T10:22:03Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Fhardcoded-secrets-ai-agents-autofix.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/hardcoded-secrets-ai-agents-autofix.png"
+cover_image: "https://ofriperetz.dev/og/cover/hardcoded-secrets-ai-agents-autofix"
+social_image: "https://ofriperetz.dev/og/article/hardcoded-secrets-ai-agents-autofix"
 reading_time_minutes: 7
 tags:
   - "eslint"

@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-nestjs
 devto_id: 3144090
 published_at: "2026-01-02T19:28:48Z"
 edited_at: "2026-01-11T10:21:35Z"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/nhu1ka6yvpqg0bpuypni.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-nestjs-security.png"
+cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-nestjs-security"
+social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-nestjs-security"
 reading_time_minutes: 9
 tags:
   - "eslint"

@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/the-connection-leak-that-took-down-our-pr
 devto_id: 3138991
 published_at: "2025-12-31T21:35:53Z"
 edited_at: "2026-01-11T10:21:49Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Fdatabase-connection-leak-production-outage.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/database-connection-leak-production-outage.png"
+cover_image: "https://ofriperetz.dev/og/cover/database-connection-leak-production-outage"
+social_image: "https://ofriperetz.dev/og/article/database-connection-leak-production-outage"
 reading_time_minutes: 5
 tags:
   - "eslint"
