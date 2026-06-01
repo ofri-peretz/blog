@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-ap
 devto_id: 3137481
 published_at: "2025-12-31T05:51:08Z"
 edited_at: "2026-02-05T05:33:05Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2F3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo.png"
+cover_image: "https://ofriperetz.dev/og/cover/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo"
+social_image: "https://ofriperetz.dev/og/article/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo"
 reading_time_minutes: 5
 tags:
   - "eslint"

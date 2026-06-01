@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/100-owasp-llm-top-10-coverage-for-vercel-
 devto_id: 3114794
 published_at: "2025-12-19T06:00:22Z"
 edited_at: "2026-02-05T05:33:09Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2F100-owasp-llm-top-10-coverage-for-vercel-ai-sdk.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk.jpg"
+cover_image: "https://ofriperetz.dev/og/cover/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk"
+social_image: "https://ofriperetz.dev/og/article/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk"
 reading_time_minutes: 8
 tags:
   - "eslint"

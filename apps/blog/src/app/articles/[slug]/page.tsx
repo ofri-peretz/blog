@@ -34,13 +34,15 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       publishedTime: fm.published_at,
       modifiedTime: modified,
       tags: fm.tags,
-      images: [fm.cover_image ?? `/og/article/${slug}`],
+      // Social cards want the 1200x630 OG ratio: prefer social_image
+      // (/og/article), fall back to the 1000x420 dev.to cover, then the route.
+      images: [fm.social_image ?? fm.cover_image ?? `/og/article/${slug}`],
     },
     twitter: {
       card: "summary_large_image",
       title: fm.title,
       description: fm.description,
-      images: [fm.cover_image ?? `/og/article/${slug}`],
+      images: [fm.social_image ?? fm.cover_image ?? `/og/article/${slug}`],
     },
   };
 }
@@ -61,7 +63,10 @@ export default async function ArticlePage(props: PageProps) {
 
   const { frontmatter: fm } = article;
   const url = fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`;
-  const image = fm.cover_image ?? `https://ofriperetz.dev/og/article/${slug}`;
+  const image =
+    fm.social_image ??
+    fm.cover_image ??
+    `https://ofriperetz.dev/og/article/${slug}`;
 
   const blogPostingSchema = {
     "@context": "https://schema.org",
@@ -111,8 +116,8 @@ export default async function ArticlePage(props: PageProps) {
             <img
               src={fm.cover_image}
               alt=""
-              width={1200}
-              height={630}
+              width={1000}
+              height={420}
               loading="eager"
               fetchPriority="high"
               decoding="async"

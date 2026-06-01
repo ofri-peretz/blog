@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/searchpath-hijacking-the-postgresql-attac
 devto_id: 3144104
 published_at: "2026-01-02T19:49:31Z"
 edited_at: "2026-01-11T10:21:32Z"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/09u14i6uhdwthcrjbygm.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/searchpath-hijacking-postgresql-attack.png"
+cover_image: "https://ofriperetz.dev/og/cover/searchpath-hijacking-postgresql-attack"
+social_image: "https://ofriperetz.dev/og/article/searchpath-hijacking-postgresql-attack"
 reading_time_minutes: 8
 tags:
   - "eslint"

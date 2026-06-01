@@ -6,7 +6,8 @@ description: "A reproducible 5-way benchmark: eslint-plugin-sonarjs (269 rules) 
 slug: "benchmark-sonarjs-vs-interlace"
 published: true
 date: 2026-02-08
-cover_image: https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=1200&h=630&fit=crop
+cover_image: "https://ofriperetz.dev/og/cover/benchmark-sonarjs-vs-interlace"
+social_image: "https://ofriperetz.dev/og/article/benchmark-sonarjs-vs-interlace"
 tags:
   - security
   - eslint

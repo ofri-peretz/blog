@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-imp
 devto_id: 3143536
 published_at: "2026-01-02T14:46:40Z"
 edited_at: "2026-02-05T05:32:55Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Feslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster.png"
+cover_image: "https://ofriperetz.dev/og/cover/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
+social_image: "https://ofriperetz.dev/og/article/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
 reading_time_minutes: 4
 tags:
   - "eslint"

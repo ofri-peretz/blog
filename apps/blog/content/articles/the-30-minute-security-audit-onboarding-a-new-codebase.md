@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a
 devto_id: 3137550
 published_at: "2025-12-31T06:31:46Z"
 edited_at: "2026-02-05T05:33:15Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Fthe-30-minute-security-audit-onboarding-a-new-codebase.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-30-minute-security-audit-onboarding-a-new-codebase.png"
+cover_image: "https://ofriperetz.dev/og/cover/the-30-minute-security-audit-onboarding-a-new-codebase"
+social_image: "https://ofriperetz.dev/og/article/the-30-minute-security-audit-onboarding-a-new-codebase"
 reading_time_minutes: 5
 tags:
   - "eslint"

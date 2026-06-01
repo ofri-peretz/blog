@@ -7,8 +7,8 @@ devto_url: "https://dev.to/ofri-peretz/transaction-race-conditions-why-begin-on-
 devto_id: 3138993
 published_at: "2025-12-31T21:38:13Z"
 edited_at: "2026-01-11T10:21:47Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Ftransaction-race-conditions-begin-on-pool.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/transaction-race-conditions-begin-on-pool.png"
+cover_image: "https://ofriperetz.dev/og/cover/transaction-race-conditions-begin-on-pool"
+social_image: "https://ofriperetz.dev/og/article/transaction-race-conditions-begin-on-pool"
 reading_time_minutes: 5
 tags:
   - "eslint"
