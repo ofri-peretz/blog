@@ -1,7 +1,7 @@
 ---
 title: "My credential rule reported 842 secrets in vercel/ai. The real count was 0."
 description: "Our no-hardcoded-credentials rule fired 842 times on vercel/ai. The peer plugin fired 380. I assumed we had better recall — until I sampled. 807 of the 'extra' findings were TypeScript union-type literals, error class names, and the string 'test'. The real number of hardcoded credentials was zero. Here's how a context-blind regex becomes a context-aware detector — and why AI assistants keep regenerating the exact strings that fool it."
-published: false
+published: true
 tags:
   - "security"
   - "eslint"

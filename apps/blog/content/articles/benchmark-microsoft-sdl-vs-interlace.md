@@ -1,8 +1,8 @@
 ---
 devto_url: "https://dev.to/ofri-peretz/microsofts-eslint-security-plugin-catches-10-of-vulnerabilities-heres-what-it-misses-5gii"
 devto_id: 3240750
-title: "Microsoft's SDL ESLint Plugin Caught 3 Node Vulns. The Domain Plugins Caught 46 — Same File, Wrong Layer"
-description: "A reproducible benchmark: @microsoft/eslint-plugin-sdl (17 rules, Angular/Electron/browser-focused) vs the Interlace security plugins, on one Node fixture. SDL is a frontend-hardening tool — which is exactly why it's the wrong layer for a Node backend, and exactly the gap your AI assistant ships into."
+title: "Microsoft's SDL ESLint Plugin Caught 5 Node Vulns. The Domain Plugins Caught 46 — Same File, Wrong Layer"
+description: "A reproducible benchmark: @microsoft/eslint-plugin-sdl (17 rules, Angular/Electron/browser-focused) vs the Interlace security plugins, on one Node fixture. SDL's recommended config catches 5 — frontend hardening is exactly why it's the wrong layer for a Node backend, and exactly the gap your AI assistant ships into."
 slug: "benchmark-microsoft-sdl-vs-interlace"
 published: true
 date: 2026-02-08
@@ -23,11 +23,12 @@ author:
 ---
 
 On one Node file with 12 vulnerability classes, `@microsoft/eslint-plugin-sdl`
-caught **3**. The domain plugins caught **46** — same file. And you'd already
-told the team the backend was covered by Microsoft's Security Development
-Lifecycle, because the build went green. Your SQL injection, your path traversal,
-your unsafe deserialization — all of it walked straight past the linter you
-trusted, and the pipeline never went red to warn you.
+running its `recommended` config caught **5** (and only **3** of those came from
+its own `@microsoft/sdl/*` rules). The domain plugins caught **46** — same file.
+And you'd already told the team the backend was covered by Microsoft's Security
+Development Lifecycle, because the build went green. Your SQL injection, your path
+traversal, your unsafe deserialization — all of it walked straight past the
+linter you trusted, and the pipeline never went red to warn you.
 
 That gap isn't a quality verdict, and it isn't Microsoft shipping a bad tool.
 `@microsoft/eslint-plugin-sdl` is 17 rules distilled from the SDL standard, and
@@ -58,17 +59,31 @@ that surface.
 
 ## Detection — `vulnerable.js` (12 Node vulnerability classes)
 
-| Config                               | Engine | Security findings |
-| ------------------------------------ | ------ | ----------------- |
-| Oxlint built-in                      | Oxlint | 1                 |
-| **@microsoft/eslint-plugin-sdl**     | ESLint | **3**             |
-| Interlace flagship rules             | Oxlint | 5                 |
-| eslint-plugin-security (recommended) | ESLint | 21                |
-| Interlace (4 plugins, recommended)   | ESLint | 46                |
+| Config                                | Engine | Security findings |
+| ------------------------------------- | ------ | ----------------- |
+| Oxlint built-in                       | Oxlint | 1                 |
+| `@microsoft/sdl/*` rules only         | ESLint | 3                 |
+| **`@microsoft/eslint-plugin-sdl` (`recommended`)** | ESLint | **5**             |
+| Interlace flagship rules              | Oxlint | 5                 |
+| eslint-plugin-security (recommended)  | ESLint | 21                |
+| Interlace (4 plugins, recommended)    | ESLint | 46                |
 
-SDL's 3 came from the only rules that fit a backend file: `no-inner-html`,
+**Read that table honestly — the line a senior SDL user will check first.** The
+SDL *namespaced* rules (`@microsoft/sdl/*`) caught **3**: `no-inner-html`,
 `no-document-write`, and `no-cookies`. Its Angular, Electron, and WinJS rules had
-nothing to match — there's no Angular in a Node API.
+nothing to match — there's no Angular in a Node API. But nobody runs the bare
+namespace; they run `sdl.configs.recommended`, and that config *also* turns on
+four core ESLint rules (`no-eval`, `no-implied-eval`, `no-new-func`, `no-caller`)
+— so on this fixture the real `recommended` number is **5** (the 3 above plus
+`no-eval` and `no-new-func` firing on the `eval()` / `new Function()` sites).
+
+One detail that surprised me and matters for fairness: `sdl.configs.recommended`
+*registers* `eslint-plugin-security` as a plugin but never switches its rules to
+`error` — I confirmed this with `eslint --print-config` (zero `security/*` rules
+in the resolved config). So recommended does **not** quietly inherit
+eslint-plugin-security's 21 findings; that 21 is what you get only if you add
+`security` rules yourself. The honest headline is **5 vs 46**, and 5 is still the
+generous reading.
 
 > **A robustness note, stated plainly.** Three SDL rules (`no-insecure-random`,
 > `no-insecure-url`, `no-unsafe-alloc`) **threw** on the fixture's dynamic
@@ -78,40 +93,55 @@ nothing to match — there's no Angular in a Node API.
 
 ## What a Node backend needs instead
 
-The 43 findings SDL has no rule for (46 total minus the 3 it caught) are the
-Node backend surface: SQL injection, `fs` path traversal, object injection /
-prototype-pollution, unsafe deserialization, ReDoS, weak hashing, insecure
-comparisons. None are in SDL's scope.
+The honest accounting, and it reconciles exactly. SDL's `recommended` config
+produces **5 findings** on this file; the Interlace set produces **46**. Line them
+up: SDL flags 5 lines, and **9** of the 46 Interlace findings land on those same
+lines (the `innerHTML` write, the insecure cookie, and the `eval`/`Function`
+sites, where SDL's core `no-eval`/`no-new-func` overlap the Interlace eval rules).
+That leaves **37** Interlace findings on lines SDL never touches — and 9 + 37 = 46,
+no hand-waving.
 
-That "43" isn't an estimate — it's the actual `ruleId` output. Here's the full
+Those 37 are the Node backend surface SDL has no rule for on any config: SQL
+injection, `fs` path traversal, object injection / prototype pollution, ReDoS,
+weak hashing, insecure comparisons, dynamic `require`, deprecated `Buffer`. (SDL
+also catches one thing the backend plugins skip — `document.write`, a pure-frontend
+concern — so it isn't a subset in either direction.) That's the whole point: not
+"SDL is weaker," but "SDL was never pointed at this layer."
+
+That "37" isn't an estimate — it's the actual `ruleId` output. Here's the full
 list from the Interlace run (`--format json`, counted by `ruleId`), grouped by
 class, so you can diff it against your own:
 
 <details>
-<summary><strong>The 46 Interlace findings on <code>vulnerable.js</code>, by rule ID</strong> (43 of these classes have no SDL rule)</summary>
+<summary><strong>The 46 Interlace findings on <code>vulnerable.js</code>, by rule ID</strong> (37 land on lines SDL's recommended config never flags)</summary>
 
 | Vulnerability class            | Rule ID (count)                                                                                                | CWE     |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------- |
 | SQL injection                  | `pg/no-unsafe-query` (2), `pg/no-floating-query` (2)                                                           | CWE-89  |
 | Path traversal                 | `node-security/detect-non-literal-fs-filename` (5), `node-security/no-arbitrary-file-access` (4)               | CWE-22  |
 | Object injection / proto-poll. | `secure-coding/detect-object-injection` (5)                                                                    | CWE-915 |
-| Unsafe deserialization / eval  | `secure-coding/no-unsafe-deserialization` (4), `node-security/detect-eval-with-expression` (2), `browser-security/no-eval` (2) | CWE-502 |
+| Unsafe deserialization / eval  | `secure-coding/no-unsafe-deserialization` (4) → CWE-502; `node-security/detect-eval-with-expression` (2), `browser-security/no-eval` (2) → CWE-95 | 502 / 95 |
 | ReDoS / unsafe regex           | `secure-coding/detect-non-literal-regexp` (3), `secure-coding/no-redos-vulnerable-regex` (2), `secure-coding/no-unsafe-regex-construction` (1) | CWE-1333 |
 | Weak hashing                   | `node-security/no-weak-hash-algorithm` (2)                                                                     | CWE-327 |
 | Insecure comparison (timing)   | `secure-coding/no-insecure-comparison` (3)                                                                     | CWE-208 |
 | Hardcoded credentials          | `secure-coding/no-hardcoded-credentials` (2)                                                                   | CWE-798 |
 | Dynamic / unsafe require       | `node-security/no-unsafe-dynamic-require` (2)                                                                  | CWE-95  |
 | XSS / unsafe HTML              | `browser-security/no-innerhtml` (1)                                                                            | CWE-79  |
-| Insecure cookies               | `browser-security/require-cookie-secure-attrs` (2)                                                             | CWE-1004 |
+| Insecure cookies               | `browser-security/require-cookie-secure-attrs` (2)                                                             | CWE-614 |
 | XPath injection                | `secure-coding/no-xpath-injection` (1)                                                                         | CWE-643 |
-| Deprecated Buffer              | `node-security/no-deprecated-buffer` (1)                                                                       | CWE-1325 |
+| Deprecated Buffer              | `node-security/no-deprecated-buffer` (1)                                                                       | CWE-676 |
 
-**Total: 46.** SDL's 3 (`no-inner-html`, `no-document-write`, `no-cookies`)
-overlap only the XSS and cookie rows. Every other row — SQLi, path traversal,
-object injection, deserialization, ReDoS, weak hashing, timing — has **no SDL
-rule at all**. (`security-recommended` reproduces 21 of these; the full 46 needs
-the four `recommended` configs together. Versions and exact commands in the
-methodology section.)
+**Total: 46.** SDL's `recommended` config touches three of these rows — XSS row
+(via `no-inner-html`), cookie row (via `no-cookies`), and the `eval`/`Function`
+sites in the deserialization row (via core `no-eval` / `no-new-func`, which
+`recommended` enables — confirm with `eslint --print-config`, where both resolve
+to `"error"`). That's **9** of the 46 findings on shared lines; the other **37**
+rows — SQLi, path traversal, object injection, ReDoS, weak hashing, timing,
+dynamic require, deprecated Buffer — have **no SDL rule at all**.
+(`eslint-plugin-security`'s `recommended` reproduces 21 of these on its own — but,
+as noted above, `sdl.configs.recommended` registers that plugin without enabling
+its rules; the full 46 needs the four Interlace `recommended` configs together.
+Versions and exact commands in the methodology section.)
 
 </details>
 
@@ -174,16 +204,29 @@ AI-generated code too — same root cause, faster.
 
 ## The AI angle: assistants reintroduce exactly what SDL can't see
 
-This is the part that turns a layer mismatch into a recurring incident. The 43
-findings SDL has no rule for are the *modal* mistakes an LLM makes when it writes
-a Node backend: string-concatenated `pg` queries, `fs` paths built from request
-input, `JSON`/`eval`-shaped deserialization, object injection. I ran the
+This is the part that turns a layer mismatch into a recurring incident. The 37
+findings SDL's recommended config has no rule for are the *modal* mistakes an LLM
+makes when it writes a Node backend: string-concatenated `pg` queries, `fs` paths
+built from request input, object injection, weak hashing. (Its core `no-eval`
+catches the textbook `eval(userInput)`, but the LLM-modal bug is rarely literal
+`eval` — it's a `db.query` built by interpolation, which SDL never sees.) I ran the
 experiment directly: when I
-[let Claude write 60 backend functions, 65–75% shipped with a security
-vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
-and the same classes recur
-[across models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) —
-whether the author is Claude, Gemini, or a junior in a hurry.
+[let Claude write 80 backend functions, 65–75% shipped with a security
+vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) —
+and it isn't a Claude problem. I extended it to
+[700 AI-generated functions across 5 models from Claude and Gemini](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+and **every model landed between a 49% and 73% vulnerability rate** — Gemini 2.5
+Pro topped the chart at **73%**, and even the safest model still shipped a vuln
+in nearly half its functions. These are the *exact* CWE classes SDL's recommended
+config has no rule for: SQLi, path traversal, object injection, weak hashing,
+ReDoS. Whether the author is Claude, Gemini, or a junior in a hurry, the backend
+bug lands on a line your frontend linter was never built to read.
+
+The uncomfortable part isn't the aggregate rate — it's that
+[no single model is safe across every domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain):
+the model that writes the cleanest auth code writes some of the worst file-I/O
+code, so you can't pick your way out with a "secure" model. You need the layer,
+not a better author.
 
 So the failure compounds: your assistant generates a backend vuln, your
 frontend-layer linter has no rule for it, your pipeline is green, and the PR
@@ -197,24 +240,28 @@ AI-generated route handler into the fixture directory below and run both configs
 Keep SDL for your frontend. Add the domain plugins for everything Node:
 
 ```bash
-npm i -D eslint eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg
+npm i -D eslint eslint-plugin-secure-coding eslint-plugin-node-security \
+  eslint-plugin-pg eslint-plugin-browser-security
 ```
 
 ```js
-// eslint.config.mjs — backend coverage in three lines
+// eslint.config.mjs — backend + browser-surface coverage
 import { configs as secureCoding } from "eslint-plugin-secure-coding";
 import { configs as nodeSecurity } from "eslint-plugin-node-security";
 import { configs as pg } from "eslint-plugin-pg";
+import { configs as browserSecurity } from "eslint-plugin-browser-security";
 
 export default [
-  secureCoding.recommended, // object injection, unsafe deserialization
-  nodeSecurity.recommended, // fs path traversal, command injection
-  pg.recommended,           // SQL injection in node-postgres
+  secureCoding.recommended,   // object injection, unsafe deserialization, weak hashing
+  nodeSecurity.recommended,   // fs path traversal, dynamic require, deprecated Buffer
+  pg.recommended,             // SQL injection in node-postgres
+  browserSecurity.recommended, // innerHTML/eval/cookie — the rows that overlap SDL
 ];
 ```
 
-That's the 43 findings SDL had no rule for. The full dual-layer config — SDL
-scoped to `src/web/**`, the domain plugins to `src/api/**` — is below.
+That's the bulk of the 37 findings SDL's recommended config had no rule for. The
+full dual-layer config — SDL scoped to `src/web/**`, the domain plugins to
+`src/api/**` — is below.
 
 ## False positives — `safe-patterns.js`
 
@@ -243,15 +290,16 @@ import { configs as pg } from "eslint-plugin-pg";
 export default [
   // frontend bundle — SDL where Angular/Electron/DOM code lives.
   // (SDL's configs are flat-config ARRAYS, so map files onto each entry —
-  //  unlike the Interlace configs, which are single objects.)
+  //  unlike the Interlace configs, which are single objects. Spread `c`
+  //  FIRST, then set `files`, so our scope wins over any files key in c.)
   ...sdl.configs.common.map((c) => ({
-    files: ["src/web/**", "src/electron/**"],
     ...c,
+    files: ["src/web/**", "src/electron/**"],
   })),
   // backend — the domain security plugins (their configs ARE single objects)
-  { files: ["src/api/**", "src/db/**"], ...secureCoding.recommended },
-  { files: ["src/**"], ...nodeSecurity.recommended },
-  { files: ["**/db/**"], ...pg.recommended },
+  { ...secureCoding.recommended, files: ["src/api/**", "src/db/**"] },
+  { ...nodeSecurity.recommended, files: ["src/**"] },
+  { ...pg.recommended, files: ["**/db/**"] },
 ];
 ```
 
@@ -272,22 +320,86 @@ vulnerability classes; `safe-patterns.js`), so they measure the Node backend
 surface the Interlace rules target — SDL would score very differently on an
 Angular/Electron fixture, which is its home turf. Versions (measured 2026-05-31):
 `eslint@9.39`, `@microsoft/eslint-plugin-sdl@1.1.0` (17 rules),
-`eslint-plugin-secure-coding@3.2.0`, `node-security@4.2.0`, `pg@1.4.3`,
-`browser-security@1.2.3`. Each plugin's rules at `error`, `--format json`,
-counted by `ruleId` (SDL's three throwing rules disabled so the rest could run).
+`eslint-plugin-secure-coding@3.2.0`, `eslint-plugin-node-security@4.2.0`,
+`eslint-plugin-pg@1.4.3` (the Interlace plugin — not the `pg` node-postgres
+driver, which is at 8.x), `eslint-plugin-browser-security@1.2.3`. Findings counted
+by `ruleId` over `--format json` output.
+
+**What "SDL" means in the table, stated once, plainly.** The **3** is the count
+of `@microsoft/sdl/*`-namespaced rules that fired. The **5** is the count from
+SDL's own `recommended` config (`sdl.configs.recommended`) — which additionally
+enables core `no-eval`/`no-new-func`, the source of the extra 2. SDL's three
+browser-shaped rules (`no-insecure-random`, `no-insecure-url`, `no-unsafe-alloc`)
+**throw** on this fixture's dynamic `require(variable)` (a `path.basename(undefined)`
+inside the rule), so they're set to `off` to let the rest of the config run —
+that throw is itself reported above. Note that `sdl.configs.recommended`
+*registers* `eslint-plugin-security` but does **not** enable its rules at `error`
+(verify with `eslint --print-config`), so it contributes 0 here.
+
+The whole run reproduces from the two configs below — no private files needed:
 
 ```bash
 npm i -D eslint@9 @microsoft/eslint-plugin-sdl eslint-plugin-secure-coding \
   eslint-plugin-node-security eslint-plugin-pg eslint-plugin-browser-security
-npx eslint --config eslint.config.sdl.mjs test-files/vulnerable.js --format json
-npx eslint --config eslint.config.interlace.mjs test-files/vulnerable.js --format json
 ```
 
-Fixtures and both config files live in the repo's
-[`packages/eslint-plugin-secure-coding/benchmark/`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding/benchmark).
+```js
+// eslint.config.sdl.mjs — SDL's own recommended config, throwing rules disabled
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const sdl = require("@microsoft/eslint-plugin-sdl");
+const off = ["no-insecure-random", "no-insecure-url", "no-unsafe-alloc"];
+export default [
+  { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
+  ...sdl.configs.recommended.map((c) =>
+    c.rules
+      ? { ...c, rules: Object.fromEntries(Object.entries(c.rules).map(([k, v]) =>
+          [k, off.some((r) => k.endsWith(r)) ? "off" : v])) }
+      : c,
+  ),
+];
+```
+
+```js
+// eslint.config.interlace.mjs — the four domain plugins at recommended
+import { configs as secureCoding } from "eslint-plugin-secure-coding";
+import { configs as nodeSecurity } from "eslint-plugin-node-security";
+import { configs as pg } from "eslint-plugin-pg";
+import { configs as browserSecurity } from "eslint-plugin-browser-security";
+export default [
+  { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
+  secureCoding.recommended, nodeSecurity.recommended,
+  pg.recommended, browserSecurity.recommended,
+];
+```
+
+```bash
+npx eslint --config eslint.config.sdl.mjs vulnerable.js --format json        # → 5
+npx eslint --config eslint.config.interlace.mjs vulnerable.js --format json  # → 46
+```
+
+The fixtures (`vulnerable.js`, `safe-patterns.js`) and the four-plugin benchmark
+harness live in the repo's
+[`packages/eslint-plugin-secure-coding/benchmark/`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding/benchmark);
+paste the two configs above next to them to reproduce the SDL-vs-Interlace
+numbers exactly.
 
 The full 4-engine version (ESLint + Oxlint, built-in + plugins) is in
 [the security-linter benchmark](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof).
+
+### Run it on your AI's output — including Gemini
+
+The fixture is hand-authored, but the method is the point, and it's one experiment
+away from a Gemini-grounded version: ask Gemini 2.5 Pro to generate a batch of
+Node route handlers, drop them in place of `vulnerable.js`, and run the same two
+configs. I already have the priors — across
+[700 AI-generated functions from 5 Claude and Gemini models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+Gemini 2.5 Pro shipped a vulnerability in **73%** of its functions, the highest in
+the field — so the SDL-recommended config will catch the literal `eval`, miss the
+`pg` concatenation and the `fs` path, and the domain plugins will catch the rest,
+on real generated code instead of a fixture. That rerun, tagged `#googleai
+#geminichallenge`, is a Build-with-Gemini XPRIZE entry; this post is the harness
+it would reuse.
 
 ---
 
@@ -300,6 +412,21 @@ The full 4-engine version (ESLint + Oxlint, built-in + plugins) is in
 | **ESLint**           | Interlace plugins `^8 \|\| ^9 \|\| ^10`; **`@microsoft/eslint-plugin-sdl` requires `^9`**. Flat config (on ESLint 8 the Interlace plugins need `ESLINT_USE_FLAT_CONFIG=true`) |
 | **Module system**    | Plugins ship CommonJS; your config can be `eslint.config.js` or `.mjs`                                                                                                        |
 | **Oxlint**           | Interlace flagship rules run via the `interlace-*` ports, parity-gated                                                                                                        |
+
+---
+
+## ESLint Security Benchmark Series
+
+Same fixture, same method, one tool per post:
+
+- **[The benchmark hub: 17 ESLint security plugins compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared)** — the full field, all engines.
+- **You are here:** `@microsoft/eslint-plugin-sdl` — 5 vs 46 on recommended, wrong layer.
+- **[SonarJS has 269 rules and found 13](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)** — the rule-count-vs-coverage companion.
+- **[The 4-engine ground truth: ESLint + Oxlint, built-in + plugins](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof)** — the methodology these posts all share.
+
+Why these numbers keep mattering: the bugs they catch are the
+[same ones AI assistants reintroduce](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
+at a 49–73% clip, which is why the *layer* — not the author — is the thing to fix.
 
 ---
 

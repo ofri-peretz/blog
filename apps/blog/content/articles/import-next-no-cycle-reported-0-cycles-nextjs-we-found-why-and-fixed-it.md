@@ -12,8 +12,8 @@ reading_time_minutes: 9
 tags:
   - "eslint"
   - "node"
-  - "ai"
   - "javascript"
+  - "ai"
 reactions: 0
 comments: 0
 views: 0
@@ -25,9 +25,11 @@ author:
   twitter: "ofriperetzdev"
 ---
 
-Run `no-cycle` on your full monorepo, then run it again on a known-complex subdirectory. If the subset finds more cycles than the full run — you have the same class of bug we had.
+Our cycle detector scanned 14,556 files of next.js and reported **0 import cycles**. The same rule, same config, on a 33-file subset of those exact files, found **5**. Adding files made cycles *disappear* — the inverse of how a linter is supposed to behave.
 
-We found 5 import-graph cycles in 33 files that were invisible in 14,556 — next.js, 131K stars. The cause: a 10-hop depth limit that wrote false "non-cyclic" entries into a shared cache, poisoning later traversals. Large scope → more files processed before the subset → more false cache entries → more cycles hidden. Small scope → clean cache → same cycles visible.
+Here is the 30-second test that exposed it, and it works on any cycle detector: run `no-cycle` on your full monorepo, then run it again on a known-complex subdirectory. If the subset finds more cycles than the full run, you have the same class of bug we had.
+
+The cause: a 10-hop depth limit that wrote false "non-cyclic" entries into a shared cache, poisoning later traversals. Large scope → more files processed before the subset → more false cache entries → more cycles hidden. Small scope → clean cache → same cycles visible. next.js, 131K stars, and the headline number on its dependency graph was a lie the cache told us.
 
 The cache bug is confirmed in source; the fix shipped in `eslint-plugin-import-next@2.3.6`. This is the run-it-yourself half of a two-part story — the [full root-cause walkthrough is here](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale). If you only read one section, read [the diagnostic test](#what-this-means-for-your-own-cycle-detector): it works on any cycle detector, not just ours.
 
@@ -73,7 +75,7 @@ This means: if you use a finite `maxDepth` after the fix, cycles deeper than you
 
 **What the fix changes in `eslint-plugin-import-next@2.3.6`:** The ~12-hop cycle in `webpack-config.ts` is now caught. The 33-file router-reducer subset returns 5 cycles whether run in isolation or as part of the full 14,556-file repo. The gap that produced 0 on the full run is closed. Whether the fixed rule finds all 17 cycles oxlint reports is tracked via our [ground-truth corpus](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed).
 
-**Why `eslint-plugin-import` reported 0 too — and why that's a different story.** `eslint-plugin-import/no-cycle` already defaults to `maxDepth: Infinity`, so it isn't subject to our depth bug. Its 0 on next.js is, as far as we can tell from the benchmark, a *correct-for-its-design* result given the same compile-time-edge policy we use — both tools drop `import type` edges before traversal. The number that exposed our bug wasn't theirs; it was oxlint's native Rust port reporting 17, which gave us an independent reference to measure against. The 0-vs-5 we had to explain was internal: same rule, same config, same files, different scope. That is the cache bug, not a tooling disagreement.
+**Why `eslint-plugin-import` reported 0 too — and why that's a different story.** `eslint-plugin-import/no-cycle` already defaults to `maxDepth: Infinity`, so it isn't subject to our depth bug. (If you're choosing between cycle detectors for a broader ESLint audit, the [full 17-plugin benchmark](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) covers the tradeoffs in depth.) Its 0 on next.js is, as far as we can tell from the benchmark, a *correct-for-its-design* result given the same compile-time-edge policy we use — both tools drop `import type` edges before traversal. The number that exposed our bug wasn't theirs; it was oxlint's native Rust port reporting 17, which gave us an independent reference to measure against. The 0-vs-5 we had to explain was internal: same rule, same config, same files, different scope. That is the cache bug, not a tooling disagreement.
 
 **On type-only imports — what the rule actually does.** `import-next/no-cycle` does *not* count `import type` edges. The AST visitor returns early on `node.importKind === 'type'`, and the dependency-graph builder skips type-only and dynamic edges entirely (`if (imp.dynamic || imp.typeOnly) continue;`) — so a `import type { Foo }` back-reference never even enters the SCC graph. That is deliberate: a type-only edge is erased by the compiler and cannot produce a runtime cycle, and including it would generate false positives. If your architectural review *wants* to treat type-only back-references as cycles, that is a real position — but it is not what this rule (or `eslint-plugin-import`) does today, and there is no `ignoreTypeImports`-style toggle to flip it on. The cycles we report are runtime edges.
 
@@ -187,17 +189,31 @@ Re-exports are the easy ones to miss. A cycle that closes through `export { foo 
 
 The depth-and-cache bug needs two ingredients to hurt you: import graphs that are *deep* (so the depth cap fires) and *dense* (so falsely-cached intermediates sit on many paths). Hand-written code trends shallow — humans feel the pain of a 12-hop import chain and refactor it. AI-generated code does not.
 
-Ask Claude, Gemini, or Copilot to "add a barrel file," "re-export everything from this feature folder," or "wire these modules together," and you get exactly the shape that triggers this class of bug:
+This isn't a hunch. When I benchmarked **700 AI-generated functions across 5 models from Gemini and Claude** — 7 iterations each, 332 ESLint rules — the headline finding was that **65-75% of what these models write ships a vulnerability** ([the full corpus is here](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)). Structure is the same story as security: models optimize for what *looks* clean in the snippet in front of them, not for the global graph they can't see. A barrel file reads as "good public API" to **Gemini 2.5 Pro** the same way a missing input check reads as "concise" — locally tidy, globally a trap.
+
+Ask Claude, Gemini, or Copilot to "add a barrel file," "re-export everything from this feature folder," or "wire these modules together," and you get exactly the shape that triggers this class of bug. And the model choice doesn't help you escape it — when I ran [the same NestJS security prompt through Claude and Gemini side-by-side](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors), both produced structurally similar barrel and re-export patterns that a depth-limited cycle detector would silently pass:
 
 - **Barrel-file sprawl.** An `index.ts` that re-exports a folder, imported by another `index.ts` that re-exports *its* folder, is how a 3-hop logical dependency becomes a 12-hop physical one. Assistants reach for barrels by default because they read as "clean public API."
 - **Re-export round-trips.** Generated code frequently has module A re-export a symbol that ultimately re-imports from A — the runtime cycle that closes through `export … from`, the exact edge naive detectors miss.
 - **Confident silence.** When you ask an assistant "are there circular dependencies here?", it will reason over the snippet in front of it — it cannot see the 14K-file graph, and it has no depth cap to warn you about. A green `no-cycle` run becomes the evidence the assistant's "looks clean to me" was right, when both were blind to the same deep cycle.
 
-This is the same thesis as the rest of this series: AI assistants don't invent new failure modes, they *industrialize old ones* by generating the structures (deep barrels, re-export chains) that the tooling's blind spots were waiting for. The fix is the same regardless of who wrote the code — run `import-next/no-cycle` (with the depth/cache fix) in CI, and run the subset diagnostic on any folder an assistant just scaffolded. If the subset finds cycles the full run doesn't, you have the bug this article is about. For the broader pattern — fix one AI-generated bug, surface two more — see [The AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
+This is the same thesis as the rest of this series: AI assistants don't invent new failure modes, they *industrialize old ones* by generating the structures (deep barrels, re-export chains) that the tooling's blind spots were waiting for. And which model you use doesn't save you — when I broke that 700-function benchmark down by domain, the "safest" model on aggregate fixed only **45%** of the bugs it wrote while the "most dangerous" one fixed **93%**, so the rankings *inverted* depending on what you asked it to build ([per-domain breakdown here](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)). There is no "use the smart model and skip the linter" shortcut.
+
+**Run the diagnostic on AI output — including Gemini's.** The fix is the same regardless of who wrote the code:
+
+```bash
+# 1. Let an assistant scaffold a feature (e.g. gemini -p "add a barrel file re-exporting this folder")
+# 2. Lint the new folder in isolation, then as part of the whole repo:
+npx eslint src/features/new-thing/ --rule '{"import-next/no-cycle": "error"}'
+npx eslint src/ --rule '{"import-next/no-cycle": "error"}'
+# 3. If the subset finds cycles the full run doesn't, you have the bug this article is about.
+```
+
+For the broader pattern — fix one AI-generated bug, surface two more — see [The AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
 
 ---
 
-_What's the bug that turned out to be a cache lying to you — where the tool wasn't wrong, it was confidently remembering something it never actually verified? And did you find it by accident, or did an independent number force you to look? Drop the story below — the "we trusted the consensus" ones are the best._
+_What's your version of "adding more inputs made the problem disappear" — the bug where a tool got *more* confident as it got *more* wrong, because it was caching a result it never actually verified? And did you catch it yourself, or did an independent number (a second tool, a smaller scope, a colleague's run) force you to look? Drop the story below — the "we trusted the green checkmark" ones are the ones I learn the most from._
 
 ---
 

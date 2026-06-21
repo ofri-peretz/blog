@@ -23,10 +23,26 @@ author:
 series: "ESLint Security Benchmark Series"
 ---
 
-I ran two security linters over the same file — a fixture with 12 deliberate
+The SQL injection that paged us at 2am had passed `eslint-plugin-security`
+clean. So had the linter on the PR that shipped it. The query was a string
+concatenation three functions deep in a route handler — the kind of line a
+generic ruleset has no rule for, and the kind a tired reviewer reads as "looks
+fine." That was the night I stopped trusting a single security linter and ran the
+experiment below.
+
+I ran two of them over the same file — a fixture with 12 deliberate
 vulnerability classes. `eslint-plugin-security`, the incumbent with **2.4M+
 weekly downloads**, caught **21** issues. The domain plugins caught **46**. Same
 file, same engine, same run.
+
+> The noisy generic rule didn't just miss the bug; it _trained the team_ to
+> suppress the signal that would have flagged it.
+
+(A note on the URL before you wonder: the slug says "unmaintained." That was my
+original take and it was wrong — `eslint-plugin-security` ships major versions
+and is the right baseline. I kept the slug so existing links don't break; the
+title and the argument below are the corrected version. More on that at the
+end.)
 
 The 25 it missed weren't exotic. A SQL injection built by string-concatenating a
 query. An unsafe `deserialize()` on attacker-controlled input. `Math.random()`
@@ -42,7 +58,7 @@ of SQL, JWT, crypto, or AI-agent security — and, as I'll show, that gap is
 exactly where AI-generated code now lands. Here's what the floor covers, the
 25-finding hole, and how to run both.
 
-> **ESLint Security Benchmark Series** · [← Prev: I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **You are here: The 21-vs-46 Floor** · [Next: The AI Hydra Problem — Fix One AI Bug, Get Two More →](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
+> **ESLint Security Benchmark Series** · [← Prev: I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **You are here: The 21-vs-46 Floor** · [Next: The AI Hydra Problem — Fix One AI Bug, Get Two More →](https://ofriperetz.dev/articles/the-ai-hydra-problem)
 
 ## What the 14 rules cover (the generic floor)
 
@@ -92,6 +108,27 @@ to suppress the signal that would have flagged it. AST-aware validation detectio
 matters precisely because it keeps the rule quiet on the guarded case, so nobody
 ever reaches for the blanket disable.
 
+### A second one, different domain: the JWT `alg:none` that read as defensive
+
+Here's the same arc in auth, because once you've seen it twice you recognize the
+shape. A service verified tokens with
+`jwt.verify(token, secret, { algorithms: ['HS256', 'none'] })`. The author had
+_added_ that options object on purpose — they were being careful, pinning the
+algorithm list instead of leaving it implicit. The reviewer saw an explicit
+`algorithms` array, read it as the secure-by-default pattern everyone's told to
+use, and approved it. Nobody clocked that `'none'` in that list tells the library
+to accept an **unsigned** token: an attacker sets the header to `{"alg":"none"}`,
+drops the signature, and `verify` returns the forged payload as valid. The
+generic floor has no rule here — there is no dangerous _sink_, no `eval`, no
+string-concatenated query to pattern-match. The vulnerability is a contract
+violation inside a call that looks _more_ careful than the insecure default, and
+that extra diligence is exactly what bought it the approval. That's the
+[JWT `none` attack — the vulnerability in one line of code](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g),
+and it's why `eslint-plugin-jwt` reasons about the algorithm list as a contract
+rather than scanning for a sink. The `Math.random()` session token is the third
+of these — a perfectly ordinary stdlib call, no sink, that a generic linter
+waves through while it silently mints guessable IDs.
+
 Want the 25-finding gap measured on _your_ repo, not a fixture? It's one install
 on top of the floor you already have — [full layering config is below](#the-layering-pattern):
 
@@ -108,7 +145,7 @@ an assistant.
 **The failure:** I gave Claude a single prompt — "build a NestJS users service" —
 and got 200 lines that compiled clean, passed the generic floor, and would have
 sailed through review on a busy afternoon. **The consequence:** it
-[shipped six security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
+[shipped six security holes](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 — `password` in every response body, an admin endpoint with no auth guard, a
 login route with no rate limit. None of those have a rule in the generic floor,
 because a generic linter pattern-matches sinks and an AI assistant doesn't write
@@ -129,18 +166,22 @@ Gemini is the same story with a different worst-domain. In that 5-model run,
 per-domain rate as Claude's database number — yet wrote JWT-creation code
 _perfectly_ (`0/7` on `generateJWT`, never leaking the payload). Aggregate
 "which model is safest" misses this entirely: every model has a domain where it's
-a coin-flip, and a generic floor has no rule for any of them. If you want to turn
-this into a [Build with Gemini XPRIZE](https://dev.to/challenges) entry rather
-than just read it, the adaptation path is concrete: run the same team-authored
-`vulnerable.js` fixture against `gemini-2.5-flash` (the benchmark already ships
-the `gemini -p --model gemini-2.5-flash` harness), lint the output with the
-domain layers below, and publish the per-domain gap with `#googleai`
-`#geminichallenge`. The methodology doesn't change — only the model under test
-and two tags do.
+a coin-flip, and a generic floor has no rule for any of them.
+
+This post is the **methodology** — the floor-vs-domain experiment and the
+reproducible harness. I ran that exact harness against Gemini head-to-head with
+Claude in a tagged companion,
+[Claude vs Gemini Across 4 Security Domains](https://ofriperetz.dev/articles/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips)
+(`#googleai`), which is my [Build with Gemini XPRIZE](https://dev.to/challenges)
+entry. If you want to reproduce it: run the same team-authored `vulnerable.js`
+fixture against `gemini-2.5-flash` (the benchmark already ships the
+`gemini -p --model gemini-2.5-flash` harness), lint the output with the domain
+layers below, and publish the per-domain gap. The methodology doesn't change —
+only the model under test does.
 
 It gets worse when you ask the model to fix what you found. Re-prompting an LLM
 to remediate a vulnerability — without a deterministic linter in the loop —
-introduces _new_ vulnerability categories at [4× the rate](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more):
+introduces _new_ vulnerability categories at [4× the rate](https://ofriperetz.dev/articles/the-ai-hydra-problem):
 cut one head, two grow back. The generic floor can't break that loop because it
 has no rule for most of what the model gets wrong. A domain ruleset that knows
 JWT, SQL, and serialization contracts is the deterministic gate that stops the
@@ -192,22 +233,26 @@ rule depth to your stack's real attack surface.
 right baseline — 2.4M downloads, an `eslint-community`-maintained project that
 shipped a major version in 2026. This isn't a teardown; it's the case for
 **layering domain depth on a solid floor**. Keep the floor. Add the rules for the
-attack surface your stack actually has.
+attack surface your stack actually has. (And yes — the slug still says
+"unmaintained." That was the wrong call, flagged up top; the corrected argument
+is everything above.)
 
-(One honesty note on the URL: the slug on this article says "unmaintained." That
-was my original take and it was wrong — the plugin ships major versions. I left
-the slug so the link doesn't break, but the title and the argument above are the
-corrected version.)
-
-This is part of my [ESLint Security Benchmark Series](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared),
+This is part of my [ESLint Security Benchmark Series](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof),
 where I run the same fixtures and AI prompts across the whole landscape of
 security linters and publish the numbers.
 
-One question, because I think the answer is universal: **go grep your codebase
-for `eslint-disable security/`.** How many of those disables sit on genuinely
-unvalidated code that someone silenced to clear a false positive — and how long
-has it been there? That's the gap, and I'd bet you have one. Tell me what you
-found.
+One concrete ask, because I think the answer is universal. Run this in your repo:
+
+```bash
+git log -S 'eslint-disable security/' --diff-filter=A --format='%ad' --date=short \
+  --reverse -- . | head -1
+grep -rn 'eslint-disable.*security/' --include='*.{js,ts,jsx,tsx}' . | head
+```
+
+**Reply with the date of your oldest `eslint-disable security/` and which rule it
+silenced.** I'd bet it's `detect-object-injection`, it's older than the engineer
+who added it remembers, and nobody has checked whether the code under it is still
+guarded. That's the gap. Mine was 2 years and 9 months old. What's yours?
 
 ---
 

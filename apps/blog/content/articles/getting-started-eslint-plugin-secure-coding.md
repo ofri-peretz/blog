@@ -1,6 +1,6 @@
 ---
-title: "A Hardcoded sk_live_ Key Passes Code Review. It Won't Pass These 27 ESLint Rules."
-description: "Hardcoded secrets, unsafe deserialization, LDAP/XPath/GraphQL injection, prototype pollution — language-level bugs that pass review and tests, then become CVEs. The same CWE classes AI assistants write by default. 27 CWE-mapped ESLint rules that catch them in CI, framework-agnostic."
+title: "A Hardcoded sk_live_ Key Passes Code Review. It Won't Pass These 28 ESLint Rules."
+description: "Hardcoded secrets, unsafe deserialization, LDAP/XPath/GraphQL injection, prototype pollution — language-level bugs that pass review and tests, then become CVEs. The same CWE classes AI assistants write by default. 28 CWE-mapped ESLint rules that catch them in CI, framework-agnostic."
 slug: "getting-started-eslint-plugin-secure-coding"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure-coding-1eda"
@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-secu
 social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-secure-coding"
 reading_time_minutes: 9
 tags:
-  - "eslint"
   - "security"
-  - "javascript"
   - "ai"
+  - "devsecops"
+  - "eslint"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -33,6 +33,13 @@ It passes the type-checker. It passes every unit test. It ships. Three weeks
 later it's in a public commit, a security researcher greps your org's repos for
 `sk_live_`, and you're rotating keys at 2am.
 
+Now multiply that by an AI assistant. When I had Claude generate 80 ordinary
+Node.js functions with no security context, **65–75% shipped a security hole** —
+hardcoded credentials like the one above among the most common
+([the full per-model run is here](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)).
+The diff that takes a reviewer four seconds to approve is now being written for
+them, at machine speed, two times out of three with a vulnerability baked in.
+
 Hardcoded secrets are **CWE-798**. They're not a logic bug a test can catch —
 the code _works_. They're a property of the source text, which is exactly what
 a linter is good at. The problem is that the linters most teams run check
@@ -48,7 +55,7 @@ review speed; it's a question you answer by _grepping the literal_, which is
 machine work. The diff doesn't survive because the team is careless. It survives
 because catching it is the wrong job for a person.
 
-**`eslint-plugin-secure-coding` is the layer that does.** It's 27 rules for
+**`eslint-plugin-secure-coding` is the layer that does.** It's 28 rules for
 _language-level_ security bugs — hardcoded credentials, unsafe deserialization,
 LDAP/XPath/GraphQL/XXE injection, prototype pollution, insecure comparison,
 ReDoS — every one pinned to a CWE and carrying a CVSS score and compliance
@@ -57,17 +64,17 @@ specifics (those live in dedicated plugins). Just the mistakes you can make in
 plain JavaScript or TypeScript that turn into CVEs.
 
 This is the getting-started guide: how the flagship rule actually decides what
-a credential is, the full 27-rule map, install/config across all package
+a credential is, the full 28-rule map, install/config across all package
 managers, and the exact ESLint/Oxlint versions it runs under.
 
 ---
 
 ## TL;DR
 
-- **27 rules**, every one carrying a `CWE` id, a CVSS score, and compliance
+- **28 rules**, every one carrying a `CWE` id, a CVSS score, and compliance
   tags (SOC2 / PCI-DSS / HIPAA / GDPR / …).
 - **4 presets**: `flagship` (the 2 ecosystem-flagship rules), `recommended`
-  (18 rules), `strict` (all 27), `owasp-top-10` (12 rules mapped to OWASP
+  (18 rules), `strict` (all 28), `owasp-top-10` (11 rules mapped to OWASP
   categories — the mapping is checkable below).
 - **Framework-agnostic.** "Pure coding security": language-level vulns only.
   Framework-specific checks (Express, NestJS, Lambda, Postgres, …) live in
@@ -155,6 +162,19 @@ For a known-safe fixture, a scoped disable is honest and self-documenting:
 const EXAMPLE_KEY = "pk_test_example";
 ```
 
+**Want this rule live before you finish the article?** Two commands — the full
+preset table and per-manager install are [further down](#install):
+
+```bash
+npm install --save-dev eslint-plugin-secure-coding
+```
+
+```js
+// eslint.config.js
+import { configs } from "eslint-plugin-secure-coding";
+export default [configs.recommended]; // 18 rules, incl. no-hardcoded-credentials
+```
+
 ---
 
 ## A second bug a test won't catch: `no-unsafe-deserialization`
@@ -187,27 +207,38 @@ language model that's optimizing for "code that runs," not "code that's safe."
 I asked Claude (four model tiers) to generate 80 ordinary Node.js functions
 with no security context and counted the vulnerabilities:
 **65–75% of them shipped a security hole** — hardcoded fallbacks, `eval`-as-parser,
-loose comparisons on tokens — the exact CWE classes the 27 rules above cover.
+loose comparisons on tokens — the exact CWE classes the 28 rules above cover.
 The full methodology and per-model numbers are in
 [I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
-Same pattern holds across providers: point a model at "write me a Stripe client"
-and `sk_live_...` as a default argument is a perfectly likely completion.
+And it isn't a Claude quirk. When I expanded the benchmark to **700 functions
+across five Gemini and Claude models**, the per-model vuln rate ranged 49–73% —
+Gemini 2.5 Pro was the _highest_ at 73% — and the failures were eerily
+deterministic: one model emitted vulnerable JWT code **7 out of 7 runs** while
+another got it right **0 out of 7**, same prompt
+([the cross-model teardown is here](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)).
+Point any of them at "write me a Stripe client" and `sk_live_...` as a default
+argument is a perfectly likely completion.
 
 This is why a source-text linter matters _more_ now, not less. The reviewer
 approving the four-second diff at the top of this article is increasingly
 approving a diff a model wrote. And when you ask the model to _fix_ the finding,
-it often trades one CWE for another — I measured that
-[fix-one-get-two-more loop here](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
+it often trades one CWE for another — when I had Claude fix its own security
+bugs, **1 in 3 "fixes" introduced a brand-new vulnerability** in a different
+category
+([the Hydra-problem teardown is here](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)).
 A rule that fires deterministically on the _shape_ in the source — every commit,
 human- or machine-authored — is the only part of this loop that doesn't get
-tired or talked out of its answer. Want to run these same rules against your
-own AI-generated code? The install block is two sections down.
+tired, doesn't get prompt-talked out of its answer, and doesn't care which model
+wrote the line. That's the layer that scales with AI; a second reviewer doesn't.
+Want to point these rules at your own AI-generated code? The two-command install
+block is [right above](#a-second-bug-a-test-wont-catch-no-unsafe-deserialization)
+— or the full preset table is [below](#install).
 
 ---
 
 ## The full rule set
 
-All 27, grouped, with each rule's declared CWE:
+All 28, grouped, with each rule's declared CWE:
 
 | Rule                               | Catches                                | CWE      |
 | ---------------------------------- | -------------------------------------- | -------- |
@@ -222,6 +253,7 @@ All 27, grouped, with each rule's declared CWE:
 | `no-xxe-injection`                 | XML external entity                    | CWE-611  |
 | `no-format-string-injection`       | Format-string injection                | CWE-134  |
 | `no-directive-injection`           | Template directive injection           | CWE-96   |
+| `no-template-injection`            | Server-side template injection (SSTI)  | CWE-94   |
 | `detect-object-injection`          | `obj[userKey]` / prototype pollution   | CWE-915  |
 | `detect-non-literal-regexp`        | `RegExp(variable)`                     | CWE-400  |
 | `no-unsafe-regex-construction`     | Regex built from user input            | CWE-400  |
@@ -266,8 +298,8 @@ import { configs } from "eslint-plugin-secure-coding";
 export default [
   configs.recommended, // 18 rules — the sane default
   // configs.flagship,    // the 2 ecosystem-flagship rules only
-  // configs.strict,      // all 27 as errors
-  // configs["owasp-top-10"], // the 12 OWASP-mapped rules
+  // configs.strict,      // all 28 as errors
+  // configs["owasp-top-10"], // the 11 OWASP-mapped rules
 ];
 ```
 
@@ -317,26 +349,32 @@ src/payments.ts
 | **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                                                                                                                                         |
 | **Module system**    | CommonJS — loads from both `eslint.config.js` and `eslint.config.mjs`                                                                                                                                  |
 | **Runtime peers**    | None — the rules read source AST; nothing to install at runtime                                                                                                                                        |
-| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-secure-coding` port; the flagship rules are wired into the Oxlint config and parity-checked in CI. The full 27-rule set runs on ESLint today. |
+| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-secure-coding` port; the flagship rules are wired into the Oxlint config and parity-checked in CI. The full 28-rule set runs on ESLint today. |
 
 ---
 
-## Honest scope — what "27 rules" means and what it doesn't
+## Honest scope — what "28 rules" means and what it doesn't
 
-- **It's 27 rules, not "89."** Earlier copy floated bigger numbers; the
-  published `recommended` enables 18, `strict` turns on all 27, and that's the
-  whole plugin. The breadth is in CWE _coverage_, not rule count.
+- **It's 28 rules, not "89."** Earlier copy floated bigger numbers; the
+  published `recommended` enables 18, `strict` turns on all 28, and that's the
+  whole plugin. The breadth is in CWE _coverage_, not rule count. (Every count
+  in this article is read straight out of `src/index.ts` — the `rules` registry
+  for the total, `Object.keys(rules)` for `strict`, each preset block for its
+  own membership — so if you `npx eslint` your repo and count, the numbers
+  match the shipped package.)
 - **"OWASP coverage" is the `owasp-top-10` preset, and it's checkable.** That
-  preset wires 12 rules — `no-missing-authentication`, `no-privilege-escalation`,
-  `no-hardcoded-credentials`, `no-sensitive-data-exposure`, `no-graphql-injection`,
-  `no-xxe-injection`, `no-xpath-injection`, `no-ldap-injection`,
-  `no-weak-password-recovery`, `no-improper-type-validation`,
-  `no-insecure-comparison`, `no-unsafe-deserialization` — each mapped to an
-  OWASP category (the 12 are listed right here; the per-rule CWE/OWASP detail
-  lives in the [rule docs](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)).
-  No "100% of everything" claim — and for the honest version of how far source
-  analysis gets you across the whole list, see
-  [8 of the OWASP Top 10 Are ESLint Rules. 2 Aren't](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules),
+  preset wires 11 rules — `no-privilege-escalation`, `no-hardcoded-credentials`,
+  `no-sensitive-data-exposure`, `no-graphql-injection`, `no-xxe-injection`,
+  `no-xpath-injection`, `no-ldap-injection`, `no-weak-password-recovery`,
+  `no-improper-type-validation`, `no-insecure-comparison`,
+  `no-unsafe-deserialization` — each mapped to an OWASP category (the 11 are
+  listed right here; the per-rule CWE/OWASP detail lives in the
+  [rule docs](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)).
+  Note `no-missing-authentication` is _not_ in this preset — it assumes an
+  Express route-handler shape, so it lives in `eslint-plugin-express-security`,
+  not here. No "100% of everything" claim — and for the honest version of how
+  far source analysis gets you across the whole list, see
+  [I Mapped the OWASP Top 10 to ESLint Rules. 8 Hold Up. 2 Are Vendor Theater.](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules),
   which walks the two categories (Insecure Design, Vulnerable Components) no
   linter can prove.
 - **Static analysis is a floor.** These rules prove a dangerous _shape_ isn't
@@ -360,14 +398,17 @@ It's the framework-agnostic base layer of the
 [Interlace](https://eslint.interlace.tools) family — the per-framework plugins
 ([`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg),
 [`-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt),
-[`-nestjs-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security),
+[`-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules),
 [`-node-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security),
 `-express-security`, `-lambda-security`, …) sit _on top_ of it for stack-specific
 coverage. If you run more than one, this is the one you install first.
 
 > **Series — The Hardened Stack.** This is the base-layer entry. Each
 > per-framework guide above assumes `secure-coding` is already in your config and
-> layers the stack-specific rules on top.
+> layers the stack-specific rules on top. Want to see these rules earn their keep
+> on real model output before you install? They're the ones that flagged the bugs
+> in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
+> and powered the [5-model security leaderboard](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong).
 
 ---
 
@@ -377,8 +418,10 @@ coverage. If you run more than one, this is the one you install first.
 - 📖 [Full rule docs (per-rule CWE + OWASP mapping)](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding)
 
-What's the secret you rotated at 2am — and was it a human or an AI completion
-that put it in the source? Drop the CWE in the comments; I collect these.
+What's the one that got past you — the credential, the `eval`, the `==` on a
+token that passed review and shipped? Was it a teammate or an AI completion that
+wrote it, and what was everyone looking at instead when it slipped through? Drop
+the CWE and the story in the comments; I collect these.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if this caught something your code review wouldn't.

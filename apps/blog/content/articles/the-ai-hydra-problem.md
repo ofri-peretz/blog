@@ -473,7 +473,7 @@ export default [
 
 **In the AI Security Benchmark Series:**
 
-- **Part 1:** [I Let Claude Write 60 Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — Establishes the baseline vulnerability rate
+- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — Establishes the baseline vulnerability rate
 - **Part 2:** The AI Hydra Problem: Fix One AI Bug, Get Two More ← _You are here_ — Tests whether remediation converges, and compares guided vs unguided strategies
 
 **Follow [@ofri-peretz](https://dev.to/ofri-peretz) to get notified when Part 3 drops.**

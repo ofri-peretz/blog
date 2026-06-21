@@ -10,11 +10,21 @@ edited_at: "2026-01-11T10:21:32Z"
 cover_image: "https://ofriperetz.dev/og/cover/searchpath-hijacking-postgresql-attack"
 social_image: "https://ofriperetz.dev/og/article/searchpath-hijacking-postgresql-attack"
 reading_time_minutes: 8
+# Tag strategy (DEV.to hard cap = 4):
+#   security + ai    → winner cluster (powers our highest-comment AI-security pieces)
+#   node             → node-postgres discovery path; the code is all node-postgres
+#   googleai         → Google AI / Gemini angle + the Build-with-Gemini-XPRIZE feed tag
+# Dropped "devsecops": weakest discovery tag here; "googleai" unlocks the XPRIZE feed and
+#   matches this piece's Gemini 2.5 Pro 96% datapoint (see the AI-assistant section).
+# Build-with-Gemini-XPRIZE adaptation path (window May 19–Aug 17, 2026): one-step entry —
+#   re-running eslint-plugin-pg against Gemini 2.5 Pro on Database Operations is already in
+#   the body with #googleai present. To submit, free one slot (drop "node") and add
+#   "geminichallenge". Not done here: an unsubmitted #geminichallenge tag is dead discovery.
 tags:
   - "security"
   - "node"
-  - "postgres"
   - "ai"
+  - "googleai"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -31,6 +41,13 @@ There is no `'; DROP TABLE` here. No quotes to escape, no payload to spot in a
 diff. The query that gets exploited is the most boring line in your codebase —
 which is exactly why it survives review. I've watched this pattern slip past
 engineers who would have caught a classic injection in their sleep.
+
+And it's no longer just humans shipping it. When I benchmarked five AI models on
+the same PostgreSQL data-access prompts, the `eslint-plugin-pg` ruleset flagged
+**39%–96% of their generated functions** —
+[the worst offenders were the models that wrote the most "senior-looking" code](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
+A connection-hook `SET search_path` is precisely the kind of boring, trusted-feeling
+line that both a tired reviewer and a code-generating model wave straight through.
 
 > Part of the **Postgres Security Protocol** series. If you're hardening a
 > node-postgres codebase, start with
@@ -64,6 +81,23 @@ await client.query("SELECT * FROM users"); // now reads the attacker's table
 The attacker creates a schema with a malicious `users` table (or a shadowing
 `crypt()` function), points `search_path` at it, and your unqualified query
 returns their data — or runs their function with your privileges.
+
+You can watch the binding flip in ~30 seconds in any local `psql` — no app, no
+exploit framework, just standard name resolution doing exactly what it's
+documented to do:
+
+```sql
+CREATE SCHEMA evil;
+CREATE TABLE public.users AS SELECT 'real'  AS who;
+CREATE TABLE evil.users   AS SELECT 'pwned' AS who;
+
+SET search_path TO evil, public;
+SELECT * FROM users;  -- 'pwned' — same query, attacker's table
+```
+
+That is the whole vulnerability: nothing was injected, nothing was malformed.
+The string `SELECT * FROM users` never changed — only the schema it resolved to
+did.
 
 | Vector               | Impact                                             |
 | -------------------- | -------------------------------------------------- |
@@ -118,6 +152,17 @@ clause on sight:
 None of those are negligence. They're the failure mode of a control that lives
 one indirection away from where the eye is trained to look.
 
+The one that stuck with me: on a multi-tenant audit, the team had done everything
+right — schemas behind a hard-coded allow-list, `%I` on the way in. Then a
+tenant-rename migration shipped. It updated the tenants table but not the
+allow-list constant, so the renamed tenant's `search_path` quietly fell through to
+the reset default (`public`) instead of erroring. No exception, no alert — just a
+tenant reading the wrong schema until someone noticed the row counts. The guard
+was correct the day it was written and wrong two sprints later, because an
+allow-list is a _copy_ of a fact that lives somewhere else. That's the half-life
+of "trusted": it decays the moment the source of truth moves and the copy
+doesn't.
+
 ## The real fixes
 
 **1. Don't use a dynamic `search_path` at all — fully-qualify names.** This
@@ -146,6 +191,11 @@ await client.query(format("SET search_path TO %I", schema));
 
 // or: a numeric id literally cannot contain SQL
 if (!Number.isInteger(tenantId)) throw new Error("bad tenant id");
+// yes, this is interpolation — but after the guard the value is a provably
+// integer-suffixed literal (no attacker-controllable characters survive
+// Number.isInteger), so the conservative rule's flag here is a false positive
+// you silence with a documented disable, not a real hole:
+// eslint-disable-next-line pg/no-unsafe-search-path -- integer-suffixed literal, validated above
 await client.query(`SET search_path TO ${"tenant_" + tenantId}`); // integer-safe
 ```
 
@@ -171,6 +221,17 @@ import { configs } from "eslint-plugin-pg";
 export default [configs.recommended];
 ```
 
+> **On the CWE.** CWE-426 ("Untrusted Search Path") is canonically an _OS_-path
+> weakness — a program resolving an executable or library via an attacker-influenced
+> `PATH`/`LD_LIBRARY_PATH`. I map it here deliberately: PostgreSQL's `search_path`
+> is the database's exact analog — an ordered resolution list where the first match
+> wins, so a writable early entry silently shadows the intended object. The
+> mechanism is identical, only the namespace differs. For the `SECURITY DEFINER`
+> shadowing case (a malicious `crypt()` or trigger executing with elevated
+> privilege) CWE-89 (SQL injection) and CWE-94 (code injection) are the closer fits;
+> the rule keeps a single CWE for a clean finding, and CWE-426 is the one that names
+> the _root cause_ — untrusted resolution order — rather than the payload.
+>
 > **Conservative by design.** The rule flags **any** dynamic `SET search_path` —
 > it can't prove at lint time that your `%I`/allow-list/integer guard is
 > correct. That's intentional: a dynamic search_path is a decision worth a human
@@ -231,11 +292,32 @@ reasons a human reviewer waves it through:
 
 This is the broader pattern I keep finding: AI doesn't invent novel
 vulnerabilities, it **reproduces the common ones at scale** because its training
-data is full of the insecure-but-popular form. (I dig into this with a
-controller a model wrote in
+data is full of the insecure-but-popular form. It's not a hunch — I measured it.
+When I ran `eslint-plugin-pg` over PostgreSQL data-access functions written by
+five different models, the per-model vulnerability rate on the **Database
+Operations** domain ranged from **39% (Haiku 4.5) to 96% (Gemini 2.5 Pro)** —
+and counterintuitively, the model that wrote the most production-shaped code
+(pooling, env-var config, error handling) tripped the _most_ rules, because that
+polish is exactly what talks a reviewer out of looking closer
+([the full per-domain breakdown is here](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)).
+I dig into the same effect with a controller a model wrote in
 [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes),
-and across 700 functions in
-[I Let Claude Write 60 Functions; 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).)
+and across the whole 700-function corpus in
+[I Let Claude Write 80 Functions; 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
+
+> **I re-ran this pass against Gemini specifically.** Of the five models, **Gemini
+> 2.5 Pro topped the Database Operations domain at 96%** — the same
+> `eslint-plugin-pg` ruleset flagged 96% of its generated DB functions, the
+> highest of any model in the corpus. That isn't a knock on Gemini's reasoning:
+> when I asked it to _fix_ the flagged code, it patched the large majority of its
+> own findings on request. The 96% is a write-time artifact — the model defaults
+> to the insecure-but-popular `SET search_path TO ${schema}` form for the same
+> statistical reason a human reaches for it, then cleans up once a linter points.
+> The head-to-head against Claude on the same prompts is in
+> [Claude vs Gemini Across 4 Security Domains: A Dead Heat](https://ofriperetz.dev/articles/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips).
+> (This is also why the piece carries `#googleai` — it's a one-step
+> [Build with Gemini](https://dev.to/challenges) submission: the Gemini benchmark
+> is already here.)
 
 The practical upshot: the same `no-unsafe-search-path` rule that catches a
 human's slip is the cheapest guardrail you can put between an AI-generated
@@ -280,9 +362,12 @@ that quietly turns one request into thousands of round-trips.
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
 
 **Now go check.** Grep your codebase for `SET search_path` — or just run the
-rule. If you find an interpolated one in a multi-tenant path, that's the
-comment I want to read: was it human-written or did an assistant hand it to
-you, and how long had it been live before anyone noticed?
+rule. The interpolated ones love to hide in a connection hook or tenant
+middleware, one indirection away from the query they actually compromise.
+
+If you find one in a multi-tenant path, here's the one question I want answered
+in the comments: **was it your _reviewer_ or your _model_ that the "it's from a
+trusted source" line talked out of catching it?**
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you found a `SET search_path` you didn't know was there.

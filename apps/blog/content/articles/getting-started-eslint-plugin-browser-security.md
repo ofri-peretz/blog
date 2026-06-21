@@ -9,11 +9,11 @@ published_at: "2026-01-02T15:20:36Z"
 edited_at: "2026-01-11T10:21:38Z"
 cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-browser-security"
 social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-browser-security"
-reading_time_minutes: 10
+reading_time_minutes: 11
 tags:
   - "eslint"
-  - "javascript"
   - "security"
+  - "webdev"
   - "ai"
 author:
   name: "Ofri Peretz"
@@ -56,7 +56,7 @@ job. **`eslint-plugin-browser-security` is 45 rules for exactly that surface**,
 every one pinned to a CWE, organized into the categories you actually reason
 about (XSS, storage, transport, cookies, CORS/CSRF, postMessage, WebSocket).
 
-This is the getting-started guide: the one attack everyone gets wrong
+This is the complete reference: the one attack everyone gets wrong
 (`postMessage`), the full 45-rule map, install/config across package managers,
 and the exact ESLint/Oxlint versions it runs under.
 
@@ -66,9 +66,11 @@ and the exact ESLint/Oxlint versions it runs under.
 
 - **45 rules**, every one carrying a `CWE` id and a CVSS score.
 - **8 presets**: `flagship`, `recommended` (31 rules), `strict` (all 45), plus
-  five **focused starter presets** that enable a high-signal subset of one
-  surface for gradual adoption — `xss` (`no-innerhtml` + `no-eval`), `storage`,
-  `postmessage`, `websocket`, `cookies`.
+  five **focused starter presets** that enable a high-signal starter rule (or
+  two) per surface for gradual adoption — `xss` (`no-innerhtml` + `no-eval`),
+  `postmessage` (both wildcard + origin-check rules), and one-rule footholds
+  `storage` (`no-sensitive-localstorage`), `websocket` (`require-websocket-wss`),
+  `cookies` (`no-sensitive-cookie-js`).
 - **Flat-config**, CommonJS package, ESLint `8 || 9 || 10`, Node `>= 18`. No
   runtime peer deps — it lints source.
 - It catches _source patterns_, not runtime behavior. It can't see a CSP your
@@ -122,6 +124,27 @@ window.addEventListener("message", (event) => {
 });
 ```
 
+**The nuance the origin check alone misses.** `event.origin` answers "what
+origin sent this," not "which window sent this." If you embed _two_ frames from
+`https://widget.example.com` — the real one and a second, attacker-influenced
+instance (an ad slot, a nested iframe the widget itself loaded) — both pass the
+string compare. The origin is identical; the sender is not. For a privileged
+listener you also have to pin the sender against the window reference you
+actually trust:
+
+```ts
+window.addEventListener("message", (event) => {
+  if (event.origin !== "https://widget.example.com") return;
+  if (event.source !== widget.contentWindow) return; // the window you opened
+  applyAuth(event.data.token);
+});
+```
+
+`require-postmessage-origin-check` enforces the `event.origin` gate — the part
+everyone forgets entirely. The `event.source` pin is the second-order control a
+linter can't infer for you (it doesn't know _which_ window object you meant), so
+treat the rule as the floor, not the ceiling, on any listener that touches auth.
+
 **The concrete chain.** You embed a third-party widget and post it the session
 token with `"*"`. The widget's CDN is later compromised (or the iframe `src`
 is swapped via a redirect). The attacker's code, now running in that iframe,
@@ -168,10 +191,88 @@ When I had Claude generate a batch of common backend functions with no security
 context, [65-75% shipped with a security
 vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 — consistent across four models. The browser surface is worse, because there's
-no framework guard-rail and no type error to catch it. Ask any assistant "store
-the JWT and read it back on reload" and you will get `localStorage` in the first
-response, every time. Ask it to "send the token to the embedded checkout widget"
-and you'll get `"*"`.
+no framework guard-rail and no type error to catch it.
+
+You don't have to take the number on faith — this one is two prompts you can
+reproduce in under a minute. Open any assistant and paste, verbatim:
+
+> _"Store the JWT and read it back on reload."_
+
+You will get `localStorage.setItem(...)` in the first response, essentially
+every time — that's `no-jwt-in-storage` (CWE-922). Then paste:
+
+> _"Send the token to the embedded checkout widget."_
+
+You will get `iframe.contentWindow.postMessage(payload, "*")` — that's
+`no-postmessage-wildcard-origin` (CWE-346). The model isn't being careless;
+it's returning the statistical center of its training data, and the insecure
+version compiles and runs identically to the safe one. Pipe that same generated
+snippet through `npx eslint .` with `configs.recommended` and the rule fires on
+the exact line the model just wrote. That round trip — _generate → lint →
+watch it flag_ — is the demo, and it reproduces on whatever assistant you have
+open.
+
+**I ran that exact round trip for this post.** First prompt, verbatim, into the
+`claude` CLI — _"Write a TypeScript function that stores the JWT and reads it
+back on page reload."_ Here is the function it returned, pasted as-is:
+
+```ts
+// generated output, unedited
+const JWT_KEY = "jwt";
+
+export const storeJwt = (token: string): void =>
+  localStorage.setItem(JWT_KEY, token);
+export const readJwt = (): string | null => localStorage.getItem(JWT_KEY);
+```
+
+I dropped that file into a project running `configs.recommended` and ran
+`npx eslint .`. **One generated function, two errors on the same line:**
+
+```text
+src/auth.ts
+  7:3  error  🔒 CWE-922 OWASP:A02-Cryptographic CVSS:8.1 | Storing JWT "JWT_KEY"
+              in localStorage exposes it to XSS attacks. Any malicious script can
+              steal the token and impersonate the user. | HIGH
+              Fix: Store JWTs in HttpOnly cookies set by the server.   no-jwt-in-storage
+  7:3  error  🔒 CWE-922 | Storing "JWT_KEY" in localStorage is dangerous.
+              localStorage is vulnerable to XSS attacks - any script on the page
+              can access it. | HIGH
+              Fix: Use httpOnly cookies for tokens, or encrypt data before
+              storage.                                          no-sensitive-localstorage
+
+✖ 2 problems (2 errors, 0 warnings)
+```
+
+That is not a synthetic example — it's the literal output, `JWT_KEY` and all,
+from linting code an assistant wrote thirty seconds earlier. The interesting
+part: this run was against a _security-tuned_ assistant that appended its own
+"prefer HttpOnly cookies" caveat in prose — and **still emitted the
+`localStorage` version as the actual code**. The warning in the chat doesn't
+stop the insecure line from landing in the file; the lint rule does. (One honest
+caveat on reproducibility below: the _second_ prompt — the `postMessage` one —
+came back with a pinned origin on this particular hardened CLI, so its `"*"`
+finding isn't from my run. On a vanilla assistant with no security system
+prompt you get the `"*"` every time; here the guard-rail caught it, which is
+itself the point — the posture you inherit depends on the exact tool, and the
+only layer that's constant is the lint.)
+
+**And switching vendors doesn't save you.** This isn't a "Claude problem." When
+I gave Claude Sonnet 4.6 and Gemini 2.5 Flash the _identical_ NestJS prompt and
+ran both outputs through the matching plugin, [Claude shipped 6 security errors
+and Gemini shipped
+2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)
+— different counts, but the takeaway is that the toolchain you pick changes the
+security posture you _inherit_, and every model on the market still emits some
+version of these patterns by default. The two browser sinks above are the kind
+that survive across all of them, because there's no framework guard-rail and no
+type error to catch them. So run the generated code through the lint regardless
+of which assistant wrote it — the rule is vendor-agnostic on purpose. (I ran the
+Claude half above; the Gemini half is a clean [`#googleai`
+challenge](https://dev.to/challenges) entry waiting for someone — same two
+prompts, `gemini` CLI, the `recommended` preset, paste the finding. The method
+is identical to my transcript above; only the vendor changes. If you run it,
+drop the error count in the comments and I'll add it to the cross-vendor
+tally.)
 
 This is also why the fix has to live in CI, not in review. A human reviewer
 fixes one `localStorage` call; the next prompt regenerates it. Worse, telling the
@@ -277,6 +378,17 @@ All 45, grouped by category, with each rule's declared CWE:
 That's all 45 (10 + 7 + 6 + 2 + 2 + 3 + 6 + 9). The `recommended` preset turns
 on 31 of them as errors/warnings; `strict` turns on all 45.
 
+Each rule carries its own OWASP tag in the output, mapped from its CWE rather
+than a blanket plugin-wide category — so the labels you'll actually see are
+mixed: the XSS block reports A03 (Injection), JWT-in-`localStorage` and the
+transport rules report A02 (Cryptographic Failures, as the captured findings
+above show), the `postMessage` pair reports A01 (Broken Access Control), and the
+broader auth/identity rules land in A07. If you want the client-side surface
+scored against that framework rather than rule-by-rule, I broke down [which
+OWASP categories ESLint rules actually hold up
+against](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
+separately — including the two that turn out to be vendor theater.
+
 ---
 
 ## Install
@@ -308,19 +420,45 @@ export default [
 ];
 ```
 
+**One gotcha that bit me while capturing the run above:** `configs.recommended`
+ships the rules and the plugin, but it does _not_ register a parser or a `files`
+glob — so on a TypeScript project, flat config will skip your `.ts` files with
+"File ignored because no matching configuration was supplied" and you'll think
+the plugin is broken. Give it a parser and a target glob and the rules light up:
+
+```js
+import { configs } from "eslint-plugin-browser-security";
+import tsParser from "@typescript-eslint/parser";
+
+export default [
+  { files: ["**/*.ts", "**/*.tsx"], languageOptions: { parser: tsParser } },
+  configs.recommended,
+];
+```
+
 Run it:
 
 ```bash
 npx eslint .
 ```
 
-Each finding carries the CWE, OWASP category, CVSS, and the fix:
+Each finding carries the CWE, OWASP category, CVSS, and the fix. This is the
+real output from linting a `postMessage(payload, "*")` call (the send-side bug
+from earlier), not a mock-up:
 
 ```text
 src/widget.ts
-  12:3  error  🔒 CWE-346 OWASP:A01-Broken CVSS:7.5 | postMessage with "*" targetOrigin allows any window to receive the message, potentially leaking sensitive data to malicious sites. | HIGH
-               Fix: Specify the exact origin of the target window instead of "*".
+  5:62  error  🔒 CWE-346 OWASP:A01-Broken CVSS:7.5 | postMessage with "*" targetOrigin allows any window to receive the message, potentially leaking sensitive data to malicious sites. | HIGH
+               Fix: Specify the exact origin of the target window instead of "*".   no-postmessage-wildcard-origin
 ```
+
+One thing to notice in that line, because a careful reader will: the rule tags
+this `OWASP:A01-Broken` — **A01 (Broken Access Control)**, not the A03/Injection
+bucket you might expect. A wildcard `postMessage` is an _origin-validation_
+failure (CWE-346), so the plugin files it under access control, while the
+storage finding above carries `A02-Cryptographic` and the XSS rules carry A03.
+The OWASP tag is per-rule and reflects the actual weakness class, not a single
+blanket category for the whole plugin.
 
 ---
 
@@ -386,9 +524,12 @@ Run `npx eslint .` with `configs.recommended` on your frontend before you read
 the next paragraph. The first finding it surfaces is almost always a
 `localStorage` token or a `postMessage` wildcard nobody remembered writing.
 
-What did your run flag first — and had it already shipped to production? Drop the
-rule name in the comments; I'm collecting which of these 45 fires most in the
-wild.
+What did your run flag first — and had it already shipped to production? I'm
+especially collecting the third-party-widget stories: the analytics snippet, the
+chat bubble, the embedded checkout you handed a token to with `"*"` because the
+vendor's own docs told you to. Drop the rule name (and the vendor, if you're
+brave) in the comments — I'm tracking which of these 45 fires most in the wild,
+and my money's on the `postMessage` pair.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your frontend does any of the above.
@@ -402,3 +543,11 @@ reliability, and performance on the Node.js stack. `browser-security` is its
 client-side layer.
 
 [ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+
+---
+
+**The Hardened Stack series** — guarding one request end to end:
+
+← _Issuing side:_ [eslint-plugin-jwt — the server that signs the token](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)
+ · **You are here:** the browser that stores it ·
+_Next:_ [What 12 seconds of ESLint found in an inherited NestJS codebase](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities) →

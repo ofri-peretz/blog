@@ -26,17 +26,20 @@ author:
 series: null
 ---
 
-"How do you address the OWASP Top 10?" is now a line item on every enterprise
-security questionnaire, and the box everyone wants to check is "100% covered by
-static analysis." I've built ten security ESLint plugins, and I'll tell you the
-number to your face: **static analysis genuinely catches 8 of the 10 web
-categories at the source. The other 2, it cannot — and any tool that claims it
-does is mapping a defaults rule to "Insecure Design" and hoping you don't open
-the OWASP page.**
+Every "100% OWASP coverage by static analysis" slide is off by two — and the
+vendor selling it is counting on you not opening the OWASP page to check. I've
+built ten security ESLint plugins, and here's the number to your face:
+**static analysis genuinely catches 8 of the 10 web categories at the source.
+The other 2, it cannot.** Anyone claiming 10 is mapping a `require-secure-defaults`
+rule to "Insecure Design" and hoping the auditor nods along.
 
-That 8-of-10 is the honest answer, and it's more useful than the checkbox —
-because the line between "control you can _audit_" and "compliance-theater
-slide" is exactly which two you stop pretending to cover.
+"How do you address the OWASP Top 10?" is now a line item on every enterprise
+security questionnaire, and the box everyone reaches for is "100% covered." That
+8-of-10 is the honest answer instead — and it's the _more useful_ one, because
+the line between "control you can _audit_ at the call site" and "compliance-theater
+slide" is exactly which two categories you stop pretending to cover. Get that line
+wrong and you ship a SOC 2 report that says "Insecure Design: covered" over a
+money-moving endpoint with no rate limit. I've signed off on that report. So have you.
 
 No single plugin gets you the 8, either. SQL injection needs database-aware
 rules; JWT attacks need token-aware rules; DOM XSS needs browser-aware rules. So
@@ -45,7 +48,9 @@ the map below spans **ten domain-security plugins** (part of the
 CWE, and most findings carry the classic OWASP category the CWE rolls up to, so
 the evidence is greppable, not hand-waved — and the count is whatever your
 installed version actually ships, which you can read for yourself (one-liner at
-the end), not a frozen number on a slide.
+the end), not a frozen number on a slide. (Yes, the URL says a number. It was
+true the day I wrote it; the only count I trust is the one your CI prints from
+your own `node_modules`. Don't take mine — or any vendor's — on faith.)
 
 > This is the **web** OWASP Top 10 (2021). The AI/LLM list is mapped separately
 > in [the OWASP LLM Top 10 piece](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) —
@@ -116,6 +121,13 @@ sends `id = 1 OR 1=1` or a token with `"alg":"none"`. There's no red flag in
 the syntax; the vulnerability is in what's _missing_ (a parameter slot, an
 algorithm list), and humans are bad at reviewing absence.
 
+I've watched a staff engineer — someone who would catch this instantly on a
+whiteboard — approve exactly that `jwt.verify` line, because in a diff it was one
+green-looking call surrounded by forty lines of legitimate refactor. The bug
+wasn't a knowledge gap. It was attention budget. That's why "just train people to
+review for security" never holds: it asks every reviewer to spot the absence of a
+parameter, on every PR, forever, while tired. A rule never gets tired.
+
 Now point an AI assistant at the same code. Ask it to "add an endpoint that
 looks up a user by ID" and a large share of models will hand you the
 concatenated query — because they were trained on the same Stack Overflow
@@ -127,9 +139,14 @@ when I handed it a clean NestJS service,
 reintroduced](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
 The assistant doesn't make _new_ classes of mistake — it makes the _same_
 OWASP-category mistakes, at the speed of autocomplete, and it makes them look
-even more idiomatic than the human version did. Worse, the fix gets re-broken:
-patch one AI-suggested injection and the next prompt cheerfully reintroduces it,
-[the "AI hydra"
+even more idiomatic than the human version did. And it's not one rogue model:
+when I [ranked five frontier models by the security of the code they
+wrote](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+**every one of them leaked — a 49–73% vulnerability rate across all five**, with
+auth-failure patterns alone showing up in 29–50% of generated functions. The
+OWASP categories below are where _all_ of them leak, not a quirk of one vendor. Worse,
+the fix gets re-broken: patch one AI-suggested injection and the next prompt
+cheerfully reintroduces it, [the "AI hydra"
 problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
 
 That's the actual case for mapping this to CI rather than to a checklist. A
@@ -267,6 +284,7 @@ it, and the code that survived review:
 - [`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — SQL injection (A03), connection leaks, the N+1 insert loop
 - [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the A05 attack (CWE-426) most teams have never heard of
 - [I let Claude write 80 functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — what these rules catch when the author is a model, not a person (65–75% had a vuln)
+- [We ranked 5 AI models by security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) — 700 functions, every model leaking 49–73%, scored by 332 of these rules
 - [OWASP LLM Top 10](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the AI list, mapped just as honestly (also 8 of 10)
 
 ---
