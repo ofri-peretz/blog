@@ -59,7 +59,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "eslint-plugin-browser-security": "^1.2.3",
-    "eslint-plugin-conventions": "^4.0.7",
+    "eslint-plugin-conventions": "^4.1.0",
     "eslint-plugin-import-next": "^2.3.6",
     "eslint-plugin-maintainability": "^3.0.3",
     "eslint-plugin-modernization": "^2.0.4",
