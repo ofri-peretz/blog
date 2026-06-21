@@ -79,6 +79,27 @@ const nextConfig: NextConfig = {
           "/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster",
         permanent: true,
       },
+      // nestjs-security: renamed off the underperforming "getting-started-…"
+      // URL pattern to the verdict-style slug that matches the title. Preserve
+      // the original published canonical for SEO + inbound links.
+      {
+        source: "/articles/getting-started-eslint-plugin-nestjs-security",
+        destination: "/articles/nestjs-guards-pipes-throttlers-6-eslint-rules",
+        permanent: true,
+      },
+      // AI-security Part 1: the title + body say "80 functions" (4 models ×
+      // 20), but the published canonical slug + dev.to permalink say "60"
+      // (the original 3-model run, before Opus 4.6 was appended). The 60-slug
+      // is indexed and 27 sibling articles link to it, so it stays canonical.
+      // This catches readers who type/share the intuitive "80" URL and lands
+      // them on the canonical instead of a 404.
+      {
+        source:
+          "/articles/i-let-claude-write-80-functions-65-75-had-security-vulnerabilities",
+        destination:
+          "/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities",
+        permanent: true,
+      },
     ];
   },
 };
