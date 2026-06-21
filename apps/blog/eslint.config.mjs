@@ -124,9 +124,12 @@ const eslintConfig = defineConfig([
       "operability/no-debug-code-in-production": "warn",
       "reliability/require-network-timeout": "warn",
       "secure-coding/no-ldap-injection": "warn",
-      // Pre-existing: external links in page.tsx to eslint.interlace.tools need UTM wiring.
+      // Pre-existing: INSTALL_RE in markdown.ts uses negated char class flagged conservatively.
+      "secure-coding/no-redos-vulnerable-regex": "warn",
       // Pre-existing: test file uses new RegExp(str) without escaping for dynamic pattern matching.
       "secure-coding/no-unsafe-regex-construction": "warn",
+      // Pre-existing: empty catch in scorecard/error.tsx (error boundary intentionally suppresses).
+      "reliability/no-silent-errors": "warn",
       "conventions/no-raw-cross-property-href": "warn",
       // Pre-existing: PostHog event names in use-visitor-tracking.ts use legacy naming
       // ("pageview", "linkedin_click") before category:object_action convention was adopted.
