@@ -14,7 +14,7 @@ tags:
   - "eslint"
   - "javascript"
   - "security"
-  - "browser"
+  - "ai"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -24,7 +24,8 @@ series: "The Hardened Stack"
 ---
 
 Your backend gets a pentest. Your API has rate limits, parameterized queries,
-and a WAF. Then the SPA does this:
+and a WAF. The whole security budget points at the server. Then the SPA — the
+part that actually holds the user's session in their browser — does this:
 
 ```ts
 localStorage.setItem("token", jwt); // readable by any injected script
@@ -36,6 +37,17 @@ fetch("http://api.example.com/me"); // plaintext on the wire
 None of those throw. None fail a unit test. None show up in a backend audit —
 they execute in the browser, on the user's machine, after your server is done.
 The type-checker is happy; `innerHTML` is a `string`.
+
+**Why these survive code review.** Every one of these lines reads as the
+boring, correct way to do the task. `localStorage.setItem("token", jwt)` is
+the first result for "store JWT frontend." `postMessage(data, "*")` is what the
+iframe vendor's own snippet ships. `el.innerHTML = bio` renders the profile and
+the reviewer is looking at whether the bio _displays_, not where the string came
+from. None of them look like a security bug — they look like working code that
+passed CI — so a senior approves the PR in thirty seconds and moves on. The
+failure isn't ignorance; it's that the dangerous version and the safe version are
+visually almost identical, and nothing in the toolchain draws the line. That's
+exactly the line a linter can draw.
 
 The browser is its own security boundary, and the bugs that live there —
 DOM XSS, token exfiltration via `postMessage`, JWT-in-`localStorage`, mixed
@@ -140,6 +152,36 @@ dependency, or a malicious browser extension. There is no `HttpOnly` for
 
 `no-jwt-in-storage`, `no-sensitive-localstorage`, `no-sensitive-sessionstorage`,
 and `no-sensitive-indexeddb` (all **CWE-922**) cover the storage surface.
+
+---
+
+## Your AI assistant ships every one of these by default
+
+Here's the part that turns this from "legacy debt" into "today's problem." The
+two patterns above — JWT in `localStorage`, `postMessage` to `"*"` — are exactly
+what an LLM emits when you ask it to wire up auth or talk to an iframe. They're
+the statistical center of its training data: a decade of Stack Overflow answers
+and starter repos that did it the easy way. The model is optimizing for "code
+that runs," and the insecure version runs identically.
+
+When I had Claude generate a batch of common backend functions with no security
+context, [65-75% shipped with a security
+vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+— consistent across four models. The browser surface is worse, because there's
+no framework guard-rail and no type error to catch it. Ask any assistant "store
+the JWT and read it back on reload" and you will get `localStorage` in the first
+response, every time. Ask it to "send the token to the embedded checkout widget"
+and you'll get `"*"`.
+
+This is also why the fix has to live in CI, not in review. A human reviewer
+fixes one `localStorage` call; the next prompt regenerates it. Worse, telling the
+model "make it secure" without a checker tends to spawn a _new_ class of bug
+while patching the old one — the [AI Hydra
+pattern](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
+I documented separately. A lint rule is the only thing in the loop that flags the
+regenerated bug as reliably as the original. `eslint-plugin-browser-security`
+turns each of these into a CI error the moment the generated code lands — whether
+a human or a model wrote it.
 
 ---
 
@@ -323,6 +365,15 @@ client-side member of the [Interlace](https://eslint.interlace.tools) family,
 complementary to the server-side plugins (`-express-security`,
 `-nestjs-security`, `-jwt`, …) that guard the other side of the request.
 
+The token in that `localStorage` call has to come from somewhere. This plugin
+catches the client mishandling it; on the issuing side,
+[`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)
+catches the server that signs it wrong — most infamously the
+[`alg: none` forgery](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g),
+where a one-character header change mints an admin token. Both are part of **The
+Hardened Stack** series; run them together and you've covered the JWT's whole
+round trip — minted, signed, transported, and stored.
+
 ---
 
 ## Links
@@ -330,6 +381,14 @@ complementary to the server-side plugins (`-express-security`,
 - 📦 [npm: eslint-plugin-browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
 - 📖 [Full rule docs (per-rule CWE + examples)](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-browser-security)
+
+Run `npx eslint .` with `configs.recommended` on your frontend before you read
+the next paragraph. The first finding it surfaces is almost always a
+`localStorage` token or a `postMessage` wildcard nobody remembered writing.
+
+What did your run flag first — and had it already shipped to production? Drop the
+rule name in the comments; I'm collecting which of these 45 fires most in the
+wild.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your frontend does any of the above.

@@ -1,6 +1,6 @@
 ---
-title: "I Inherited a NestJS Codebase. The First Lint Run Found 6 Vulnerabilities."
-description: "The codebase had 2 years of feature PRs and zero security audits. In 30 minutes, a fresh ESLint run surfaced 6 distinct vulnerability classes — auth bypass, sensitive field leaks, brute-force exposure, and three more. Here's what each one looks like and why it survived code review."
+title: "I Inherited a NestJS Codebase. 12 Seconds of ESLint Found 47 Violations Across 6 Vulnerability Classes."
+description: "The codebase had 2 years of feature PRs and zero security audits. A 12-second ESLint run surfaced 47 violations across 6 distinct vulnerability classes — auth bypass, sensitive field leaks, brute-force exposure, and three more. Here's what each one looks like, why it survived code review, and why your AI assistant writes the same six today."
 slug: "i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities"
 canonical_url: "https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities"
 devto_url: "https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma"
@@ -10,9 +10,9 @@ cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/jr9sy2gzv
 social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/jr9sy2gzvsl2w7j2uuvi.png"
 reading_time_minutes: 8
 tags:
-  - "nestjs"
   - "security"
   - "node"
+  - "ai"
   - "devsecops"
 reactions: 0
 comments: 0
@@ -29,7 +29,16 @@ Code review checks for what's there. Static analysis checks for what's missing.
 
 That asymmetry is why a codebase can have CI, tests, TypeScript strict mode, and two years of feature PRs — and still ship 6 distinct vulnerability classes that no reviewer caught. Not because reviewers were careless. Because every one of these bugs required noticing the _absence_ of something: a missing decorator, a missing pipe, a missing guard. That's off the mental stack when you're reading route logic.
 
-The first run of `eslint-plugin-nestjs-security` on a 40K-line production codebase took 12 seconds. It found 47 violations. Here are all 6 — and exactly why each one survived code review.
+The first run of `eslint-plugin-nestjs-security` on a 40K-line production codebase took 12 seconds. It found 47 violations across 6 distinct vulnerability classes — auth bypass, sensitive field leaks, brute-force exposure, and three more. Nobody had touched a security tool in two years. Twelve seconds.
+
+If you just inherited a NestJS service and your stomach is now in a knot, run it on yours before reading further — it's one install, [full config is below](#the-config):
+
+```bash
+npm install --save-dev eslint-plugin-nestjs-security
+npx eslint src/
+```
+
+Here are all 6 — and exactly why each one survived code review.
 
 ---
 
@@ -258,6 +267,8 @@ export class HealthController {
 
 ---
 
+<a id="the-config"></a>
+
 ## The config that catches all 6 in one pass
 
 ```javascript
@@ -292,15 +303,35 @@ Bugs 4 and 5 interact. `whitelist: true` on the `ValidationPipe` strips the `rol
 
 ---
 
-_Which of these six hit production before anyone noticed — and how did you find out? Drop the worst one below._
+## These aren't legacy bugs. Your AI assistant writes them today.
+
+Here's the part that turned this from a one-off cleanup into a rule set I now run on everything: these six patterns are not artifacts of 2018 NestJS or a junior who didn't know better. They are the _default output of a competent developer moving fast_ — which is exactly what a coding assistant emulates.
+
+I gave Claude Sonnet 4.6 a single prompt — "Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel." — and ran the same plugin on the result. It produced 200 lines of clean, TypeScript-passing NestJS, and **6 errors in 3 seconds**: the same unguarded admin controller, the same `password` in the response body, the same unthrottled login route, the same debug endpoint returning `DATABASE_URL`. Not similar bugs — the same six classes. I wrote that up in [Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). Running the same prompt through Gemini 2.5 Flash got the count down to 2 — but it still shipped auth endpoints with no rate limiting ([Claude vs Gemini, same prompt, different errors](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)).
+
+The reason is the same reason these survived human review: an LLM optimizes for the route logic you asked for, and the security boundary is the _absence_ of something it was never prompted to add. A guard that isn't there doesn't show up in a diff, doesn't fail a type check, and doesn't fail a unit test that mocked it. It only shows up in structural analysis — which is the entire premise of [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
+
+So the inherited codebase and the AI-generated one converge on the same lint config. Whether the `password` leak came from a 2-year-old PR or from yesterday's autocomplete, `no-exposed-private-fields` fires identically.
+
+## Why this survived review (the pattern underneath all six)
+
+Look back at the six "why it survived review" notes and the failure mode is identical every time: **the security control existed somewhere the reviewer trusted, so the reviewer stopped looking.** The global guard "was in `main.ts`." Rate limiting "was at the nginx layer." The debug endpoint "was disabled in production." The DTO "was typed." In each case a senior engineer waved the PR through not out of negligence but because the diff in front of them was locally correct — and the broken assumption lived in a different file, a different sprint, or a different team's config. Code review verifies the lines that changed. None of these bugs were in the lines that changed.
+
+That's why a structural linter is not a downgrade from human review — it's the half of the review that humans are structurally bad at. For the full protocol I run on day one of any inherited service — the three plugins, the `jq` one-liner that ranks findings by rule, and how to read the heatmap — see [I Inherited a 3,000-Line Codebase. One ESLint Run Found 26 Critical Security Bugs](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
 ---
 
-📦 [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security) — 6 security rules for NestJS
+_Which of these six hit production before anyone noticed — and what was the moment you found out: a pentest, a 2 a.m. page, or a user emailing you a screenshot of `/debug/config`? Drop the worst one below._
+
+---
+
+📦 [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security) — 6 security rules for NestJS · [rule docs](https://eslint.interlace.tools)
 
 {% cta <https://github.com/ofri-peretz/eslint> %}
 ⭐ Star on GitHub
 {% endcta %}
+
+**Companion pieces:** the same six classes in [AI-generated code](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes) · the [Claude vs Gemini](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) head-to-head · the full [day-one audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) for an inherited codebase.
 
 ---
 

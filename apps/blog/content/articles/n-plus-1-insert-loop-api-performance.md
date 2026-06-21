@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/n-plus-1-insert-loop-api-performan
 social_image: "https://ofriperetz.dev/og/article/n-plus-1-insert-loop-api-performance"
 reading_time_minutes: 6
 tags:
-  - "eslint"
-  - "postgres"
-  - "performance"
   - "node"
+  - "performance"
+  - "ai"
+  - "eslint"
 reactions: 1
 comments: 3
 views: 0
@@ -26,9 +26,9 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-**Architectural bottlenecks like N+1 loops can degrade API performance by 99% before you notice. Here is how we use static analysis to detect and fix loop-driven performance regression at the commit level.**
+**The same six lines that passed code review and shipped clean turned a 100ms bulk write into a 50-second timeout at 1,000 rows — 500x slower. Here is the N+1 insert shape, why it survives review every time, and the one ESLint rule that catches it at the commit.**
 
-Our CSV import endpoint was timing out. 30 seconds wasn't enough.
+Our CSV import endpoint was timing out. 30 seconds wasn't enough — and the function behind it had been reviewed, merged, and running in production for weeks. Nobody wrote a bug. Somebody wrote a `for` loop.
 
 ## The Problem
 
@@ -44,19 +44,29 @@ async function importUsers(users) {
 }
 ```
 
-For 1000 users:
+The cost is not the inserts — it's the round trips. Each `await pool.query(...)`
+is one sequential network round trip to the database. For 1,000 users:
 
-- 1000 round trips to database
-- ~50ms per query
-- **50 seconds total**
+- 1,000 round trips, run one after another
+- ~50ms each (a realistic managed-Postgres round trip, not raw insert time)
+- **~50 seconds total**
 
 ## Why It Matters
 
-| Rows  | N+1 Time | Bulk Time | Speedup |
-| ----- | -------- | --------- | ------- |
-| 100   | 5s       | 50ms      | 100x    |
-| 1000  | 50s      | 100ms     | 500x    |
-| 10000 | 500s     | 500ms     | 1000x   |
+The N+1 column below is just `rows × per-round-trip latency` — it scales
+linearly with row count, and the constant is your network, not your schema. The
+bulk column is a single round trip regardless of size. Plug in your own p99
+round-trip latency and the ratio holds:
+
+| Rows   | N+1 (≈ rows × 50ms) | Bulk (1 round trip) | Speedup |
+| ------ | ------------------- | ------------------- | ------- |
+| 100    | ~5s                 | ~50ms               | ~100x   |
+| 1,000  | ~50s                | ~100ms              | ~500x   |
+| 10,000 | ~500s               | ~500ms              | ~1000x  |
+
+That's the trap: at 5 rows in a dev seed file, both columns are imperceptible.
+The N+1 loop and the bulk insert look identical on a laptop. The gap only opens
+at production row counts — which is exactly why it clears review.
 
 ## The Correct Pattern: Bulk Insert
 
@@ -86,11 +96,32 @@ async function importUsers(users) {
 }
 ```
 
+## Why this survived code review
+
+Nobody on the team was careless. The loop survived review because, by every
+signal a reviewer has, it is correct:
+
+- **It's idiomatic.** "Iterate the array, insert each row" is the most natural
+  way to express the intent. It reads like the spec sentence.
+- **It passed tests.** The unit test seeded three or four rows. Three round
+  trips finish in single-digit milliseconds — green, fast, merged.
+- **It's not a bug.** There's no off-by-one, no injection, no null deref. A
+  reviewer scanning a 40-file PR for _wrong_ code finds nothing wrong, because
+  nothing is wrong. The code is correct and slow, and "slow" is invisible until
+  the data shows up.
+
+Performance regressions like this don't get caught in review because review
+operates on the diff, not on the production row count. The reviewer would have
+needed to mentally multiply the loop body by 10,000 and know the per-round-trip
+latency — for every loop in every PR. Humans don't do that consistently, and we
+shouldn't ask them to. A linter does it on every line, every commit, for free.
+
 ## The Rule: [`pg/no-batch-insert-loop`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-batch-insert-loop)
 
-This pattern is detected by the [`pg/no-batch-insert-loop`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-batch-insert-loop) rule from `eslint-plugin-pg`.
-
-## Let ESLint Catch This
+The [`pg/no-batch-insert-loop`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-batch-insert-loop)
+rule from `eslint-plugin-pg` flags this shape statically — no profiler, no load
+test, no waiting for the data to show up. One command and it's watching every
+loop in the repo:
 
 ```bash
 npm install --save-dev eslint-plugin-pg
@@ -150,6 +181,25 @@ A _literal_ `query("DELETE ...")` or `query("SELECT ...")` in a loop is
 intentionally skipped by the fast path — keeping the rule focused on the
 write-amplifying `INSERT`/`UPDATE` shape.
 
+## The AI assistant will write this loop for you
+
+This pattern isn't fading — it's accelerating. Ask any coding assistant (Claude,
+Copilot, Gemini) to "insert a list of users into Postgres" and the loop-with-an-`INSERT`
+is one of the most common shapes you get back. It's the literal reading of the
+prompt, and the model learned from a decade of public code that wrote it exactly
+this way. The assistant optimizes for "this looks like working code" — and a
+sequential insert loop _looks_ like working code. It runs, it returns, it passes
+the same three-row test a human would have written. The latency cliff is
+invisible to the model for the same reason it's invisible in review.
+
+The rule doesn't care who typed it. It's purely AST-structural: it sees a write
+query inside a loop and flags the shape, whether a human, a model, or a
+copy-paste from an old gist put it there. That's the whole case for running
+structural rules on generated code — the layer that catches what the model
+can't see about its own output. (I've written more on
+[what happens when you point ESLint at AI-generated code](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+and [the six holes one lint run found in a Claude-written service](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).)
+
 ## Other Bulk Patterns
 
 ### Bulk Update
@@ -194,6 +244,16 @@ scale, before it ships. (It's one of 13 rules in `eslint-plugin-pg`; the
 [pg getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg)
 covers the rest — SQL injection, `search_path` hijacking, connection leaks.)
 
+> **Part of the [Postgres Security Protocol](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) series.**
+> The N+1 insert loop is one member of a family: code that passes review because
+> it's _correct_, then fails at production scale because of how it uses the pool.
+> Its siblings:
+> [a missing `client.release()` that exhausted the pool at 3 AM](https://ofriperetz.dev/articles/database-connection-leak-production-outage),
+> and
+> [`BEGIN` on a pool scattering one transaction across connections](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool).
+> Same root cause — the pool is invisible until it isn't — same fix: catch the
+> shape at the commit, not the incident.
+
 ---
 
 - 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
@@ -203,6 +263,11 @@ covers the rest — SQL injection, `search_path` hijacking, connection leaks.)
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if a loop has ever turned your bulk import into a timeout.
 ::
+
+**What was your N+1?** The one that looked fine in review, passed the seed-data
+test, and only showed its teeth when real traffic — or a real CSV — hit it. How
+many rows in before someone noticed, and what finally surfaced it: a timeout, a
+pager, or a customer? Tell me in the comments.
 
 ---
 

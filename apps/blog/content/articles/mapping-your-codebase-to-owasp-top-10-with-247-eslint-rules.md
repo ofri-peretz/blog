@@ -1,6 +1,6 @@
 ---
-title: "8 of the OWASP Top 10 Are ESLint Rules. 2 Aren't — and That's the Honest Audit Answer."
-description: "A real, auditable mapping of the OWASP Top 10 (2021) to ten domain-security ESLint plugins: which categories a CWE-tagged rule genuinely catches in CI, and the two (Insecure Design, Vulnerable Components) that need controls beyond source analysis."
+title: "I Mapped the OWASP Top 10 to ESLint Rules. 8 Hold Up. 2 Are Vendor Theater."
+description: "A real, auditable mapping of the OWASP Top 10 (2021) to ten domain-security ESLint plugins: which categories a CWE-tagged rule genuinely catches in CI, the two (Insecure Design, Vulnerable Components) that need controls beyond source analysis, and what happens when you point these rules at AI-generated code."
 slug: "mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules"
 canonical_url: "https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules"
 devto_url: "https://dev.to/ofri-peretz/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules-25f0"
@@ -11,9 +11,9 @@ cover_image: "https://ofriperetz.dev/og/cover/mapping-your-codebase-to-owasp-top
 social_image: "https://ofriperetz.dev/og/article/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules"
 reading_time_minutes: 8
 tags:
-  - "eslint"
   - "security"
-  - "owasp"
+  - "ai"
+  - "node"
   - "devsecops"
 reactions: 1
 comments: 0
@@ -27,18 +27,25 @@ series: null
 ---
 
 "How do you address the OWASP Top 10?" is now a line item on every enterprise
-security questionnaire. The honest answer is more useful than a "100% covered"
-checkbox — because **static analysis genuinely catches 8 of the 10 web
-categories at the source, and the other 2 are not source patterns at all.**
-Knowing which is which is the difference between a control you can _audit_ and a
-compliance-theater slide.
+security questionnaire, and the box everyone wants to check is "100% covered by
+static analysis." I've built ten security ESLint plugins, and I'll tell you the
+number to your face: **static analysis genuinely catches 8 of the 10 web
+categories at the source. The other 2, it cannot — and any tool that claims it
+does is mapping a defaults rule to "Insecure Design" and hoping you don't open
+the OWASP page.**
 
-No single plugin covers it. SQL injection needs database-aware rules; JWT
-attacks need token-aware rules; DOM XSS needs browser-aware rules. So the map
-below spans **ten domain-security plugins** (part of the 19-plugin
+That 8-of-10 is the honest answer, and it's more useful than the checkbox —
+because the line between "control you can _audit_" and "compliance-theater
+slide" is exactly which two you stop pretending to cover.
+
+No single plugin gets you the 8, either. SQL injection needs database-aware
+rules; JWT attacks need token-aware rules; DOM XSS needs browser-aware rules. So
+the map below spans **ten domain-security plugins** (part of the
 [Interlace](https://eslint.interlace.tools) ecosystem). Every rule carries a
 CWE, and most findings carry the classic OWASP category the CWE rolls up to, so
-the evidence is greppable, not hand-waved.
+the evidence is greppable, not hand-waved — and the count is whatever your
+installed version actually ships, which you can read for yourself (one-liner at
+the end), not a frozen number on a slide.
 
 > This is the **web** OWASP Top 10 (2021). The AI/LLM list is mapped separately
 > in [the OWASP LLM Top 10 piece](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) —
@@ -90,6 +97,45 @@ security reviewer actually wants:
 
 Anyone selling you "automated 100% OWASP" is mapping a defaults rule to
 "Insecure Design" and hoping you don't open the OWASP page. You should.
+
+---
+
+## Why these survive code review (and why AI now ships them faster)
+
+None of the 8 categories above are exotic. They survive review for boring,
+human reasons — and the same reasons are now amplified by the assistant in your
+editor.
+
+Take A03/A07. The reason `client.query('SELECT * FROM t WHERE id = ' + id)` and
+`jwt.verify(token, secret)` without an `algorithms` allowlist sail through PR
+review is that **they look like the happy path**. The string concatenation reads
+as "build a query." The verify call reads as "check the token." A reviewer
+skimming a 600-line diff at 5pm pattern-matches on intent, not on the trust
+boundary — and both lines _do_ what they appear to do, right up until someone
+sends `id = 1 OR 1=1` or a token with `"alg":"none"`. There's no red flag in
+the syntax; the vulnerability is in what's _missing_ (a parameter slot, an
+algorithm list), and humans are bad at reviewing absence.
+
+Now point an AI assistant at the same code. Ask it to "add an endpoint that
+looks up a user by ID" and a large share of models will hand you the
+concatenated query — because they were trained on the same Stack Overflow
+answers that shipped it for fifteen years. I let Claude write 80 functions and
+[65–75% carried a security
+vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities);
+when I handed it a clean NestJS service,
+[the linter still found 6 holes the model
+reintroduced](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
+The assistant doesn't make _new_ classes of mistake — it makes the _same_
+OWASP-category mistakes, at the speed of autocomplete, and it makes them look
+even more idiomatic than the human version did. Worse, the fix gets re-broken:
+patch one AI-suggested injection and the next prompt cheerfully reintroduces it,
+[the "AI hydra"
+problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
+
+That's the actual case for mapping this to CI rather than to a checklist. A
+human reviewer gets tired and a checklist gets stale, but a rule that fires on
+`OWASP:A03-Injection` at the call site doesn't care whether a person or a model
+typed the line. The rules below are the same whether the author has a pulse.
 
 ---
 
@@ -181,6 +227,19 @@ see [its honest OWASP-LLM map](https://ofriperetz.dev/articles/100-owasp-llm-top
 - run: npx eslint . --max-warnings 0
 ```
 
+Want the exact rule count your install ships, instead of trusting a number in a
+title? Count it from your own `node_modules` — this is the only count that
+matters, because it's the one running in your CI:
+
+```bash
+# rules across every interlace security plugin you've installed
+for p in secure-coding node-security jwt pg mongodb-security \
+         browser-security express-security nestjs-security \
+         lambda-security vercel-ai-security; do
+  node -e "try{console.log(Object.keys(require('eslint-plugin-'+process.argv[1]).rules).length)}catch{console.log(0)}" "$p"
+done | paste -sd+ - | bc
+```
+
 ---
 
 ## Compatibility
@@ -200,13 +259,15 @@ Every plugin in the map ships the same contract:
 
 ## Where this fits
 
-This is the ecosystem-level OWASP view. Each plugin has a deep-dive that walks
-its full rule set and the attacks behind them:
+This is the ecosystem-level OWASP view — the index page of a larger series. Each
+category above has a deep-dive that walks the full rule set, the attack behind
+it, and the code that survived review:
 
-- [`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) — the `alg:none` bypass and 12 more auth rules
-- [`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — SQL injection, connection leaks, the N+1 insert loop
-- [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the A05 attack most teams have never heard of
-- [OWASP LLM Top 10](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the AI list, mapped just as honestly
+- [`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) — the `alg:none` bypass (A07) and 12 more auth rules
+- [`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — SQL injection (A03), connection leaks, the N+1 insert loop
+- [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the A05 attack (CWE-426) most teams have never heard of
+- [I let Claude write 80 functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — what these rules catch when the author is a model, not a person (65–75% had a vuln)
+- [OWASP LLM Top 10](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the AI list, mapped just as honestly (also 8 of 10)
 
 ---
 
@@ -215,11 +276,17 @@ its full rule set and the attacks behind them:
 - 📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) (core) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt) · [pg](https://www.npmjs.com/package/eslint-plugin-pg)
 - 📖 [Full rule docs (per-rule CWE + OWASP)](https://eslint.interlace.tools)
 - 🔐 [OWASP Top 10 (2021)](https://owasp.org/www-project-top-ten/)
-- 💻 [Source on GitHub — the 19-plugin ecosystem](https://github.com/ofri-peretz/eslint)
+- 💻 [Source on GitHub — the full Interlace plugin ecosystem](https://github.com/ofri-peretz/eslint)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub if "how do you cover the OWASP Top 10?" has ever landed in your inbox.
+⭐ Star on GitHub if this is on your roadmap.
 ::
+
+What's the OWASP category you've watched a team _claim_ on a security
+questionnaire and then completely fail to control in the actual code — the gap
+between the slide and the call site? I'll start: I've lost count of the "Insecure
+Design: covered ✅" answers sitting on top of a money-moving endpoint with no
+rate limit. Tell me yours.
 
 ---
 

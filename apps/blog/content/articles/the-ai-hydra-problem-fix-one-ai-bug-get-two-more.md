@@ -13,8 +13,8 @@ reading_time_minutes: 12
 tags:
   - "ai"
   - "security"
+  - "devsecops"
   - "javascript"
-  - "eslint"
 reactions: 0
 comments: 0
 views: 0
@@ -27,6 +27,8 @@ series: "AI Security Benchmark Series"
 ---
 
 ## TL;DR
+
+I asked Claude to fix its own security bugs. **One in three "fixes" introduced a brand-new vulnerability** — in a category the original code never had. The developer reviewing the diff would see the original finding gone and approve it.
 
 In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
 
@@ -79,6 +81,12 @@ The model didn't just fix the original bug. It **traded one vulnerability class 
 The common assumption is: _"Sure, AI generates some insecure code, but this is where AI is great! — just tell it what's wrong and it'll fix it."_
 
 **That assumption is incomplete.** The fix process itself can introduce new attack surfaces. And because the new vulnerabilities are in _different categories_ than the original, a developer reviewing the "fix" may approve it — the original issue is gone, after all.
+
+### Why this survives code review
+
+Picture the PR. The first-round finding was _command injection_, and the diff now contains a command allowlist plus an explicit `if (arg.includes(".."))` check that rejects path-traversal sequences. To a senior reviewer skimming it under deadline, that diff reads as **defense added, not removed**: the dangerous `child_process` call is gated, the scary `..` strings are blocked, the original comment thread says "fixes command injection." LGTM.
+
+What the reviewer doesn't pattern-match on is that the `..` substring check is _itself_ the classic zip-slip antipattern — string-matching on path fragments instead of resolving and bounding the path. The fix and the new bug live on adjacent lines, framed as the same security improvement. Human review is good at "is the thing they said they fixed actually fixed?" and bad at "did the fix quietly open a different hole?" — especially when the new hole is dressed as a security control. That's the gap a deterministic linter closes: it doesn't read intent, it re-scans every line.
 
 ---
 
@@ -263,6 +271,14 @@ This falls **just outside** conventional significance (α = 0.05) but is **margi
 - **ESLint coverage:** Detection is limited to the 332 rules in the Interlace ecosystem. Vulnerabilities outside this scope are not counted.
 - **Disclosure:** The Interlace ESLint Ecosystem used for analysis is developed by the author. The benchmark scripts and raw results are open source for independent verification.
 
+### Is the Hydra Problem Claude-specific?
+
+This run used Claude Opus 4.6, so I won't claim the exact 8%-vs-32% split transfers to other models. But the _mechanism_ — generic "be more secure" prompts produce a random walk while specific findings produce convergence — is about the feedback channel, not the weights behind it. Nothing in the Guardian Layer loop is Claude-specific.
+
+I've already seen the same "looks-secure, isn't" pattern hold across providers on a different task. In [Same NestJS Prompt. Claude Got 6 Security Errors. Gemini Got 2.](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) both models missed rate limiting on auth endpoints _despite_ explicit security instructions — the prompt-only failure mode, in a different codebase. And [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) ranks five models across providers and finds the security gap is a property of AI code generation, not a single vendor.
+
+The Hydra runner itself is Claude-only today (it shells out to the `claude` CLI), but the design isn't: the loop is just `generate → scan → feed specific findings back → re-scan`. If you wire it to Gemini or GPT and reproduce the experiment, [open an issue with your results JSON](https://github.com/ofri-peretz/eslint-benchmark-suite/issues) — cross-model Hydra numbers are exactly what this suite is missing, and I'll merge them in.
+
 ---
 
 ## The Hydra Effect in Action
@@ -309,6 +325,14 @@ The model added a command allowlist (good!) — but the `arg.includes("..")` pat
 **Generation 2: Finally clean** — the model replaced the string check with proper `path.resolve()` validation.
 
 **What happened?** The model fixed the original issue by adding validation, but the validation pattern it chose introduced a new vulnerability category. It took 2 rounds to converge — but it did converge, because ESLint told it _exactly what was wrong_.
+
+This is the entire Guardian Layer in four lines. If you want the same deterministic gate in front of your own AI-generated diffs, this is the whole install — no SaaS, no API key:
+
+```bash
+npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt
+```
+
+These four plugins produced every finding in this benchmark; the flat-config block is at the [end of this article](#eslint-configuration-used). I walk through what this looks like catching real Claude-generated bugs in a single pass in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
 
 ### Case Study 2: Auth Verification — The Prompt-Only Nightmare (Group B)
 
@@ -443,11 +467,17 @@ Results saved to `results/ai-security/hydra-*.json` with:
 npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt
 ```
 
-1. **Use the Guardian Layer pattern:** Feed ESLint violations back to the model **once**, verify the fix with ESLint again. If violations persist after 1-2 rounds, escalate to human review — don't keep looping.
+4. **Use the Guardian Layer pattern:** Feed ESLint violations back to the model **once**, verify the fix with ESLint again. If violations persist after 1-2 rounds, escalate to human review — don't keep looping.
 
-2. **Treat ESLint output as the source of truth, not the AI's confidence.** The AI may argue its code is "already secure." The linter doesn't argue. Listen to the linter.
+5. **Treat ESLint output as the source of truth, not the AI's confidence.** The AI may argue its code is "already secure." The linter doesn't argue. Listen to the linter.
 
 ---
+
+**Your turn:** Go look at the last AI-generated "security fix" your team merged. Did anyone re-scan the diff, or did the original finding disappearing count as the fix? I want to hear the one that got through review — the bug that hid inside the patch for the bug. Drop it in the comments; I'll trade you the worst Hydra in my results JSON.
+
+---
+
+<a id="eslint-configuration-used"></a>
 
 **ESLint Configuration Used:**
 

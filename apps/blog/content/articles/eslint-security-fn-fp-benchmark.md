@@ -11,7 +11,7 @@ tags:
   - security
   - eslint
   - javascript
-  - benchmark
+  - ai
 series: "ESLint Security Benchmark Series"
 canonical_url: https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark
 reading_time_minutes: 14
@@ -25,9 +25,13 @@ author:
 
 > This is the false-positive deep dive companion to [I Benchmarked 17 ESLint Security Plugins](/articles/benchmark-17-eslint-security-plugins-compared). That overview ranks plugins by recall; this one drills into the FP code samples that drive alert fatigue.
 
+The most-downloaded security linter on npm — `eslint-plugin-security`, at 1.5M installs a week — flags exactly one safe pattern for every real vulnerability it catches. A 1:1 true-positive-to-false-positive ratio. Half the alarms it raises are wrong.
+
+I didn't expect that number. I expected the recall to be low (it is: 27.5%). What I didn't expect was that the noise would be just as bad as the signal. That combination is how a security rule quietly trains a whole team to stop reading its output — and it's the exact failure mode I've watched play out in code review more than once.
+
 ## TL;DR
 
-I built a comprehensive benchmark with **40 vulnerable code patterns** across 14 security categories and **38 safe patterns** that should NOT trigger warnings. Then I ran **six ESLint security plugins** against them.
+I built a benchmark with **40 vulnerable code patterns** across 14 security categories and **38 safe patterns** that should NOT trigger warnings. Then I ran **six ESLint security plugins** against them. Every number below is reproducible from a public repo — the exact command is in [Reproducibility](#reproducibility).
 
 ### The Headline Numbers
 
@@ -199,6 +203,14 @@ fs.readFileSync(safePath); // ⚠️ Flagged anyway
 
 The rule cannot recognize path validation patterns.
 
+#### Why these false positives survive code review
+
+Both FP samples above are code a reviewer _approved_. That's the part worth sitting with. The `detect-object-injection` warning fires on `obj[key]` even though the key was just checked against an allowlist three lines up — and the reviewer who approved that PR was right: the code is safe. So the rule and the human disagree, the human is correct, and the warning gets silenced.
+
+The silencing is the problem. It almost never happens with a targeted `// eslint-disable-next-line` on the one safe line. What I've actually seen ship is the load-bearing shortcut: someone gets tired of suppressing `detect-object-injection` on the tenth validated lookup, and the rule goes into the project's `off` list in the shared config. Now it's off for the validated lookups _and_ for the unvalidated one a junior adds six months later. The rule was demoted not because it was wrong about the danger, but because it was wrong too often about safe code. A precise rule earns the benefit of the doubt; a 50%-precision rule spends it, and a senior signs off on the disable because the alternative is a wall of noise nobody reads.
+
+This is the real cost the precision column measures. It isn't "annoying warnings." It's the rate at which your team learns to distrust the tool — and a tool nobody trusts catches nothing, no matter how good its recall looks on paper.
+
 #### ESLint 9 Compatibility: ❌ BROKEN
 
 ```text
@@ -207,6 +219,17 @@ Rule: "security/detect-child-process"
 ```
 
 This is a breaking API change in ESLint 9. The plugin hasn't been updated, making it **unusable with modern ESLint flat config**.
+
+> **On flat config and reading this far?** You currently have a security linter that crashes on install and, when it ran, was wrong half the time. The replacement that scored 40/40 with zero FPs is a one-line swap — domain-specific plugins instead of one monolith:
+>
+> ```bash
+> npm uninstall eslint-plugin-security
+> npm install -D eslint-plugin-secure-coding eslint-plugin-node-security \
+>   eslint-plugin-browser-security \
+>   eslint-plugin-pg eslint-plugin-jwt eslint-plugin-mongodb-security
+> ```
+>
+> Full flat-config + migration steps are in the [60-second migration block](/articles/benchmark-17-eslint-security-plugins-compared#migrate-in-60-seconds). The per-plugin reasoning is in the [Interlace section below](#interlace-ecosystem).
 
 ---
 
@@ -399,6 +422,20 @@ When false positive rates are too high:
 
 ---
 
+## The AI Multiplier: Why Recall Stopped Being Optional
+
+There's a reason I ran a precision/recall benchmark in 2026 instead of just citing the one from 2020: the rate at which vulnerable patterns enter a codebase has changed.
+
+When a human wrote every line, a 27.5%-recall linter missed a lot — but humans don't introduce SQL string concatenation or `jwt.verify` without an `algorithms` allowlist _that often_. The base rate was low enough that low recall felt survivable.
+
+That assumption is now false. In a separate experiment I [let Claude write 80 functions and found 65–75% shipped with a real security vulnerability](/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — the exact categories this benchmark tests: hardcoded credentials, missing JWT algorithm restriction, unparameterized queries, `child_process` with interpolated input. AI assistants reproduce the patterns in their training data, and their training data is full of the insecure 2018-era snippets these very rules were written to catch. The model is, in effect, a generator of test cases for a security linter — running at the speed of autocomplete.
+
+Point the six plugins from this benchmark at AI-generated code and the recall column _is_ your catch rate. A linter that misses 72.5% of patterns now misses 72.5% of a much larger, faster-growing input. And it gets worse on the fix: when a rule does flag an AI-written vulnerability and the developer asks the same assistant to fix it, the assistant frequently swaps one flawed pattern for another the rule doesn't cover — the [AI Hydra problem](/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more), where fixing one bug spawns two more. Recall that only holds for the patterns you already imagined is recall that loses to a generator.
+
+This is also why precision stopped being a nice-to-have. The volume of AI-authored code means more total warnings; if half of them are wrong, the disable-and-move-on reflex from the section above arrives faster and lands harder. High recall gets you the catch; high precision is what keeps the team from turning the catcher off.
+
+---
+
 ## Methodology
 
 ### Test Environment
@@ -471,11 +508,20 @@ npm install -D eslint-plugin-secure-coding eslint-plugin-node-security \
 
 ---
 
+## Your turn
+
+Every team I've worked with has the same artifact buried in its shared ESLint config: a security rule in the `off` list with a comment like `// too noisy`. Sometimes it's `detect-object-injection`. Sometimes it's a whole plugin.
+
+Go look at yours. **Which security rule did your team disable because it cried wolf too often — and what shipped through the gap after you turned it off?** That's the real cost of the false-positive tax, and I'd genuinely like to read your version of it in the comments.
+
+---
+
 ## Related deep dives
 
-- [I Benchmarked 17 ESLint Security Plugins. Only One Found Every Vulnerability.](/articles/benchmark-17-eslint-security-plugins-compared)
-- [eslint-plugin-security Is Unmaintained](/articles/eslint-plugin-security-abandoned)
-- [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+- [The #1 ESLint Security Plugin Has 1.5M Downloads and Caught 0 of My 40 Vulnerabilities](/articles/benchmark-17-eslint-security-plugins-compared) — the recall-ranked companion to this FP deep dive
+- [Same File: eslint-plugin-security Caught 21, the Domain Plugins Caught 46](/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h) — the floor-not-ceiling argument on real code
+- [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — why recall now matters more than it did
+- [What Ground Truth Caught That Unit Tests Missed](/articles/what-ground-truth-caught-that-unit-tests-missed) — how I validate a rule's true/false positives before trusting the F1 score
 
 ---
 

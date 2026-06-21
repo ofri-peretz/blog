@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/hardcoded-secrets-ai-agents-autofi
 social_image: "https://ofriperetz.dev/og/article/hardcoded-secrets-ai-agents-autofix"
 reading_time_minutes: 7
 tags:
+  - "security"
+  - "ai"
   - "eslint"
   - "javascript"
-  - "security"
-  - "devops"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -36,7 +36,12 @@ Coding assistants optimize for "runs on the first try," and the fastest path to
 runnable code is a literal in place. So they hardcode **demo keys**,
 **placeholder credentials**, and **bare config literals** — at the speed they
 generate everything else. That's **CWE-798** (Use of Hard-coded Credentials),
-and it now enters codebases faster than any human ever added it.
+and it now enters codebases faster than any human ever added it. When I had
+Claude generate 80 common Node.js functions with no security context,
+[65–75% shipped with a vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+— and a hardcoded credential was one of the most repeated patterns. The model
+isn't being careless; it's being _fast_, and a literal is the fastest thing to
+type.
 
 Here's the twist that makes this fixable rather than just alarming: the same
 property that makes AI a prolific _source_ of these bugs — it reads and writes
@@ -45,6 +50,15 @@ structured text — makes it a capable _fixer_. `eslint-plugin-secure-coding`'s
 compliance tags, and the exact fix. Feed that back to the assistant and it
 remediates its own output. This is the agentic-CI loop: **AI writes → linter
 flags in machine-readable form → AI fixes.**
+
+Hardcoded credentials are the rare case where that loop is genuinely closed.
+For most vulnerability classes, "ask the model to fix it again" is a gamble — I
+measured [a fix-one-bug-get-two-more failure mode across three remediation
+rounds](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
+where prompt-only feedback regressed. CWE-798 is different: the remediation is a
+single deterministic rewrite — hoist the literal to `process.env` — with no
+behavioral branches for the model to get creative in. That's why this is the
+**one** AI-introduced vulnerability worth wiring into an autonomous loop first.
 
 ---
 
@@ -85,6 +99,16 @@ Drop that into Cursor/Copilot/Claude (or an autonomous CI agent) and the fix is
 mechanical: hoist the literal to an environment variable or a secret manager.
 The rule turns a vague "be secure" instruction into a closed, verifiable loop.
 
+Want to see it fire on your own repo right now? Two lines:
+
+```bash
+npm install --save-dev eslint-plugin-secure-coding
+npx eslint .   # any hardcoded sk_live_… / password: "…" lights up as an error
+```
+
+(Full config and per-repo tuning — allowing test fixtures, etc. — is in
+[Install](#install) below.)
+
 ---
 
 ## The fix the rule wants
@@ -105,6 +129,31 @@ remediated**, since the real secret lives in the environment; that form is the
 rule's accepted output, not a finding. So the thing it catches is the bare,
 env-less literal.)
 
+## Why this survives code review
+
+If hardcoded secrets are so obvious, why do they keep reaching `main`? Because
+the failure isn't ignorance — it's the review process itself. I've watched all
+three of these wave a `sk_live_…` straight through:
+
+- **It reads as a placeholder.** `password: "changeme"` and
+  `JWT_SECRET = "your-secret-key"` look like scaffolding the author will swap
+  before merge. The reviewer pattern-matches "obvious dummy value" and moves on
+  — and "before merge" never arrives.
+- **It's buried in a green diff.** The line lands inside a 400-line PR that adds
+  a feature, passes CI, and does what the ticket asked. A reviewer scanning for
+  logic bugs is not entropy-scoring every string literal; the secret rides in on
+  the back of working code.
+- **Nobody owns "is this a real key?"** Telling a revoked test key from a live
+  one isn't a judgment a human makes at review speed, so the question quietly
+  doesn't get asked. With AI-generated PRs this is worse: the volume is higher,
+  the author can't vouch for any individual line, and the literal _looks_ exactly
+  like the thousands of legitimate ones the model emitted.
+
+A blocking lint rule fixes the one thing humans are structurally bad at here:
+applying the same boring check to **every** literal, on every PR, without
+fatigue. That's the case for making it an _error_, not a warning — a warning
+gets the same "I'll fix it later" treatment as the placeholder did.
+
 ## How it stays quiet enough to be an error
 
 A naive secret scanner drowns you in false positives, which trains everyone
@@ -112,11 +161,16 @@ A naive secret scanner drowns you in false positives, which trains everyone
 different decisions**: registered vendor key prefixes (`sk_live_`, `AKIA…`)
 fire anywhere because they're unambiguous, while a generic high-entropy string
 is only flagged when the surrounding identifier _names_ a credential
-(`apiKey`, `password`, `token`) and clears a length floor. That low
-false-positive rate is what lets you run it as a blocking CI error — and what
-makes an agent trust the signal instead of suppressing it. The
+(`apiKey`, `password`, `token`) and clears a length floor. That context check is
+load-bearing: on the `vercel/ai` codebase a naive entropy match produced
+hundreds of "findings" that were really TypeScript union-type literals and class
+names —
+[I walk the full benchmark in the entropy deep-dive](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough).
+That low false-positive rate is what lets you run it as a blocking CI error —
+and what makes an agent trust the signal instead of suppressing it. The
 [secure-coding getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding)
-walks the full two-mode mechanism and the other 26 rules in the plugin.
+walks the full two-mode mechanism and the rest of the security rules in the
+plugin.
 
 ---
 
@@ -189,16 +243,26 @@ export default [
 
 ## Where this sits
 
-This is one rule in `eslint-plugin-secure-coding` (27 framework-agnostic
-"pure coding security" rules; see the
+This is one rule in `eslint-plugin-secure-coding` — a set of framework-agnostic
+"pure coding security" rules (see the
 [full getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding)).
 It's part of the [Interlace](https://eslint.interlace.tools) ecosystem —
 domain-specific static analysis whose findings are deliberately structured for
 both humans and the agents now writing most of the code.
 
+This piece is part of my **Hardening AI Agents** series. If you want the same
+machine-readable-finding loop applied to a whole AI-written service, see
+[Claude wrote a NestJS service — ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes),
+where hardcoded credentials were one finding among several in real generated
+code.
+
 - 📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding)
 - 📖 [Rule docs: no-hardcoded-credentials](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding)
+
+What's the worst hardcoded secret you've caught in an AI-generated PR — a live
+`sk_live_…`, a real DB password, an internal token? And did it get caught by a
+human, a scanner, or only after it shipped? Drop the story in the comments.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your AI assistant has ever left a `"your-secret-key"` literal in your source.
