@@ -315,6 +315,7 @@ covers the rest of the 13 rules:
 - [search_path Hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the identifier attack most teams have never heard of
 - [The Connection Leak Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage) — the 3 AM pool-exhaustion post-mortem
 - [Transaction Race Conditions](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — what happens when `BEGIN` runs on the pool instead of a client
+- [COPY FROM Filesystem Access](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — when user-controlled paths turn your DB into a file reader
 - [Getting Started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — all 13 rules end to end
 
 ---

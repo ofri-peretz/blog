@@ -23,6 +23,8 @@ author:
 series: "The Hardened Stack"
 ---
 
+**65–75% of AI-generated frontend functions shipped with a security vulnerability** — and the browser surface is the hardest to catch, because the dangerous pattern and the safe pattern produce identical runtime behavior right up until someone exploits it.
+
 Your backend gets a pentest. Your API has rate limits, parameterized queries,
 and a WAF. The whole security budget points at the server. Then the SPA — the
 part that actually holds the user's session in their browser — does this:
@@ -174,7 +176,11 @@ dependency, or a malicious browser extension. There is no `HttpOnly` for
 ```
 
 `no-jwt-in-storage`, `no-sensitive-localstorage`, `no-sensitive-sessionstorage`,
-and `no-sensitive-indexeddb` (all **CWE-922**) cover the storage surface.
+and `no-sensitive-indexeddb` (all **CWE-922**) cover the storage surface. If
+your codebase also has hardcoded API keys or inline secrets, the companion
+[`eslint-plugin-secure-coding`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding)
+catches those separately — including an [autofix for AI-generated hardcoded
+secrets](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
 
 ---
 
@@ -190,8 +196,16 @@ that runs," and the insecure version runs identically.
 When I had Claude generate a batch of common backend functions with no security
 context, [65-75% shipped with a security
 vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-— consistent across four models. The browser surface is worse, because there's
-no framework guard-rail and no type error to catch it.
+— consistent across four models. I widened that to a [700-function, five-model
+benchmark broken down by security
+domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain):
+storage mishandling and transport bugs — the exact categories `browser-security`
+covers — showed the highest failure rates across every model. The [five-model
+security leaderboard](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
+makes the same point: rankings shift by domain, no model is safe, and picking a
+"better" model doesn't close the gap the way a static rule does. The browser
+surface is worse than backend functions, because there's no framework guard-rail
+and no type error to catch it.
 
 You don't have to take the number on faith — this one is two prompts you can
 reproduce in under a minute. Open any assistant and paste, verbatim:
