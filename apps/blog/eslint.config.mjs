@@ -124,6 +124,11 @@ const eslintConfig = defineConfig([
       "operability/no-debug-code-in-production": "warn",
       "reliability/require-network-timeout": "warn",
       "secure-coding/no-ldap-injection": "warn",
+      // Pre-existing: external links in page.tsx to eslint.interlace.tools need UTM wiring.
+      "conventions/no-external-links-without-utm": "warn",
+      // Pre-existing: PostHog event names in use-visitor-tracking.ts use legacy naming
+      // ("pageview", "linkedin_click") before category:object_action convention was adopted.
+      "conventions/detect-non-compliant-posthog-events": "warn",
     },
   },
   {

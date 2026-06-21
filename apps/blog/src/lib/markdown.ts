@@ -8,7 +8,7 @@
 const INSTALL_RE =
   /^::install-command\{package="([^"]+)"(?: dev)?\}[ \t]*\n::/gm;
 
-const CTA_RE = /^::dev-to-cta\{url="([^"]+)"\}[ \t]*\n([^\n]+)[ \t]*\n::/gm;
+const CTA_RE = /^::dev-to-cta\{url="([^"]+)"\}[ \t]*\n([^\n]+?)[ \t]*\n::/gm;
 
 export function preprocessMarkdown(input: string): string {
   return input
