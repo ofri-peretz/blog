@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-verc
 social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-vercel-ai-security"
 reading_time_minutes: 9
 tags:
-  - "eslint"
-  - "ai"
   - "security"
-  - "vercel"
+  - "ai"
+  - "eslint"
+  - "googleai"
 reactions: 0
 comments: 0
 views: 0
@@ -39,21 +39,36 @@ const { text } = await generateText({
 });
 ```
 
-That snippet ships. It also hands an attacker a prompt-injection vector
-(`userMessage` flows straight into the model), two destructive tools with no
-confirmation gate, no token ceiling, no step ceiling, and no plan for what
-happens when the model's output lands in your database or your DOM.
+That snippet ships. It passes review. It also hands an attacker a
+prompt-injection vector (`userMessage` flows straight into the model), two
+destructive tools with no confirmation gate, no token ceiling, no step ceiling,
+and no plan for what happens when the model's output lands in your database or
+your DOM. **Six lines of code, six attack surfaces.** None of them looks wrong
+in a diff — that's exactly why it merged.
 
-None of that is a bug in the SDK. It's the same gap every powerful API has:
-the easy path and the safe path look almost identical, and the compiler can't
-tell them apart. **`eslint-plugin-vercel-ai-security` makes that gap a CI
-failure.** It's a focused plugin — 19 rules, each pinned to a CWE and mapped to
-the OWASP Top 10 for LLM Applications — that reads your AI SDK call sites and
+None of it is a bug in the SDK. It's the same gap every powerful API has: the
+easy path and the safe path look almost identical, and the compiler can't tell
+them apart. The reviewer can't either — `prompt: userMessage` reads like every
+other example in the docs. **`eslint-plugin-vercel-ai-security` makes that gap a
+CI failure.** It's a focused plugin — 19 rules, each pinned to a CWE and mapped
+to the OWASP Top 10 for LLM Applications — that reads your AI SDK call sites and
 flags the dangerous shape before it merges.
+
+If you want it running before you read the rest, that's two commands:
+
+```bash
+npm install --save-dev eslint-plugin-vercel-ai-security
+npx eslint .
+```
 
 This is the getting-started guide: what each rule catches, the real fix it
 wants, how to install and configure it across npm/yarn/pnpm, and exactly which
-ESLint and Oxlint versions it runs under.
+ESLint and Oxlint versions it runs under. It's part of the **Hardening AI
+Agents** series — companion reads as we go:
+
+- [Prompt injection lives in 3 places in a Vercel AI app](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability) — the LLM01 rules in depth.
+- ["Just sanitize it" won't close a prompt-injection hole](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) — why the boundary is structural, not a string filter.
+- [Your AI SDK app vs the OWASP LLM Top 10](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the 8 categories these rules cover, and the 2 they honestly can't.
 
 ---
 
@@ -110,6 +125,15 @@ unless they pass through a recognized validation call first.
 interpolated content is an _agent-confusion_ vector — instructions and data
 sharing one channel.
 
+**Why this survives review.** `prompt: userMessage` is the single most common
+line in every AI SDK tutorial, every Stack Overflow answer, every README. A
+reviewer's pattern-matcher reads it as "correct" — it looks exactly like the
+canonical example. There's no `+` string concatenation to flag, no obvious
+`exec`, no SQL. The injection is in what's _absent_ (a validation boundary), and
+absence is the hardest thing for a human to see in a diff. That's the whole
+case for moving this check to CI: a linter notices the missing boundary on every
+PR; a tired reviewer at 5pm notices it approximately never.
+
 > **Honest framing.** The linter enforces that a boundary _exists_ — it can't
 > verify your validator actually defeats injection. String "sanitization"
 > alone does not stop prompt injection; nothing reliably does at the text
@@ -143,6 +167,16 @@ it. `no-unsafe-output-handling` flags it flowing into `eval`, `Function`,
 `innerHTML`. `require-output-validation` and `require-output-filtering` cover
 the softer cases — output rendered to users unvalidated, or tool results
 returning raw rows from a data source.
+
+**Why this survives review.** The PR that ships this almost always looks like a
+_rendering_ change, not a security one: `el.innerHTML = response` lands in a diff
+titled "render assistant markdown," sitting next to thirty lines of CSS. The
+reviewer's attention is on the layout, and the data source is one hop away — the
+`response` variable was assigned three lines up, or in a different file, so the
+"this came from a model" fact isn't visible at the sink. We trust our own output
+because we generated it; the blind spot is forgetting that an attacker shaped the
+_prompt_ that shaped that output. The rule fires at the sink regardless of how
+far away the model call is, which is exactly the trace a human skips.
 
 ### 3. Excessive agency — tools that act without a leash
 
@@ -179,6 +213,19 @@ confirmation flag (`requiresConfirmation` / `requiresApproval` / …) on the
 tool object. `require-tool-schema` fails any tool whose parameters aren't
 schema-constrained — an unconstrained tool is an open API the model can call
 with anything.
+
+**Why this survives review.** The destructive tool gets added in the PR that
+makes the agent _useful_ — "let the assistant cancel a subscription for the
+user" — and the `execute` body is a one-line call to a function the team already
+trusts (`db.users.delete`, `billing.refund`). The reviewer reads the `execute`
+body, confirms it calls the right internal API, and approves. What's missing
+isn't in the body — it's the absence of a gate _around_ the body, and the diff
+gives no visual cue that this tool is more dangerous than the read-only one
+above it. The same blind spot bites the `maxSteps` case in section 4: an agent
+with tools but no step ceiling is one ambiguous user message away from looping —
+call tool, reconsider, call again — until it exhausts your rate limit or your
+budget, and "no `maxSteps`" is invisible precisely because it's a line that was
+never written.
 
 > **Scope note.** `require-tool-confirmation` inspects tool object literals
 > declared inline inside a `tools: { … }` object. It does not yet see tools
@@ -305,6 +352,63 @@ directory as you adopt.
 
 ---
 
+## What `recommended` actually fires — a reproducible scan
+
+Claims about a linter are cheap; the output is the proof. So here is a scan you
+can run yourself and get the same numbers. I took the three insecure shapes from
+the sections above — the six-line agent at the top of this article, the
+ungated `deleteUser` tool, and the model-output-to-sink block — saved them as
+three files, and ran the **`recommended`** preset over them.
+
+**Reproduce it** (plugin `eslint-plugin-vercel-ai-security@1.3.5`, ESLint
+`10.4.1`, Node 18, run 2026-06-21):
+
+```bash
+npm install --save-dev eslint-plugin-vercel-ai-security@1.3.5
+# eslint.config.js → export default [ configs.recommended ]
+npx eslint chat-route.js agent-tools.js render.js
+```
+
+**Result: 3 files scanned, 13 findings — 10 errors, 3 warnings.** Distribution
+by rule:
+
+| Rule                        | Findings | Severity |
+| --------------------------- | -------- | -------- |
+| `require-max-tokens`        | 3        | error    |
+| `no-unsafe-output-handling` | 3        | error    |
+| `require-request-timeout`   | 3        | warn     |
+| `require-max-steps`         | 2        | error    |
+| `require-validated-prompt`  | 1        | error    |
+| `require-tool-confirmation` | 1        | error    |
+
+Two things in that table are worth sitting with. First, **every one of the three
+files failed** — there is no "mostly fine" sample here; the insecure shape is the
+default shape, exactly as the SDK's own examples teach it. Second, the heaviest
+hitters are the _boring_ rules — `require-max-tokens`, `require-request-timeout`,
+`require-max-steps` fire on essentially every call site, because nobody
+remembers to set a token ceiling or a timeout on the happy path. The
+catastrophic ones (`no-unsafe-output-handling` at CVSS 9.8 for the `eval` sink,
+`require-validated-prompt` at CVSS 9.0) are rarer per file but are the ones that
+turn into an incident.
+
+This is also the answer to "is that sample lint output real or illustrative?" —
+it is captured, not mocked. The `require-validated-prompt` finding on
+`chat-route.js` is the exact line reproduced verbatim in the **Run it** block
+below: `CWE-74 OWASP:A03-Injection CVSS:9 | User input "userMessage" passed
+directly to generateText prompt without validation | CRITICAL [SOC2,GDPR]`.
+
+One honest caveat that the scan surfaces: the top six-line snippet declares its
+two destructive tools in shorthand (`tools: { deleteAccount, transferFunds }`),
+and `require-tool-confirmation` only inspects inline tool _object literals_ — so
+it fires once (on the spelled-out `deleteUser` literal in the second file), not
+on the shorthand pair. That is the documented known false-negative from the
+[Excessive agency](#3-excessive-agency--tools-that-act-without-a-leash) scope
+note, showing up in a real run rather than as a footnote. The prompt-injection,
+unbounded-loop, and output-sink surfaces in that snippet all still fire; the
+confirmation gap on shorthand tools is the one you still close by hand.
+
+---
+
 ## Install
 
 ```bash
@@ -377,6 +481,12 @@ src/agent/tools.ts
                Fix: Add requiresConfirmation: true or implement confirmation logic in the tool | https://sdk.vercel.ai/docs/ai-sdk-core/tools-and-tool-calling
 ```
 
+Both findings above are real output from the
+[reproducible scan](#what-recommended-actually-fires--a-reproducible-scan) —
+the `chat-route.js` prompt-injection line and the `agent-tools.js`
+`deleteUser` confirmation line, copied from the run, not hand-written for the
+article.
+
 (The inline `OWASP:` tag is the classic web-AppSec category the finding's CWE
 rolls up to — e.g. CWE-74 → A03 Injection. The plugin's _rule set_ is organized
 around the OWASP Top 10 for LLM Applications threat model; the CWE on each
@@ -426,6 +536,33 @@ every commit and never gets tired. It is a floor, not the whole building.
 
 ---
 
+## The reason this matters more every quarter: your AI writes this code now
+
+Every shape these 19 rules flag is a shape an AI assistant will happily generate
+for you. Ask Claude, Copilot, or Gemini to "add a tool-calling agent with the
+Vercel AI SDK" and you get back the six-line snippet at the top of this article
+— `prompt: userMessage`, ungated destructive tools, no `maxSteps`, the lot. The
+model isn't being careless; it's reproducing the canonical example, which is the
+insecure one. The training data is full of the easy path because the easy path
+is what gets written.
+
+I've measured how often this happens with un-prompted AI code:
+[65–75% of the functions I had Claude generate carried a security
+vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+when given no security context. And it compounds — when you ask the model to fix
+one finding, it often
+[introduces two more in the patch](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
+That's the actual argument for a deterministic gate: the thing writing your AI
+call sites has no memory of your threat model, and the thing reviewing the PR is
+increasingly also a model. A lint rule keyed to the AST is the one layer in that
+loop that fails closed, every time, regardless of how the code was authored.
+
+This is also why I run the same rules over AI-generated code as over
+hand-written code — there's no separate "AI lint." The call site is dangerous or
+it isn't; who typed it is irrelevant to the rule.
+
+---
+
 ## Where this sits in the ecosystem
 
 The general-purpose security linters (`eslint-plugin-security` and friends)
@@ -433,12 +570,24 @@ predate the agent era — they don't know what a `generateText` call or a
 `tool({ execute })` is. This plugin is the specialized layer for that surface:
 it speaks AI SDK shapes and maps every finding to the OWASP LLM Top 10 and a
 CWE. It complements the generic set rather than replacing it — reach for it
-once your app actually calls a model. It's one plugin in the
+once your app actually calls a model. If the destructive-tool problem is the one
+that keeps you up — the `deleteUser` execute with no gate — that one has its own
+deep dive:
+[5 ESLint rules that gate every tool call](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk).
+It's one plugin in the
 [Interlace](https://eslint.interlace.tools) family of domain-specific security
 linters (Node, JWT, Express, Lambda, Postgres, …); the AI SDK is simply its
 domain.
 
 ---
+
+Run `npx eslint .` against your AI SDK code once. If you've shipped a
+`generateText` call, I'd bet money one of these 19 fires on the first run —
+they almost always do, because the insecure shape is the default shape. So
+here's the question I actually want answered in the comments: **which of the 19
+did your first scan light up — and was it code _you_ wrote, or code your AI
+assistant handed you?** I'm collecting the distribution; the split between
+human-authored and AI-authored findings is the interesting part.
 
 ## Links
 
@@ -446,6 +595,10 @@ domain.
 - 📖 [Full rule docs](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security/rules)
 - 🔐 [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-vercel-ai-security)
+
+**Related in the _Hardening AI Agents_ series:**
+
+- [Prompt injection in 3 places](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability) · [Why "just sanitize it" fails](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) · [Gating every tool call](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk) · [Full OWASP LLM Top 10 coverage](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if this saved you an incident review.

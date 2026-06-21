@@ -14,7 +14,7 @@ tags:
   - "eslint"
   - "ai"
   - "security"
-  - "vercel"
+  - "node"
 reactions: 0
 comments: 0
 views: 0
@@ -71,6 +71,11 @@ src/agent.ts
 (A fourth rule, `require-error-handling` (CWE-755), flags the un-`try/catch`'d
 call separately — an agent step that throws shouldn't cascade.)
 
+Want to see this on your own agent before reading further?
+`npm i -D eslint-plugin-vercel-ai-security && npx eslint .` — the
+[full config block is below](#install). The rest of this piece is _why_ each
+warning is the one that bites in production.
+
 ---
 
 ## The 5 rules that bound agency
@@ -95,6 +100,53 @@ the full OWASP LLM map (8 of 10, honestly) is
 > "may be handled elsewhere" and skips it — a documented false-negative. Gate
 > those manually. (`require-tool-schema` _does_ read inside `tool({ … })`.) The
 > hardened pattern below uses the inline form so every rule fires.
+
+---
+
+## Why this survives code review
+
+The unprotected snippet isn't sloppy. It's what a careful engineer ships,
+because every line that's missing is invisible at review time:
+
+- **`maxSteps`** is absent, so the loop is unbounded — but in the demo the model
+  called the tool once and stopped. Unbounded only bites when a _later_ prompt
+  makes the model retry in a loop, and that prompt doesn't exist yet at review.
+- **`inputSchema`** is absent, but `userId` is destructured as if it were a
+  trusted string. The reviewer reads `{ userId }` and pattern-matches "typed
+  argument" — the type is inferred from usage, not enforced against the model's
+  output. TypeScript is green either way.
+- **confirmation** is absent, but `deleteUser` is in a PR titled "add admin
+  tools," reviewed by someone who assumes an admin already confirmed in the UI.
+  The gate lives in a different file, in a different person's head.
+- **`try/catch`** is absent, but the happy path returns cleanly. A throwing tool
+  step only surfaces under load, in an error path no test exercises.
+
+None of these are knowledge gaps. They're _context_ gaps — the reviewer can't
+see the prompt that hasn't been written, the load that hasn't happened, the
+admin check that lives elsewhere. That's exactly the gap a write-time linter
+fills: it doesn't need the runtime context, because it asserts the structural
+invariant must hold _regardless_ of context. "This destructive tool has no
+confirmation gate" is true at line 3 whether or not the rest of the system is
+careful.
+
+### And then the AI writes the next tool
+
+Here's the part that turns this from a one-time review miss into a recurring
+one. The agent code _itself_ is increasingly AI-scaffolded — you ask the
+assistant for "a tool that deletes a user," and it gives you the unprotected
+literal at the top of this article, because that's the shape that dominates its
+training data. In a [run of 80 AI-generated Node.js
+functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
+65–75% shipped with a security hole — and tool definitions are squarely in that
+distribution. The model that hallucinates the _wrong tool call_ at runtime is
+the same model that omits the `inputSchema` at write-time. (The
+[NestJS version of this](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
+— green TypeScript, six holes ESLint caught — is the same failure in a different
+framework.)
+
+So the linter isn't only catching the human reviewer's blind spot. It's the
+thing standing between your `tools: { … }` block and the next paste from an
+assistant that has never heard of LLM06.
 
 ---
 
@@ -194,6 +246,11 @@ surface where a model stops talking and starts acting. The companion pieces:
 - 📖 [Full rule docs (per-rule CWE + examples)](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security/rules)
 - 🔐 [OWASP LLM06: Excessive Agency](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-vercel-ai-security)
+
+**What's the most destructive tool you've handed an agent — and what's
+gating it today?** A confirmation flag, a human in the loop, or nothing but the
+hope it doesn't hallucinate? I'd genuinely like to read the war stories in the
+comments.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if a `deleteUser` tool is one hallucination away from running in your app.

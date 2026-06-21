@@ -1,6 +1,6 @@
 ---
-title: "I Benchmarked 17 ESLint Security Plugins. Only One Found Every Vulnerability."
-description: "I ran 40 real-world vulnerable patterns through every major ESLint security plugin — from eslint-plugin-security to SonarJS to Microsoft SDL. The detection gaps are alarming."
+title: "The #1 ESLint Security Plugin Has 1.5M Downloads and Caught 0 of My 40 Vulnerabilities"
+description: "I ran 40 real-world vulnerable patterns through 17 ESLint plugins — eslint-plugin-security, SonarJS, Microsoft SDL. The most-installed one detects nothing on ESLint 9. Most others miss 60–100%. Here's the reproducible benchmark, and what happens when you point these rules at AI-generated code."
 slug: "benchmark-17-eslint-security-plugins-compared"
 canonical_url: "https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared"
 devto_url: "https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83"
@@ -13,8 +13,8 @@ reading_time_minutes: 12
 tags:
   - "security"
   - "eslint"
-  - "javascript"
-  - "benchmark"
+  - "node"
+  - "ai"
 series: "ESLint Security Benchmark Series"
 reactions: 0
 comments: 0
@@ -57,6 +57,14 @@ They're not.
 The data shows a **massive detection gap** across the entire ecosystem. Plugins that claim security coverage miss 60–100% of standard vulnerability patterns. And some of the highest-downloaded plugins aren't security tools at all — they detected zero issues from our suite.
 
 This isn't theoretical. These are OWASP Top 10 patterns that ship to production every day.
+
+### Why this survives code review
+
+Here's the part that should make you uncomfortable: the _name_ of a security plugin in your config is evidence to a reviewer. When `eslint-plugin-security` is listed in `eslint.config.js`, the pull request reads as covered — the reviewer sees "security linter: present" and approves. Nobody re-reads the SQL string concatenation, because the tooling is supposed to have looked at it. But on ESLint 9 the plugin's rules crash (see the `context.getScope` error above) and contribute **zero** detections; the config still claims coverage it can no longer deliver.
+
+I've watched this exact failure on real teams. The linter isn't lying on purpose — it's a tool the team adopted years ago, pinned, and never re-benchmarked across a major ESLint upgrade. The config still _says_ `eslint-plugin-security`. The coverage left two ESLint majors ago. The _appearance_ of a security gate became a false sense of security, which is worse than no linter at all, because no linter at least keeps a human paranoid.
+
+That's the difference between "we run a security linter" and "we measured what our security linter catches." This benchmark is the second one.
 
 ---
 
@@ -175,7 +183,7 @@ Rule: "security/detect-child-process"
 
 This is due to the deprecated `context.getScope()` API removed in ESLint 9. The plugin hasn't been updated since 2024. **If you're using ESLint 9 with flat config, this plugin provides zero security coverage.**
 
-📖 _Deep dive: [eslint-plugin-security Is Abandoned](/articles/eslint-plugin-security-abandoned)_
+📖 _Deep dive: [eslint-plugin-security Is Unmaintained — Here's What Nobody Tells You](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)_
 
 ### eslint-plugin-sonarjs (3M+ downloads) — 35% Recall
 
@@ -197,7 +205,7 @@ SonarJS found issues across a few categories but missed the majority:
 
 Despite having **269 rules** (the most of any plugin tested), SonarJS missed 65% of vulnerabilities. Many of its rules target code quality, not security.
 
-📖 _Deep dive: [SonarJS vs Interlace: 269 Rules, 65% Missed](/articles/benchmark-sonarjs-vs-interlace)_
+📖 _Deep dive: [SonarJS vs Interlace: 269 Rules, 65% Missed](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)_
 
 ### @microsoft/eslint-plugin-sdl — 10% Recall
 
@@ -211,7 +219,7 @@ Microsoft's SDL (Security Development Lifecycle) plugin found XSS via `innerHTML
 | Code Execution  | 2/4 ⚠️        |
 | Everything else | 0/32 ❌       |
 
-📖 _Deep dive: [Microsoft SDL vs Interlace: Enterprise Security Benchmark](/articles/benchmark-microsoft-sdl-vs-interlace)_
+📖 _Deep dive: [Microsoft SDL vs Interlace: Enterprise Security Benchmark](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)_
 
 ### eslint-plugin-no-secrets — Narrow But Precise
 
@@ -313,6 +321,27 @@ False positives create **alert fatigue** — developers learn to ignore security
 
 ---
 
+## The detection gap is about to get much worse
+
+Two years ago, the 40 patterns in this suite entered codebases at human typing speed — one developer, one risky line, occasionally. That constraint is gone. Your team now generates code with an LLM, and the model reproduces these exact patterns at machine speed, with the confidence of well-formatted, type-correct output.
+
+This isn't speculation; I measured it. In a separate experiment I asked Claude (Haiku through Opus) to write 80 common Node.js functions with no security context — **65–75% shipped with a vulnerability**, and the rate was statistically consistent across every model size. The categories were the same OWASP families this benchmark scores: string-concatenated SQL, `child_process` with shell, unbounded regex, weak crypto. ([I Let Claude Write 80 Functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).)
+
+The model output is the new attack surface, and it walks straight past the human review that used to be the last line of defense — because it _looks_ senior. I gave Claude one prompt for a NestJS users service and got 200 lines that TypeScript compiled clean; a specialized linter found **6 security holes in 3 seconds** ([the full breakdown](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)). And asking the model to _fix_ its own findings without deterministic feedback made it worse: it introduced brand-new vulnerability categories at **4× the rate** — what I call [the AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more): cut one head, two grow back.
+
+The takeaway for this benchmark: a plugin that detects 0% or 35% of these patterns was already a liability. Pointed at AI-generated code that reintroduces the same patterns by the hundred, it's a rubber stamp on a vulnerability factory. The deterministic 100%-recall, 0%-FP layer is what gives the model an objective signal to converge against — and it's the same `npm run benchmark:fn-fp` command below, which you can rerun against your own AI's output, not just mine.
+
+If you've read this far, close the gap in your own repo before you forget — two commands:
+
+```bash
+npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-browser-security
+npx eslint .   # against your last AI-generated PR, ideally
+```
+
+(Full flat-config block and the per-domain plugins are in [Migrate in 60 Seconds](#migrate-in-60-seconds) below.)
+
+---
+
 ## Methodology
 
 ### Fixture Design
@@ -374,11 +403,18 @@ Run ESLint. See what you've been missing.
 
 ## Related deep dives in this series
 
-This article is the ecosystem overview. For detailed per-plugin comparisons, see:
+This article is the ecosystem overview. For the head-to-head per-plugin comparisons:
 
-- [SonarJS vs Interlace: 269 Rules Still Miss 65% of Vulnerabilities](/articles/benchmark-sonarjs-vs-interlace)
-- [Microsoft SDL vs Interlace: Enterprise Security Benchmark](/articles/benchmark-microsoft-sdl-vs-interlace)
-- [eslint-plugin-security Is Unmaintained — Here's What to Use Instead](/articles/eslint-plugin-security-abandoned)
+- [SonarJS vs Interlace: 269 Rules Still Miss 65% of Vulnerabilities](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)
+- [Microsoft SDL vs Interlace: Enterprise Security Benchmark](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)
+- [eslint-plugin-security Is Unmaintained — Here's What Nobody Tells You](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)
+- [The Methodology: How the FN/FP Benchmark Is Built](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark)
+
+And for why this benchmark matters more every quarter — the AI angle:
+
+- [I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+- [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
+- [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
 
 ---
 
@@ -389,6 +425,14 @@ This article is the ecosystem overview. For detailed per-plugin comparisons, see
 > The Interlace ESLint Ecosystem provides comprehensive security static analysis for modern Node.js applications.
 >
 > [📖 Documentation](https://eslint.interlace.tools) | [⭐ GitHub](https://github.com/ofri-peretz/eslint) | [📦 NPM](https://npmjs.com/~ofriperetz)
+
+---
+
+## Your turn
+
+Go check one thing right now: what ESLint version is your `eslint-plugin-security` running against, and when did you last confirm it actually fires? On ESLint 9 with flat config, there's a real chance the answer is "it's been a green checkmark over nothing for months."
+
+Then run the benchmark against your own stack — or against your AI assistant's last 40 functions — and tell me in the comments: **what was the gap between what your linter reported and what was actually in the code?** I want the worst one. The "we had a security linter the whole time" stories are the ones the rest of us learn from.
 
 ---
 

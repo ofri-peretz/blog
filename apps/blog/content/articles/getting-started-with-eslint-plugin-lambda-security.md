@@ -12,15 +12,15 @@ social_image: "https://ofriperetz.dev/og/article/getting-started-with-eslint-plu
 reading_time_minutes: 9
 tags:
   - "eslint"
+  - "security"
   - "aws"
-  - "lambda"
-  - "serverless"
+  - "ai"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-series: null
+series: "The Hardened Stack"
 ---
 
 Here is a two-step path from "valid HTTP request" to "attacker owns your AWS
@@ -49,6 +49,26 @@ each pinned to a CWE.
 
 This guide walks the SSRF→IAM takeover chain, the serverless-specific gotchas
 (env vars aren't secret), the full 14-rule map, and exact install/engine support.
+
+### Why this passes code review
+
+Neither half of this chain looks like a vulnerability to a reviewer reading the
+diff. The `fetch` is a single line doing an ordinary thing — a webhook callback,
+a "fetch the user's avatar URL" feature — and the reviewer doesn't have IMDS's
+`169.254.169.254` loaded in their head while reading a feature PR. SSRF only
+registers as dangerous when you _already_ know the runtime exposes a credential
+endpoint on the loopback; on a long-lived server you've never deployed to, that
+intuition isn't there. So the line reads as "calls a URL," and "calls a URL" is
+not a red flag.
+
+The `"Action": "*"` is worse, because it's usually not even in the same PR. The
+handler ships in application code; the IAM policy ships in a SAM/CDK/Serverless
+template that a different person reviews — often a platform engineer optimizing
+for "the deploy stops failing with AccessDenied," not for blast radius. Each
+half is locally reasonable. The chain is only visible when you hold both files
+at once, which no single reviewer does. That's the gap a linter closes: it reads
+the source AST, not the diff, and it doesn't get bored on line 4 of a 600-line
+PR.
 
 ---
 
@@ -115,6 +135,23 @@ fix message is concrete: _restrict to specific resources/actions, e.g.
 the blast radius of step 1 — with a scoped role, the stolen credentials can
 read one bucket, not delete your databases.
 
+### Make both halves a build error
+
+Two of these patterns just earned an SSRF→takeover chain. Here's the entire
+config that fails CI on both — the [full install matrix](#install) (package
+managers, inline tuning, sample output) is below:
+
+```bash
+npm install --save-dev eslint-plugin-lambda-security
+```
+
+```js
+// eslint.config.js — `configs` is a NAMED export
+import { configs } from "eslint-plugin-lambda-security";
+
+export default [configs.recommended]; // all 14 rules, CWE-tagged
+```
+
 ---
 
 ## The serverless gotchas
@@ -133,6 +170,39 @@ Lambda has its own footguns that don't exist on a long-lived server:
   flags processing an event's records with no cap (tune via
   `{ maxBatchSize: 100 }`); `require-timeout-handling` (CWE-400) wants a
   fallback before the function's hard timeout.
+
+---
+
+## What happens when an AI assistant writes the handler
+
+Ask any coding assistant to "write a Lambda that fetches a URL from the request
+and returns the body," and you get the SSRF line at the top of this article —
+`fetch(event.queryStringParameters.callbackUrl)`, no allow-list. Ask it to "give
+this function an IAM role so it can read from S3," and a meaningful share of the
+time you get `Action: "*"` or `Resource: "*"`, because the broad policy is the
+one that always works and the scoped one requires knowing the exact ARNs. The
+model isn't being careless — it's reproducing the median of its training data,
+and for both of these patterns the median is the insecure one. The IMDS-aware,
+least-privilege version is the minority of the corpus, so it's the minority of
+the output.
+
+This is the same dynamic I keep hitting across the stack: an assistant doesn't
+invent novel bugs, it _reintroduces the well-documented ones_. I measured the
+broad version of this — letting an assistant write functions and counting the
+holes — in [I Let Claude Write 60 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
+and watched the same negative-space failure mode play out one prompt at a time
+in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
+The constant: the assistant fills in the behavior you asked for and skips the
+constraint you didn't — and "don't let this URL reach the metadata endpoint" is
+a constraint nobody puts in a prompt.
+
+So the volume of handler code that needs review just went up, while the per-line
+attention each one gets went down. That's the exact condition these rules are
+built for. You don't read the AI's handler line by line hoping to spot the
+missing allow-list; you make the missing allow-list a build error. Run
+`recommended` over AI-generated serverless code and the SSRF line and the `"*"`
+policy fail CI on the call shape the assistant defaults to — same as they would
+for code a human wrote on a Friday afternoon.
 
 ---
 
@@ -247,8 +317,13 @@ what a Lambda handler, an IMDS fetch, a Middy CORS middleware, or an IAM policy
 literal _is_. `eslint-plugin-lambda-security` is the dedicated serverless layer
 — SSRF, IAM least-privilege, secrets handling, the OWASP Serverless Top 10 —
 each finding tagged with a CWE and CVSS. It's the serverless member of the
-[Interlace](https://eslint.interlace.tools) family, complementary to the
-generic set and to the server-side plugins (`-express-security`, `-jwt`, …).
+[Interlace](https://eslint.interlace.tools) family, complementary to the generic
+set and to the server-side plugins: when your Lambda fronts an Express API,
+[eslint-plugin-express-security](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security)
+covers the request layer, and when it issues or verifies tokens,
+[the JWT rules](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)
+stop the `algorithm: none` bypass. Same finding format, same flat-config wiring
+— pick the plugins that match your runtime.
 
 ---
 
@@ -259,9 +334,25 @@ generic set and to the server-side plugins (`-express-security`, `-jwt`, …).
 - 🔐 [OWASP Serverless Top 10](https://owasp.org/www-project-serverless-top-10/)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-lambda-security)
 
+Run `recommended` over one Lambda repo and tell me what it caught: a `fetch` of
+a caller-supplied URL, an `Action: "*"` nobody scoped down, a secret sitting in
+an env var? Or — the one I most want to hear — has an over-broad execution role
+ever actually been the thing that turned a small bug into an incident in your
+account? Drop it in the comments.
+
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your handlers do any of the above.
 ::
+
+---
+
+_Part of **The Hardened Stack** — one ESLint plugin per layer of the Node.js
+attack surface. Server-side neighbors:
+[express-security](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security)
+·
+[node-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security)
+·
+[jwt](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)._
 
 ---
 

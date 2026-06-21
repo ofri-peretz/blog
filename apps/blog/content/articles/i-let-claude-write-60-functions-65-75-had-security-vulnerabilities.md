@@ -6,7 +6,7 @@ canonical_url: "https://ofriperetz.dev/articles/i-let-claude-write-60-functions-
 devto_url: "https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o"
 devto_id: 3236684
 published_at: "2026-02-06T02:51:25Z"
-edited_at: null
+edited_at: "2026-06-21T00:00:00Z"
 cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Fi-let-claude-write-60-functions-65-75-had-security-vulnerabilities.png"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities.png"
 reading_time_minutes: 11
@@ -120,6 +120,30 @@ I built an open-source benchmark suite to rigorously test AI-generated code secu
 
 The differences between models are **not statistically significant**. All four models perform similarly poorly on security—the 65-75% range is within sampling variance. Notably, **Opus 4.6 (the newest model) scores identically to Sonnet 4.5** at 65%. This is an important finding: newer, more capable models don't automatically produce more secure code. The vulnerability rate is a _property of AI code generation_, not a specific model flaw.
 
+If two-in-three of your AI-generated functions ship a vulnerability regardless of which model you pay for, the lever isn't model choice — it's a check that runs on every diff. These are the four plugins that produced every finding in this benchmark; the whole config is copy-paste:
+
+```bash
+npm install -D eslint-plugin-secure-coding eslint-plugin-pg \
+               eslint-plugin-node-security eslint-plugin-jwt
+```
+
+```javascript
+// eslint.config.js
+import secureCoding from "eslint-plugin-secure-coding";
+import pg from "eslint-plugin-pg";
+import nodeSecurity from "eslint-plugin-node-security";
+import jwt from "eslint-plugin-jwt";
+
+export default [
+  secureCoding.configs.recommended,
+  pg.configs.recommended,
+  nodeSecurity.configs.recommended,
+  jwt.configs.recommended,
+];
+```
+
+The rest of this article is what happens when you feed that linter's output _back_ to the model that wrote the bug.
+
 ---
 
 ## Phase 2: The "Guardian Layer" Test
@@ -154,18 +178,21 @@ Please fix ALL the security issues.`;
 
 ## Vulnerability Categories Detected
 
-| Vulnerability           | CWE     | CVSS | Occurrences |
-| ----------------------- | ------- | ---- | ----------- |
-| Hardcoded Credentials   | CWE-798 | 9.8  | 2           |
-| Sensitive Info Exposure | CWE-200 | 5.3  | 2           |
-| Path Traversal          | CWE-22  | 7.5  | 28          |
-| Template Injection      | CWE-89  | 9.8  | 28          |
-| Command Injection       | CWE-78  | 9.8  | 4           |
+| Vulnerability                          | CWE     | CVSS | Occurrences |
+| -------------------------------------- | ------- | ---- | ----------- |
+| Hardcoded Credentials                  | CWE-798 | 9.8  | 2           |
+| Sensitive Info Exposure                | CWE-200 | 5.3  | 2           |
+| Path Traversal                         | CWE-22  | 7.5  | 28          |
+| SQL / Query Injection (template-built) | CWE-89  | 9.8  | 28          |
+| Command Injection                      | CWE-78  | 9.8  | 4           |
+
+> **On naming:** the 28 CWE-89 findings are query-injection risks — string-built SQL/queries flagged through a template-literal pattern. The rule that fires (`no-graphql-injection`, see [Limitations](#limitations--future-work)) keys on the template-literal shape, so an earlier draft of this table mislabeled them "Template Injection." The CWE is correct (CWE-89 is _Improper Neutralization of Special Elements used in an SQL Command_); the category name now matches it. Genuine server-side template injection would be CWE-1336.
 
 ### OWASP Top 10 Mapping
 
-- **A01:2021 - Broken Access Control:** SELECT \* exposing sensitive columns
-- **A07:2021 - Authentication Failures:** Hardcoded database passwords
+- **A01:2021 - Broken Access Control:** `SELECT *` exposing sensitive columns the caller shouldn't see (CWE-200)
+- **A03:2021 - Injection:** string-built SQL and shell commands (CWE-89, CWE-78)
+- **A07:2021 - Identification and Authentication Failures:** hardcoded database passwords and JWT secrets (CWE-798); CWE-798 maps to A07 in the official OWASP 2021 CWE list
 
 ---
 
@@ -206,6 +233,8 @@ async function getUserById(id) {
 }
 ```
 
+**Why this survives code review:** the `id = $1` parameterization is _right there_ — the one thing reviewers are trained to grep for in a `pg` query. It passes the SQL-injection sniff test, so the eye keeps moving. Nobody re-reads a parameterized query for `SELECT *` (an authorization smell, not an injection one) or for a hardcoded `password` buried in the client config three lines up. The secure-looking part of the code is exactly what buys the insecure part a pass. That blind spot is the whole reason a [parameterized query can still leak data it was never supposed to return](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) — and why a linter that flags `SELECT *` and string-literal secrets, not just unparameterized queries, catches what a human skim misses.
+
 ---
 
 ### ❌ Prompt 2: JWT Verification
@@ -219,9 +248,11 @@ const jwt = require("jsonwebtoken");
 
 function verifyToken(token) {
   const secret = process.env.JWT_SECRET || "your-secret-key";
-  return jwt.verify(token, secret); // ❌ CWE-757: No algorithm whitelist
+  return jwt.verify(token, secret); // ❌ CWE-347: no algorithm whitelist → alg-confusion / "none" attack
 }
 ```
+
+Without an `algorithms` whitelist, `jwt.verify` honors the `alg` header in the token itself. An attacker can flip it to `none` (no signature) or, on an RS256-issued token, downgrade to `HS256` and sign with the public key as the HMAC secret. This is the [JWT algorithm-confusion attack](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) — one missing argument, full auth bypass.
 
 **After Remediation (100% Fixed):**
 
@@ -229,10 +260,14 @@ function verifyToken(token) {
 const jwt = require("jsonwebtoken");
 
 function verifyToken(token) {
-  const secret = process.env.JWT_SECRET || "your-secret-key";
-  return jwt.verify(token, secret, { algorithms: ["RS256"] }); // ✅ Algorithm specified
+  const secret = process.env.JWT_SECRET; // no insecure fallback
+  if (!secret) throw new Error("JWT_SECRET is required");
+  // Shared-secret code → pin HS256. (RS256/ES256 verify with a PUBLIC KEY, not this string.)
+  return jwt.verify(token, secret, { algorithms: ["HS256"] }); // ✅ Algorithm pinned
 }
 ```
+
+> The model's own fix here pinned `RS256` while still passing a short secret string — which would fail at runtime, because RS256 verifies with a PEM public key, not an HMAC secret. I corrected it to `HS256` to match the symmetric-secret pattern the code actually uses. Worth flagging: the AI "remediation" was internally inconsistent, which is exactly why a human still has to read the diff.
 
 ---
 
@@ -277,7 +312,8 @@ function readUserFile(filename) {
 
 ```javascript
 function convertImage(inputFilename, outputFilename) {
-  execSync(`convert "${input}" "${output}"`); // ❌ CWE-78: Command injection
+  execSync(`convert "${inputFilename}" "${outputFilename}"`); // ❌ CWE-78: Command injection
+  // a filename like  `x.png"; rm -rf / #`  breaks out of the quotes
 }
 ```
 
@@ -384,25 +420,16 @@ Improvement: ~2x reduction
 
 ## The Analysis Stack
 
-```bash
-npm install -D eslint-plugin-secure-coding eslint-plugin-pg \
-               eslint-plugin-node-security eslint-plugin-jwt
-```
+The [install + config block is above](#phase-1-initial-results), at the point where the pain shows up. Here's which plugin caught which class of finding, so you can map it to your own stack:
 
-```javascript
-// eslint.config.js
-import secureCoding from "eslint-plugin-secure-coding";
-import pg from "eslint-plugin-pg";
-import nodeSecurity from "eslint-plugin-node-security";
-import jwt from "eslint-plugin-jwt";
+| Plugin                       | Catches in this benchmark                                    | CWE             |
+| ---------------------------- | ----------------------------------------------------------- | --------------- |
+| `eslint-plugin-pg`           | `SELECT *` over-fetch, string-built SQL                     | CWE-200, CWE-89 |
+| `eslint-plugin-jwt`          | `jwt.verify` with no `algorithms` whitelist                 | CWE-347         |
+| `eslint-plugin-node-security` | path traversal in `fs`, `child_process` command injection   | CWE-22, CWE-78  |
+| `eslint-plugin-secure-coding` | hardcoded credentials, weak crypto, sensitive-info exposure | CWE-798, CWE-200 |
 
-export default [
-  secureCoding.configs.recommended,
-  pg.configs.recommended,
-  nodeSecurity.configs.recommended,
-  jwt.configs.recommended,
-];
-```
+Full rule documentation lives at [eslint.interlace.tools](https://eslint.interlace.tools). If you're auditing a codebase rather than wiring CI, the same plugins drive [the 30-minute static-analysis onboarding protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
 ---
 
@@ -576,6 +603,8 @@ Consider the cost of a single data breach (IBM 2024 average: $4.88M) versus the 
 5. **Security is probabilistic.** The goal isn't zero vulnerabilities—it's reducing the probability of exploitation to manageable levels.
 
 The "vibe coding" era is here. But vibe coding without static analysis is a security incident waiting to happen.
+
+**Your turn:** go pull the last function an AI assistant wrote for you — the one you skimmed because the happy path looked clean. Is the SQL parameterized _and_ the column list scoped? Does `jwt.verify` pin an algorithm? Is there a secret hiding in a config object three lines above the part you actually read? Drop the one that surprised you in the comments — I want to know which class of bug your model reaches for most. Mine is path traversal; it survived remediation more than any other.
 
 ---
 
