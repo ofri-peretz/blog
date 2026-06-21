@@ -3,5 +3,9 @@
   "framework": "nextjs",
   "installCommand": "cd ../.. && rm -rf node_modules package-lock.json && npm install --no-audit --no-fund --include=optional",
   "buildCommand": "cd ../.. && npx turbo run build --filter=blog",
-  "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]"
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  }
 }
