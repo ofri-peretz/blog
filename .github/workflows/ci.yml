@@ -41,6 +41,12 @@ jobs:
           node-version-file: .nvmrc
       - run: npm install --no-audit --no-fund --include=optional
       - run: npx turbo run lint:eslint --affected
+        env:
+          # turbo --affected intermittently fails to resolve the base ref
+          # ('fatal: ambiguous argument main') on PR checkouts. Pin the diff
+          # base to the PR base SHA (present with fetch-depth: 0); empty on
+          # push, where turbo falls back to its default.
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
 
   oxlint:
     runs-on: ubuntu-latest
@@ -53,3 +59,9 @@ jobs:
           node-version-file: .nvmrc
       - run: npm install --no-audit --no-fund --include=optional
       - run: npx turbo run lint:oxlint --affected
+        env:
+          # turbo --affected intermittently fails to resolve the base ref
+          # ('fatal: ambiguous argument main') on PR checkouts. Pin the diff
+          # base to the PR base SHA (present with fetch-depth: 0); empty on
+          # push, where turbo falls back to its default.
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
