@@ -139,7 +139,7 @@ const eslintConfig = defineConfig([
     files: ["scripts/**"],
     rules: {
       "secure-coding/no-redos-vulnerable-regex": "warn",
-      "secure-coding/no-unsafe-user-input-in-regex": "warn",
+      "secure-coding/no-unsafe-regex-construction": "warn",
       "reliability/no-silent-errors": "warn",
     },
   },
