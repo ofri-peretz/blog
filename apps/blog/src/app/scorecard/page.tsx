@@ -229,9 +229,10 @@ async function DownloadsByPackageSection() {
       const data = (await res.json()) as { packages?: PackageDatum[] };
       packages = data.packages ?? [];
     }
-  } catch {
+  } catch (error) {
     // Network/transient failure — render the empty state instead of
-    // breaking the whole page.
+    // breaking the whole page, but don't swallow it silently.
+    console.error("[scorecard] npm-stats fetch failed:", error);
   }
   return (
     <section className="mt-4 flex flex-col gap-4 border-t border-border pt-12">

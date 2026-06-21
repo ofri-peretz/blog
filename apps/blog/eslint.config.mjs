@@ -122,6 +122,14 @@ const eslintConfig = defineConfig([
       "operability/no-debug-code-in-production": "warn",
       "reliability/require-network-timeout": "warn",
       "secure-coding/no-ldap-injection": "warn",
+      // ReDoS / dynamic-regex findings are all on TRUSTED build-time input:
+      // our own frontmatter + markdown parsing (scripts/*.mjs, src/lib/markdown.ts)
+      // on author-written content, plus a regression test that builds a regex from
+      // a fixed identifier list. No untrusted-input attack surface. Held at warn as
+      // ratchet backlog (per the baseline-then-ratchet doctrine above); harden the
+      // patterns with tests, then ratchet back to error.
+      "secure-coding/no-redos-vulnerable-regex": "warn",
+      "secure-coding/no-unsafe-regex-construction": "warn",
     },
   },
   {
