@@ -1,6 +1,6 @@
 // Time eslint-plugin-import vs eslint-plugin-import-next (no-cycle only) on a corpus.
 // Reports the median of R runs for each, plus the speedup.
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 
 const dir = process.argv[2] ?? 'corpus-1000';
 const R = Number(process.argv[3] ?? 5);
@@ -11,9 +11,8 @@ function timeRun(config) {
   const samples = [];
   for (let i = 0; i < R; i++) {
     const t0 = process.hrtime.bigint();
-    try {
-      execSync(`npx eslint --no-config-lookup -c ${config} '${dir}/**/*.ts'`, { stdio: 'ignore' });
-    } catch { /* lint errors expected; we're timing, not asserting */ }
+    // spawnSync — args as array, no shell, no injection
+    spawnSync('npx', ['eslint', '--no-config-lookup', '-c', config, `${dir}/**/*.ts`], { stdio: 'ignore' });
     samples.push(Number(process.hrtime.bigint() - t0) / 1e6);
   }
   return median(samples);
