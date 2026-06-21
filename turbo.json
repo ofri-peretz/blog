@@ -18,6 +18,8 @@
     },
     "test": { "dependsOn": ["build"] },
     "lint": { "dependsOn": [] },
+    "lint:eslint": { "dependsOn": [] },
+    "lint:oxlint": { "dependsOn": [] },
     "dev": { "cache": false, "persistent": true }
   }
 }
