@@ -13,7 +13,7 @@ tags:
   - "ai"
   - "security"
   - "node"
-  - "devsecops"
+  - "eslint"
 reactions: 0
 comments: 0
 views: 0
@@ -33,9 +33,15 @@ I ran `eslint-plugin-nestjs-security` — a plugin I built to catch exactly thes
 
 **6 errors. 0 warnings. 3 seconds.**
 
-Every AI-generated NestJS service I've tested ships `password` in the response body — 8 services across 3 different teams, all using Claude or GPT-4. This run was no different — it also shipped an admin endpoint with no auth guard, a login route with no rate limit, and a debug endpoint returning `DATABASE_URL`. I found the equivalent of that last one live in a staging environment four months after it was deployed, in under 60 seconds. Those are the six findings below.
+In every AI-generated NestJS service I've personally scanned, the response body ships `password`. This run was no different — it also shipped an admin endpoint with no auth guard, a login route with no rate limit, and a debug endpoint returning `DATABASE_URL`. Those are the six findings below.
 
 This isn't a one-off. In a [700-function benchmark across 5 AI models](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj), Claude's vulnerability rate was 65–75%. The specific count in your run will vary — LLM output is non-deterministic — but the failure _classes_ are consistent. The missing-guard pattern does not disappear on a retry.
+
+If you want to run this against your own AI-generated controllers before reading further, it's one install — [full config is below](#the-config):
+
+```bash
+npm install --save-dev eslint-plugin-nestjs-security
+```
 
 ---
 
@@ -125,7 +131,7 @@ See also: [the same missing-guard pattern in a 2-year-old production codebase, a
 
 ---
 
-## Finding 2: No rate limiting on auth endpoints (CWE-307)
+## Finding 2: No rate limiting on auth endpoints (CWE-770)
 
 [`nestjs-security/require-throttler`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/require-throttler)
 
@@ -136,6 +142,8 @@ Route 'login' lacks @Throttle or ThrottlerGuard — brute-force exposure
 ```
 
 An attacker can enumerate passwords against the login endpoint at full network speed.
+
+The rule tags this **CWE-770** (Allocation of Resources Without Limits or Throttling) — the missing control is a rate limit, full stop. The downstream consequence on an _auth_ route is brute-force / credential stuffing (CWE-307), so you'll see this finding cross-referenced either way. The rule fires on the absent throttler, not on the route's purpose, which is why it reports the more general CWE-770.
 
 **Why AI generates this:** Brute-force protection is a _rate-at-which_ constraint, not a _what-does-it-do_ constraint — those never appear in feature prompts. "Build a login endpoint" describes a function, not a limit on how fast it can be called. Claude Sonnet 4.6 knows `@Throttle` exists; it will add it if you ask. The prompt didn't ask.
 
@@ -233,7 +241,7 @@ app.useGlobalPipes(
 );
 ```
 
-> **AI-specific miss: nested validation.** Claude also omits `@ValidateNested()` + `@Type(() => NestedDto)` on nested DTO objects. Without them, nested objects skip validation entirely — the class-validator decorators on the nested class are ignored at runtime. This is the most frequent `ValidationPipe` hole in AI-generated NestJS code and it has no ESLint error: TypeScript compiles, validation appears to run, the nested object passes through unchecked.
+**The hole no linter catches — and the most important paragraph in this article:** Claude also omits `@ValidateNested()` + `@Type(() => NestedDto)` on nested DTO objects. Without them, nested objects skip validation entirely — the class-validator decorators on the nested class are ignored at runtime. This is the single most frequent `ValidationPipe` hole I see in AI-generated NestJS code, and it has **no ESLint error**: TypeScript compiles, the pipe is registered, validation _appears_ to run, and the nested object passes through unchecked. Static analysis can flag the missing pipe (Finding 4) and the missing decorator (Finding 5); it cannot yet prove that a present decorator actually recurses. The lint gate narrows the gap — it does not close it, and pretending otherwise is how the nested hole survives. If you read one fix in this piece twice, make it this one.
 
 ---
 
@@ -350,6 +358,20 @@ The question that surfaces all six: _"What happens when someone who isn't suppos
 
 Static analysis asks it on every file, every run. [The Hydra Problem](https://dev.to/ofri-peretz/the-ai-hydra-problem-fix-one-ai-bug-get-two-more-5g1l) shows what happens when you try to fix AI omissions one at a time in review: fixing one surfaces others. The 65–75% rate held [across every security domain we tested](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj). NestJS is no exception.
 
+### This isn't only a Claude problem — it's a prompt problem
+
+The natural objection: maybe six is a Claude-specific weakness, and another toolchain gets it right. The count *does* move with the toolchain — but the root cause doesn't. These aren't bugs the model got wrong; they're constraints the prompt never stated. Change assistants and the count changes; the negative-space class survives.
+
+I ran the identical prompt through Gemini 2.5 Flash via the Gemini CLI and scanned the output with the same plugin: [Same NestJS Prompt. Claude Got 6 Errors. Gemini Got 2.](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) Gemini's default scaffolding was structurally tighter — it got guards, validators, and serialization right where Claude didn't. But both toolchains shipped the same Finding 2: **no rate limiting on the login endpoint.** The one class that survived the model swap is the one neither prompt thought to constrain.
+
+> **Running this against Gemini?** That companion article is the Gemini-CLI run of this exact methodology — same prompt, same plugin, scored against Gemini 2.5 Flash — and it's the version positioned for the [Build with Gemini XPRIZE](https://dev.to/challenges) challenge. If you want to reproduce the experiment on a Gemini model rather than Claude, start there; the adaptation is a one-line model swap in the prompt and a re-run of [the config below](#the-config).
+
+You can verify the whole thing yourself in three steps:
+
+1. Paste the same prompt — _"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."_ — into whatever assistant you use (Claude, Gemini, GPT-4, Copilot).
+2. Run the [config below](#the-config) on the output.
+3. Count the findings by *class*, not by line. The total drifts by toolchain; the rate-limit, missing-guard, and exposed-`password` classes keep recurring. The rules read the decorator tree, not the git blame.
+
 ---
 
 ## The config
@@ -383,7 +405,7 @@ Full rule documentation at [eslint.interlace.tools](https://eslint.interlace.too
 
 ---
 
-_What's the most embarrassing thing a debug endpoint or an unguarded route has leaked in a codebase you inherited — and how long had it been live?_
+_What's the most embarrassing thing a debug endpoint or an unguarded route has leaked in a codebase you inherited — and how long had it been live before anyone noticed?_
 
 ---
 

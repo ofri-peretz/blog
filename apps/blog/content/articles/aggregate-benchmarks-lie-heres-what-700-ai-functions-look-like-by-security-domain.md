@@ -1,6 +1,6 @@
 ---
 title: "Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain."
-description: "Part 3 ranked 5 AI models by overall vulnerability rate. But when we broke the data down by security domain — database, auth, file I/O, command execution — the rankings inverted. The 'worst' model fixes 93% of database vulnerabilities. The 'best' model fails at remediation. Aggregate numbers hide domain expertise."
+description: "The 'most dangerous' AI model fixes 93% of the database vulnerabilities it writes; the 'safest' fixes 45%. Same 700 functions, opposite conclusion. When I broke a 5-model security benchmark down by domain — database, auth, file I/O, command execution — the rankings inverted. Aggregate numbers hide domain expertise. Here's the per-domain data and how to gate it in CI."
 slug: "aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain"
 canonical_url: "https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain"
 devto_url: "https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj"
@@ -9,11 +9,22 @@ published_at: "2026-05-17T15:40:50Z"
 cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/gjifodfaukn49e9y18ux.png"
 social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/gjifodfaukn49e9y18ux.png"
 reading_time_minutes: 12
+# Tag strategy (DEV.to hard cap = 4):
+#   ai + security    → winner cluster (powers our highest-comment articles)
+#   googleai         → Google AI / Gemini angle; also the XPRIZE discovery tag
+#   eslint           → ecosystem core discovery tag; this piece is entirely about ESLint rules
+# Dropped "javascript": redundant with the eslint/security cluster here, and eslint
+#   restores the ecosystem discovery path the corpus shows we were missing.
+# Build-with-Gemini-XPRIZE adaptation path (window May 19–Aug 17, 2026): this article is a
+#   one-step entry — Gemini 2.5 Pro/Flash are featured favorably on original security
+#   benchmark data with #googleai already present. To submit, free one slot (drop "eslint"
+#   or "ai") and add "geminichallenge". Not done here: the article is already published and
+#   an unsubmitted #geminichallenge tag would be dead discovery; eslint earns more standing.
 tags:
   - "ai"
   - "security"
   - "googleai"
-  - "javascript"
+  - "eslint"
 reactions: 0
 comments: 0
 views: 0
@@ -25,17 +36,19 @@ author:
 series: "AI Security Benchmark Series"
 ---
 
+The model I called "most dangerous" fixes 93% of the database vulnerabilities it writes. The model I called "safest" fixes 45%. Both numbers come from the same 700 functions. Both are real. And together they mean the leaderboard I published three weeks ago was telling you to pick the wrong model.
+
 Every AI benchmark I've seen makes the same mistake. They rank models by a single number — accuracy, pass rate, vulnerability rate — and call it a day.
 
-In [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), we did exactly that. We ranked 5 models from Claude and Gemini by aggregate vulnerability rate and declared Haiku the safest (49%) and Gemini Pro the most dangerous (73%).
+In [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), I did exactly that. I ranked 5 models from Claude and Gemini by aggregate vulnerability rate and declared Haiku the safest (49%) and Gemini Pro the most dangerous (73%).
 
-That ranking is real. It's also misleading.
+That ranking is real. It's also misleading. When I broke the same data down by security domain, the ranking didn't just shift — it inverted.
 
 ---
 
 ## TL;DR
 
-When we broke 700 functions down by **security domain**, the rankings inverted. The model that "lost" the aggregate benchmark dominates the most important remediation category. The model that "won" has one of the lowest fix rates.
+When I broke 700 functions down by **security domain**, the rankings inverted. The model that "lost" the aggregate benchmark dominates the most important remediation category. The model that "won" has one of the lowest fix rates.
 
 ### Category Champions (Lowest Vulnerability Rate)
 
@@ -81,6 +94,12 @@ AI models work the same way. Different models generate fundamentally different *
 
 The only honest way to compare security is **per domain, per task, with remediation included.**
 
+### Why This Isn't an Academic Exercise
+
+This isn't a leaderboard for a paper. One of these five models is writing code in your editor right now — Copilot, Cursor, Claude Code, Gemini in Antigravity. The domain breakdown is the difference between "my assistant is safe" and "my assistant is safe at JWT and a coin-flip at database queries." When your team standardizes on a single model "because it scored best," you inherit its worst domain everywhere — and the data below shows every model has a worst domain it's genuinely bad at.
+
+The reassuring part: these are the exact patterns a static-analysis pass catches before the code reaches review. The same ESLint rules I used to score the models are the ones that flag the AI's output in CI. Generation is the model's job; catching what it reintroduces is yours.
+
 ---
 
 ## The Five Security Domains
@@ -99,6 +118,8 @@ The only honest way to compare security is **per domain, per task, with remediat
 
 **Observation:** Haiku wins generation by writing simple, parameterized queries. Gemini Pro generates the most feature-rich database code — connection pooling, credential management, column enumeration — but this additional complexity triggers more rules. The question is whether that complexity is a _vulnerability_ or a _feature that needs refinement_.
 
+**Why this survives review:** the Gemini Pro database code _looks_ more senior. It has the connection pool, the env-var config, the error handling — all the things a reviewer is trained to look for. So the reviewer's pattern-matcher fires "this person knows what they're doing" and the `pg/no-select-all` and `detect-object-injection` issues slide through, because they're buried in code that signals competence. Haiku's bare three-line query gets _more_ scrutiny precisely because it looks junior. The lesson I keep relearning: production-shaped code earns trust it hasn't yet proven, and that's exactly where the [parameterization and `SELECT *` bugs hide](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).
+
 ### 2. Authentication (JWT, bcrypt)
 
 **Prompts:** `generateJWT`, `verifyJWT`, `hashPassword`, `comparePassword`
@@ -112,6 +133,10 @@ The only honest way to compare security is **per domain, per task, with remediat
 | Opus 4.6         | 50%        | **7/7 on `generateJWT`** — always vulnerable |
 
 **The most striking prompt-level result in the benchmark:** Opus generates vulnerable JWT creation code **every single time** (7/7), always including sensitive user data in the payload (`jwt/no-sensitive-payload`). Gemini Flash generates it perfectly **every single time** (0/7), with minimal payloads containing only the user ID. Same prompt, opposite outcomes, 100% consistency.
+
+I saw the same "same prompt, different model, different failure" pattern when I gave [Claude and Gemini an identical NestJS spec](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) — the models don't make random mistakes, they make *characteristic* ones. And the specific failure here is one of the cheapest to exploit: putting the wrong thing in a JWT payload (or trusting the wrong field) is a one-line vulnerability, the same family as [the JWT `alg: none` attack](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g).
+
+**Why this survives review:** a reviewer waves through `jwt.sign(user, secret)` because it _works_ — login succeeds, the token verifies, the test suite is green, and the payload is just `...user`, which reads like a sensible default. The bug is literally invisible at the source level; it only surfaces when someone base64-decodes the token in transit and finds the password hash, the email, and the role sitting in plaintext between the dots. Nothing in the diff says "this leaks PII," so nobody asks. The reviewer would have to think to decode the token to catch it — and almost nobody does that in a pull-request review.
 
 ### 3. File I/O (Uploads, Reads, Deletes)
 
@@ -143,6 +168,8 @@ Even here, there's a spread: Gemini Pro's 86% vs Sonnet's 100% reflects Gemini P
 
 **Haiku's simplicity advantage is clearest here.** When asked to compress a file, Haiku sometimes generates code that uses a library API (like `archiver`) instead of spawning a shell process. The larger models generate shell commands with `child_process.exec()` — more flexible, but inherently flagged by security rules.
 
+**Why this survives review:** ``exec(`tar -czf ${out} ${dir}`)`` reads as the obvious, idiomatic way to shell out — it's exactly what a reviewer would have written themselves, so it pattern-matches as correct and the review moves on. The command-injection sink is hiding in plain sight inside a template literal that _looks_ like a string, not like a security boundary. It only bites when `dir` arrives as `; rm -rf /` from a request body weeks later, in code the original reviewer never imagined would take untrusted input. Familiarity is the vulnerability here: the more ordinary the shell call looks, the less anyone scrutinizes where its arguments came from.
+
 ### 5. Configuration & Secrets
 
 **Prompts:** `dbConnection`, `sendEmail`, `apiCall`, `encryptData`
@@ -161,7 +188,7 @@ Even here, there's a spread: Gemini Pro's 86% vs Sonnet's 100% reflects Gemini P
 
 ## The Remediation Story, Per Domain
 
-Generation is only half the pipeline. When vulnerabilities are found, we feed the ESLint violations back to the same model and ask it to fix them. This is where the rankings invert most dramatically.
+Generation is only half the pipeline. When vulnerabilities are found, I feed the ESLint violations back to the same model and ask it to fix them. This is where the rankings invert most dramatically.
 
 ### Database Remediation — The Biggest Surprise
 
@@ -187,7 +214,7 @@ This pattern makes more sense than it first appears. Gemini Pro generates comple
 | Haiku 4.5        | 8                    | 3           | 38%      |
 | Gemini 2.5 Flash | 12                   | 3           | **25%**  |
 
-**This is the most dominant single-category result in the entire benchmark.** Opus fixes every single authentication vulnerability when given feedback — 14 for 14, a perfect score. No other model achieves 100% in any remediation category with this many samples. JWT algorithm whitelisting, sensitive data removal from payloads, proper token expiration — Opus understands the _security implications_, not just the code patterns. If your application is authentication-heavy, Opus is the only model where remediation is effectively solved.
+**This is the most dominant single-category result in the entire benchmark** — though I'll caveat it before you do: it rests on n=14. Opus fixes every single authentication vulnerability when given feedback — 14 for 14, a perfect score on a small but unbroken run. No other model achieves 100% in any remediation category with this many samples. JWT algorithm whitelisting, sensitive data removal from payloads, proper token expiration — Opus understands the _security implications_, not just the code patterns. Fourteen is not enough to promise 100% in production, but a clean 14/14 is a strong enough signal that, if your application is authentication-heavy, Opus is the model I'd reach for first.
 
 ### File I/O Remediation — Everyone Struggles
 
@@ -211,7 +238,31 @@ Opus leads here, but even its 73% leaves more than a quarter of file operations 
 | Gemini 2.5 Flash | 23                   | 1           | 4%       |
 | Gemini 2.5 Pro   | 26                   | 0           | **0%**   |
 
-**The most sobering category.** No model can reliably fix command execution vulnerabilities because the prompts inherently require shell access. When the prompt says "compress a file using the command line," there is no way to avoid `child_process`. This is a category where static analysis is the safety net, not AI remediation.
+**The most sobering category.** The "leader" here fixes 5 of 27 — and calling 19% a lead is generous; it's the tallest result in a field where everyone fails. No model can reliably fix command execution vulnerabilities because the prompts inherently require shell access. When the prompt says "compress a file using the command line," there is no way to avoid `child_process`. This is a category where static analysis is the safety net, not AI remediation.
+
+If you only take one action from this article, make it this: put the gate in CI so the 0%-fix-rate categories can't ship silently. These are the exact plugins that produced every number above — install them and the AI's output gets checked on the way in:
+
+```bash
+npm i -D eslint-plugin-secure-coding eslint-plugin-node-security \
+  eslint-plugin-pg eslint-plugin-jwt
+```
+
+```js
+// eslint.config.js (flat config)
+import secureCoding from "eslint-plugin-secure-coding";
+import nodeSecurity from "eslint-plugin-node-security";
+import pg from "eslint-plugin-pg";
+import jwt from "eslint-plugin-jwt";
+
+export default [
+  secureCoding.configs.recommended, // detect-child-process, detect-non-literal-fs-filename, no-hardcoded-credentials
+  nodeSecurity.configs.recommended,
+  pg.configs.recommended,           // pg/no-select-all, pg/no-unsafe-query, pg/prefer-pool-query
+  jwt.configs.recommended,          // jwt/no-sensitive-payload
+];
+```
+
+The full rule list and per-rule docs are at [eslint.interlace.tools](https://eslint.interlace.tools). The point isn't the specific plugins — it's that for command execution and file I/O, the lint rule is the last line of defense, because neither the model nor the reviewer reliably is.
 
 ### Configuration Remediation — Two Perfect Scores
 
@@ -223,7 +274,7 @@ Opus leads here, but even its 73% leaves more than a quarter of file operations 
 | Gemini 2.5 Pro       | 13                   | 5           | 38%      |
 | Haiku 4.5            | 9                    | 2           | **22%**  |
 
-Both Gemini Flash and Opus achieve perfect configuration remediation. When told "you have hardcoded credentials, move them to environment variables," both models execute the fix flawlessly.
+Both Gemini Flash and Opus achieve perfect configuration remediation — on small denominators (n=6 and n=7 respectively), so read these as "never missed in this run," not "statistically certain to never miss." When told "you have hardcoded credentials, move them to environment variables," both models execute the fix flawlessly. The mechanism is plausible — moving a literal to `process.env` is the single most templated fix in the corpus — which is why I trust the direction even at this sample size.
 
 ---
 
@@ -236,7 +287,7 @@ The most useful metric isn't vulnerability rate or fix rate in isolation — it'
 | **Opus 4.6**       | 65.0%             | 60.4%    | **25.7%**         | ⬆️ 4th → **1st**  |
 | **Haiku 4.5**      | 48.6%             | 38.2%    | **30.0%**         | ⬇️ 1st → 2nd      |
 | Sonnet 4.5         | 62.1%             | 36.8%    | 39.3%             | — stays 2nd tier  |
-| **Gemini 2.5 Pro** | 72.9%             | 46.1%    | **39.3%**         | ⬆️ 5th → ties 3rd |
+| **Gemini 2.5 Pro** | 72.9%             | 46.5%    | **39.3%**         | ⬆️ 5th → ties 3rd |
 | Gemini 2.5 Flash   | 63.6%             | 33.7%    | 42.1%             | — stays 3rd tier  |
 
 **The entire ranking inverts after remediation.** Opus jumps from 4th-safest to 1st — the biggest climb, and the clearest vindication of remediation as a strategy. Haiku drops from 1st to 2nd. And Gemini Pro — the "most dangerous" model by aggregate — climbs from 5th to tie for 3rd, matching Sonnet.
@@ -297,7 +348,7 @@ This isn't theoretical — the Gemini CLI's `-p` flag and the Claude CLI's `--pr
 # Database remediation → Gemini Pro (93% fix rate)
 LINT_ERRORS=$(npx eslint db-query.js --format json)
 if [ $? -ne 0 ]; then
-  cd $(mktemp -d) && gemini -p --model gemini-2.5-pro \
+  cd $(mktemp -d) && gemini --model gemini-2.5-pro -p \
     "Fix these ESLint violations: $LINT_ERRORS"
 fi
 
@@ -309,7 +360,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # JWT generation → Gemini Flash (0/7 vuln — perfect)
-cd $(mktemp -d) && gemini -p --model gemini-2.5-flash \
+cd $(mktemp -d) && gemini --model gemini-2.5-flash -p \
   "Write a JWT generation function"
 ```
 
@@ -338,7 +389,7 @@ Everything from [Part 3's limitations](https://ofriperetz.dev/articles/we-ranked
 
 1. **Small category samples.** Each category has 4 prompts × 7 iterations = 28 data points per model. Category-level confidence intervals are wider than the aggregate. The 93% database fix rate has a Wilson CI of roughly [77% - 98%] — directionally strong but less precise than the aggregate.
 
-2. **No cross-model remediation.** We tested each model remediating its own code. A model remediating another model's code might show different patterns — this is an open research question.
+2. **No cross-model remediation.** I tested each model remediating its own code. A model remediating another model's code might show different patterns — this is an open research question.
 
 3. **Category definitions are arbitrary.** "Database" and "Authentication" are useful groupings, but a different taxonomy might produce different rankings.
 
@@ -373,6 +424,10 @@ node benchmarks/ai-security/run-antigravity.js \
 5. **Command execution remediation is unsolved.** Every model scores below 20%. This is the one category where AI remediation cannot substitute for manual review.
 
 6. **Domain-aware model selection beats "use the best model."** Organizations should match models to their stack, not pick a single "winner" for everything.
+
+---
+
+Here's the question I keep coming back to: your team standardized on one AI assistant for everything. Which domain is it quietly bad at — and would you know before it shipped? If you've ever caught (or missed) an AI-generated bug that your "best" model should have known better than to write, I want to hear which domain it was in. Drop it in the comments.
 
 ---
 

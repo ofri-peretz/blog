@@ -11,28 +11,41 @@ cover_image: "https://ofriperetz.dev/og/cover/100-owasp-llm-top-10-coverage-for-
 social_image: "https://ofriperetz.dev/og/article/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk"
 reading_time_minutes: 8
 tags:
-  - "eslint"
-  - "ai"
   - "security"
+  - "ai"
   - "owasp"
+  - "geminichallenge"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-series: null
+series: "Hardening AI Agents"
 ---
 
-"How do you address the OWASP LLM Top 10?" is now a question on enterprise
-security questionnaires. The honest answer for a Vercel AI SDK app is more
-useful than a "100% covered" checkbox — because **static analysis genuinely
-catches 8 of the 10 categories at the call site, and two of them it can't touch
-at all.** Knowing which is which is the difference between a real control and a
-compliance theater slide.
+> **Series: Hardening AI Agents** ·
+> [Prompt injection](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability)
+> · [Excessive agency](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk)
+> · [All 19 rules](https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security)
+> · **OWASP LLM Top 10 (you are here)**
+
+Every "100% OWASP LLM coverage" claim I have audited maps a timeout rule to
+"model poisoning" and hopes the buyer doesn't open the category list. The honest
+number is **8 of the 10 — static analysis genuinely catches them at the call
+site — and 2 it cannot touch at all** (supply chain and model poisoning). That
+gap is now a line item on enterprise security questionnaires, and knowing which 8
+and which 2 is the difference between a real control and a compliance-theater
+slide.
 
 `eslint-plugin-vercel-ai-security` is SDK-aware (it understands `generateText`,
 `streamText`, `tool()`), and maps a CWE-tagged rule to the categories that are
 _source patterns_. Here's the real matrix.
+
+> **The other half of the questionnaire:** this is the **LLM** Top 10. The
+> **web** OWASP Top 10 (2021) for the same Node.js stack — also 8 of 10, also
+> honestly — is mapped in
+> [I Mapped the OWASP Top 10 to ESLint Rules. 8 Hold Up. 2 Are Vendor Theater.](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
+> If the questionnaire asks for both, these two pieces are the paired answer.
 
 ---
 
@@ -53,6 +66,13 @@ Each finding carries the CWE and the fix. (Note: the inline `OWASP:` tag in a
 finding is the classic web-AppSec category the CWE rolls up to — e.g. CWE-74 →
 `A03 Injection` — not the LLM code; the **rule set** is organized around the LLM
 Top 10, the CWE is the precise anchor.)
+
+Two of these rows have their own war-story deep-dive, because they're the two
+that ship most often: **LLM01** is dissected in
+[3 Lines of Vercel AI SDK Code Are a Prompt-Injection Hole](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo)
+(and why "just sanitize it" doesn't close it), and **LLM06** Excessive Agency —
+the one that lets an agent delete your database — is the subject of
+[5 ESLint Rules That Gate Every Tool Call](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk).
 
 ---
 
@@ -104,9 +124,94 @@ Nothing reliably does at the text layer. See the
 [vercel-ai-security deep-dive](https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security)
 for the full mechanism of all 19 rules.)
 
+**Why this survives the security review.** That first line —
+`prompt: userMessage` — passes review because reviewers read the handler logic,
+check the error handling, confirm the response shape, and move on. The prompt
+field is a string; the string is typed; TypeScript is green. Nobody scans a
+`generateText` call and asks _"is this argument trusted?"_ — they ask "does the
+chat feature work?" The missing validation boundary is negative space, and
+negative space doesn't show up in a diff. I would have approved it too.
+
+The same blindness has a second, sneakier shape — the **missing `maxSteps`** on a
+tool loop (LLM10 / LLM06). Picture the same handler with a `tools: { ... }` block
+and no step cap. In the demo, the model calls the tool once, gets its result, and
+returns — the loop _terminates_, the response is correct, the test passes. So it
+reads as done: a reviewer watches one happy-path run end cleanly and has no reason
+to ask "what bounds this if a later prompt makes it call itself?" The cap isn't
+wrong in the diff; it's _absent_, and absence only becomes a bug under an input
+nobody typed in review. That's exactly what `require-max-steps` (CWE-834) fires
+on, structurally, before the input that loops ever arrives. Every row in the
+matrix is some version of this — an absent timeout, an ungated tool — each reading
+as "the happy path is correct," because it is. What's missing is the part a human
+reviewer is not trained to see, and a per-file rule is.
+
 ---
 
-## Install
+## The category the coding assistant keeps reopening
+
+Here's the part the questionnaire doesn't ask about. Most Vercel AI SDK code
+isn't hand-written line by line anymore — it's generated by a coding assistant
+(Claude, Gemini, Copilot) from a prompt like "add a chat endpoint with the AI
+SDK." Ask any of them for that endpoint and you reliably get the working,
+insecure shape: `generateText({ prompt: userMessage })`, no `maxSteps`, no
+timeout, a `tool()` that executes with no confirmation. Not because the model is
+careless — because the prompt asked for a chat feature, not for an injection
+boundary or a step cap, and the model answers the question it was asked. The
+happy path _is_ the spec it was given.
+
+**So I ran the test.** I took the canonical generated route — a `POST` handler
+doing `generateText({ model, prompt: userMessage, tools: { deleteRecord: tool(...) } })`,
+the exact shape an assistant hands you — saved it as `src/app/chat/route.ts`, and
+ran the **`recommended`** config from `eslint-plugin-vercel-ai-security@1.3.5`
+(ESLint 10.4.1) against it. Four findings, on a file that compiles clean and whose
+happy path works:
+
+```text
+error  vercel-ai-security/require-validated-prompt   L12  (LLM01, CWE-74)
+error  vercel-ai-security/require-max-steps          L10  (LLM06/LLM10, CWE-834)
+error  vercel-ai-security/require-max-tokens         L10  (LLM10, CWE-770)
+warn   vercel-ai-security/require-request-timeout    L10  (LLM10, CWE-400)
+```
+
+Two of the eight covered categories light up from one unremarkable handler — LLM01
+(the prompt-injection boundary) and LLM10 (the unbounded loop, the token ceiling,
+and the request-timeout warning), with `require-max-steps` also rolling into LLM06. (Note: `require-tool-confirmation` stayed silent
+here _by design_ — the rule reports on a destructive tool written as a plain
+object, and steps back when the tool uses the `tool()` helper, where confirmation
+may be wired inside. Write `deleteRecord` as a bare object literal and it fires
+too. Honest tools tell you where they stop.) Reproduce it in two minutes: paste
+your assistant's route into a repo, add the config below, run
+`npx eslint . --format stylish`, count the findings.
+
+That's why this matrix is a CI control and not a one-time audit. The same
+assistant that helped you ship the fix will, in the next session with no memory
+of this one, regenerate the unguarded version — a pattern I measured across
+domains in
+[I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
+and the reason fixing AI omissions by hand in review doesn't converge:
+[The AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
+A linter that fires on every file, every run, is the only reviewer that asks the
+negative-space question — _"is this input trusted? is this loop bounded? is this
+tool gated?"_ — on every commit, regardless of which model wrote it.
+
+And it _is_ regardless of model — this isn't a Claude tic. When I ran the same
+prompt on Claude and Gemini for a different stack, both shipped insecure code;
+they just omitted different guards (Claude tripped 6 rules, Gemini 2, and **both**
+missed rate limiting on the auth endpoint):
+[Same NestJS Prompt. Claude Got 6 Security Errors. Gemini Got 2.](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)
+The per-model count moves; the negative space is constant. The clean adaptation
+of _this_ matrix is the same experiment scaled across the LLM Top 10: generate the
+chat route with **Gemini 2.5**, run the recommended config, and record which of
+the eight categories it leaves as negative space versus Claude. Same rules, same
+methodology, one model swap — that's the Build-with-Gemini benchmark this piece is
+one run away from.
+
+---
+
+## Install — run it on the next generated route
+
+The fastest way to feel the matrix is to lint the code your assistant just
+emitted:
 
 ```bash
 # npm
@@ -119,8 +224,8 @@ npm install --save-dev eslint-plugin-vercel-ai-security
 import { configs } from "eslint-plugin-vercel-ai-security";
 
 export default [
-  configs.recommended, // 7 errors + 7 warnings + 5 off
-  // configs.strict,   // 17 errors — production hardening
+  configs.recommended, // v1.3.5: 11 errors + 4 warnings + 4 off
+  // configs.strict,   // 18 errors + 1 warning — production hardening
 ];
 ```
 
@@ -153,6 +258,13 @@ named (SBOM/model signing for LLM03, ingest validation for LLM04) instead of a
 hand-wave. "8 of 10, automated and CWE-tagged, plus a clear plan for the other
 two" is a stronger answer than a claim that collapses the moment someone opens
 the OWASP page.
+
+The uncomfortable corollary: if you can't name the rule and the CWE behind each
+covered row, you don't have 8 of 10 — you have a slide. So I'll ask the question
+the questionnaire should: **when your last AI SDK endpoint shipped, which of
+these eight categories had a guard in CI — and which one made it to production as
+negative space nobody saw in review?** I've watched the prompt-injection row and
+the unbounded-consumption row slip through the most. What slipped through yours?
 
 ---
 

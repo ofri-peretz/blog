@@ -1,6 +1,6 @@
 ---
-title: "Getting Started with eslint-plugin-mongodb-security"
-description: "How to prevent MongoDB NoSQL injection, operator injection, and hardcoded connection strings with the only ESLint plugin built specifically for MongoDB/Mongoose."
+title: "Your MongoDB Login Can Be Bypassed With No Password and No Quotes. The ESLint Plugin That Catches It."
+description: "{ \"$ne\": null } as a password bypasses MongoDB auth — no SQL string, no injection your generic linter understands. NoSQL operator injection, the $where RCE behind CVE-2025-23061, and the 16 CWE-mapped ESLint rules built specifically for MongoDB/Mongoose that flag all of it in CI."
 slug: "getting-started-eslint-plugin-mongodb-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-mongodb-security"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-mongodb-security-ol6"
@@ -13,7 +13,7 @@ tags:
   - "security"
   - "node"
   - "devsecops"
-  - "eslint"
+  - "ai"
 series: "ESLint Security Plugins"
 reactions: 0
 comments: 0
@@ -37,7 +37,13 @@ await db.collection("users").findOne({
 });
 ```
 
-`eslint-plugin-mongodb-security` is the only ESLint plugin built specifically for MongoDB/Mongoose codebases. Here's how to use it.
+No SQL string. No quotes. No payload your WAF recognizes. The attacker sends `{ "$ne": null }` as the password value, Express parses it into a real JavaScript object, and `findOne` happily matches the first user whose password is not null — which is every user. That's a full authentication bypass in valid JSON.
+
+**Why this survives code review:** the line `password: req.body.password` is the obvious, correct-looking thing to write. A reviewer reads it as "compare the submitted password to the stored one." It only becomes a vulnerability when `req.body.password` stops being a string and becomes an operator object — and nothing in the diff signals that the field is attacker-shaped. The type is `any`, the test suite posts a string, and the bug ships green. You can't catch this in review by reading harder; you catch it by encoding the rule "request data must never reach a query field unsanitized" into the linter.
+
+`eslint-plugin-mongodb-security` is the only ESLint plugin built specifically for MongoDB/Mongoose codebases — 16 rules, each mapped to a CWE and the relevant CVE. Here's how to use it.
+
+> This is part of my [ESLint Security Plugins](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) series — one plugin per data layer. The [node-postgres edition](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) covers the SQL side of the same class of bug.
 
 ---
 
@@ -47,18 +53,17 @@ await db.collection("users").findOne({
 npm install eslint-plugin-mongodb-security --save-dev
 ```
 
-`eslint.config.mjs`:
+`eslint.config.mjs` — the `recommended` preset wires up the plugin and turns on every rule that matters, NoSQL-injection rules as errors:
 
 ```javascript
 import mongodbSecurity from "eslint-plugin-mongodb-security";
 
 export default [
-  {
-    plugins: { "mongodb-security": mongodbSecurity },
-    rules: mongodbSecurity.configs.flagship.rules,
-  },
+  mongodbSecurity.configs.recommended,
 ];
 ```
+
+That one line is the copy-paste that catches the auth-bypass above. Run `npx eslint .` and the operator-injection finding shows up at the exact `password: req.body.password` line, with the CWE and a suggested fix. If you want everything as an error (good for a CI gate that should block the merge, not just warn), use `configs.strict`; for a Mongoose-only project, `configs.mongoose`.
 
 ---
 
@@ -66,7 +71,7 @@ export default [
 
 ### 1. `no-unsafe-query` — NoSQL operator injection (CWE-943, CVSS 9.8)
 
-Fires when a `$where`, `$expr`, or `$function` operator receives a value directly from user input — the exact pattern that lets an attacker inject arbitrary query logic.
+Fires when a `$where`, `$expr`, or `$function` operator receives a value directly from user input — the exact pattern that lets an attacker inject arbitrary query logic. This isn't theoretical: `$where` runs server-side JavaScript, and a user-controlled `$where` is the root of [CVE-2025-23061](https://nvd.nist.gov/vuln/detail/CVE-2025-23061) and [CVE-2024-53900](https://nvd.nist.gov/vuln/detail/CVE-2024-53900) in Mongoose. The plugin's `no-unsafe-where` rule links straight to those NVD entries in its finding.
 
 ```javascript
 // ❌ Flagged — $where with user-controlled JavaScript
@@ -128,6 +133,16 @@ Generic security linters (`eslint-plugin-security`, `eslint-plugin-sonarjs`) don
 
 ---
 
+## The reason this rule matters more in 2026: your AI assistant writes this exact bug
+
+Ask any coding assistant for "an Express login route with MongoDB" and watch what you get back. `findOne({ email: req.body.email, password: req.body.password })` is one of the most common shapes in the training data, because it's the shape in thousands of tutorials — and almost none of those tutorials sanitize the operator case. The model reproduces the *typical* code, and the typical code is vulnerable.
+
+I ran the broader version of this experiment: [I let Claude write 80 common Node.js functions with zero security context](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), and 65–75% shipped with a vulnerability — operator injection and unsanitized request data among the most frequent. The uncomfortable part isn't that AI gets it wrong once. It's that it regenerates the same insecure shape every time you accept a completion, faster than any human reviewer can keep up.
+
+This is why the rule lives in the linter and not in a wiki page. A static rule is the only reviewer that runs on every save, every paste, every AI completion — and it doesn't get tired on the 40th login route. The plugin's findings ship with CWE-tagged, fix-oriented messages precisely so the assistant can read its own error and correct the code on the next turn, instead of you playing whack-a-mole with the same bypass.
+
+---
+
 ## All 16 rules
 
 | Rule | Severity | CWE |
@@ -136,7 +151,7 @@ Generic security linters (`eslint-plugin-security`, `eslint-plugin-sonarjs`) don
 | `no-operator-injection` | error | CWE-943 |
 | `no-hardcoded-connection-string` | error | CWE-798 |
 | `no-hardcoded-credentials` | error | CWE-798 |
-| `require-tls-connection` | error | CWE-319 |
+| `require-tls-connection` | warn | CWE-319 |
 | `require-auth-mechanism` | warn | CWE-306 |
 | `no-unsafe-regex-query` | error | CWE-1333 |
 | `no-unsafe-where` | error | CWE-943 |
@@ -144,14 +159,26 @@ Generic security linters (`eslint-plugin-security`, `eslint-plugin-sonarjs`) don
 | `require-schema-validation` | warn | — |
 | `no-select-sensitive-fields` | warn | CWE-312 |
 | `no-bypass-middleware` | warn | CWE-284 |
-| `no-unsafe-populate` | warn | CWE-943 |
+| `no-unsafe-populate` | error | CWE-943 |
 | `no-unbounded-find` | warn | CWE-400 |
 | `require-projection` | warn | — |
 | `require-lean-queries` | warn | — |
 
 ---
 
-*If this catches something in your codebase, [⭐ star the repo](https://github.com/ofri-peretz/eslint) — it keeps the rules maintained.*
+(Severities above are the `recommended` preset. `strict` promotes every rule to `error`.)
+
+---
+
+The auth bypass at the top of this article is one line of obvious-looking code that a reviewer waved through, a test suite covered with a string, and an AI assistant will hand you again tomorrow. The linter is the one reviewer that catches it on every one of those paths.
+
+So I'll ask the question this article is really about: **what's the NoSQL bug that actually bit you — the `$where` someone left in, the `req.body` that turned into an operator, the connection string in a committed `.env.example`?** Drop it in the comments. The next person grepping for "MongoDB operator injection" at 2 AM will be grateful you did.
+
+If this catches something in your codebase, [⭐ star the repo](https://github.com/ofri-peretz/eslint) — it keeps the rules maintained.
+
+**More in the [ESLint Security Plugins](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) series:**
+- [Your node-postgres Data Layer Fails 4 Ways in Production](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) — the SQL-side counterpart to this exact class of bug
+- [I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — the experiment behind the AI-reintroduction beat above
 
 ---
 

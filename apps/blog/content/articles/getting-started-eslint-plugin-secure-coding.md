@@ -1,6 +1,6 @@
 ---
 title: "A Hardcoded sk_live_ Key Passes Code Review. It Won't Pass These 27 ESLint Rules."
-description: "Hardcoded secrets, unsafe deserialization, LDAP/XPath/GraphQL injection, prototype pollution — language-level bugs that pass review and tests, then become CVEs. 27 CWE-mapped ESLint rules that catch them in CI, framework-agnostic."
+description: "Hardcoded secrets, unsafe deserialization, LDAP/XPath/GraphQL injection, prototype pollution — language-level bugs that pass review and tests, then become CVEs. The same CWE classes AI assistants write by default. 27 CWE-mapped ESLint rules that catch them in CI, framework-agnostic."
 slug: "getting-started-eslint-plugin-secure-coding"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure-coding-1eda"
@@ -14,7 +14,7 @@ tags:
   - "eslint"
   - "security"
   - "javascript"
-  - "tutorial"
+  - "ai"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -38,6 +38,15 @@ the code _works_. They're a property of the source text, which is exactly what
 a linter is good at. The problem is that the linters most teams run check
 _style_: quotes, semicolons, unused vars. They have nothing to say about
 `sk_live_`.
+
+**Why does a senior wave this through?** Because review attention is a budget,
+and that diff spends none of it. The line is syntactically clean, the variable
+is named exactly what it is, and the reviewer's eye is downstream — on the
+control flow, the error handling, the thing the PR description says it's about.
+"Is this string a live credential?" is not a question a human pattern-matches at
+review speed; it's a question you answer by _grepping the literal_, which is
+machine work. The diff doesn't survive because the team is careless. It survives
+because catching it is the wrong job for a person.
 
 **`eslint-plugin-secure-coding` is the layer that does.** It's 27 rules for
 _language-level_ security bugs — hardcoded credentials, unsafe deserialization,
@@ -108,7 +117,13 @@ const greeting = "welcome to the dashboard";
 ```
 
 This identifier-name gate is what keeps the false-positive rate low enough to
-run as a CI error instead of a warning everyone ignores.
+run as a CI error instead of a warning everyone ignores. It's not a theoretical
+concern: a context-blind credential regex on `vercel/ai` reported 842 "findings"
+— and sampling showed 807 of them were TypeScript union-type literals,
+error-class names, and the string `"test"`, not secrets. That noise is exactly
+what drove the two-mode design above; the full teardown is in
+[When entropy isn't enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough).
+That's the difference between a rule you leave on and a rule you mute by Friday.
 
 **The fix it wants** — pull the value out of source entirely:
 
@@ -160,6 +175,33 @@ const obj = JSON.parse(untrustedJson); // and validate shape/size before use
 The rule flags `eval`-as-parser and unsafe deserialization sinks, and (notably)
 treats **AI model/tool output** as untrusted too — the fix message reminds you
 to validate it via schema and size limits before deserializing.
+
+---
+
+## Why an AI assistant will write both of these for you
+
+Here's the part that changed how I think about this plugin. These aren't bugs a
+careful senior writes once and learns from — they're the _default_ output of a
+language model that's optimizing for "code that runs," not "code that's safe."
+
+I asked Claude (four model tiers) to generate 80 ordinary Node.js functions
+with no security context and counted the vulnerabilities:
+**65–75% of them shipped a security hole** — hardcoded fallbacks, `eval`-as-parser,
+loose comparisons on tokens — the exact CWE classes the 27 rules above cover.
+The full methodology and per-model numbers are in
+[I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
+Same pattern holds across providers: point a model at "write me a Stripe client"
+and `sk_live_...` as a default argument is a perfectly likely completion.
+
+This is why a source-text linter matters _more_ now, not less. The reviewer
+approving the four-second diff at the top of this article is increasingly
+approving a diff a model wrote. And when you ask the model to _fix_ the finding,
+it often trades one CWE for another — I measured that
+[fix-one-get-two-more loop here](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
+A rule that fires deterministically on the _shape_ in the source — every commit,
+human- or machine-authored — is the only part of this loop that doesn't get
+tired or talked out of its answer. Want to run these same rules against your
+own AI-generated code? The install block is two sections down.
 
 ---
 
@@ -292,7 +334,11 @@ src/payments.ts
   `no-insecure-comparison`, `no-unsafe-deserialization` — each mapped to an
   OWASP category (the 12 are listed right here; the per-rule CWE/OWASP detail
   lives in the [rule docs](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)).
-  No "100% of everything" claim.
+  No "100% of everything" claim — and for the honest version of how far source
+  analysis gets you across the whole list, see
+  [8 of the OWASP Top 10 Are ESLint Rules. 2 Aren't](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules),
+  which walks the two categories (Insecure Design, Vulnerable Components) no
+  linter can prove.
 - **Static analysis is a floor.** These rules prove a dangerous _shape_ isn't
   in your source. They can't prove your auth logic is correct or your validator
   is complete — pair them with reviews and runtime controls. They run on every
@@ -306,10 +352,22 @@ The widely-used generic linters (`eslint-plugin-security` and friends) overlap
 some of this surface but emit a bare rule id. `secure-coding` adds the depth a
 security or compliance reviewer actually needs: a CWE, a CVSS, compliance tags,
 and a heuristic (like the two-mode credential detector above) tuned to stay
-quiet on fixtures. It's the framework-agnostic base layer of the
+quiet on fixtures. For where it lands against the field, I put it through a
+head-to-head in
+[17 ESLint Security Plugins, Compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
+
+It's the framework-agnostic base layer of the
 [Interlace](https://eslint.interlace.tools) family — the per-framework plugins
-(`eslint-plugin-pg`, `-jwt`, `-express-security`, `-nestjs-security`,
-`-lambda-security`, …) sit _on top_ of it for stack-specific coverage.
+([`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg),
+[`-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt),
+[`-nestjs-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security),
+[`-node-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security),
+`-express-security`, `-lambda-security`, …) sit _on top_ of it for stack-specific
+coverage. If you run more than one, this is the one you install first.
+
+> **Series — The Hardened Stack.** This is the base-layer entry. Each
+> per-framework guide above assumes `secure-coding` is already in your config and
+> layers the stack-specific rules on top.
 
 ---
 
@@ -318,6 +376,9 @@ quiet on fixtures. It's the framework-agnostic base layer of the
 - 📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding)
 - 📖 [Full rule docs (per-rule CWE + OWASP mapping)](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding)
+
+What's the secret you rotated at 2am — and was it a human or an AI completion
+that put it in the source? Drop the CWE in the comments; I collect these.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if this caught something your code review wouldn't.

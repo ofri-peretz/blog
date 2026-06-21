@@ -1,6 +1,6 @@
 ---
-title: "Your Express App Has No Helmet, No Rate Limit, and a ReDoS in Its Routes. 10 ESLint Rules Catch the Middleware You Forgot."
-description: "Express ships nothing by default — no security headers, no rate limit, no CSRF, no body-size cap — and a route regex can DoS the event loop. 10 CWE-mapped ESLint rules that catch the middleware you forgot, in CI."
+title: "Your Express App Has No Helmet, No Rate Limit, and a ReDoS in Its Routes. 14 ESLint Rules Catch the Middleware You Forgot."
+description: "Express ships nothing by default — no security headers, no rate limit, no CSRF, no body-size cap — and a route regex can DoS the event loop. The same blank skeleton your AI assistant generates. 14 CWE-mapped ESLint rules that catch the middleware you forgot, in CI."
 slug: "getting-started-with-eslint-plugin-express-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-express-security-2fb8"
@@ -14,7 +14,7 @@ tags:
   - "eslint"
   - "express"
   - "security"
-  - "node"
+  - "ai"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -39,24 +39,47 @@ It has no security headers (clickjacking, MIME-sniffing, no HSTS), no rate limit
 bug you can _see_ — it's the middleware you **didn't write**. Absence doesn't
 throw, and a test for "did we forget Helmet?" is one nobody writes.
 
-`eslint-plugin-express-security` writes it for you. It's **10 rules** that read
-your Express app and fail CI when the hardening middleware is missing — or when
-a route pattern hides a ReDoS — each pinned to a CWE.
+**Why this survives code review:** a diff only shows the lines that changed. The
+dangerous part of this file is the lines that aren't there. A reviewer reads four
+clean lines, sees a working endpoint, and approves — because nothing on screen is
+wrong. You can't review code that was never written. That's also exactly why
+**AI assistants reproduce this skeleton verbatim**: ask Claude, Copilot, or
+Gemini to "set up an Express server" and you get `app.use(express.json())` and a
+route — never `helmet()`, never a rate limiter, never a body `limit`. The model
+optimizes for "runs," not "hardened," and the hardening middleware is invisible
+to a reviewer scanning a green diff. I watched this happen across every
+AI-generated Express scaffold I've reviewed, the same way Claude
+[shipped 6 holes in a NestJS service that TypeScript was happy with](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
+
+`eslint-plugin-express-security` writes the missing test for you. It's **14 rules**
+(`v1.2.3`) that read your Express app and fail CI when the hardening middleware is
+missing — or when a route pattern hides a ReDoS, or a redirect trusts user input —
+each pinned to a CWE.
 
 This guide covers the "middleware you forgot" rules, the regex that DoS-es your
-event loop, the full 10-rule map, and exact install/engine support.
+event loop, the open redirect AI loves to write, the full 14-rule map, and exact
+install/engine support.
 
 ---
 
 ## TL;DR
 
-- **10 rules**, each carrying a `CWE` id and CVSS.
-- **4 presets**: `recommended` and `strict` (all 10), plus `api` (5 rules — the
-  REST hardening set: Helmet, CORS, CSRF, cookie flags, rate-limit) and
-  `graphql` (1 rule — introspection in production).
+- **14 rules**, each carrying a `CWE` id and CVSS — the hardening middleware you
+  forgot, a ReDoS in a route, an open redirect, CORS/cookie/CSRF defaults.
+- **4 presets**: `recommended` (all 14; criticals are `error`, the
+  easy-to-false-positive ones like rate-limit and CSRF default to `warn`) and
+  `strict` (all 14 at `error`), plus `api` (5 rules — the REST hardening set:
+  Helmet, CORS, CSRF, cookie flags, rate-limit) and `graphql` (1 rule —
+  introspection in production).
 - **Flat-config**, CommonJS, ESLint `8 || 9 || 10`, Node `>= 18`. AST-based —
   it reads your `app.use(...)` chain and route definitions; no Express install
   or running server required.
+
+Install it now and let it grade the skeleton above:
+
+```bash
+npm install --save-dev eslint-plugin-express-security
+```
 
 ---
 
@@ -119,6 +142,38 @@ like `(a+)+`… Consider using a string route with explicit parameters."_
 
 ---
 
+## The open redirect your AI writes for you — `no-user-controlled-redirect`
+
+Ask an assistant for a login flow with a "return to where you came from"
+parameter and you reliably get this:
+
+```ts
+// ❌ no-user-controlled-redirect (CWE-601, open redirect)
+app.get("/login", (req, res) => res.redirect(req.query.returnUrl));
+```
+
+`req.query.returnUrl` is attacker-controlled, so `?returnUrl=https://evil.tld`
+turns your trusted domain into a phishing launch pad. It survives review for the
+same reason as the missing middleware: the line looks like a feature ("we
+support deep-link return"), not a hole. The rule fires on the AST shape
+`res.redirect(req.<query|params|body>.*)` and passes when you allow-list:
+
+```ts
+// ✅ resolve against a known set — never reflect raw input
+const ALLOWED = new Set(["/dashboard", "/settings"]);
+app.get("/login", (req, res) =>
+  res.redirect(ALLOWED.has(req.query.returnUrl) ? req.query.returnUrl : "/dashboard"),
+);
+```
+
+This rule, plus `no-missing-cors-check` (CWE-346), `no-missing-csrf-protection`
+(CWE-352), and `no-missing-security-headers` (CWE-693), is part of why the set
+grew from its original 10 to **14** — the last three migrated in from
+`eslint-plugin-browser-security` once it was clear they check server-side Express
+wiring, not browser APIs.
+
+---
+
 ## The rest of the surface
 
 | Concern                                                | Rule                                  | CWE     |
@@ -128,29 +183,35 @@ like `(a+)+`… Consider using a string route with explicit parameters."_
 | Cookies without `Secure`/`HttpOnly`/`SameSite`         | `no-insecure-cookie-options`          | CWE-614 |
 | Debug endpoints left enabled                           | `no-exposed-debug-endpoints`          | CWE-489 |
 | GraphQL introspection on in production                 | `no-graphql-introspection-production` | CWE-200 |
+| Origin header trusted without validation               | `no-missing-cors-check`               | CWE-346 |
 
 ---
 
 ## The full rule set
 
-All 10, with each rule's declared CWE:
+All 14, with each rule's declared CWE and its severity in the `recommended`
+preset (`strict` sets every one to `error`):
 
-| Rule                                  | Catches                                 | CWE      |
-| ------------------------------------- | --------------------------------------- | -------- |
-| `require-helmet`                      | App missing `helmet()` security headers | CWE-693  |
-| `require-rate-limiting`               | No rate limiter → brute force / DoS     | CWE-770  |
-| `require-csrf-protection`             | State-changing route, no CSRF           | CWE-352  |
-| `require-express-body-parser-limits`  | Body parser with no size `limit`        | CWE-400  |
-| `no-express-unsafe-regex-route`       | ReDoS in a route pattern                | CWE-1333 |
-| `no-permissive-cors`                  | `origin: '*'` / reflected origin        | CWE-942  |
-| `no-cors-credentials-wildcard`        | wildcard origin + credentials           | CWE-942  |
-| `no-insecure-cookie-options`          | missing `Secure`/`HttpOnly`/`SameSite`  | CWE-614  |
-| `no-exposed-debug-endpoints`          | debug routes reachable in prod          | CWE-489  |
-| `no-graphql-introspection-production` | introspection enabled in prod           | CWE-200  |
+| Rule                                  | Catches                                 | CWE      | `recommended` |
+| ------------------------------------- | --------------------------------------- | -------- | ------------- |
+| `require-helmet`                      | App missing `helmet()` security headers | CWE-693  | error         |
+| `require-rate-limiting`               | No rate limiter → brute force / DoS     | CWE-770  | warn          |
+| `require-csrf-protection`             | State-changing route, no CSRF           | CWE-352  | warn          |
+| `require-express-body-parser-limits`  | Body parser with no size `limit`        | CWE-400  | warn          |
+| `no-express-unsafe-regex-route`       | ReDoS in a route pattern                | CWE-1333 | error         |
+| `no-permissive-cors`                  | `origin: '*'` / reflected origin        | CWE-942  | error         |
+| `no-cors-credentials-wildcard`        | wildcard origin + credentials           | CWE-942  | error         |
+| `no-insecure-cookie-options`          | missing `Secure`/`HttpOnly`/`SameSite`  | CWE-614  | error         |
+| `no-exposed-debug-endpoints`          | debug routes reachable in prod          | CWE-489  | error         |
+| `no-graphql-introspection-production` | introspection enabled in prod           | CWE-200  | warn          |
+| `no-user-controlled-redirect`         | `res.redirect()` of raw user input      | CWE-601  | error         |
+| `no-missing-cors-check`               | Origin trusted without validation       | CWE-346  | warn          |
+| `no-missing-csrf-protection`          | State change with no CSRF guard          | CWE-352  | warn          |
+| `no-missing-security-headers`         | response missing security headers       | CWE-693  | warn          |
 
 ---
 
-## Install
+## Install and run it in CI
 
 ```bash
 # npm
@@ -170,8 +231,8 @@ Flat config (`eslint.config.js`):
 import { configs } from "eslint-plugin-express-security";
 
 export default [
-  configs.recommended, // all 10
-  // configs.strict,    // all 10, max severity
+  configs.recommended, // all 14, criticals at error
+  // configs.strict,    // all 14, every rule at error
   // configs.api,       // 5-rule REST hardening set
   // configs.graphql,   // introspection-in-production
 ];
@@ -197,7 +258,7 @@ src/routes/transfer.ts
 | **Express**          | detects Express 4/5 `app.use(...)` chains, route definitions, and `cors`/`helmet`/`csrf`/`express-rate-limit` usage — it reads source, so no Express version pin   |
 | **Module system**    | CommonJS — loads from both `eslint.config.js` and `eslint.config.mjs`                                                                                              |
 | **Runtime peers**    | None — it lints source AST                                                                                                                                         |
-| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-express-security` port, with ESLint↔Oxlint parity gated in CI. The full 10-rule set runs on ESLint today. |
+| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-express-security` port, with ESLint↔Oxlint parity gated in CI. The full 14-rule set runs on ESLint today. |
 
 ---
 
@@ -219,10 +280,24 @@ src/routes/transfer.ts
 Generic linters flag `eval` and obvious injection; they don't know what
 `app.use`, a route regex, or a `cors()` call _is_. `eslint-plugin-express-security`
 is the dedicated Express layer — the hardening middleware you forgot, the ReDoS
-in a route, the CORS/cookie/CSRF defaults — each finding tagged with a CWE and
-CVSS. It's the Express member of the [Interlace](https://eslint.interlace.tools)
-family, complementary to the generic set and to the other server-side plugins
-(`eslint-plugin-jwt`, `eslint-plugin-nestjs-security`, …).
+in a route, the open redirect, the CORS/cookie/CSRF defaults — each finding tagged
+with a CWE and CVSS. It's the Express member of the
+[Interlace](https://eslint.interlace.tools) family, one plugin per framework so
+each rule knows its target SDK instead of pattern-matching every `.query()` or
+`.redirect()` blindly.
+
+This is the **server-side hardening series**. If your stack reaches past Express,
+the same "the framework hands you the guard, you ship without it" failure shows up
+everywhere:
+
+- [NestJS Hands You Guards, Pipes, and Throttlers — You Ship Controllers Without Them](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security) — the same absence-of-middleware failure, one framework up.
+- [jsonwebtoken Will Verify a Token Signed With `algorithm: none`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) — the auth layer behind your Express routes, and its one-line catastrophe.
+- [I Inherited a 3,000-Line Codebase. One ESLint Run Found 26 Critical Security Bugs](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) — what running this whole family looks like on a real, inherited app.
+
+And on the AI thread that runs through this piece: I ran the same prompt past two
+models in [Same NestJS Prompt. Claude Got 6 Security Errors. Gemini Got 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) —
+different assistants, same category of omission, all caught by static analysis
+that knows the framework.
 
 ---
 
@@ -235,6 +310,11 @@ family, complementary to the generic set and to the other server-side plugins
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your Express app is missing any of the above.
 ::
+
+Run `configs.recommended` on your oldest Express service and reply with the count
+it returns. Which rule fired that you'd have sworn your app already handled — the
+missing Helmet, the unbounded body, or the redirect someone wrote two years ago
+and nobody re-reviewed?
 
 ---
 

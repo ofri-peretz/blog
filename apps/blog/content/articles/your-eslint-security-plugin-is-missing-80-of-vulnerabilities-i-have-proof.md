@@ -1,5 +1,5 @@
 ---
-title: "Same Vulnerable File, 4 Linters: Oxlint Native Caught 1, eslint-plugin-security 21, Interlace 46"
+title: "Same Vulnerable File, 4 Linters: Your Security Plugin Caught 21 of 46. Oxlint Native Caught 1."
 description: "A 4-way benchmark on one fixture (12 vulnerability classes): Oxlint's built-in rules, eslint-plugin-security, the Interlace plugins on ESLint, and the same Interlace rules on Oxlint. Real current numbers, the false-positive breakdown, and the parity proof that the rules run on both engines."
 slug: "your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
 canonical_url: "https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/your-eslint-security-plugin-is-mis
 social_image: "https://ofriperetz.dev/og/article/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
 reading_time_minutes: 7
 tags:
-  - "eslint"
   - "security"
+  - "node"
   - "javascript"
-  - "webdev"
+  - "eslint"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -22,6 +22,12 @@ author:
   twitter: "ofriperetzdev"
 series: "The Security Engineering Protocol"
 ---
+
+The security linter most Node teams ship — `eslint-plugin-security`, ~1.6M
+downloads a week — caught **21 of 46** issues on a file of known
+vulnerabilities. That's not a typo and it's not a brag about my plugins: it's
+the gap between "we run a security linter" and "we catch security bugs," and
+almost nobody measures it.
 
 I took one file with **12 classes of real vulnerabilities** and ran it through
 four linter configurations — two engines (ESLint, Oxlint) crossed with the rules
@@ -34,7 +40,14 @@ you'd actually reach for. The detection spread on the same file:
 
 The takeaway isn't "tool X wins." It's that **the engine is a commodity and the
 rules are the product** — and the rules you pick should run on whichever engine
-you choose. Here's the data, the false positives, and the parity proof.
+you choose. Here's the data, the false positives, and the parity proof — so you
+can run the exact same comparison on your own code before you trust mine.
+
+> Part of **The Security Engineering Protocol**. This one is the head-to-head;
+> for the incumbent's side in detail see
+> [Same File: eslint-plugin-security Caught 21, the Domain Plugins Caught 46](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h),
+> and for the whole field see
+> [17 ESLint security plugins compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
 
 ## The four configurations
 
@@ -62,6 +75,32 @@ together, caught 46 across 20 rules — SQL injection (`pg/no-unsafe-query`),
 unsafe deserialization, ReDoS, weak hashing, `Math.random()` for crypto, unsafe
 `innerHTML`, insecure comparisons, and more that a generic ruleset has no rule
 for.
+
+### Why the extra 25 survive code review
+
+The 25 the generic set misses aren't exotic. They're the ones that **look
+correct to a senior reviewer reading a diff.** `crypto.createHash('md5')` is a
+real Node API doing exactly what it says — nothing in the line announces "this
+is the wrong primitive for a password." `Math.random()` returns a number; you
+have to already know it isn't CSPRNG-grade to flag it in a token generator.
+`pool.query('SELECT ... WHERE id = ' + id)` reads as plain string-building until
+you ask where `id` came from three call-frames up. A reviewer scanning forty
+files at 5pm pattern-matches on _shape_, and all of these have innocent shape.
+That's precisely the gap a domain rule closes: it knows that this API, in this
+context, carries a CWE — so it doesn't depend on the reviewer having crypto and
+injection taxonomy loaded in working memory at the moment they hit "Approve."
+
+If you want to close that gap before reading further, the four plugins
+benchmarked here install as a drop-in alongside whatever you run today:
+
+```bash
+npm i -D eslint-plugin-secure-coding eslint-plugin-node-security \
+  eslint-plugin-pg eslint-plugin-browser-security
+```
+
+The flat-config block that wires all four (`recommended` presets) is in the
+[Methodology](#methodology--reproduce-it) section below — copy it, point ESLint
+at your `src/`, and you have the 46-finding configuration in about a minute.
 
 ## False positives — `safe-patterns.js` (validated-safe code)
 
@@ -113,6 +152,27 @@ the ones wired + parity-gated on Oxlint so far.)
   generic set has no rules for — that's the gap, not a verdict.
 - **Portability** is the point: pick rules that run on both engines so the engine
   decision stays a performance choice, not a coverage lock-in.
+
+## Why this gap is widening: AI writes the patterns the generic set can't see
+
+Here's why the 21-vs-46 gap stopped being academic for me. The 25 issues the
+generic set misses — `md5` for hashing, `Math.random()` for tokens, interpolated
+SQL, unsanitized `innerHTML` — are exactly the patterns coding assistants emit by
+default. Ask Claude or Gemini for "a function that hashes a password" or "build
+the user lookup query" and you frequently get idiomatic, confident,
+review-passing code that lands squarely on one of these CWEs. I've measured this
+directly: when I let an assistant write a batch of functions,
+[65–75% carried a security vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
+and on the same NestJS prompt
+[Claude shipped 6 security errors and Gemini 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)
+— the model varies, the _class_ of bug doesn't.
+
+So the generic linter that "passes" your AI-generated PR is the worst possible
+signal: a green check on code statistically likely to contain a vuln it has no
+rule for. A domain rule that knows `crypto.createHash('md5')` carries CWE-327
+regardless of who typed it — human at 5pm or model at temperature 0.7 — is the
+guardrail that actually holds when the volume of generated code goes up. That's
+the real argument for depth over a generic floor in 2026.
 
 ## Methodology — reproduce it
 
@@ -206,9 +266,22 @@ npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security e
 - 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools)
 - 💻 [Source + benchmark on GitHub](https://github.com/ofri-peretz/eslint)
 
+**Same fixture, more challengers** (same 46-finding benchmark, different opponent):
+
+- [SonarJS has 269 rules — it found 13 security issues on this file](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)
+- [Microsoft's SDL plugin caught 3 — same file, wrong layer](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)
+
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you'd rather run security rules that aren't locked to one engine.
 ::
+
+---
+
+**Run the comparison on your own repo and tell me what you find:** which class of
+the 25 — weak hashing, `Math.random()` tokens, interpolated SQL, raw `innerHTML` —
+slips through your current security linter the most? And was the one that bit you
+in production written by a person or pasted from an assistant? Drop it in the
+comments — I read every one.
 
 ---
 
