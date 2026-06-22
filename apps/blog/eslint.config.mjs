@@ -131,11 +131,11 @@ const eslintConfig = defineConfig([
       "secure-coding/no-redos-vulnerable-regex": "warn",
       "secure-coding/no-unsafe-regex-construction": "warn",
       // Custom conventions rules flag PRE-EXISTING app code that predates them:
-      // cross-property links missing UTM params, and PostHog event names not yet
-      // in category:object_action grammar. Held at warn so PRs merge green; renaming
-      // live analytics events / defining the UTM scheme is a product migration, then
-      // ratchet these back to error. (Adopt-then-ratchet, same as above.)
-      "conventions/no-external-links-without-utm": "warn",
+      // raw cross-property hrefs that should route through buildUtmHref() (lib/utm.ts),
+      // and PostHog event names not yet in category:object_action grammar. Held at warn
+      // so PRs merge green; adopting buildUtmHref + renaming live analytics events is a
+      // product migration, then ratchet these back to error. (Adopt-then-ratchet.)
+      "conventions/no-raw-cross-property-href": "warn",
       "conventions/analytics-event-naming": "warn",
     },
   },
