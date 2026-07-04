@@ -228,6 +228,8 @@ async function DownloadsByPackageSection() {
     if (res.ok) {
       const data = (await res.json()) as { packages?: PackageDatum[] };
       packages = data.packages ?? [];
+    } else {
+      console.error(`[scorecard] npm-stats → ${res.status}`);
     }
   } catch (error) {
     // Network/transient failure — render the empty state instead of

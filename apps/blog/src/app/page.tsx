@@ -67,9 +67,13 @@ async function fetchStats(): Promise<HomepageStats | null> {
     const res = await fetch(`${base}/api/homepage-stats`, {
       next: { revalidate: 60 },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`[homepage] stats → ${res.status}`);
+      return null;
+    }
     return (await res.json()) as HomepageStats;
-  } catch {
+  } catch (error) {
+    console.error("[homepage] stats fetch failed:", error);
     return null;
   }
 }
