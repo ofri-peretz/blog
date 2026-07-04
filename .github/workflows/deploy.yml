@@ -9,7 +9,9 @@ name: Deploy production
 # Gated: the deploy steps run only after build + test + lint pass, so a broken
 # visualization or missing artifact fails CI before anything ships.
 #
-# Required repo secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID.
+# Required secrets: VERCEL_ORG_ID, VERCEL_PROJECT_ID (repo-level) and
+# VERCEL_TOKEN (scoped to the `production` GitHub environment, so no other
+# job or workflow can read it).
 
 on:
   push:
@@ -23,6 +25,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://ofriperetz.dev
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -35,14 +40,21 @@ jobs:
       - run: npm install --no-audit --no-fund --include=optional
 
       # ── Gates (must pass before deploy) ──────────────────────────────
+      # Same order as ci.yml: build first, so a compile error surfaces as a
+      # named Build failure instead of later inside `vercel build`.
+      - name: Build
+        run: npm run build
       - name: Test
         run: npm run test
       - name: Lint (eslint + oxlint)
         run: npm run lint
 
       # ── Build on GHA, deploy prebuilt output to Vercel production ─────
+      # Pinned: a fresh `vercel@latest` resolve on every deploy would let a
+      # breaking or compromised release silently change deploy behavior.
+      # This is the only workflow that installs the Vercel CLI.
       - name: Install Vercel CLI
-        run: npm i -g vercel@latest
+        run: npm i -g vercel@54.20.1
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
         working-directory: apps/blog
