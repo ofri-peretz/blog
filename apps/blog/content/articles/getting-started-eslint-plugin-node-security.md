@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-node
 social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-node-security"
 reading_time_minutes: 9
 tags:
-  - "eslint"
-  - "node"
   - "security"
-  - "cryptography"
+  - "node"
+  - "ai"
+  - "eslint"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -37,6 +37,17 @@ Every one of these is a property of the **Node.js standard library** — `crypto
 pass type-checking. They pass unit tests (the test feeds trusted input). Then
 they ship, and a researcher finds them with `grep`.
 
+Here's what makes this worse in 2026: these are exactly the lines an AI assistant
+writes for you. Ask Claude or Gemini for "hash this password" and `createHash("md5")`
+is a coin-flip away; ask for "run imagemagick on the upload" and you get the
+`exec(\`convert ${file}\`)` template verbatim. The model reaches for the shortest
+working snippet from its training data — and the shortest working snippet for
+these four tasks is the insecure one. The footgun isn't going away; it's being
+auto-completed at scale. (When I had Claude write 60 functions cold,
+[65–75% carried a security vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+— this rule set is what catches that class in CI.) That's the case for a linter
+that fails CI on the *shape*, not on who typed it.
+
 `eslint-plugin-node-security` reads those call sites and fails CI on the
 dangerous shape. It's **34 rules** spanning weak crypto, command/eval injection,
 filesystem traversal, SSRF, supply-chain, and secrets-at-rest — each pinned to a
@@ -45,6 +56,21 @@ CWE, CVSS, and compliance tags. (It also **absorbed the deprecated
 
 This guide walks the crypto footguns, command injection, Zip Slip, the full
 34-rule map, and exact install/engine support.
+
+If you just want it failing CI before you finish reading:
+
+```bash
+npm install --save-dev eslint-plugin-node-security
+```
+
+```js
+// eslint.config.js — `configs` is a NAMED export
+import { configs } from "eslint-plugin-node-security";
+export default [configs.recommended]; // 20 rules, production baseline
+```
+
+Now the four lines above are CI errors, each annotated with its CWE and a fix.
+The rest of this is why each one matters.
 
 ---
 
@@ -134,6 +160,31 @@ if (!target.startsWith(path.resolve(dest) + path.sep))
 `detect-non-literal-fs-filename` and `no-arbitrary-file-access` (both CWE-22)
 catch the broader "user input reaches an `fs` path" pattern;
 `no-toctou-vulnerability` (CWE-367) catches the check-then-use race.
+
+---
+
+## Why these survive code review
+
+None of these are exotic. The reason they ship is that the insecure call and the
+secure call are visually almost identical, and the part that makes them dangerous
+isn't in the diff.
+
+`createHash("md5")` and `createHash("sha256")` differ by one string literal. In a
+40-line PR about a new export feature, a reviewer scanning for logic bugs reads
+`createHash(...)` as "they're hashing something" and moves on — the algorithm
+name is the kind of detail the eye rounds off. The `exec(\`convert ${file}\`)`
+line looks *more* correct than the safe version, because it reads like the shell
+command you'd type by hand; `execFile("convert", [file])` looks fussier, so the
+"clean" instinct argues for the wrong one. And the Zip Slip case is invisible by
+construction: `zip.extractAllTo(dest)` is the documented happy-path API. Nothing
+about it signals danger — the danger is in the *archive*, which isn't in the
+repo. A reviewer would have to mentally model an attacker crafting `../../` entry
+names, which is not what code review optimizes for.
+
+That's the gap a linter fills. It doesn't get tired on line 40, it doesn't read
+`md5` as "a hash," and it doesn't need the taint source in the diff — it matches
+the call shape every time. Code review catches intent bugs; this catches the
+class of bug where the intent was fine and the default was wrong.
 
 ---
 
@@ -266,16 +317,34 @@ and an unguarded `extract()`. It can't confirm the key in your KMS is rotated
 
 ---
 
+## Your turn
+
+Run `configs.recommended` against your largest Node service and look at the first
+crypto finding. Which of the four was it — the MD5 left over from a 2019 "temporary"
+password hash, the `exec()` someone added to shell out to ffmpeg, the
+`Math.random()` token in a password-reset flow, or the unguarded archive extract?
+I'd bet on at least one. Drop the rule and the CWE it caught in the comments —
+I'm collecting the ones that survived review the longest, and the stories behind
+how they got there.
+
+---
+
 ## Where this sits in the ecosystem
 
 The generic security linters flag a few of these (`eval`, obvious `child_process`),
 but they don't carry the CWE/CVSS/compliance metadata a security or audit
-reviewer needs, and they don't cover the crypto surface at this depth.
+reviewer needs, and they don't cover the crypto surface at this depth — I went
+through the coverage gap in detail in
+[your ESLint security plugin is missing 80% of vulnerabilities](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof).
 `eslint-plugin-node-security` is the dedicated Node.js-stdlib layer — crypto,
 injection, filesystem, SSRF, supply-chain, secrets — and the consolidation home
 for the retired crypto plugin. It's the runtime-foundation member of the
 [Interlace](https://eslint.interlace.tools) family, underneath the
-framework-specific plugins (`-express-security`, `-nestjs-security`, …).
+framework-specific plugins —
+[`-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security)
+and
+[`-nestjs-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security)
+layer their HTTP- and DI-specific rules on top of this stdlib base.
 
 ---
 

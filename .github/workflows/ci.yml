@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-test-lint:
+  build-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,4 +23,45 @@ jobs:
       - run: npm install --no-audit --no-fund --include=optional
       - run: npm run build
       - run: npm run test
-      - run: npm run lint
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Dual linter — eslint and oxlint run as TWO PARALLEL jobs (no `needs`
+  # between them, neither blocks the other). Each is scoped to the
+  # turbo-affected workspaces via `--affected`, which needs full git history
+  # (fetch-depth: 0) to compute the diff against the base ref.
+  # ──────────────────────────────────────────────────────────────────────
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund --include=optional
+      - run: npx turbo run lint:eslint --affected
+        env:
+          # turbo --affected intermittently fails to resolve the base ref
+          # ('fatal: ambiguous argument main') on PR checkouts. Pin the diff
+          # base to the PR base SHA (present with fetch-depth: 0); empty on
+          # push, where turbo falls back to its default.
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
+
+  oxlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund --include=optional
+      - run: npx turbo run lint:oxlint --affected
+        env:
+          # turbo --affected intermittently fails to resolve the base ref
+          # ('fatal: ambiguous argument main') on PR checkouts. Pin the diff
+          # base to the PR base SHA (present with fetch-depth: 0); empty on
+          # push, where turbo falls back to its default.
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}

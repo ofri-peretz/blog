@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/searchpath-hijacking-postgresql-at
 social_image: "https://ofriperetz.dev/og/article/searchpath-hijacking-postgresql-attack"
 reading_time_minutes: 8
 tags:
-  - "eslint"
-  - "postgres"
   - "security"
   - "node"
+  - "postgres"
+  - "ai"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -26,6 +26,17 @@ series: "Postgres Security Protocol"
 Everyone knows SQL injection. Almost nobody guards `search_path` hijacking —
 and it turns a perfectly ordinary `SELECT * FROM users` into a read from an
 **attacker-controlled table**, no injection string required.
+
+There is no `'; DROP TABLE` here. No quotes to escape, no payload to spot in a
+diff. The query that gets exploited is the most boring line in your codebase —
+which is exactly why it survives review. I've watched this pattern slip past
+engineers who would have caught a classic injection in their sleep.
+
+> Part of the **Postgres Security Protocol** series. If you're hardening a
+> node-postgres codebase, start with
+> [Three SQL Injection Patterns That Still Ship in Node.js](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint),
+> then come back here — `search_path` hijacking is the one those three patterns
+> don't cover.
 
 ## What `search_path` is
 
@@ -60,6 +71,13 @@ returns their data — or runs their function with your privileges.
 | Privilege escalation | Shadow a trusted `SECURITY DEFINER` function       |
 | Code execution       | Malicious trigger/function invoked by your query   |
 
+If you want to grep your own code for this before reading the fixes, it's one
+install — the [rule and config are below](#the-rule-no-unsafe-search-path-cwe-426):
+
+```bash
+npm install --save-dev eslint-plugin-pg
+```
+
 ## Why you can't just parameterize it
 
 The reflex for SQL injection is "use a bind parameter." It **doesn't work
@@ -72,6 +90,33 @@ await client.query("SET search_path TO $1", [schema]); // ❌ syntax error
 — so people fall back to string interpolation, which _is_ the hole. A schema
 name is an **identifier**, and identifiers need identifier-escaping, not value
 binding.
+
+## Why this survives code review
+
+I've approved code that looked like this. Here's the honest reason it gets
+waved through, even by people who would block a string-concatenated `WHERE`
+clause on sight:
+
+- **The dangerous line and the exploited line are different lines.** The
+  reviewer's injection radar fires on `client.query("SELECT ... " + x)`. It
+  does **not** fire on `client.query("SELECT * FROM users")` — that line is
+  unimpeachable. The taint lives in a `SET` statement that often sits in
+  different middleware, a connection hook, or a `BEFORE` block the reviewer
+  scrolled past.
+- **`SET` doesn't _look_ like a query.** Mentally, "running a query" is where
+  injection lives. `SET search_path` reads like configuration, not data access,
+  so it doesn't get the same scrutiny.
+- **The value is "from a trusted source."** The schema comes from a tenant
+  lookup, a JWT claim, a config row — things that feel authenticated. "Trusted"
+  silently becomes "doesn't need escaping," which is a category error: trust is
+  about _who_ supplied the value, escaping is about _what shape_ it has.
+- **The bind-parameter reflex backfires.** A diligent reviewer asks "is this
+  parameterized?" — sees `SET search_path TO $1` won't compile, accepts the
+  interpolated fallback as "the only way," and moves on. The reflex that
+  normally saves you actively walks you into the hole.
+
+None of those are negligence. They're the failure mode of a control that lives
+one indirection away from where the eye is trained to look.
 
 ## The real fixes
 
@@ -159,6 +204,45 @@ source" is **not** sufficient — a future refactor, a renamed tenant, or a
 mis-seeded row makes "trusted" untrue. Routing it through `%I` makes the
 identifier safe by construction, regardless of provenance.
 
+## Why your AI assistant writes the vulnerable version
+
+Ask an LLM to "make the schema configurable per tenant" and watch what comes
+back. In my own runs against Claude and GPT-class models, the first draft is
+almost always the interpolated form:
+
+```js
+// what the assistant reaches for first
+await client.query(`SET search_path TO ${tenantSchema}`);
+```
+
+It's not a dumb mistake — it's the _statistically likely_ one, for the same
+reasons a human reviewer waves it through:
+
+- The model has seen `SET search_path TO <schema>` countless times in docs and
+  Stack Overflow answers, almost always with a literal or a plain variable.
+  Template-literal interpolation is its default tool for "put this value into a
+  string."
+- It treats `SET` as configuration, so it doesn't pattern-match to "injection
+  sink" and doesn't reach for `%I` or an allow-list unless you explicitly ask
+  for the secure multi-tenant version.
+- It will confidently "parameterize" by writing `SET search_path TO $1` — which
+  doesn't compile — and then "fix" it by falling back to interpolation. The
+  same backfiring reflex, now automated.
+
+This is the broader pattern I keep finding: AI doesn't invent novel
+vulnerabilities, it **reproduces the common ones at scale** because its training
+data is full of the insecure-but-popular form. (I dig into this with a
+controller a model wrote in
+[Claude Wrote a NestJS Service. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes),
+and across 700 functions in
+[I Let Claude Write 60 Functions; 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).)
+
+The practical upshot: the same `no-unsafe-search-path` rule that catches a
+human's slip is the cheapest guardrail you can put between an AI-generated
+multi-tenant layer and production. Lint runs on machine-written code exactly
+like it runs on yours — and it doesn't get talked out of a finding by "but the
+value is trusted."
+
 ## Defense in depth (the database side)
 
 Static analysis guards the source; pair it with the server:
@@ -184,7 +268,10 @@ Static analysis guards the source; pair it with the server:
 
 `no-unsafe-search-path` is one of 13 rules in `eslint-plugin-pg`; the
 [pg getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg)
-covers the rest — SQL injection, connection leaks, the N+1 insert loop.
+covers the rest. Two of them dig into failure modes worth their own read:
+the [connection leak that took down a production API](https://ofriperetz.dev/articles/database-connection-leak-production-outage)
+and the [N+1 insert loop](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance)
+that quietly turns one request into thousands of round-trips.
 
 ---
 
@@ -192,8 +279,13 @@ covers the rest — SQL injection, connection leaks, the N+1 insert loop.
 - 📖 [Rule docs: no-unsafe-search-path](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-search-path)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
 
+**Now go check.** Grep your codebase for `SET search_path` — or just run the
+rule. If you find an interpolated one in a multi-tenant path, that's the
+comment I want to read: was it human-written or did an assistant hand it to
+you, and how long had it been live before anyone noticed?
+
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub if you've ever set `search_path` from a variable.
+⭐ Star on GitHub if you found a `SET search_path` you didn't know was there.
 ::
 
 ---
