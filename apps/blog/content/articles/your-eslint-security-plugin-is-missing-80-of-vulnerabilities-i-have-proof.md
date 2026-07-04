@@ -13,8 +13,8 @@ reading_time_minutes: 7
 tags:
   - "security"
   - "node"
-  - "javascript"
-  - "eslint"
+  - "ai"
+  - "googleai"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -25,9 +25,10 @@ series: "The Security Engineering Protocol"
 
 The security linter most Node teams ship — `eslint-plugin-security`, ~1.6M
 downloads a week — caught **21 of 46** issues on a file of known
-vulnerabilities. That's not a typo and it's not a brag about my plugins: it's
-the gap between "we run a security linter" and "we catch security bugs," and
-almost nobody measures it.
+vulnerabilities. It **missed 25 of them — 54% of the file** — and Oxlint's
+built-in ruleset did far worse: **1 of 46, a 98% miss.** That's not a typo and
+it's not a brag about my plugins: it's the gap between "we run a security linter"
+and "we catch security bugs," and almost nobody measures it.
 
 I took one file with **12 classes of real vulnerabilities** and ran it through
 four linter configurations — two engines (ESLint, Oxlint) crossed with the rules
@@ -90,6 +91,16 @@ That's precisely the gap a domain rule closes: it knows that this API, in this
 context, carries a CWE — so it doesn't depend on the reviewer having crypto and
 injection taxonomy loaded in working memory at the moment they hit "Approve."
 
+There's a second, quieter reason these survive: the team _thinks_ it's covered.
+"We run a security linter in CI" is true and the build is green, so nobody goes
+looking — the green check is read as "no security issues," when what it actually
+means is "no issues among the patterns this particular ruleset has a rule for."
+On this fixture that's a 21-vs-46 gap hiding behind a passing pipeline. The most
+expensive bugs I've chased in production weren't the ones nobody scanned for;
+they were the ones a green check told everyone were already handled. Coverage you
+can't see the boundary of is worse than no coverage, because it ends the
+conversation.
+
 If you want to close that gap before reading further, the four plugins
 benchmarked here install as a drop-in alongside whatever you run today:
 
@@ -121,7 +132,11 @@ because it pattern-matches the sink without seeing the guard. The Interlace "3"
 aren't security false positives: `no-select-all` is a performance/clarity rule
 firing on `SELECT *`, and `no-innerhtml` is conservative by design (it flags
 `innerHTML` even when the value is DOMPurify-sanitized — a deliberate choice you
-can disable with a documented comment).
+can disable with a documented comment). Precision is the axis that decides
+whether a team keeps a security rule turned on at all — I broke the
+detection-vs-false-positive trade-off down rule by rule in
+[the security FN/FP benchmark](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark)
+if you want the per-rule numbers before you enable these in a noisy monorepo.
 
 ## The parity proof: the same rule, both engines
 
@@ -153,7 +168,7 @@ the ones wired + parity-gated on Oxlint so far.)
 - **Portability** is the point: pick rules that run on both engines so the engine
   decision stays a performance choice, not a coverage lock-in.
 
-## Why this gap is widening: AI writes the patterns the generic set can't see
+## Why this gap is widening: Claude and Gemini write the patterns the generic set can't see
 
 Here's why the 21-vs-46 gap stopped being academic for me. The 25 issues the
 generic set misses — `md5` for hashing, `Math.random()` for tokens, interpolated
@@ -174,12 +189,37 @@ regardless of who typed it — human at 5pm or model at temperature 0.7 — is t
 guardrail that actually holds when the volume of generated code goes up. That's
 the real argument for depth over a generic floor in 2026.
 
+And it isn't model-specific, which is the part that surprised me. I ran the same
+20 security-critical prompts across **5 models from Claude and Gemini, 700
+generated functions in total**, and the _class_ of bug is remarkably stable —
+but **which** model is safe is domain-specific in ways no aggregate score tells
+you. Claude Opus emits a vulnerable JWT payload
+[7 out of 7 runs; Gemini Flash gets the same prompt right 0 of 7](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong).
+Break the benchmark down by domain and
+[the rankings invert outright](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain):
+the model that "wins" the headline number writes the most vulnerable database
+code. So "we standardized on the safe model" is not a control — the safe model
+for auth is the dangerous one for SQL.
+
+The "just ask the AI to fix it" reflex doesn't save you either. When I fed the
+findings back and asked for a patch,
+[one in three "fixes" introduced a brand-new vulnerability](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
+in a category the original code never had — and the diff _looks_ resolved, so a
+human approves it. The only thing that reliably caught the regression was
+re-running the deterministic rules on the patched diff. That's the whole case
+for these rules in an AI workflow: the same CWE-tagged finding, on every model,
+on the first write and on the "fix," with no reviewer needing the taxonomy in
+their head. Run the 46-finding config (above) on your assistant's next PR before
+you trust the green check.
+
 ## Methodology — reproduce it
 
 Honest disclosure: the fixtures are **team-authored** (`vulnerable.js`, 12
 vulnerability classes; `safe-patterns.js`, validated-safe patterns), so these
 numbers measure coverage of the surface we designed the rules around — run it on
-your own code for an unbiased read. Versions: `eslint@9.39.4`, `oxlint@1.67.0`,
+your own code for an unbiased read. (For why I trust hand-built ground-truth
+fixtures over a unit-test suite to measure detection, see
+[what ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed).) Versions: `eslint@9.39.4`, `oxlint@1.67.0`,
 `eslint-plugin-secure-coding@3.2.0` (27 rules), `node-security@4.2.0` (34),
 `pg@1.4.3` (13), `browser-security@1.2.3` (45), `eslint-plugin-security@4.0.0`.
 Method: each plugin's `recommended` preset, `--format json`, counted by `ruleId`
@@ -271,17 +311,24 @@ npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security e
 - [SonarJS has 269 rules — it found 13 security issues on this file](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)
 - [Microsoft's SDL plugin caught 3 — same file, wrong layer](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)
 
+**Going wider than one file:** once the config is in, point it at a codebase you
+didn't write — [the 30-minute security audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase)
+walks the exact protocol I use to triage an unfamiliar repo with these rules on
+day one.
+
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you'd rather run security rules that aren't locked to one engine.
 ::
 
 ---
 
-**Run the comparison on your own repo and tell me what you find:** which class of
-the 25 — weak hashing, `Math.random()` tokens, interpolated SQL, raw `innerHTML` —
-slips through your current security linter the most? And was the one that bit you
-in production written by a person or pasted from an assistant? Drop it in the
-comments — I read every one.
+**One question I'm genuinely collecting answers to:** the last security bug that
+reached your production — weak hashing, a `Math.random()` token, interpolated SQL,
+raw `innerHTML` — was it typed by a person at 5pm or pasted from Claude/Gemini, and
+did a green security check sign off on it on the way in? That exact combination —
+generated code, passing linter, shipped vuln — is the failure mode I think is about
+to get common, and I want to know if you've already hit it. Drop it in the comments;
+I read every one.
 
 ---
 

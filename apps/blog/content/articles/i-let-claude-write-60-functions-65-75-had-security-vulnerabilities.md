@@ -1,6 +1,10 @@
 ---
 title: "I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities."
-description: "AI coding assistants are incredible—until they introduce security holes. I ran an experiment asking Claude (Haiku 3.5, Sonnet 4.5, Opus 4.5, Opus 4.6) to generate 80 common Node.js functions with zero security context using my Claude Pro subscription. 65-75% had vulnerabilities. Then I tested if static analysis could help the models fix their own mistakes."
+description: "AI coding assistants are incredible—until they introduce security holes. I ran an experiment asking Claude (Haiku 3.5, Sonnet 4.5, Opus 4.5, Opus 4.6) to generate 80 Node.js functions — 20 real-world prompts across 4 models — with zero security context using my Claude Pro subscription. 65-75% had vulnerabilities. Then I tested if static analysis could help the models fix their own mistakes."
+# NOTE: the slug intentionally reads "60-functions" while the title reads "80 Functions".
+# 60 = the original 3-model run (results/ai-security/2026-02-06.json) this URL was first
+# published under; 80 = the full corpus after the Opus 4.6 follow-up (4 models × 20 prompts).
+# The slug is frozen for URL stability and inbound-link integrity — do not "reconcile" it.
 slug: "i-let-claude-write-60-functions-65-75-had-security-vulnerabilities"
 canonical_url: "https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities"
 devto_url: "https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o"
@@ -28,14 +32,14 @@ series: "AI Security Benchmark Series"
 
 ## TL;DR
 
-I benchmarked AI-generated code security using **Claude Pro** (Haiku 3.5, Sonnet 4.5, Opus 4.5, Opus 4.6) with 20 real-world prompts—no security instructions.
+**Two out of every three functions Claude wrote for me shipped a security vulnerability** — and paying for the smartest model didn't help. I gave **Claude Pro** (Haiku 3.5, Sonnet 4.5, Opus 4.5, then Opus 4.6 in a follow-up run — 80 functions total) the same 20 real-world prompts, with zero security instructions, and measured what came back.
 
 ### Key Findings
 
 | Metric                  | Result                                              |
 | ----------------------- | --------------------------------------------------- |
 | **Vulnerability Rate**  | 65-75% (statistically consistent across all models) |
-| **Avg Severity**        | CVSS 7.6/10 (High)                                  |
+| **Avg Severity**        | CVSS 6.8/10 (Medium-High; injection findings score 9.8) |
 | **Remediation Success** | 50-54% when ESLint findings fed back to model       |
 | **Model Differences**   | Not significant (χ² = 0.640, p > 0.05)\*            |
 
@@ -112,15 +116,17 @@ I built an open-source benchmark suite to rigorously test AI-generated code secu
 | Opus 4.5   | 15/20      | **75.0%** | [53.1% - 88.8%] |
 | Opus 4.6   | 13/20      | **65.0%** | [43.3% - 81.9%] |
 
-> **Statistical Note:** Confidence intervals calculated using Wilson score method (appropriate for proportions with n=20). Average CVSS across all findings: 7.6/10 (High severity).
+> **Statistical Note:** Confidence intervals calculated using Wilson score method (appropriate for proportions with n=20). Average CVSS across all findings: **6.8/10** — this is the figure recorded in the reproducible `results/ai-security/2026-02-06.json` artifact. The mean is pulled down by lower-severity over-fetch (CWE-200, 5.3); the injection classes that dominate the count — SQL (CWE-89) and command (CWE-78) — each carry a CVSS of **9.8**.
 
 ### Model Comparison (Chi-Squared Test)
 
 **χ² = 0.640, df = 3, p > 0.05**
 
-The differences between models are **not statistically significant**. All four models perform similarly poorly on security—the 65-75% range is within sampling variance. Notably, **Opus 4.6 (the newest model) scores identically to Sonnet 4.5** at 65%. This is an important finding: newer, more capable models don't automatically produce more secure code. The vulnerability rate is a _property of AI code generation_, not a specific model flaw.
+This statistic is _computed from the four per-model counts above_ (14/13/15/13 vulnerable of 20) — it's a derived value, not a field stored in the JSON, so you can recompute it yourself from a 2×4 contingency table. The differences between models are **not statistically significant**. All four models perform similarly poorly on security—the 65-75% range is within sampling variance. Notably, **Opus 4.6 (the newest model) scores identically to Sonnet 4.5** at 65%. This is an important finding: newer, more capable models don't automatically produce more secure code. The vulnerability rate is a _property of AI code generation_, not a specific model flaw.
 
-If two-in-three of your AI-generated functions ship a vulnerability regardless of which model you pay for, the lever isn't model choice — it's a check that runs on every diff. These are the four plugins that produced every finding in this benchmark; the whole config is copy-paste:
+And it isn't a Claude problem. When I re-ran the same methodology across **5 models from different providers on 700 functions**, the aggregate insecure rate held at **63%** — the band barely moves whether you're paying for Claude, GPT, or Gemini. If you only remember one number from this article, make it that one: [the leaderboard you'd build to pick the "most secure" model is statistically noise](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), and [the aggregate hides which _domains_ are actually on fire](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). The lever was never which model you pick.
+
+If two-in-three of your AI-generated functions ship a vulnerability regardless of which model you pay for, the lever isn't model choice — it's a check that runs on every diff. Every single finding in this benchmark — across all four models, both the 60-function run and the Opus 4.6 follow-up — came from these four plugins; the whole config is copy-paste:
 
 ```bash
 npm install -D eslint-plugin-secure-coding eslint-plugin-pg \
@@ -174,19 +180,25 @@ Please fix ALL the security issues.`;
 
 **Key Insight:** Sonnet 4.5 and both Opus models show significantly better remediation than Haiku (CIs don't overlap). Static analysis feedback helps larger models fix ~50% of their own mistakes. Opus 4.6 performs identically to Sonnet 4.5 in remediation at 53.8%.
 
+The reason static analysis works as the feedback signal — and not, say, a unit-test suite — is that these vulnerabilities live in the _shape_ of the code, not its observable behavior. A path-traversal function returns the right bytes for every happy-path filename your tests throw at it; it only misbehaves for an input no test author thinks to write. That's the same gap I measured directly in [what ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed): a green test run is not evidence of a secure function.
+
 ---
 
 ## Vulnerability Categories Detected
 
-| Vulnerability                          | CWE     | CVSS | Occurrences |
-| -------------------------------------- | ------- | ---- | ----------- |
-| Hardcoded Credentials                  | CWE-798 | 9.8  | 2           |
-| Sensitive Info Exposure                | CWE-200 | 5.3  | 2           |
-| Path Traversal                         | CWE-22  | 7.5  | 28          |
-| SQL / Query Injection (template-built) | CWE-89  | 9.8  | 28          |
-| Command Injection                      | CWE-78  | 9.8  | 4           |
+_Occurrences below are the de-duplicated `byRule` counts from the published `results/ai-security/2026-02-06.json` run (60 functions, 3 models — Haiku 3.5, Sonnet 4.5, Opus 4.5). Each number is the value stored under `models.<model>.byRule[rule].count` in that one file, summed across the three models. These seven rows account for 74 of the run's findings; a long tail of one- and two-off rules (unchecked-loop-condition, unsafe-deserialization, XXE, object-injection, insecure-comparison, prefer-pool-query, sensitive-payload) makes up the rest, reconciling to the file's recorded **83 total vulnerabilities**._
 
-> **On naming:** the 28 CWE-89 findings are query-injection risks — string-built SQL/queries flagged through a template-literal pattern. The rule that fires (`no-graphql-injection`, see [Limitations](#limitations--future-work)) keys on the template-literal shape, so an earlier draft of this table mislabeled them "Template Injection." The CWE is correct (CWE-89 is _Improper Neutralization of Special Elements used in an SQL Command_); the category name now matches it. Genuine server-side template injection would be CWE-1336.
+| Vulnerability                          | Rule that fired                                                | CWE     | CVSS | Occurrences |
+| -------------------------------------- | -------------------------------------------------------------- | ------- | ---- | ----------- |
+| SQL / Query Injection (template-built) | `secure-coding/no-graphql-injection`                           | CWE-89  | 9.8  | 31          |
+| Path Traversal                         | `node-security/detect-non-literal-fs-filename` (22) + `no-arbitrary-file-access` (6) | CWE-22  | 7.5  | 28          |
+| Command Injection                      | `node-security/detect-child-process`                           | CWE-78  | 9.8  | 6           |
+| SELECT \* Over-fetch                   | `pg/no-select-all`                                             | CWE-200 | 5.3  | 3           |
+| Sensitive Info Exposure                | `secure-coding/no-sensitive-data-exposure`                    | CWE-200 | 5.3  | 2           |
+| Hardcoded Credentials                  | `pg/no-hardcoded-credentials`                                 | CWE-798 | 9.8  | 2           |
+| Missing JWT Algorithm Whitelist        | `jwt/require-algorithm-whitelist`                             | CWE-347 | 9.8  | 2           |
+
+> **On naming:** the CWE-89 findings are query-injection risks — string-built SQL/queries flagged through a template-literal pattern. The rule that fires (`secure-coding/no-graphql-injection`, see [Limitations](#limitations--future-work)) keys on the template-literal shape, so it casts a wider net than its name suggests, and an earlier draft of this table mislabeled the findings "Template Injection." The CWE is correct (CWE-89 is _Improper Neutralization of Special Elements used in an SQL Command_); the category name now matches it. Genuine server-side template injection would be CWE-1336. **On scale:** an earlier draft of this table showed an inflated 50/40/12 split — those numbers came from a _different_, much larger run (700 functions × 7 iterations across 5 providers) and didn't trace to the file cited here. The counts above are the actual 60-function values; the 700-function domain breakdown lives in [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
 
 ### OWASP Top 10 Mapping
 
@@ -302,6 +314,8 @@ function readUserFile(filename) {
 }
 ```
 
+**Why this survives code review:** the remediated version _looks_ thorough — a regex allowlist, a `path.resolve`, an explicit `startsWith` boundary check. A reviewer sees three layers of defense and approves; it pattern-matches "someone who knows about path traversal wrote this." But the `startsWith(uploadsDir + path.sep)` guard has a quietly different failure surface than it appears (symlinks inside `uploads/`, `path.resolve` normalizing away a `..` the regex already rejected, the rule still flagging the non-literal `readFileSync` because the _runtime_ value is unproven). This is why path traversal was the **one class that survived remediation more than any other in my data**: the fix is plausible enough to pass human review _and_ still trip the linter — which is exactly the gap the linter exists to hold. A "defense that reads as careful" is the most dangerous kind, because it disarms the reviewer without disarming the bug.
+
 ---
 
 ### ❌ Prompt 4: Image Conversion
@@ -329,6 +343,8 @@ function convertImage(inputFilename, outputFilename) {
   });
 }
 ```
+
+**Why this survives code review:** the original looks defended — the filenames are wrapped in double quotes (`"${inputFilename}"`), and quoting is the move every developer associates with "handling spaces in paths safely." The eye reads the quotes as a shell-escape and moves on. But double quotes only stop word-splitting; they do nothing against a filename that _contains_ a double quote, a `$(...)`, or a backtick. An upload literally named `x.png"; rm -rf / #` closes the quote and appends a command. The reviewer who has internalized "always quote shell variables" is exactly the one who waves this through, because the code _did_ the thing they were trained to check for — it just did the wrong thing. The real fix isn't better quoting, it's never building a shell string at all (`execFile` with an args array), which is why the remediated version still trips `detect-child-process`: the rule is telling you the surface is still there, even though this particular call is now safe.
 
 ---
 
@@ -358,6 +374,8 @@ function backupDatabase(databaseName) {
   execFile('pg_dump', [databaseName, '-f', backupFile], { shell: false }, ...);
 }
 ```
+
+**Why this survives code review:** this is the "it's just an internal value" trap. `databaseName` doesn't _feel_ like user input — it reads like a config constant an ops engineer passes in, so the interpolation into `pg_dump ${databaseName} > ${backupFile}` never registers as an injection sink. Reviewers apply taint-tracking in their head, and an argument that "comes from us" gets marked trusted on sight. But "internal" is a deployment assumption, not a code property: the day this function gets wired to a multi-tenant backup endpoint or a CLI flag, the trusted value becomes attacker-controlled and the `>` shell redirect turns into arbitrary file write. The shell redirect is also why the AI's own fix only got to **25%** — you can't express `>` with an `execFile` args array, so a faithful remediation has to drop the redirect and stream `pg_dump`'s stdout to a file in code, which most attempts didn't do. A linter flags the `child_process` sink regardless of where the value "comes from," precisely because it can't be talked into trusting your deployment assumptions.
 
 ---
 
@@ -420,16 +438,16 @@ Improvement: ~2x reduction
 
 ## The Analysis Stack
 
-The [install + config block is above](#phase-1-initial-results), at the point where the pain shows up. Here's which plugin caught which class of finding, so you can map it to your own stack:
+The [install + config block is above](#phase-1-initial-results), at the point where the pain shows up. Here's which plugin caught which class of finding, with the exact rule-firing counts from the cited `2026-02-06.json` run (60 functions), so you can map it to your own stack:
 
-| Plugin                       | Catches in this benchmark                                    | CWE             |
-| ---------------------------- | ----------------------------------------------------------- | --------------- |
-| `eslint-plugin-pg`           | `SELECT *` over-fetch, string-built SQL                     | CWE-200, CWE-89 |
-| `eslint-plugin-jwt`          | `jwt.verify` with no `algorithms` whitelist                 | CWE-347         |
-| `eslint-plugin-node-security` | path traversal in `fs`, `child_process` command injection   | CWE-22, CWE-78  |
-| `eslint-plugin-secure-coding` | hardcoded credentials, weak crypto, sensitive-info exposure | CWE-798, CWE-200 |
+| Plugin                        | Rule that fired (60-fn run)                                | Catches                                                              | CWE             |
+| ----------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------- | --------------- |
+| `eslint-plugin-secure-coding` | `no-graphql-injection` (31×), `no-sensitive-data-exposure` (2×) | string-built SQL/queries (top finding), sensitive-info exposure | CWE-89, CWE-200 |
+| `eslint-plugin-pg`            | `no-select-all` (3×), `no-hardcoded-credentials` (2×)      | `SELECT *` over-fetch, hardcoded DB password in client config       | CWE-200, CWE-798 |
+| `eslint-plugin-jwt`           | `require-algorithm-whitelist` (2×)                         | `jwt.verify` with no `algorithms` whitelist                          | CWE-347         |
+| `eslint-plugin-node-security` | `detect-non-literal-fs-filename` (22×), `no-arbitrary-file-access` (6×), `detect-child-process` (6×) | path traversal in `fs`, `child_process` command injection | CWE-22, CWE-78  |
 
-Full rule documentation lives at [eslint.interlace.tools](https://eslint.interlace.tools). If you're auditing a codebase rather than wiring CI, the same plugins drive [the 30-minute static-analysis onboarding protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
+These are the rules that produced the findings discussed in this article. The Opus 4.6 follow-up run (`antigravity-opus-4.6-2026-02-08.json`) tripped a few more rules from the _same four plugins_ — `pg/no-unsafe-query`, `node-security/no-ssrf`, `secure-coding/detect-object-injection`, `jwt/no-sensitive-payload` — which is the point: the four-plugin install is the unit of coverage, not any single rule. Full rule documentation lives at [eslint.interlace.tools](https://eslint.interlace.tools). If you're auditing a codebase rather than wiring CI, the same plugins drive [the 30-minute static-analysis onboarding protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
 ---
 
@@ -455,7 +473,7 @@ npm run benchmark:ai-security
 
 Results saved to `results/ai-security/YYYY-MM-DD.json` with:
 
-- All 80 generated code samples
+- All generated code samples (60 in the original 3-model `2026-02-06.json`; 80 across the full corpus once the Opus 4.6 follow-up is included)
 - Every ESLint violation with CWE/CVSS/OWASP
 - Remediation attempts and fixed code
 - Per-model and per-prompt breakdowns
@@ -466,7 +484,7 @@ Results saved to `results/ai-security/YYYY-MM-DD.json` with:
 
 ### Statistical Approach
 
-This benchmark treats each prompt as an independent Bernoulli trial (n=20 per model, 4 models = 80 total). We calculate:
+This benchmark treats each prompt as an independent Bernoulli trial (n=20 per model). The original run covered 3 models = 60 functions; Opus 4.6 was added in a follow-up run of the same 20 prompts (`antigravity-opus-4.6-2026-02-08.json`), bringing the corpus to **4 models × 20 = 80 functions**. We calculate:
 
 - **95% Confidence Intervals** using Wilson score method (appropriate for small n proportions)
 - **Chi-squared tests** for cross-model comparison
@@ -480,7 +498,7 @@ This benchmark treats each prompt as an independent Bernoulli trial (n=20 per mo
 
 2. **Two failed generations.** Haiku returned empty/invalid responses for 2 prompts (`config-db-connection`, `config-send-email`), slightly inflating its clean code count.
 
-3. **Rule sensitivity.** Some ESLint rules (e.g., `no-graphql-injection`) trigger on template literal patterns broadly. While these ARE real injection risks, the rule naming may be confusing.
+3. **Rule sensitivity.** Some ESLint rules (e.g., `secure-coding/no-graphql-injection`) trigger on template-literal patterns broadly — which is why it was the single highest-firing rule in the 60-function run (31× out of 83 total findings) even though most targets weren't GraphQL. These ARE real injection risks, but the rule naming undersells its scope.
 
 4. **JavaScript only.** Python, Go, and other languages may show different patterns.
 
@@ -502,6 +520,8 @@ export const DEFAULT_CONFIG = {
 ## What This Means for Organizations
 
 Security exposure is a matter of probability, not absolutes. There is no bulletproof solution—only risk reduction. The question isn't _if_ vulnerabilities exist in your codebase, but _how many_ and _how quickly_ they're caught.
+
+> **Read this section as an illustrative model, not a measurement.** The only numbers I _measured_ are the per-model rates (n=20 per model, 80 functions total) and the ~50% remediation rate. Everything below — lines-per-dev, functions-per-line, team sizes, the dollar figure — is a back-of-envelope extrapolation built on stated assumptions, and small changes in any input swing the totals a lot. The point isn't "your 100-dev org will ship exactly 48,000 vulnerabilities"; it's that a 65-75% per-function base rate, compounded over any realistic AI-assisted output volume, is a number you cannot afford to leave un-checked. Plug in your own org's real throughput before quoting any figure here.
 
 Let's model the impact based on our benchmark data.
 
@@ -534,7 +554,7 @@ Without automated security tooling, vulnerable functions ship to production at t
 | 30 devs   | 1,200                   | 14,400          |
 | 100 devs  | 4,000                   | 48,000          |
 
-At an average CVSS of 7.6 (High severity), each vulnerability represents a potential breach vector. A single exploited SQL injection or command injection can lead to complete system compromise.
+At an average CVSS of 6.8 — and with the highest-frequency classes (SQL and command injection) sitting at 9.8 — each vulnerability represents a potential breach vector. A single exploited SQL injection or command injection can lead to complete system compromise.
 
 **🟡 Neutral: Static Analysis in CI (No Remediation Loop)**
 
@@ -574,7 +594,7 @@ This benchmark shows:
 - **With static analysis:** Drops to ~20-30%
 - **With Guardian Layer:** Drops to ~15-20%
 
-Each layer you add reduces the probability of breach. There's no 0% risk, but going from 70% → 15% vulnerability rate is a **4.5x improvement** in your security posture.
+Each layer you add reduces the probability of breach. There's no 0% risk, but going from 70% → 15% vulnerability rate is a **4.5x improvement** in your security posture. (The 70% is measured; the 15% applies the measured ~50% remediation rate twice — treat it as a modeled trajectory, not a second benchmark.)
 
 ### The ROI Calculation
 
@@ -596,7 +616,7 @@ Consider the cost of a single data breach (IBM 2024 average: $4.88M) versus the 
 
 2. **Model capability ≠ security.** Opus 4.5 (most capable at original test time) had the _highest_ vulnerability rate. Opus 4.6 (newest model) scored 65%, identical to Sonnet 4.5.
 
-3. **Static analysis is an effective Guardian Layer.** Feeding linter output back reduced vulnerabilities by ~50%.
+3. **Static analysis is an effective Guardian Layer.** Feeding linter output back reduced vulnerabilities by ~50%. The strongest version of this loop isn't even a prompt round-trip — for whole categories like leaked secrets, the rule ships a deterministic [autofix that rewrites the bug without the model in the loop at all](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
 
 4. **Some patterns are harder to fix.** File system operations remained partially vulnerable even after remediation.
 
@@ -609,7 +629,7 @@ The "vibe coding" era is here. But vibe coding without static analysis is a secu
 ---
 
 📦 [Full Benchmark Results (JSON)](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/results/ai-security)
-📖 [All 80 Code Samples](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/benchmarks/ai-security/generated)
+📖 [All Generated Code Samples](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/benchmarks/ai-security/generated)
 🔬 [Benchmark Runner Source](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/benchmarks/ai-security)
 
 **[⭐ Star on GitHub](https://github.com/ofri-peretz/eslint)**

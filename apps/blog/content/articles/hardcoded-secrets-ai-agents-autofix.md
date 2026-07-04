@@ -1,20 +1,20 @@
 ---
-title: "AI Coding Assistants Hardcode Secrets. This ESLint Rule Catches Them — in a Format the AI Can Auto-Fix."
+title: "65-75% of Claude's Code Shipped a Vuln. Hardcoded Secrets Are the One AI Agents Can Auto-Fix."
 description: "AI assistants leave demo keys, placeholder passwords, and bare config literals in source — CWE-798 at scale. One ESLint rule catches the hardcoded literal, and its CWE/CVSS/fix message is structured so the same AI can read the error and hoist it to process.env."
 slug: "hardcoded-secrets-ai-agents-autofix"
 canonical_url: "https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix"
 devto_url: "https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg"
 devto_id: 3137474
 published_at: "2025-12-31T05:39:36Z"
-edited_at: "2026-01-11T10:22:03Z"
+edited_at: "2026-06-21T00:00:00Z"
 cover_image: "https://ofriperetz.dev/og/cover/hardcoded-secrets-ai-agents-autofix"
 social_image: "https://ofriperetz.dev/og/article/hardcoded-secrets-ai-agents-autofix"
 reading_time_minutes: 7
 tags:
   - "security"
   - "ai"
+  - "node"
   - "eslint"
-  - "javascript"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -60,6 +60,8 @@ single deterministic rewrite — hoist the literal to `process.env` — with no
 behavioral branches for the model to get creative in. That's why this is the
 **one** AI-introduced vulnerability worth wiring into an autonomous loop first.
 
+> **Series — Hardening AI Agents:** [I Let Claude Write 80 Functions (65–75% had a vuln)](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) → **Hardcoded secrets: the one AI can auto-fix** (you are here) → [Claude wrote a NestJS service — ESLint found 6 holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). The thread: AI writes the bug, a machine-readable lint finding closes the loop.
+
 ---
 
 ## TL;DR
@@ -77,23 +79,44 @@ behavioral branches for the model to get creative in. That's why this is the
 ## Why the lint error is written for the machine
 
 A human reads `error: hardcoded credential` and sighs. An AI agent reads the
-_structure_ and acts. Run `npx eslint .` and a finding looks like this:
+_structure_ and acts. Point the rule at the literal Stripe key an assistant
+left behind:
+
+```ts
+// src/payments.ts
+import Stripe from "stripe";
+
+const STRIPE_SECRET_KEY = "sk_live_51H8xY2eZvKfABCD1234";
+export const stripe = new Stripe(STRIPE_SECRET_KEY);
+```
+
+Run `npx eslint .` and that's the exact, unedited finding it prints — line,
+column, and all (paste the file above into a fresh repo with the rule enabled
+and you'll get it character-for-character):
 
 ```text
 src/payments.ts
-  4:36  error  🔒 CWE-798 OWASP:A04-Cryptographic CVSS:9.8 | Hard-coded API key detected | CRITICAL [SOC2,PCI-DSS,HIPAA,GDPR]
-              Fix: Use environment variable: process.env.STRIPE_SECRET_KEY or secret management service
+  4:27  error  🔒 CWE-798 OWASP:A04-Cryptographic CVSS:9.8 | Hard-coded API key detected | CRITICAL [SOC2,PCI-DSS,HIPAA,GDPR]
+   Fix: Use environment variable: process.env.STRIPE_SECRET_KEY or secret management service | https://cwe.mitre.org/data/definitions/798.html
 ```
 
-Every token is a machine signal:
+Every token in that line is a machine signal — and the rule derives them, it
+doesn't hand-type them: the CWE drives an auto-enrichment table
+(`@interlace/eslint-devkit`) that fills in the OWASP category, the CVSS score,
+and the compliance set, so the finding can't drift out of sync with the
+vulnerability class. Read left to right:
 
 - **`CWE-798`** — a stable, machine-readable vulnerability class the model has
   seen thousands of times in training; it knows the remediation pattern.
-- **`CVSS:9.8` + `CRITICAL`** — lets an agent prioritize this over a style nit.
+- **`OWASP:A04-Cryptographic`** — the OWASP Top 10 (2025) bucket CWE-798 maps
+  to (A04 is _Cryptographic Failures_ in the 2025 list — secrets in source are
+  a key-management failure), so the finding slots straight into an OWASP report.
+- **`CVSS:9.8` + `CRITICAL`** — the severity the agent uses to prioritize this
+  over a style nit.
 - **`[SOC2,PCI-DSS,HIPAA,GDPR]`** — the compliance frameworks the finding maps
   to, for an audit trail the agent can cite.
-- **`Fix:`** — the exact transformation (`→ process.env.…`), so the edit is
-  deterministic, not a guess.
+- **`Fix:`** — the exact transformation (`→ process.env.STRIPE_SECRET_KEY`,
+  derived from the variable name), so the edit is deterministic, not a guess.
 
 Drop that into Cursor/Copilot/Claude (or an autonomous CI agent) and the fix is
 mechanical: hoist the literal to an environment variable or a secret manager.
@@ -152,7 +175,10 @@ three of these wave a `sk_live_…` straight through:
 A blocking lint rule fixes the one thing humans are structurally bad at here:
 applying the same boring check to **every** literal, on every PR, without
 fatigue. That's the case for making it an _error_, not a warning — a warning
-gets the same "I'll fix it later" treatment as the placeholder did.
+gets the same "I'll fix it later" treatment as the placeholder did. Put bluntly:
+**the credential didn't survive review because nobody looked — it survived
+because looking at every string literal isn't a job a human can do, and it is
+the only job a linter does.**
 
 ## How it stays quiet enough to be an error
 
@@ -162,15 +188,42 @@ different decisions**: registered vendor key prefixes (`sk_live_`, `AKIA…`)
 fire anywhere because they're unambiguous, while a generic high-entropy string
 is only flagged when the surrounding identifier _names_ a credential
 (`apiKey`, `password`, `token`) and clears a length floor. That context check is
-load-bearing: on the `vercel/ai` codebase a naive entropy match produced
-hundreds of "findings" that were really TypeScript union-type literals and class
-names —
-[I walk the full benchmark in the entropy deep-dive](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough).
-That low false-positive rate is what lets you run it as a blocking CI error —
-and what makes an agent trust the signal instead of suppressing it. The
+load-bearing, and I have the receipt: an early, context-blind version of this
+rule fired **842 times on the `vercel/ai` codebase — and the real count of
+hardcoded credentials was zero.** 807 of those "findings" were TypeScript
+union-type literals, error class names, and the bare string `"test"`. I walk
+that whole false-positive autopsy in
+[what ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed).
+The context gate is what dropped that to zero — and that low false-positive rate
+is what lets you run it as a blocking CI error, and what makes an agent trust
+the signal instead of suppressing it. The
 [secure-coding getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding)
 walks the full two-mode mechanism and the rest of the security rules in the
 plugin.
+
+Here's the part that matters if you point this at AI output: `vercel/ai` is a
+**hand-written human library**, and it still buried a context-blind rule under
+807 false positives — because it names things `experimental_onToolExecutionStart`
+and `AI_ToolCallNotFoundForApprovalError`. That long, underscore-laced,
+type-literal-heavy texture is _exactly_ what an LLM emits when it generates
+TypeScript. Run a naive credential regex over a folder of Claude- or
+Gemini-written code and you don't get a security report — you get noise
+proportional to how verbosely the model named its symbols. So the two-mode
+design isn't a nicety; it's the only reason this rule survives contact with the
+code AI is now writing fastest.
+
+And the "run it on AI output" part isn't hypothetical — I keep doing it. When I
+gave Claude and Gemini the
+[same NestJS prompt, Claude shipped 6 security findings and Gemini 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors),
+and when I
+[ranked five models by the security of what they generate](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
+the "best coder" wasn't the safest one. The throughline: which model you pick
+changes _how many_ of these literals land, but not _whether_ they land — every
+model leaves some. The two-mode rule is the constant that catches them
+regardless of which assistant wrote the diff. (Want to reproduce the precision
+claim on your own model? Generate the corpus with Gemini, run the
+structural-only pass against the context-tiered pass, and report the delta —
+same rule, swap the corpus.)
 
 ---
 
@@ -250,14 +303,17 @@ It's part of the [Interlace](https://eslint.interlace.tools) ecosystem —
 domain-specific static analysis whose findings are deliberately structured for
 both humans and the agents now writing most of the code.
 
-This piece is part of my **Hardening AI Agents** series. If you want the same
+This piece is part of my **Hardening AI Agents** series. The
+[65–75% experiment](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+is where the headline number comes from; if you want the same
 machine-readable-finding loop applied to a whole AI-written service, see
 [Claude wrote a NestJS service — ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes),
 where hardcoded credentials were one finding among several in real generated
-code.
+code. And for the framework-aware version of the same loop on agent code, see
+[securing AI agents in the Vercel AI SDK](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk).
 
 - 📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding)
-- 📖 [Rule docs: no-hardcoded-credentials](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)
+- 📖 [Rule docs: no-hardcoded-credentials](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-hardcoded-credentials)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding)
 
 What's the worst hardcoded secret you've caught in an AI-generated PR — a live

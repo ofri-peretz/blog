@@ -49,13 +49,20 @@ slow-motion outage that passes every unit test, because tests rarely exhaust a
 10-connection pool.
 
 Here's the part that should worry you more than your own typos: **this is also
-the default output of every AI coding assistant.** Ask Copilot or Claude for "a
-function that looks up a user by email with pg" and string interpolation is the
-shape you get back roughly as often as not — the model learned from the same
-public code that ships these bugs. The driver won't stop it, TypeScript won't
-stop it, and the green test suite won't stop it. (I keep [an entire benchmark of
-what AI assistants generate by default](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) —
-65–75% of the functions carried a vulnerability.)
+the default output of every AI coding assistant.** I benchmarked it. When I
+asked five frontier models — Claude Haiku/Sonnet/Opus _and_ Google's Gemini 2.5
+Flash and Pro — to write database functions with `pg`, **the database category
+was the bloodiest of all**: Gemini 2.5 Pro shipped a vulnerability in **96%** of
+its database functions, Gemini Flash in **75%**, Sonnet in **71%** — and even
+the best model on that axis still failed **39% of the time** ([full per-model,
+per-domain breakdown across 700 functions](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)).
+The very first prompt of an earlier run — _"query a PostgreSQL database to
+return the user, use the pg library"_ — came back as string-interpolated
+injection ([65–75% of those functions carried a vulnerability; CWE-89 tied for
+the most common finding at 28 occurrences](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)).
+The model learned from the same public code that ships these bugs. The driver
+won't stop it, TypeScript won't stop it, the green test suite won't stop it —
+and switching to a "smarter" model makes it _worse_, not better.
 
 Both bugs are _shapes in the source_. `eslint-plugin-pg` is **13 rules** that
 read your `pg` call sites and fail CI on those shapes — SQL injection,
@@ -108,14 +115,45 @@ one defense that actually works.
 
 **This is the rule that earns its keep against AI-generated code.** Prompt an
 assistant for "get a user by email with node-postgres" and the template-literal
-form is a coin-flip away — the model is reproducing the median of its training
-data, and the median ships injection. The fix is non-negotiable and identical
-every time (`$1` placeholders), which is exactly what makes it a good lint rule:
-no judgment call, no false-positive debate, just a CI gate that the AI's output
-has to pass like everyone else's. If your team has started merging
-AI-drafted data-access code, this rule is the seatbelt. (For the deeper
-node-postgres injection taxonomy — concat, identifiers, and the `IN (...)`
-trap — see [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).)
+form isn't an edge case — it's the _modal_ answer (96% of Gemini Pro's database
+functions, 71% of Sonnet's, in the benchmark above). The model is reproducing
+the median of its training data, and the median ships injection. The fix is
+non-negotiable and identical every time (`$1` placeholders), which is exactly
+what makes it a good lint rule: no judgment call, no false-positive debate, just
+a CI gate that the AI's output has to pass like everyone else's. **If your team
+merges AI-drafted data-access code, this rule is the seatbelt — and the seatbelt
+matters more the more capable your model gets, because capability and SQL-safety
+turned out to be uncorrelated.** (For the deeper node-postgres injection
+taxonomy — concat, identifiers, and the `IN (...)` trap — see [Three SQL
+Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).)
+
+---
+
+## Point it at your AI's output, not just your own
+
+The fastest way to feel why this plugin exists: make your AI assistant write the
+`pg` code, then lint it before you read it.
+
+```bash
+# generate a data-access function with whatever assistant you use…
+gemini -p "Write a Node.js function that looks up a user by email with pg" > user.ts
+# (or: claude -p "…", or paste from Copilot)
+
+# …then gate it on the way in
+npx eslint user.ts
+```
+
+In my benchmark, the database category was where the _flagship_ model did worst:
+Gemini 2.5 Pro at **96%** vulnerable, ahead of every Claude model, while the
+smallest model (Haiku) led the category at 39%. More capability did not buy more
+SQL-safety. That's not a knock on any one vendor; it's the whole point.
+**The vulnerability rate is a property of AI code generation, not a property of
+which model you picked.** So the gate has to live in CI, model-agnostic,
+firing on the _shape_ — which is exactly what `no-unsafe-query` does. Swap the
+`gemini -p` above for any model and the rule reads the AST the same way; the
+[5-model leaderboard](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
+is just this loop run 700 times. And because fixing one AI-suggested bug often
+surfaces the next, the linter is what keeps the [whack-a-mole bounded](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
 
 ---
 
@@ -306,7 +344,9 @@ This is the install-and-config entry point for the **Postgres Security
 Protocol** series. Each rule here has a deep-dive companion that walks the
 attack end to end:
 
-**→ Related:** [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) · [search_path Hijacking: A PostgreSQL Attack](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) · [Database Connection Leak: Anatomy of a Production Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage) · [Transaction Race Conditions: BEGIN on a Pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) · [COPY FROM: Filesystem Access via PostgreSQL](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access)
+**→ The series (attack deep-dives):** [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) · [search_path Hijacking: A PostgreSQL Attack](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) · [Database Connection Leak: Anatomy of a Production Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage) · [Transaction Race Conditions: BEGIN on a Pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) · [COPY FROM: Filesystem Access via PostgreSQL](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access)
+
+**→ The AI angle (why this plugin matters more every quarter):** [We Ranked 5 AI Models by Security — the database numbers](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [I Let an AI Write 80 Functions: 65–75% Were Vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · [Claude Wrote a NestJS Service; ESLint Found 6 Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes) · [Same File, 4 Linters: How Much Your Plugin Actually Catches](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof)
 
 ---
 
@@ -318,10 +358,12 @@ attack end to end:
 
 Run `configs.recommended` against your oldest `pg` service — the one written
 before the team had conventions — and one of these 13 will almost certainly
-fire. **Which one would it be in your codebase: the interpolated query nobody
-re-reads, the `release()` missing from a `catch` block, or the dynamic
-`search_path` that looked like good multi-tenancy?** I want the war story in the
-comments — especially the one that already cost you a 3pm outage.
+fire. Then run it against the last data-access function your AI assistant wrote,
+and watch the same rule fire again. **Which one would it be in your codebase:
+the interpolated query nobody re-reads, the `release()` missing from a `catch`
+block, or the dynamic `search_path` that looked like good multi-tenancy?** I
+want the war story in the comments — especially the one that already cost you a
+3pm outage, or the one your AI pair-programmer slipped past review last week.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your `pg` code does any of the above.

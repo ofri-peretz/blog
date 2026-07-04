@@ -34,11 +34,18 @@ export const handler = async (event) => {
 };
 ```
 
-An attacker points `callbackUrl` at `http://169.254.169.254/latest/meta-data/iam/security-credentials/`
-— the Lambda **instance metadata endpoint** — and your handler dutifully
-fetches and returns the **execution role's temporary credentials**. Step 2: if
-that role's IAM policy contains `"Action": "*"` (the default reflex when "it
-just needs to work"), those credentials now do _anything_ in your account.
+Step 1 is a server-side request forgery: the caller now drives outbound calls
+from inside your trust boundary — VPC-internal services, databases, admin
+endpoints not exposed to the internet — and can exfiltrate the response. The
+credential prize is the part most people get wrong about Lambda. **Lambda has no
+EC2 metadata service** — there's no `169.254.169.254` returning role credentials
+the way there is on an EC2 box. The execution role's keys are injected as
+**environment variables** (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`AWS_SESSION_TOKEN`). So the SSRF that steals them is the one whose client can
+read `file:///proc/self/environ`, or a handler you can coax into reflecting
+`process.env` — not the EC2 IMDS payload people reflexively copy over. Step 2:
+if that role's IAM policy contains `"Action": "*"` (the reflex when "it just
+needs to work"), those leaked keys now do _anything_ in your account.
 
 Neither line throws. Neither fails a test. The type-checker is delighted. Both
 are **source patterns** — and that's what `eslint-plugin-lambda-security` reads.
@@ -48,18 +55,20 @@ DoS — organized around the [OWASP Serverless Top 10](https://owasp.org/www-pro
 each pinned to a CWE.
 
 This guide walks the SSRF→IAM takeover chain, the serverless-specific gotchas
-(env vars aren't secret), the full 14-rule map, and exact install/engine support.
+(env vars aren't secret — and on Lambda they're where the credentials live), the
+full 14-rule map, and exact install/engine support.
 
 ### Why this passes code review
 
 Neither half of this chain looks like a vulnerability to a reviewer reading the
 diff. The `fetch` is a single line doing an ordinary thing — a webhook callback,
-a "fetch the user's avatar URL" feature — and the reviewer doesn't have IMDS's
-`169.254.169.254` loaded in their head while reading a feature PR. SSRF only
-registers as dangerous when you _already_ know the runtime exposes a credential
-endpoint on the loopback; on a long-lived server you've never deployed to, that
-intuition isn't there. So the line reads as "calls a URL," and "calls a URL" is
-not a red flag.
+a "fetch the user's avatar URL" feature — and the reviewer isn't picturing the
+trust boundary that line sits inside: that the function can reach VPC-internal
+services, and that its own role credentials are sitting in `process.env` one
+`file://` or reflected-`env` away. SSRF only registers as dangerous when you
+_already_ hold the runtime's internal surface in your head; reading a feature PR,
+that intuition isn't there. So the line reads as "calls a URL," and "calls a URL"
+is not a red flag.
 
 The `"Action": "*"` is worse, because it's usually not even in the same PR. The
 handler ships in application code; the IAM policy ships in a SAM/CDK/Serverless
@@ -99,13 +108,31 @@ if (!ALLOWED.has(url.hostname)) throw new Error("destination not allowed");
 const res = await fetch(url);
 ```
 
-The rule flags a request whose URL carries user-controlled input. In Lambda
-this is uniquely dangerous because the runtime exposes the **IMDS** endpoint
-(`169.254.169.254`) on the loopback network — an unfiltered SSRF reaches it and
-returns the execution role's credentials. The fix is an allow-list of
-destinations; the rule's own guidance: _"Never use user input directly in
-URLs."_ (You should also pin IMDSv2 and block the metadata CIDR at the network
-layer — defense in depth.)
+The rule flags a request whose URL carries user-controlled input
+([rule docs](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-user-controlled-requests)).
+The fix is an allow-list of destinations; the rule's own guidance: _"Never use
+user input directly in URLs."_
+
+Here's the nuance that separates a real Lambda threat model from a copied EC2
+one — and it's where most "SSRF steals your role" write-ups are quietly wrong.
+On **EC2**, the classic SSRF prize is the IMDS endpoint
+(`http://169.254.169.254/latest/meta-data/iam/security-credentials/`), and on a
+box still allowing **IMDSv1** a single unauthenticated GET returns the role's
+credentials. **Lambda is not that.** There is no IMDS in a Lambda execution
+environment; the role's keys live in `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
+/ `AWS_SESSION_TOKEN` env vars, and the only loopback service is the **Lambda
+Runtime API** (`$AWS_LAMBDA_RUNTIME_API`), which serves invocation lifecycle, not
+credentials. So on Lambda the SSRF that matters reaches **internal/VPC services**
+or reads the credential env directly (a client that follows `file:///proc/self/environ`,
+or a handler coaxed into echoing `process.env`) — not `169.254.169.254`.
+
+Why keep the link-local block anyway? Because the rule reads source, and the
+same handler file routinely gets lifted onto **EC2 or ECS-on-EC2**, where that
+exact GET _does_ hit IMDS — and `no-user-controlled-requests` flags the
+user-controlled URL regardless of which compute it lands on, before the deploy
+target is even decided. The linter doesn't assume your runtime; it removes the
+user-controlled destination that your runtime's internal surface is the only
+thing standing in front of.
 
 ---
 
@@ -129,8 +156,9 @@ policy: {
 ```
 
 The rule flags `"*"` in `Action`/`Resource` of IAM policy literals (the shape
-you write in SAM, CDK, the Serverless Framework, or inline policy objects). Its
-fix message is concrete: _restrict to specific resources/actions, e.g.
+you write in SAM, CDK, the Serverless Framework, or inline policy objects —
+[rule docs](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-overly-permissive-iam-policy)).
+Its fix message is concrete: _restrict to specific resources/actions, e.g.
 `"arn:aws:s3:::my-bucket/*"` instead of `"*"`._ Least privilege is what bounds
 the blast radius of step 1 — with a scoped role, the stolen credentials can
 read one bucket, not delete your databases.
@@ -162,7 +190,10 @@ Lambda has its own footguns that don't exist on a long-lived server:
   secrets assigned to environment variables: they're readable by anyone with
   `lambda:GetFunctionConfiguration` (and visible in the console), and one
   `console.log(process.env)` dumps them to CloudWatch forever. The fix is a
-  runtime fetch from **AWS Secrets Manager** / SSM Parameter Store.
+  runtime fetch from **AWS Secrets Manager** / SSM Parameter Store. (Entropy
+  scanners miss the assignment that matters here — why a structural rule beats a
+  secret-scanner is the whole argument of
+  [Hardcoded Secrets in AI-Generated Code, and the Autofix That Removes Them](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).)
 - **Logging leaks.** `no-env-logging` (CWE-532) catches `process.env` going to
   logs; `no-exposed-error-details` (CWE-209) catches `error.stack` returned in
   the HTTP response (log it to CloudWatch, return a generic message).
@@ -175,40 +206,89 @@ Lambda has its own footguns that don't exist on a long-lived server:
 
 ## What happens when an AI assistant writes the handler
 
-Ask any coding assistant to "write a Lambda that fetches a URL from the request
-and returns the body," and you get the SSRF line at the top of this article —
-`fetch(event.queryStringParameters.callbackUrl)`, no allow-list. Ask it to "give
-this function an IAM role so it can read from S3," and a meaningful share of the
-time you get `Action: "*"` or `Resource: "*"`, because the broad policy is the
-one that always works and the scoped one requires knowing the exact ARNs. The
-model isn't being careless — it's reproducing the median of its training data,
-and for both of these patterns the median is the insecure one. The IMDS-aware,
-least-privilege version is the minority of the corpus, so it's the minority of
-the output.
+I wanted first-party numbers for this article instead of borrowing them, so I
+ran the experiment twice — and the second run found something I didn't expect.
+The corpus, prompts, and scan script are reproducible:
 
-This is the same dynamic I keep hitting across the stack: an assistant doesn't
-invent novel bugs, it _reintroduces the well-documented ones_. I measured the
-broad version of this — letting an assistant write functions and counting the
-holes — in [I Let Claude Write 60 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
-and watched the same negative-space failure mode play out one prompt at a time
-in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
-The constant: the assistant fills in the behavior you asked for and skips the
-constraint you didn't — and "don't let this URL reach the metadata endpoint" is
-a constraint nobody puts in a prompt.
+```bash
+# corpus + scan live in the benchmark suite. Model: claude-opus-4-7, June 2026.
+node benchmarks/lambda-ai-corpus/scripts/generate.mjs              # 10 from-scratch handlers
+node benchmarks/lambda-ai-corpus/scripts/generate.mjs prompts-terse.json generated-terse  # 10 "just make it work" edits
+node benchmarks/lambda-ai-corpus/scripts/scan.mjs [generated|generated-terse]              # lambda-security over a corpus
+```
 
-So the volume of handler code that needs review just went up, while the per-line
-attention each one gets went down. That's the exact condition these rules are
-built for. You don't read the AI's handler line by line hoping to spot the
-missing allow-list; you make the missing allow-list a build error. Run
-`recommended` over AI-generated serverless code and the SSRF line and the `"*"`
-policy fail CI on the call shape the assistant defaults to — same as they would
-for code a human wrote on a Friday afternoon.
+The generator is model-agnostic — it shells out to whatever assistant CLI you
+point it at. Swap the `claude` call for a Gemini one (same prompts, same scan)
+and you have an apples-to-apples _"how does each model's unprompted Lambda
+default score against a CWE-tagged linter"_ benchmark — the exact shape of a
+[Build with Gemini](https://dev.to/challenges) submission. I'm publishing the
+ESLint-side result here; the cross-model leaderboard is its own piece.
+
+**Run 1 — ten neutral, from-scratch prompts** (_"write a Lambda that fetches a
+`callbackUrl` and returns the body,"_ _"give this function an IAM role to
+read/write S3"_). The uncomfortable-for-_my-own-thesis_ result: on the SSRF
+prompt the model did **not** hand me the naked `fetch(callbackUrl)` from the top
+of this article. It wrote a full `assertSafeUrl` guard — protocol allow-list, an
+explicit `169.254.169.254` block, DNS checks against private ranges,
+`redirect: 'error'`. **Zero of ten** handlers tripped any critical rule; the IAM
+prompt produced a scoped `s3:GetObject`/`PutObject` on the bucket ARN, not
+`Action: "*"`. Frontier defaults have genuinely moved — on a clean, explicit
+prompt, today's model often writes the hardened version.
+
+That is not "the problem is solved." The floor hasn't moved; only the best case
+has. So **Run 2 — the same tasks, but phrased the way assistants are actually
+used under deadline**: _"Quick one — fetch the `callbackUrl` and return the body,
+just make it work,"_ _"simple proxy, read `target` from the body, GET it, don't
+overthink it."_ The guard evaporated. The model wrote the bare
+`fetch(callbackUrl)`, `fetch(target)`, `fetch(body.notifyUrl)` — **three of ten
+handlers carried a textbook user-controlled-fetch** with no allow-list. Same
+model, same day; the only variable was the word "quick."
+
+Here's the part I didn't expect, and it's why running the linter over real output
+beats trusting it: **the rule flagged zero of those three.** Each terse handler
+parked the tainted value in a local first — `const callbackUrl =
+event.queryStringParameters?.callbackUrl; await fetch(callbackUrl)` — or
+destructured it (`const { target } = JSON.parse(event.body)`), and
+`no-user-controlled-requests` only tracks the value when it reaches `fetch`
+_directly_ off the event (its docs cop to this under "Multi-Step Taint Flow").
+It nails `fetch(event.queryStringParameters.callbackUrl)` and slips on
+`const u = event.…; fetch(u)`. That single-assignment hop is the most common
+shape AI-generated handlers actually take, so it's the gap that matters most —
+[I filed it](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-lambda-security).
+The honest scorecard, then: the vulnerable pattern came back the moment the
+prompt got terse, and today's taint tracking catches the obvious form but not
+the one-variable detour — which is exactly the kind of finding a corpus scan
+exists to surface, and exactly why "the model wrote it safely once" is not a
+control you can ship.
+
+That conditionality is the actual argument for a build-time guard. I've measured
+the broad, prompt-stripped version of this repeatedly: 80 common Node.js
+functions written with zero security context came back **65–75% vulnerable
+across every model I tried** in
+[I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
+and across 700 functions from five frontier Claude **and Gemini** models in
+[We Ranked 5 AI Models by Security. The Leaderboard Is Wrong.](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
+every model landed at a **49–75% vulnerability rate** — and the model that scored
+_worst_ on raw generation (Gemini 2.5 Pro, 73%) was the _best_ at fixing the bug
+once a rule named it. No model is the secure one; the rankings just shuffle
+_which_ vulnerabilities each leaks. A
+CI guard doesn't care which way the model leaned today: it re-asserts the
+invariant on every commit, the secure-by-default generation and the
+"quick, just make it work" edit alike. You don't read the AI's handler line by
+line hoping to spot the missing allow-list — you make the rule the thing that
+checks, on every push, and you keep tightening it where the corpus shows it
+slipping (that taint hop above is next on my list). A control you run beats a
+generation you trusted once.
 
 ---
 
 ## The full rule set
 
-All 14, with each rule's declared CWE:
+All 14 are organized around the [OWASP Serverless Top 10](https://owasp.org/www-project-serverless-top-10/)
+and pinned to a CWE — the same CWE-as-the-unit approach I used to map a whole
+codebase to the broader risk surface in
+[Mapping Your Codebase to the OWASP Top 10 with 247 ESLint Rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules).
+Here they are, each with its declared CWE:
 
 | Rule                              | Catches                           | CWE     |
 | --------------------------------- | --------------------------------- | ------- |
@@ -263,7 +343,10 @@ export default [
   configs.recommended,
   {
     rules: {
-      "lambda-security/no-error-swallowing": "warn",
+      // recommended ships no-exposed-debug-endpoints as "error"; drop it to
+      // "warn" if you gate debug routes another way (a real override, not a no-op)
+      "lambda-security/no-exposed-debug-endpoints": "warn",
+      // and tighten the batch cap below the default
       "lambda-security/no-unbounded-batch-processing": [
         "error",
         { maxBatchSize: 50 },
@@ -304,9 +387,15 @@ src/handlers/proxy.ts
   attached at deploy time, or evaluate a policy assembled at runtime. Pair it
   with `cfn-nag`/`cdk-nag` or an account-level access analyzer for the deployed
   side.
-- **SSRF detection is taint-shaped, not a proof.** It flags user-controlled
-  input reaching a request URL; whether your allow-list is airtight is your
-  job. Block the metadata CIDR and require IMDSv2 at the infra layer too.
+- **SSRF detection is taint-shaped, and the taint is shallow.** It flags
+  user-controlled input reaching a request URL when the event value lands on
+  `fetch`/`axios` fairly directly; as my corpus run showed, it currently slips
+  when the value first detours through a local (`const u = event.…; fetch(u)`)
+  or a destructure — so treat a clean SSRF pass as "no _obvious_ one," not
+  "none," and keep an allow-list in the handler regardless. (That gap is the
+  next thing I'm tightening.) For the credential side, remember the Lambda
+  threat is the env-injected role keys, not an IMDS endpoint — scope the role
+  and don't log `process.env`.
 
 ---
 
@@ -320,10 +409,11 @@ each finding tagged with a CWE and CVSS. It's the serverless member of the
 [Interlace](https://eslint.interlace.tools) family, complementary to the generic
 set and to the server-side plugins: when your Lambda fronts an Express API,
 [eslint-plugin-express-security](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security)
-covers the request layer, and when it issues or verifies tokens,
-[the JWT rules](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)
-stop the `algorithm: none` bypass. Same finding format, same flat-config wiring
-— pick the plugins that match your runtime.
+covers the request layer, and when it issues or verifies tokens, the JWT rules
+stop the
+[`algorithm: none` bypass that verifies a forged token in one line](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g).
+Same finding format, same flat-config wiring — pick the plugins that match your
+runtime.
 
 ---
 
@@ -334,11 +424,11 @@ stop the `algorithm: none` bypass. Same finding format, same flat-config wiring
 - 🔐 [OWASP Serverless Top 10](https://owasp.org/www-project-serverless-top-10/)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-lambda-security)
 
-Run `recommended` over one Lambda repo and tell me what it caught: a `fetch` of
-a caller-supplied URL, an `Action: "*"` nobody scoped down, a secret sitting in
-an env var? Or — the one I most want to hear — has an over-broad execution role
-ever actually been the thing that turned a small bug into an incident in your
-account? Drop it in the comments.
+One question, and it's the one I most want answered: has an `Action: "*"`
+execution role ever turned a small bug in your account into a big incident —
+the blast radius being the whole problem? Tell me what the bug was and how far
+the role let it reach. (Run `recommended` over one Lambda repo first if you want
+to find your own before you tell the story.)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your handlers do any of the above.

@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/transaction-race-conditions-begin-
 social_image: "https://ofriperetz.dev/og/article/transaction-race-conditions-begin-on-pool"
 reading_time_minutes: 5
 tags:
-  - "eslint"
-  - "node"
   - "ai"
-  - "javascript"
+  - "googleai"
+  - "geminichallenge"
+  - "eslint"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -24,9 +24,14 @@ series: "Postgres Security Protocol"
 ---
 
 This is the single most common Postgres transaction bug I find in Node.js
-codebases — and the one an AI assistant will hand you the fastest. It passes
-every test, works perfectly in development, and under real concurrency in
-production it silently corrupts account balances:
+codebases — and the one an AI assistant will hand you the fastest. Across a
+benchmark of 700 AI-generated functions, the database domain hit a **96%
+vulnerability rate at the top end** — among the worst cells in the whole grid,
+and the worst in the database category — and data-layer patterns like this one
+are why. (That 96% rests on 28 data points per model, so read it as a wide band,
+not a decimal — more on the confidence interval below.) It passes every test,
+works perfectly in development, and under real concurrency in production it
+silently corrupts account balances:
 
 ```javascript
 // ❌ a "transaction" on the pool
@@ -133,8 +138,8 @@ export default [configs.recommended];
 
 ```text
 src/transfer.js
-  3:9  error  ⚠️ Transactions should not be started on the Pool directly. | HIGH
-             Fix: Use "await pool.connect()" to get a client, then start the transaction on the client.
+  3:20  error  ⚠️ Transactions should not be started on the Pool directly. | HIGH
+              Fix: Use "await pool.connect()" to get a client, then start the transaction on the client.
 ```
 
 (The ESLint CLI also appends the rule's doc URL to the `Fix:` line; trimmed
@@ -146,9 +151,9 @@ is the race condition, CWE-362.) It keys on a string-literal first argument to a
 `pool`-named object's `.query()`, so a transaction built from a template literal
 or held in a differently-named variable still warrants a human look.
 
-## The AI angle: this is the form an assistant reaches for first
+## The AI angle: this is the form Gemini and Claude both reach for first
 
-Ask Claude, Copilot, or Gemini for "a Postgres transaction in Node," and watch
+Ask Gemini, Claude, or Copilot for "a Postgres transaction in Node," and watch
 what comes back. The overwhelmingly common shape in the training data is
 `pool.query('BEGIN') … pool.query('COMMIT')` — it's shorter, it has no
 `connect()`/`release()` ceremony, and it looks right. An assistant optimizing for
@@ -157,21 +162,51 @@ article, confidently, with no warning that it isn't atomic. I keep seeing it in
 generated code for the same reason I keep seeing it from humans: it reads like a
 transaction.
 
+This isn't a hunch. When [we benchmarked 700 AI-generated functions across 5
+Gemini and Claude
+models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+the data layer was where the models struggled most: the **database domain topped
+out at a 96% vulnerability rate**, and the adjacent File I/O domain was the single
+hardest of all, **86–100% vulnerable across every model**. Transaction and
+connection handling sits right in that zone, because the correct form lives in a
+type distinction (`Pool` vs `PoolClient`) that never shows up as a token in the
+SQL. So the model that confidently emits `pool.query('BEGIN')` is not
+malfunctioning — it's reproducing the modal pattern, and on data-layer code the
+modal pattern is wrong far more often than it's right.
+
 The encouraging part is that this is a clean handshake between the model and the
 linter. The literal `pool.query('BEGIN')` an assistant emits is precisely the
 string-literal-on-a-pool-named-object form the rule keys on — so the moment
 AI-generated code lands in a repo with `eslint-plugin-pg` wired up, the bug
 surfaces as a red squiggle instead of a 2 a.m. balance-mismatch page. The rule's
 `Fix:` line even tells the model what to do next: switch to `pool.connect()`.
-(The flip side is honest too — when an assistant hides the transaction inside a
+
+And the same benchmark says the model will _act_ on that line. Database code was
+not just where the models failed hardest — it was where they _fixed_ best once
+handed an exact defect: **Gemini 2.5 Pro was the #1 database remediator, correcting
+93% (25 of 27) of data-layer findings when each was named with its precise CWE**,
+the highest fix rate of any model in the category models botch most. (That 93%
+is 28 data points per model — a Wilson interval of roughly [77–98%], directionally
+strong but not a fourth significant figure.) That's the
+whole loop: the model writes the modal-but-broken form, a deterministic rule names
+the precise defect (here, `no-transaction-on-pool` — "start the transaction on the
+client"), and the model — Gemini or Claude — rewrites it correctly because now it
+has a target instead of a vibe. The lint output is the better prompt. (Want the reproducible
+version on Gemini specifically? The same prompt-then-lint loop, run head-to-head
+on Claude and Gemini, is written up in [Same NestJS prompt — Claude got 6 errors,
+Gemini got
+2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors).)
+
+The flip side is honest too. When an assistant hides the transaction inside a
 `withTransaction` helper or builds the SQL from a template literal, the rule goes
 quiet for the same structural reason a human reviewer would: the pool-name and
 string-literal signals are gone. Static analysis catches the careless form, not
-the disguised one.)
+the disguised one — which is why the loop above pairs the rule with the model, not
+the rule alone.
 
 This is the recurring theme across this whole ecosystem: AI doesn't invent new
 vulnerability classes, it mass-produces the old ones at the rate you can prompt
-for them. I've watched it happen with [60 functions where 65–75% shipped a
+for them. I've watched it happen with [80 functions where 65–75% shipped a
 security
 hole](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 and with a [NestJS service where the first lint run found 6
@@ -250,8 +285,9 @@ of the data-layer threat model:
 
 What was the number that finally didn't add up for you — a wallet balance, an
 inventory count, an idempotency key that double-fired — that traced back to a
-"transaction" running on the pool? And was it a human or an AI assistant that
-wrote the `pool.query("BEGIN")`? I want to hear the post-mortem in the comments.
+`pool.query("BEGIN")` someone (or some model) called a transaction? Drop the
+post-mortem in the comments: the wrong number, and whether a human or an AI
+assistant wrote the line.
 
 ---
 

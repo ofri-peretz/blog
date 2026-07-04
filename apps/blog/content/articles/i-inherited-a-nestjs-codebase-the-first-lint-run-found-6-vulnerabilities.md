@@ -12,7 +12,7 @@ reading_time_minutes: 8
 tags:
   - "security"
   - "node"
-  - "ai"
+  - "eslint"
   - "devsecops"
 reactions: 0
 comments: 0
@@ -31,11 +31,25 @@ That asymmetry is why a codebase can have CI, tests, TypeScript strict mode, and
 
 The first run of `eslint-plugin-nestjs-security` on a 40K-line production codebase took 12 seconds. It found 47 violations across 6 distinct vulnerability classes — auth bypass, sensitive field leaks, brute-force exposure, and three more. Nobody had touched a security tool in two years. Twelve seconds.
 
+Here's how those 47 broke down by rule:
+
+| Rule | CWE | Count |
+| --- | --- | ---: |
+| `require-guards` | CWE-284 | 11 |
+| `no-exposed-private-fields` | CWE-200 | 9 |
+| `no-missing-validation-pipe` | CWE-20 | 8 |
+| `require-class-validator` | CWE-20 | 7 |
+| `require-throttler` | CWE-770 | 7 |
+| `no-exposed-debug-endpoints` | CWE-489 | 5 |
+| **Total** | | **47** |
+
+> **Reproducibility (this run).** Plugin `eslint-plugin-nestjs-security@1.2.3`, all six rules at `error` ([config below](#the-config)). Scanned with `npx eslint "src/**/*.ts"` on the inherited service (~40K lines, 2 years of feature PRs, zero prior security passes). The 12-second figure is wall-clock on a single cold run, M2 / Node 20. Counts are from this one codebase — yours will differ, but the _class distribution_ (guards and validation dominate, debug routes are rare-but-fatal) is the part that holds across the NestJS services I've audited.
+
 If you just inherited a NestJS service and your stomach is now in a knot, run it on yours before reading further — it's one install, [full config is below](#the-config):
 
 ```bash
 npm install --save-dev eslint-plugin-nestjs-security
-npx eslint src/
+npx eslint "src/**/*.ts"
 ```
 
 Here are all 6 — and exactly why each one survived code review.
@@ -126,7 +140,7 @@ export class User {
 
 ---
 
-## 3. Auth Endpoints Without Rate Limiting (CWE-307)
+## 3. Auth Endpoints Without Rate Limiting (CWE-770 → CWE-307)
 
 **What the code looked like:**
 
@@ -147,15 +161,15 @@ export class AuthController {
 
 **Why it survived review:** The infra team planned to add rate limiting at the nginx layer. The nginx config was updated for `/api/v1/auth/login` — but the app prefix was changed to `/api/v2` in the same sprint. Nobody cross-referenced the two PRs.
 
-**What the lint rule catches:** `require-throttler` flags any `@Controller` or route handler that doesn't have `@Throttle(...)` or `ThrottlerGuard` in its guard chain.
+**What the lint rule catches:** `require-throttler` flags any `@Controller` or route handler that doesn't have `@Throttle(...)` or `ThrottlerGuard` in its guard chain. (The rule emits **CWE-770** — Allocation of Resources Without Limits or Throttling — because the missing control is a rate limit, full stop. On an _auth_ route the downstream consequence is brute-force / credential stuffing, which is **CWE-307**; that's the human-facing fit I lead with here, but you'll see 770 in the tool output, not 307.)
 
 ```typescript
-// requires @nestjs/throttler@^4
+// requires @nestjs/throttler@^5 — ttl is in milliseconds (v4 and earlier used seconds)
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
 export class AuthController {
   @Post('login')
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 per minute
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 per 60 seconds
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
@@ -231,7 +245,7 @@ export class CreateUserDto {
 
 ---
 
-## 6. Debug Endpoints Left in Production (CWE-215)
+## 6. Debug Endpoints Left in Production (CWE-489)
 
 **What the code looked like:**
 
@@ -247,7 +261,7 @@ export class DebugController {
 
 **Why it survived review:** It was protected by `@UseGuards(JwtAuthGuard)` — in staging. A `NODE_ENV === 'production'` check was meant to disable it but the condition was inverted. Deployed to production in a Friday afternoon push. Found by a user who noticed `/debug/config` returned valid JSON.
 
-**What the lint rule catches:** `no-exposed-debug-endpoints` flags controllers with paths matching `debug`, `internal`, or `_health` that lack auth guards, and any endpoint that returns `process.env` directly.
+**What the lint rule catches:** `no-exposed-debug-endpoints` flags controllers whose path contains any of its `DEFAULT_DEBUG_PATHS` — `debug`, `__debug__`, `admin`, `_admin`, `test`, `health` — when they lack auth guards, plus any endpoint that returns `process.env` directly. The match is a substring check, so `/admin`, `/internal-test`, and `/healthz` all trip it.
 
 ```typescript
 // Fix: remove the controller entirely.
@@ -260,9 +274,17 @@ export class HealthController {
     return { status: 'ok', timestamp: Date.now() };
   }
 }
-// Note: health endpoints are intentionally public (LBs can't auth).
-// The rule won't fire here because the path is 'health', not 'debug'.
-
+// Heads up: 'health' IS in DEFAULT_DEBUG_PATHS, so with the default config
+// this controller still fires (no guard + a flagged path). Health checks are
+// intentionally public — LBs can't auth — so silence it deliberately, e.g.:
+//
+//   'nestjs-security/no-exposed-debug-endpoints': ['error', {
+//     endpoints: ['debug', '__debug__', 'admin', '_admin', 'test'], // drop 'health'
+//   }],
+//
+// Narrowing the path list is the explicit opt-out; the default stays loud
+// on purpose, because a 'health' route that quietly returns process.env is
+// exactly the bug above wearing a friendlier name.
 ```
 
 ---
@@ -292,8 +314,10 @@ export default [
 
 ```bash
 npm install --save-dev eslint-plugin-nestjs-security
-npx eslint src/
+npx eslint "src/**/*.ts"
 ```
+
+Want the per-rule reasoning — what each of the six rules matches on and _why NestJS leaves the gap open in the first place_? That's the [rule-by-rule getting-started guide](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules). This post is the war story; that one is the manual.
 
 ---
 
@@ -307,11 +331,15 @@ Bugs 4 and 5 interact. `whitelist: true` on the `ValidationPipe` strips the `rol
 
 Here's the part that turned this from a one-off cleanup into a rule set I now run on everything: these six patterns are not artifacts of 2018 NestJS or a junior who didn't know better. They are the _default output of a competent developer moving fast_ — which is exactly what a coding assistant emulates.
 
-I gave Claude Sonnet 4.6 a single prompt — "Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel." — and ran the same plugin on the result. It produced 200 lines of clean, TypeScript-passing NestJS, and **6 errors in 3 seconds**: the same unguarded admin controller, the same `password` in the response body, the same unthrottled login route, the same debug endpoint returning `DATABASE_URL`. Not similar bugs — the same six classes. I wrote that up in [Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). Running the same prompt through Gemini 2.5 Flash got the count down to 2 — but it still shipped auth endpoints with no rate limiting ([Claude vs Gemini, same prompt, different errors](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)).
+I gave Claude Sonnet 4.6 a single prompt — "Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel." — and ran the same plugin on the result. It produced 200 lines of clean, TypeScript-passing NestJS, and **6 errors in 3 seconds**: the same unguarded admin controller, the same `password` in the response body, the same unthrottled login route, the same debug endpoint returning `DATABASE_URL`. Not similar bugs — the same six classes. I wrote that up in [Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). Running the same prompt through Gemini 2.5 Flash got the count down to 2 — but it _still shipped auth endpoints with no rate limiting_ ([Claude vs Gemini, same prompt, different errors](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)).
 
-The reason is the same reason these survived human review: an LLM optimizes for the route logic you asked for, and the security boundary is the _absence_ of something it was never prompted to add. A guard that isn't there doesn't show up in a diff, doesn't fail a type check, and doesn't fail a unit test that mocked it. It only shows up in structural analysis — which is the entire premise of [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
+Read that last bit again, because it's the most uncomfortable number in this whole post: **the one finding that survived the model swap is #3 — the unthrottled login route.** Claude failed `require-throttler`. Gemini, which got guards, validators, and serialization _right_, failed `require-throttler` too. Switching your AI vendor changed five of the six findings and left the brute-force hole untouched, because neither prompt thought to constrain login rate — exactly the way a different team's nginx PR left it untouched in the inherited codebase. And don't assume a smarter model saves you: across [80 Claude-written functions, 65–75% carried at least one vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — and the _newest_ model in that run (Opus 4.6) scored identically to the older Sonnet 4.5. The vulnerability rate is a property of how AI generates code, not of which checkpoint you're on.
+
+The reason is the same reason these survived human review: an LLM optimizes for the route logic you asked for, and the security boundary is the _absence_ of something it was never prompted to add. A guard that isn't there doesn't show up in a diff, doesn't fail a type check, and doesn't fail a unit test that mocked it. It only shows up in structural analysis — which is the entire premise of that 80-function experiment.
 
 So the inherited codebase and the AI-generated one converge on the same lint config. Whether the `password` leak came from a 2-year-old PR or from yesterday's autocomplete, `no-exposed-private-fields` fires identically.
+
+If you want to run this experiment yourself on a Gemini model instead of Claude — the head-to-head with the full per-rule scorecard and the exact prompt is the [Claude vs Gemini run](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors), which is the version positioned for the [Build with Gemini XPRIZE](https://dev.to/challenges) track. The adaptation is a one-line model swap in the prompt and a re-run of the config below.
 
 ## Why this survived review (the pattern underneath all six)
 
@@ -321,11 +349,16 @@ That's why a structural linter is not a downgrade from human review — it's the
 
 ---
 
-_Which of these six hit production before anyone noticed — and what was the moment you found out: a pentest, a 2 a.m. page, or a user emailing you a screenshot of `/debug/config`? Drop the worst one below._
+_You inherited a service this quarter. Run the two commands above before you read the comments — then tell me: which of these six fired first, and how did you find out it had been live? A pentest report, a 2 a.m. page, or a user emailing you a screenshot of `/debug/config`? Drop the rule name and the war story below — I read every one._
 
 ---
 
-📦 [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security) — 6 security rules for NestJS · [rule docs](https://eslint.interlace.tools)
+_Part of **The Hardened Stack** series:_
+_← [The 30-Minute Security Audit: onboarding a new codebase](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) | **You inherited a NestJS codebase (you are here)** | [The same six classes, written by Claude →](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)_
+
+---
+
+📦 [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security) — 6 security rules for NestJS · [rule docs](https://eslint.interlace.tools/docs/security/plugin-nestjs-security)
 
 {% cta <https://github.com/ofri-peretz/eslint> %}
 ⭐ Star on GitHub

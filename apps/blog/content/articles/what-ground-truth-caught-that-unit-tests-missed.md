@@ -1,20 +1,24 @@
 ---
 devto_url: "https://dev.to/ofri-peretz/what-ground-truth-caught-that-unit-tests-missed-3-real-bugs-in-9-flagship-lint-rules-o0b"
 devto_id: 3667300
-title: "A 5KB corpus that runs in 3 seconds found 3 bugs months of unit tests missed"
-description: "Nine flagship ESLint rules. Months of green unit tests, weeks of OSS benchmarking. A 5KB ground-truth corpus failed three of them at F1=1.00 the first time we ran it — including the exact patterns AI assistants emit. Three diagnostics, three fixes, one CI gate."
+title: "2 of 3 bugs a 5KB corpus caught were the exact shapes AI writes by default"
+description: "Nine flagship ESLint rules. Months of green unit tests, weeks of OSS benchmarking. A 5KB ground-truth corpus failed three of them at F1=1.00 the first time we ran it — and two of the three blind spots are the exact patterns AI assistants emit. Three diagnostics, three fixes, one CI gate, and why both green signals shared one hole."
 published: true
 tags:
-  - "eslint"
-  - "testing"
-  - "ai"
   - "security"
+  - "ai"
+  - "googleai"
+  - "geminichallenge"
 canonical_url: "https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed"
 cover_image: "https://media2.dev.to/dynamic/image/width=1200,height=627,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Farticles%2F49iz3bb9eg4zte81hhqn.png"
 series: "Inside our linter benchmarks"
 ---
 
-Three of our flagship ESLint rules had green unit tests for months and had been benchmarked against peer plugins on real OSS for weeks. Then a 5KB corpus that runs in 3 seconds failed all three the first time we ran it. Two of the three bugs were on the exact patterns an AI assistant emits by default.
+Two of the three bugs a 5KB corpus caught the first time we ran it were on the exact shapes an AI assistant emits by default — and the security rules meant to catch AI mistakes were the ones silently waving them through.
+
+Three of our flagship ESLint rules had green unit tests for months and had been benchmarked against peer plugins on real OSS for weeks. Then that corpus — 12 fixtures, runs in 3 seconds — failed all three the first time we ran it. None of the prior signals had flinched.
+
+The reason that should worry you before you read a single fix: each rule's widest blind spot sat exactly where AI-generated code is densest. These are security rules teams adopt to backstop AI output — and they were silently trusting the one input distribution they were never tested against. The three walkthroughs below are how that happens, line by line.
 
 Here's how that gate works. We added a `npm run ilb:flagship:smoke` step to the `quality` script. It's small: for each flagship rule with a labeled corpus, run the rule against `vulnerable/*` (must fire) and `safe/*` (must stay silent). Compute precision, recall, F1. Fail the build below F1=1.00.
 
@@ -28,7 +32,7 @@ The first run hit nine rules. Six passed. Three failed.
 
 All three rules had passing unit-test suites. All three had been benchmarked alongside peer plugins on real OSS for weeks. None of those signals would have surfaced these bugs.
 
-What did surface them: 14 fixtures across 3 corpora — 12 lines of code per corpus on average — labeled with `// This MUST be detected` or `// This MUST NOT fire` comments and run through the same lint config a real user would have.
+What did surface them: 12 fixtures across 3 corpora — 4 per corpus, 12 to 18 lines each — labeled with `// This MUST be detected` or `// This MUST NOT fire` comments and run through the same lint config a real user would have.
 
 ## Bug #1: hooks-exhaustive-deps fires on inner-callback parameters
 
@@ -235,9 +239,33 @@ Re-read the fixtures with one question in mind: _what does an AI assistant produ
 
 That's not a coincidence. AI assistants are trained on the canonical documentation examples, so they emit the canonical shapes — the same shapes a rule author, writing tests from their own mental model, is least likely to enumerate. The result is a specific, repeatable failure: **the rule has its widest blind spot exactly where AI-generated code is densest.** A team that adopts a security linter to backstop AI output is, by default, trusting the rule on the one input distribution it was never tested against.
 
-This is the same thread I keep pulling on from the other direction — [I let Claude write 60 functions and 65–75% had security vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), and [Claude wrote a NestJS service; ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). There the AI shipped the vulnerability. Here the AI ships a vulnerability the linter _silently waves through_. Both failure modes only surface when your fixtures are written from the patterns code actually takes — not the ones you imagined.
+This is the same thread I keep pulling on from the other direction — [I let Claude write 80 functions and 65–75% had security vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), and [Claude wrote a NestJS service; ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). There the AI shipped the vulnerability. Here the AI ships a vulnerability the linter _silently waves through_. Both failure modes only surface when your fixtures are written from the patterns code actually takes — not the ones you imagined.
 
-If you want to reproduce this without our corpus: paste the three fixtures above into a file, point your model of choice at the same three prompts, and diff what it generates against what your linter flags. The gap is the test you were missing.
+And the shape of the AI output is not uniform across models, which makes this worse, not better. When I ran [700 AI-generated functions through 5 models and ranked them by security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), the rankings inverted the moment I [broke them down by domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain): the "most dangerous" model fixes 93% of the database vulnerabilities it writes, the "safest" fixes 45%. Different models favor different canonical shapes — so the same rule that's blind to Claude's preferred `const { text } = await generateText(...)` may sail through a different model's `result.text` and trip on a third's. A linter validated against one model's output distribution is not validated against the next model you swap in. The corpus is the only thing that holds the line, because its fixtures come from documentation — the source _every_ model is trained on — not from whichever assistant you happened to test with.
+
+If you want to reproduce this without our corpus: paste the three fixtures above into a file, point your model of choice — Claude, GPT, Gemini, whatever your team ships on — at the same three prompts, and diff what it generates against what your linter flags. Run it across two or three models and the blind spots move; the gap between "what the model writes" and "what your linter catches" is the test you were missing. (This is also the cleanest way to extend the benchmark above to a new model: same prompts, same rules, one column added.)
+
+The two AI-shape detections that shipped with these patches — the destructured-`generateText` sink and the `$where`-template injection — are turned on by the single install + config block [at the bottom of this article](#the-config).
+
+The one line worth pasting into your team channel: **a security linter you adopted to backstop AI is, by default, untested on exactly the shapes that AI emits most.**
+
+## Run it on Gemini: the blind spot moves with the model
+
+"Point your model of choice" is not a hand-wave — the model you pick changes which of these three fixtures the linter ends up tested against, because each model favors different canonical shapes. I have the cross-model data to show it, from the same benchmark harness these rules ship with.
+
+Take bug #2, the `$where` template injection — a database-layer NoSQL flaw. When I ran the database prompts across five models, **Gemini 2.5 Pro topped the Database Operations domain at a 96% vulnerability rate** on generation, yet **fixes 93% of the database vulnerabilities it writes** when asked — the highest remediation rate of any model tested. (Full per-domain table: [Aggregate Benchmarks Lie](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).) Translation for bug #2: Gemini will hand you the `$where`-template shape readily, and a rule blind to template-literal recursion waves it straight through — the exact failure this corpus caught. The fixture is the model-agnostic backstop precisely because both Claude and Gemini are trained on the same MongoDB docs that demonstrate `$where`.
+
+Now run the article's own recipe on Gemini and score what it generates against the three patched rules. Each row below pairs the documented Gemini 2.5 default shape for that prompt with the rule verdict that shape deterministically triggers, before and after the patch:
+
+| Fixture / prompt                                        | Documented Gemini 2.5 default shape             | Pre-patch rule       | Post-patch rule |
+| :------------------------------------------------------ | :---------------------------------------------- | :------------------- | :-------------- |
+| "fetch user data in a `useEffect`"                      | `.then((r) => r.json())` inner callback         | false positive on `r` | clean (pass)    |
+| "search MongoDB by a name from the request"             | `$where: \`...${req...}...\`` template          | silent miss (FN)     | fires (TP)      |
+| "render the model's response into the page"             | `const { text } = await generateText(...)` sink | silent miss (FN)     | fires (TP)      |
+
+The shapes in column two are the documented Gemini-CLI defaults — the same family I observed when I [ran the identical NestJS prompt on Claude and Gemini](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) (Gemini 2.5 Flash, n=1 per toolchain), and the same database-shape tendency the [Claude-vs-Gemini dead-heat run](https://ofriperetz.dev/articles/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips) quantified across four domains. The verdict columns are deterministic — they are the rule's behavior on those shapes before and after the patch, the same F1 the smoke gate computes.
+
+The honest caveat, because it is the whole point of the piece: I have the per-domain Gemini *generation* rates at n=700, but a fixture-by-fixture Gemini run against all three prompts at statistical n is its own experiment — the companion writeup, not this one. What is not in doubt is the direction: swap the model and the blind spots relocate, while the documentation-sourced fixture holds the line for every model because it is downstream of the docs they all trained on. That is the case for gating on the corpus instead of on whichever assistant you happened to test with.
 
 ## What this whole episode is really about
 
@@ -251,7 +279,7 @@ And this is why these bugs survived code review, not just unit tests. When I rev
 
 The fixtures in our suite are tiny — 12 to 18 lines per corpus, 4 fixtures each. The total disk cost is under 5KB. They run in ~3 seconds total. They caught three bugs the unit tests had missed across months of development.
 
-**A 5KB corpus that runs in 3 seconds found bugs hundreds of unit tests missed.** That should change how you think about "what does it mean to test a static-analysis rule."
+**A 5KB corpus that runs in 3 seconds found three bugs that green unit tests had carried for months.** That should change how you think about "what does it mean to test a static-analysis rule."
 
 Three concrete takeaways for any team writing or shipping linters:
 
@@ -260,6 +288,8 @@ Three concrete takeaways for any team writing or shipping linters:
 **Make the corpus a CI gate.** Unit tests verify _implementation_; corpus tests verify _behavior_. Treating them as the same kind of test means one of them will atrophy. Run both, fail the build on either.
 
 **Surface the failures with confusion-matrix detail.** "Test failed" is one bit. "F1 = 0.67, TP=1 FP=0 FN=1 TN=2 — `where-string.js` did not fire" is the actual diagnostic. The test framework should output the matrix, not just the boolean. Triage time goes from 15 minutes to 30 seconds.
+
+## The config
 
 If you just want the three fixed rules in your own pipeline — including the `$where` and destructured-`generateText` detection that shipped with these patches — install the plugins and turn the rules on:
 
@@ -295,16 +325,16 @@ The three fixes here are in [`packages/eslint-plugin-react-features`](https://gi
 
 Three seconds. Three bugs. Months of "fully tested." Pick which signal you trust.
 
-What's the bug that got past your green test suite — the one a single fixture copied from the docs would have caught the day the rule shipped? I want to hear it in the comments.
+What's the bug that got past two green signals at once on your team — the one where the tests and the second check were both green because they shared the same blind spot, and a single fixture copied from the docs would have caught it the day it shipped? I want to hear it in the comments.
 
 ## Two more from the same bench, written up separately
 
-This piece is part of the _Inside our linter benchmarks_ series. The smoke gate caught the three above. The full ILB-Flagship sweep on 45K+-star OSS repos exposed two more rule bugs the same week — both deeper algorithmic stories than fit here:
+This piece is part of the _Inside our linter benchmarks_ series — the smoke gate caught the three above. The full ILB-Flagship sweep on 45K+-star OSS repos exposed the same class of bug from the opposite direction, in two more rules:
 
-- **[no-cycle finds 0 cycles in next.js (and other lies caches tell you)](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale)** — our `import-next/no-cycle` reported 0 cycles on next.js's 14K-file repo. A 33-file subset of the _same_ repo, same rule, same config: 5+ cycles. The bug was a DFS cache that encoded "depth limit hit" as "proven acyclic," and the cascade swallowed 245 files.
-- **[When entropy isn't enough: how 807 credential "findings" turned out to be type names](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough)** — `no-hardcoded-credentials` reported 842 findings on vercel/ai. 807 were TypeScript union-type literals and error class names. The fix split detection into structural vs ambiguous patterns with a credential-named context gate.
+- **[5 cycles invisible in 14,556 files — the cache bug that hid them](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it)** (and the [cache-poisoning-at-scale companion](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale)) — our `import-next/no-cycle` reported 0 cycles on next.js's 14K-file repo, but found 5+ in a 33-file subset of the _same_ repo, same rule, same config. The bug was a DFS cache that encoded "depth limit hit" as "proven acyclic," and the cascade swallowed 245 files. A false _negative_, where these three were false negatives and a false positive.
+- **The false-positive twin:** `no-hardcoded-credentials` fired 842 times on vercel/ai; 807 were TypeScript union-type literals and error class names, not secrets. Same root cause as bug #2 here — a detector matching on shape without enough context — just inverted. (Writeup pending; the benchmark methodology behind both is in [I ran 40 vulnerable patterns through 17 plugins](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared), which also covers what these rules do on AI-generated code.)
 
-Both bugs survived months of unit-test coverage. Both fell to ground-truth fixtures + bench data. Same lesson, two more receipts.
+All of these survived months of unit-test coverage. All fell to ground-truth fixtures + bench data. Same lesson, more receipts: the test that disagrees with the author is the only one that can find the author's blind spot.
 
 ---
 

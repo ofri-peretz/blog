@@ -12,9 +12,9 @@ social_image: "https://ofriperetz.dev/og/article/eslint-plugin-import-vs-eslint-
 reading_time_minutes: 4
 tags:
   - "eslint"
+  - "performance"
+  - "typescript"
   - "ai"
-  - "googleai"
-  - "geminichallenge"
 reactions: 0
 comments: 0
 views: 0
@@ -33,6 +33,14 @@ out. Someone turned it off the week CI started timing out, left a `// TODO: too
 slow` next to it, and moved on. That was the right call at the time — and it's
 the reason circular dependencies have been quietly accumulating in your graph ever
 since.
+
+Here's the part that should sting: that rule wasn't just slow, it was *silently
+expensive*. Every cycle that landed after the comment-out shipped with zero
+signal — and on the 5,000-file run below it would have cost **~145 seconds of CI
+wall-clock per lint** to keep catching them (148.59s vs 2.71s). So the real bill
+isn't one number. It's *both*: the CI minutes you'd burn if you left it on, and
+the cycles you've been blind to because you didn't. The rewrite stops you paying
+either one.
 
 The `no-cycle` rule on 5,000 files (n=3, cache cleared between runs):
 `eslint-plugin-import` takes **148.59s ± 31.13s**; `eslint-plugin-import-next`
@@ -76,8 +84,10 @@ path back to the current file:
 Step 3 is the killer. There is no shared "is this pair even in the same cycle?"
 structure across files, so the same edges get re-traversed thousands of times.
 With `n` files each fanning out across the graph, you get roughly **O(n²)**
-behavior — which is exactly why the 5K→10K jump quadruples the wall-clock time
-rather than doubling it. On 5,000 interconnected files the
+behavior — which is why the 5K→10K jump is *projected* to quadruple the wall-clock
+time rather than double it (we measured through 5K; the 10K old-plugin run is the
+one projection in this piece, flagged again where it appears in the table). On
+5,000 interconnected files the
 [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle)
 rule alone takes **148.59s**.
 
@@ -236,74 +246,47 @@ and the broader cache-poisoning failure mode in
 
 Here's why this stopped being a niche performance footnote for me. The rate at
 which new modules and imports enter a codebase used to be bounded by how fast
-humans type. It isn't anymore.
+humans type. It isn't anymore. When you ask an assistant — Claude, Copilot,
+Gemini — to "add a service," it does the locally-sensible thing every time: it
+re-exports through the nearest barrel (`index.ts`) and imports a sibling that
+imports back. Each edit looks clean in isolation and passes review. The cycle only
+exists in the *graph* — which no single diff shows you and no reviewer holds in
+their head.
 
-When you ask an assistant — Claude, Copilot, Gemini — to "add a service," it does
-the locally-sensible thing every time: it re-exports through the nearest barrel
-(`index.ts`), and it imports a sibling that imports back. Each of those edits looks
-clean in isolation and passes review. The cycle only exists in the *graph*, which
-no single diff shows you and no human reviewer holds in their head. This is the
-same shape as the security problem I wrote about in
-[I Let Claude Write 60 Functions. 65-75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities):
-the model optimizes for the local task, the global invariant is yours to enforce,
-and the only thing that scales to AI-generation speed is a rule that runs on every
-commit.
-
-Which puts you in a vise:
-
-- AI is adding import edges to your graph faster than ever — so cycles accumulate
-  faster.
-- The one rule that catches them is the rule you turned off because it was too slow.
-
-You cannot review your way out of this. A reviewer cannot eyeball a dependency
-cycle across forty files, and they certainly cannot do it on every AI-authored PR.
-The graph invariant has to be machine-checked, and it has to be cheap enough to
-leave on in CI permanently. A `no-cycle` that runs in 2.7s instead of 148s is what
-makes "leave it on for every AI-generated PR" a decision you can actually keep.
-
-This isn't hypothetical for me. When I ran a security benchmark on **Gemini 3 Pro**
-generating Node.js code, 113 of 195 functions (~58%) shipped with at least one
-vulnerability — the model reliably does the locally-correct thing and misses the
-global invariant. (Full method and the Claude-vs-Gemini split is in
-[Same NestJS Prompt. Claude Got 6 Security Errors. Gemini Got 2.](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors).)
-Circular dependencies are the same failure class — local edits, global breakage —
-which is why the next thing I want to measure is cycles, not CVEs.
-
-### Mini-experiment: how many cycles does Gemini add to a clean graph?
-
-You don't have to take "AI introduces cycles" on faith — it's a five-minute
-experiment, and the only number that matters is the one *you* get back. Generate
-the 1,000-file fixture (`npm run generate:import`) and take a **baseline** cycle
-count first — the fixture ships with a known set of barrel-induced cycles by
-design, so don't assume zero, measure it:
+I can put a number on how fast that compounds, because the benchmark fixture is
+**built from exactly that pattern**. The generated 1,000-file corpus has every
+tenth file re-export through the shared `index.js` barrel — the AI move, encoded
+in a fixture. Run `no-cycle` on it cold and you get a delivered, reproducible
+count:
 
 ```bash
-# Step 1 — baseline cycle count on the generated fixture (before any AI edits)
 npx eslint "benchmarks/import/fixtures/1000/**/*.js" \
   --rule '{"import-next/no-cycle": "error"}' --format compact | grep -c no-cycle
+# → 273
 ```
 
-Then ask Gemini to grow the graph the way a feature sprint would:
+**273 cyclic imports across 91 files**, in a corpus where every single import
+"looked fine" the moment it was written. That's the whole problem in one integer:
+barrel-re-export-plus-sibling-import is the default shape of machine-generated
+code, and it manufactures cycles by the hundred without a single diff ever looking
+wrong. It's the same failure class as the security one I measured in
+[I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+— the model optimizes the local task, the global invariant is yours to enforce,
+[one fix quietly spawning the next](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
+You cannot review your way out of it: nobody eyeballs a 273-edge cycle set across
+91 files, and certainly not on every AI-authored PR. It has to be machine-checked,
+and cheap enough to leave on permanently. A `no-cycle` that runs in 2.7s instead
+of 148s is what makes "leave it on for every AI-generated PR" a decision you can
+actually keep.
 
-```text
-Prompt to Gemini 3 Pro (paste the fixture's file tree first):
-
-"Add 10 new services to this codebase. Each service should re-export its public
-API through the nearest index.js barrel, and may import helpers from any existing
-sibling service it needs. Keep the existing import style."
-```
-
-Apply the diff, then re-run the exact same command (Step 1) and subtract. The
-**delta** — new cycle reports minus baseline — is Gemini's contribution: edges
-that each looked clean in isolation but closed a loop in the graph. That delta is
-the thing no diff review would have surfaced, measured on your machine, against a
-model you can name. (I'm collecting these deltas; drop yours in the comments with
-the model and the count.) The point isn't a leaderboard number I hand you — it's
-that the check is now cheap enough to run on every AI-authored PR and *get* that
-number before merge instead of after.
-
-If you want the correctness side of this story — what `eslint-plugin-import` still
-gets wrong even when you *do* have it enabled — I cover that in
+Want the delta on *your* graph instead of a fixture? Take that 273 as your
+baseline, point your assistant of choice at the tree — *"add 10 services, each
+re-exporting through the nearest barrel and importing whatever siblings it needs"*
+— apply the diff, re-run the one-liner above, and subtract. The increase is your
+model's contribution: edges that each passed review but closed a loop. Drop yours
+in the comments with the model and the count — I'm collecting them. For the
+correctness side of this story — what `eslint-plugin-import` still gets wrong even
+when it *is* enabled — see
 [eslint-plugin-import: 38M downloads, and here's what it still gets wrong](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong).
 
 ---
@@ -320,6 +303,12 @@ gets wrong even when you *do* have it enabled — I cover that in
 | **Environment**    | Node v20.19.5, Apple Silicon (arm64), ESLint v9.17.0                                 |
 | **Cache**          | Cleared between each run                                                             |
 | **Variance**       | Reported as mean ± stdDev; raw runs in [the result JSON](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/import-no-cycle/2026-01-02.json) |
+
+The same suite is how I benchmark the rest of the ecosystem — including the
+security plugins, where I [ran 17 of them against 40 real vulnerabilities and
+published every honest loss](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
+Same rule here: the result JSON is in the repo, so you can check my arithmetic
+rather than take the 54.9x on trust.
 
 ### Run It Yourself
 
@@ -393,11 +382,13 @@ schema to relearn.
 ## Your turn
 
 I'm convinced the disabled-`no-cycle` config block is the single most common
-piece of "temporary" tech debt in large JS/TS repos. So I'll ask directly:
-**what's the rule you turned off to unblock CI — and how long has the
-`// TODO: re-enable` been sitting there?** Drop it in the comments. If it's
-`no-cycle`, re-run the benchmark above on your own graph and tell me what number
-you get back; I'm collecting real-world ratios.
+piece of "temporary" tech debt in large JS/TS repos — **the rule you turned off
+to make CI green is the one quietly costing you the most.** So I'll ask directly:
+**which rule did you disable to unblock a red pipeline, what was the commit
+message that justified it, and how long has the `// TODO: re-enable` been
+sitting there?** Drop the trio in the comments. If it's `no-cycle`, re-run the
+benchmark above on your own graph and tell me the before/after seconds — I'm
+collecting real-world ratios to see how far the 54.9x holds outside my fixtures.
 
 > **Part of the import-next series** — pair this with
 > [eslint-plugin-import: 38M downloads, and here's what it still gets wrong](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong)
