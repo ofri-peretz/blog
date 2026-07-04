@@ -56,7 +56,7 @@ job. **`eslint-plugin-browser-security` is 45 rules for exactly that surface**,
 every one pinned to a CWE, organized into the categories you actually reason
 about (XSS, storage, transport, cookies, CORS/CSRF, postMessage, WebSocket).
 
-This is the getting-started guide: the one attack everyone gets wrong
+This is the complete reference: the one attack everyone gets wrong
 (`postMessage`), the full 45-rule map, install/config across package managers,
 and the exact ESLint/Oxlint versions it runs under.
 
