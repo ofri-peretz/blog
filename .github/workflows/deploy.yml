@@ -55,9 +55,14 @@ jobs:
       # This is the only workflow that installs the Vercel CLI.
       - name: Install Vercel CLI
         run: npm i -g vercel@54.20.1
+      # Run the Vercel CLI from the repo root: the project's Root Directory
+      # setting is apps/blog and the CLI resolves it relative to the CWD, so
+      # running inside apps/blog doubled the path (apps/blog/apps/blog).
+      # --token is passed explicitly on every call — the CLI does not read a
+      # VERCEL_TOKEN env var.
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-        working-directory: apps/blog
       - name: Build + deploy prebuilt to production
-        run: npm run deploy
-        working-directory: apps/blog
+        run: |
+          NEXT_PUBLIC_SITE_URL=https://ofriperetz.dev vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
