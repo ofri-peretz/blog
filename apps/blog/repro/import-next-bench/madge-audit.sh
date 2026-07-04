@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 # Reproduce the circular-dependency audit table. Pin each repo to the article's SHA.
+#
+# NOTE: the {{MADGE_VERSION}} / {{*_SHA}} placeholders are intentionally
+# unfilled — the original audit run did not record the exact madge version or
+# repo SHAs, and the articles (no-cycle-cache-poisoning-at-scale,
+# import-next-no-cycle-reported-0-cycles-...) do not cite them. Fill them with
+# the versions/SHAs you want to audit; expect counts near the article's table
+# (508 / 17 / 8 / 5 / 0), drifting as the repos evolve.
 set -euo pipefail
 MADGE="npx madge@{{MADGE_VERSION}}"
 

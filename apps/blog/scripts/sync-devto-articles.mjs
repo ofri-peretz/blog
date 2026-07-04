@@ -149,7 +149,7 @@ function normalizeSlug(devtoSlug) {
     "securing-the-edge-the-lambda-static-analysis-standard":
       "getting-started-eslint-plugin-lambda-security",
     "securing-the-modern-api-the-nestjs-static-analysis-standard":
-      "getting-started-eslint-plugin-nestjs-security",
+      "nestjs-guards-pipes-throttlers-6-eslint-rules",
     "the-owasp-llm-protocol-100-automated-coverage-for-vercel-ai":
       "owasp-llm-top-10-vercel-ai-sdk",
     "searchpath-hijacking-the-postgresql-attack-youve-never-heard-of":
@@ -175,7 +175,7 @@ function normalizeSlug(devtoSlug) {
     "getting-started-with-eslint-plugin-jwt":
       "getting-started-eslint-plugin-jwt",
     "getting-started-with-eslint-plugin-nestjs-security":
-      "getting-started-eslint-plugin-nestjs-security",
+      "nestjs-guards-pipes-throttlers-6-eslint-rules",
     "getting-started-with-eslint-plugin-pg": "getting-started-eslint-plugin-pg",
     "getting-started-with-eslint-plugin-secure-coding":
       "getting-started-eslint-plugin-secure-coding",
