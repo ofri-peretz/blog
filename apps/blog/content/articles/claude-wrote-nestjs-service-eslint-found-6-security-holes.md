@@ -29,19 +29,21 @@ TypeScript passed it clean. The code ran. I would have approved it in review. Th
 
 I gave Claude Sonnet 4.6 a single prompt: _"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."_ 90 seconds later I had 200 lines of NestJS. Decorators in the right places, DTOs typed correctly, dependency injection wired. It looked like code written by a developer who knew NestJS.
 
-I ran `eslint-plugin-nestjs-security` — a plugin I built to catch exactly these patterns.
+Then static analysis flagged six findings the compiler could not: an admin endpoint with no access-control guard (CWE-284), a login route with no rate limit (CWE-770), an entity shipping `password` in every response (CWE-200), a `@Body()` parameter with no runtime validation (CWE-20), a privilege-bearing DTO field with no constraint (CWE-20), and a debug route returning `DATABASE_URL` (CWE-489).
 
-**6 errors. 0 warnings. 3 seconds.**
+**6 errors. 0 warnings.**
 
-In every AI-generated NestJS service I've personally scanned, the response body ships `password`. This run was no different — it also shipped an admin endpoint with no auth guard, a login route with no rate limit, and a debug endpoint returning `DATABASE_URL`. Those are the six findings below.
+Every one of them is the _absence_ of something — a guard, a pipe, a decorator, an environment check. None of them is a thing the model got wrong; each is a constraint the prompt never stated. That is the failure class this article is about.
 
 This isn't a one-off. In a [700-function benchmark across 5 AI models](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj), Claude's vulnerability rate was 65–75%. The specific count in your run will vary — LLM output is non-deterministic — but the failure _classes_ are consistent. The missing-guard pattern does not disappear on a retry.
 
-If you want to run this against your own AI-generated controllers before reading further, it's one install — [full config is below](#the-config):
+The tool that caught these is [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security), a plugin I built to flag exactly this negative space. If you want to run it against your own AI-generated controllers before reading further, it's one install — [full config is below](#the-config):
 
 ```bash
 npm install --save-dev eslint-plugin-nestjs-security
 ```
+
+> **Reproducibility (this run).** Plugin `eslint-plugin-nestjs-security@1.2.3`, all six rules at `error` ([config below](#the-config)). Generation: Claude Sonnet 4.6, the single prompt above, scanned with `npx eslint "src/**/*.ts"`. The output blocks below are the rules' actual emitted messages (`formatLLMMessage` strings), condensed to the rule id + finding line — file/line positions are from this one generation, and because LLM output is non-deterministic your counts and line numbers will differ. What stays stable is the finding _class_, not the line number.
 
 ---
 
@@ -96,20 +98,20 @@ Each finding follows the same structure: what ESLint caught, why AI generates th
 [`nestjs-security/require-guards`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/require-guards)
 
 ```text
-nestjs-security/require-guards
-Controller 'UsersController' lacks @UseGuards for access control
-  /src/users/users.controller.ts:2:1
+🔒 CWE-284 OWASP:A01-Broken CVSS:9.8 | Controller/route handler listAllUsers lacks @UseGuards for access control | CRITICAL
+   Fix: Add @UseGuards(AuthGuard): @UseGuards(AuthGuard) before the handler | https://docs.nestjs.com/guards
+  /src/users/users.controller.ts  nestjs-security/require-guards
 ```
 
-`GET /users/admin/users` returns every user in the database. No authentication required.
+`GET /users/admin/users` returns every user in the database. No authentication required. The rule walks each route handler in the controller and reports the unguarded method by name — here, `listAllUsers`.
 
 **Why AI generates this:** Authorization is a _constraint_, not a feature. AI models optimize for completing described behavior, not for restrictions the prompt didn't mention. "List all users" is a valid feature. "Only admins can list users" is a negation of default behavior that requires explicit intent. Claude Sonnet 4.6 fulfilled exactly what it was asked.
 
 **Why it survives review:** Reviewers know the team has `JwtAuthGuard` registered — or think they do. The guard is off the mental stack when reading route logic. Nobody scans a controller and asks "is there a guard here?" They ask "does the logic look right?" So would anyone on your team reviewing typed DTOs returning from a named service.
 
 ```typescript
-// The rule fires at class scope (2:1) but is satisfied by @UseGuards at either
-// class or method level. Method-level is correct here — this controller also
+// The rule reports the offending route handler, but is satisfied by @UseGuards at
+// either class or method level. Method-level is correct here — this controller also
 // handles unauthenticated routes (login, register). Class-level would 401 them.
 @Controller('users')
 export class UsersController {
@@ -136,14 +138,14 @@ See also: [the same missing-guard pattern in a 2-year-old production codebase, a
 [`nestjs-security/require-throttler`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/require-throttler)
 
 ```text
-nestjs-security/require-throttler
-Route 'login' lacks @Throttle or ThrottlerGuard — brute-force exposure
-  /src/users/users.controller.ts:10:3
+🔒 CWE-770 CVSS:7.5 | Controller login lacks rate limiting protection (Throttler) | HIGH
+   Fix: Add @UseGuards(ThrottlerGuard) or configure global ThrottlerModule | https://docs.nestjs.com/security/rate-limiting
+  /src/users/users.controller.ts  nestjs-security/require-throttler
 ```
 
-An attacker can enumerate passwords against the login endpoint at full network speed.
+An attacker can enumerate passwords against the login endpoint at full network speed. (The `{{name}}` token in this rule's template is filled with the route handler's name — `login` — even though the literal reads "Controller"; the rule walks every handler that has no throttler.)
 
-The rule tags this **CWE-770** (Allocation of Resources Without Limits or Throttling) — the missing control is a rate limit, full stop. The downstream consequence on an _auth_ route is brute-force / credential stuffing (CWE-307), so you'll see this finding cross-referenced either way. The rule fires on the absent throttler, not on the route's purpose, which is why it reports the more general CWE-770.
+The rule tags this **CWE-770** (Allocation of Resources Without Limits or Throttling) — the missing control is a rate limit, full stop. The downstream consequence on an _auth_ route is brute-force / credential stuffing (CWE-307), but that is a narrative consequence, not what the linter emits: the rule fires on the absent throttler, not on the route's purpose, which is why it reports the more general CWE-770. You will see the finding cross-referenced to CWE-307 in a write-up like this one; you will not see CWE-307 in the tool output.
 
 **Why AI generates this:** Brute-force protection is a _rate-at-which_ constraint, not a _what-does-it-do_ constraint — those never appear in feature prompts. "Build a login endpoint" describes a function, not a limit on how fast it can be called. Claude Sonnet 4.6 knows `@Throttle` exists; it will add it if you ask. The prompt didn't ask.
 

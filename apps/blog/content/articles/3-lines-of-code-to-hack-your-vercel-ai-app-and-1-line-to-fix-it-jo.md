@@ -13,8 +13,8 @@ reading_time_minutes: 8
 tags:
   - "security"
   - "ai"
-  - "javascript"
   - "eslint"
+  - "devsecops"
 reactions: 0
 comments: 0
 views: 0
@@ -26,7 +26,9 @@ author:
 series: "Hardening AI Agents"
 ---
 
-Here's the bug, and it's in almost every Vercel AI SDK app shipping today:
+I scanned **356 source files across 10 public Vercel AI SDK apps** for one bug.
+I found it in **3 unvalidated calls — all in an official Vercel template**. Here
+it is, and it's in almost every Vercel AI SDK app shipping today:
 
 ```ts
 const { text } = await generateText({
@@ -59,18 +61,35 @@ files**.
 It flagged **3 unvalidated `generateText` calls — all in one file**, and the
 file is in [`vercel-labs/natural-language-postgres`](https://github.com/vercel-labs/natural-language-postgres),
 an _official Vercel template_. The raw natural-language query is interpolated
-straight into the prompt that generates SQL:
+straight into the prompt that generates SQL. Here is the call at the pinned
+commit — an excerpt (the ~40-line `system` schema is collapsed to `SCHEMA`; the
+[`model:`](https://github.com/vercel-labs/natural-language-postgres/blob/f5af6a2d267b653802cddd76da6874bffec0ee95/app/actions.ts#L12)
+and [`prompt:`](https://github.com/vercel-labs/natural-language-postgres/blob/f5af6a2d267b653802cddd76da6874bffec0ee95/app/actions.ts#L54)
+lines are byte-for-byte upstream — `gpt-5.4-mini` is the template's real gateway
+string at this SHA, not a typo on my end):
 
 ```ts
-// natural-language-postgres/app/actions.ts — user input → prompt → generated SQL
+// natural-language-postgres/app/actions.ts@f5af6a2 (system schema elided)
 const { output } = await generateText({
-  model: "openai/gpt-5.4-mini",
-  system: SCHEMA_AND_RULES,
+  model: "openai/gpt-5.4-mini", // ← real gateway string the template ships
+  system: SCHEMA, // ~40 lines of table schema + rules, elided here
   prompt: `Generate the query necessary to retrieve the data the user wants: ${input}`,
   //                                                                          ^^^^^^ unvalidated
   output: Output.object({ schema: z.object({ query: z.string() }) }),
 });
 ```
+
+Two details are real, not typos (the template pins **`ai@^6.0.141`**): in SDK v6,
+`output: Output.object(...)` on `generateText` is the _stable_ structured-output
+API (no `experimental_` prefix), and the bare `model: "openai/gpt-5.4-mini"` is
+v6's AI Gateway string form. If a coding assistant tells you it "should be
+`gpt-4o`" or `experimental_output`, that's the stale-prior reflex this article is
+about — click the permalinks; the repo wins.
+
+Every number in this article is pinned and reproducible — raw `eslint` output,
+the commit SHAs, the file tallies, and the Gemini run below are all in
+[**this receipt gist**](https://gist.github.com/ofri-peretz/b88fd5bb1f9df7cc0f8b566673cd1bf6).
+Don't trust my numbers; clone the SHA and run the rule.
 
 Then the surprise that taught me more than the hit did: across the **2,174
 files** in the `vercel/ai` `examples/` tree, the rule found **zero**. Not because
@@ -88,8 +107,15 @@ name on it. Reproduce it yourself:
 ```bash
 git clone --depth 1 https://github.com/vercel-labs/natural-language-postgres
 cd natural-language-postgres
-npm i -D eslint eslint-plugin-vercel-ai-security
-printf 'import { configs } from "eslint-plugin-vercel-ai-security";\nexport default [configs.recommended];\n' > eslint.config.mjs
+npm i -D eslint@10.4.1 eslint-plugin-vercel-ai-security@1.3.5 @typescript-eslint/parser
+cat > eslint.config.mjs <<'EOF'
+import { configs } from "eslint-plugin-vercel-ai-security";
+import tsParser from "@typescript-eslint/parser";
+export default [
+  { files: ["**/*.ts", "**/*.tsx"], languageOptions: { parser: tsParser } },
+  configs.recommended,
+];
+EOF
 npx eslint app/actions.ts
 # → 9 findings on the same 3 calls: 3 require-validated-prompt (the injection
 #   boundary, below) + 3 require-max-tokens + 3 require-request-timeout.
@@ -114,6 +140,12 @@ forceful instruction tends to win. The result is the prompt-injection family:
 | System-prompt leak | your instructions (and their secrets) are exposed  |
 | Data exfiltration  | the model returns data it could reach              |
 | Action hijacking   | a tool-enabled agent acts on the attacker's behalf |
+
+That system-prompt-leak row is the one I watched happen, below. If you want the
+attacker's-eye walkthrough of this exact class first, my earlier piece —
+[Your Vercel AI SDK App Has a Prompt Injection Vulnerability](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability)
+— covers the first move; this one is the write-time guard that stops it
+regenerating.
 
 ## Why this survives code review
 
@@ -152,20 +184,49 @@ the most common shape in its training data, and that shape is the insecure one.
 The vulnerability is **model-independent** because the *cause* is — none of these
 assistants got a fact wrong; the prompt never stated the constraint "validate
 untrusted input before it reaches the model," so none of them enforced it. Swap
-Claude for Gemini and the gap survives. I have already run that head-to-head —
+Claude for Gemini and the gap survives. This isn't a hunch: I benchmarked
+[700 AI-generated functions across 5 models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+and no model's aggregate security score got close to clean — the leaderboard
+that ranks them is itself misleading, because a missing-boundary class like this
+one is invisible to a "which model is safest" average. Narrow it to one prompt
+and the same pattern holds:
 [same NestJS prompt, Claude shipped 6 security errors and Gemini 2, and both
 missed the same hardening](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors).
+The model you pick changes the count; it does not draw the boundary.
 
-> **Adaptation path (Gemini).** This piece is one model swap from a
-> [Build-with-Gemini](https://dev.to/challenges) entry: change
-> `model: openai("gpt-4o")` to `model: google("gemini-2.0-flash")`, regenerate
-> the same chat route, and confirm `require-validated-prompt` still fires on the
-> output. Same rule, same CWE — add `#googleai #geminichallenge` and it ships as
-> an original-benchmark submission.
+I didn't leave that as a hunch either — I ran the swap. Same quickstart shape,
+one line changed (`openai("gpt-4o")` → `google("gemini-2.0-flash")`), same
+`configs.recommended`:
+
+```ts
+const { text } = await generateText({
+  model: google("gemini-2.0-flash"), // ← only this line changed
+  system: "You are a helpful assistant.",
+  prompt: userInput,
+});
+```
+
+```text
+gemini-route.ts
+  11:13  error  🔒 CWE-74 OWASP:A03-Injection CVSS:9 | User input "userInput" passed directly to generateText prompt without validation | CRITICAL [SOC2,GDPR]
+```
+
+Identical CWE-74, identical CVSS:9, identical finding — because the rule is
+AST-based and never reads the provider string. ([Same receipt
+gist](https://gist.github.com/ofri-peretz/b88fd5bb1f9df7cc0f8b566673cd1bf6); the
+swap is reproducible.) Two providers, one missing boundary, one rule that fires
+on both.
+
+(That Gemini run is also why this doubles as a [Build-with-Gemini](https://dev.to/challenges)
+data point — same model, real `require-validated-prompt` output, original
+benchmark.)
 
 That's why the fix can't live in your head or in a review checklist. The pattern
 regenerates on every `Cmd+K`. The guard has to live in CI, where it fires on the
-machine's output the same way it fires on yours.
+machine's output the same way it fires on yours — and it does: I pointed a
+sibling plugin at a clean-compiling [NestJS service Claude had just written, and
+it surfaced 6 security errors in 3 seconds](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
+TypeScript was happy; the linter wasn't. The same is true here.
 
 ## The fix isn't "sanitize the string"
 
@@ -217,7 +278,26 @@ clearly tagged as content, and the length cap and enum strip the easy escalation
 paths). Treat the model's **output** as untrusted too (never feed it to
 `eval`/SQL/`innerHTML`).
 
+Be honest about what this buys you per channel. The `topic` enum only exists
+because that field _is_ a closed set — if your route is a genuinely open chat
+box, you can't allow-list the message, and validation buys you length-capping
+plus data-channel framing and nothing more. The controls that carry the weight
+there are downstream: output handling, privilege separation, and tool gating
+(the [agent-hardening piece](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk)).
+The rule's job is narrower and worth stating plainly — it guarantees the
+boundary _exists_, not that it's _sufficient_.
+
 ## The rule: `require-validated-prompt` (CWE-74)
+
+(There _is_ a dedicated CWE —
+[CWE-1427, _Improper Neutralization of Input Used for LLM Prompting_](https://cwe.mitre.org/data/definitions/1427.html),
+added in CWE 4.16, Nov 2024. The rule deliberately tags the stable classic
+parent **CWE-74 — _Injection_** because most SAST dashboards, SOC2/GDPR mappings,
+and triage tooling key off the long-lived parent rather than the newest child;
+CWE-1427 is the precise LLM-specific label, and OWASP's
+[LLM01](https://genai.owasp.org/llmrisk/llm012025-prompt-injection/) is the
+canonical framing. Treat 74 ⊃ 1427 ⊃ LLM01 as the same finding at three
+resolutions.)
 
 You can't eyeball every `generateText` call in a growing codebase. The linter
 does:
@@ -229,18 +309,23 @@ npm install --save-dev eslint-plugin-vercel-ai-security
 ```js
 // eslint.config.mjs — `configs` is a NAMED export (default export is the plugin)
 import { configs } from "eslint-plugin-vercel-ai-security";
+import tsParser from "@typescript-eslint/parser"; // needed to lint .ts/.tsx
 
-export default [configs.recommended];
+export default [
+  { files: ["**/*.ts", "**/*.tsx"], languageOptions: { parser: tsParser } },
+  configs.recommended, // `recommended` brings the rules, not the parser
+];
 ```
 
 Here is this rule's real output on the template above — the
 `require-validated-prompt` slice of the run, three call sites in one file,
-verbatim:
+verbatim ([full raw output in the receipt
+gist](https://gist.github.com/ofri-peretz/b88fd5bb1f9df7cc0f8b566673cd1bf6)):
 
 ```text
 app/actions.ts
   54:15   error  🔒 CWE-74 OWASP:A03-Injection CVSS:9 | User input "input" passed directly to generateText prompt without validation | CRITICAL [SOC2,GDPR]
-                 Fix: Validate input before use: generateText({ prompt: validateInput(input) })
+                 Fix: Validate input before use: generateText({ prompt: validateInput(userInput) })
   130:15  error  🔒 CWE-74 OWASP:A03-Injection CVSS:9 | User input "input" passed directly to generateText prompt without validation | CRITICAL [SOC2,GDPR]
   156:15  error  🔒 CWE-74 OWASP:A03-Injection CVSS:9 | User input "userQuery" passed directly to generateText prompt without validation | CRITICAL [SOC2,GDPR]
 
@@ -249,12 +334,24 @@ app/actions.ts
 
 Each line is a separate `generateText` call where raw user text reaches the
 model. The variable name in the message (`input`, `userQuery`) is the actual
-tainted identifier the rule traced — not a placeholder.
+tainted identifier the rule traced — not a placeholder. (`CVSS:9` is the literal
+string the rule prints — a static class default for this CWE, not a per-finding
+computed vector; the scope note just below covers severity vs. blast radius.)
 
 > **What the rule proves — and doesn't.** It enforces that user-controlled input
 > crosses a validation boundary before reaching `prompt`/`messages`. It **cannot**
 > prove your `validateInput` defeats injection — that's a design problem no
 > linter solves. It guarantees the choke point exists; you make it meaningful.
+> Two scope limits worth naming up front: (1) **taint depth** — it fires on input
+> flowing _directly_ (or through a template literal) into `prompt`; route the same
+> input through a helper (`prompt: buildPrompt(input)`) and a single-file taint
+> rule won't follow it, so treat a clean run as "no _obvious_ flow," not "proven
+> safe." (2) **severity is on the boundary, not the blast radius** — every hit is
+> stamped `CVSS:9` because that's the rule's static rating for the _class_; the
+> actual impact of the `natural-language-postgres` hit (SQL constrained by an
+> `Output.object` schema, no tool execution) is smaller than a tool-calling agent
+> that can _act_ on the injected instruction. The rule flags the missing
+> boundary; you triage the reachability.
 
 ## The rest of the input surface
 
@@ -269,15 +366,22 @@ input-side mistakes:
 | [`no-unsafe-output-handling`](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security/rules/no-unsafe-output-handling) | model output flowing into eval/SQL/innerHTML |
 
 Tool-calling agents have a second, separate attack surface (excessive agency) —
-that's the [agent-hardening piece](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk).
+an agent that takes the injected instruction can _act_ on it, which is why
+that's its own [agent-hardening piece](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk).
 For the full OWASP LLM picture, the
-[honest 8-of-10 map](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk).
-And if you fix one of these and a related one appears, that's not bad luck —
-it's [the AI hydra problem](https://ofriperetz.dev/articles/the-ai-hydra-problem).
+[honest 8-of-10 map](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
+(8 categories a CWE-tagged rule genuinely catches, 2 that need controls beyond
+the linter), and the
+[Vercel-AI-specific OWASP LLM coverage breakdown](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk)
+for this SDK in particular. And if you fix one of these and a related one
+appears, that's not bad luck — it's
+[the AI hydra problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
 
-> **Series — _Hardening AI Agents_.** This is the input-side boundary. Next:
-> [excessive agency in tool-calling agents](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk),
-> then [the full OWASP LLM Top 10 coverage map](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk).
+> **Series — _Hardening AI Agents_** (read both directions):
+> [← the attacker's first move](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability)
+> · **you are here: the input-side write-time boundary** ·
+> [excessive agency in tool-calling agents →](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk)
+> · [the full OWASP LLM Top 10 coverage map →](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
 
 ---
 
@@ -305,21 +409,23 @@ bun add -d eslint-plugin-vercel-ai-security
 | -------------------- | ----------------------------------------------------------------------------------------- |
 | **Package managers** | npm, yarn, pnpm, bun                                                                      |
 | **Node**             | `>= 18.0.0`                                                                               |
-| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                            |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0` — flat config (default on 9+, opt-in on 8)               |
 | **Vercel AI SDK**    | optional peer — AST-based, lints whether or not `ai` is installed                         |
-| **Module system**    | CommonJS — `eslint.config.js` or `.mjs`                                                   |
+| **Module system**    | plugin ships CommonJS; load it from an ESM (`.mjs`) or CJS (`.js`) flat config            |
 | **Oxlint**           | flagship rule (`no-unsafe-output-handling`) wired + parity-checked; full set ESLint-first |
 
 ---
 
-`grep -rn "prompt: " src/` right now. How many of those hits validate the input
-before it reaches the model — and which one did an assistant write for you last
-week? I'll trade war stories in the comments: tell me the prompt-injection (or
-near-miss) that taught your team to draw the boundary.
+Run `grep -rn "prompt: " src/` right now — then look at the one your assistant
+wrote for you last week. Does it cross a validation boundary, or does it read
+straight from the request? I'll trade war stories in the comments: tell me the
+prompt-injection hit (or the nosy-teammate near-miss) that taught your team to
+draw the boundary.
 
 ## Links
 
-- 📦 [npm: eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security)
+- 📦 [![npm downloads](https://img.shields.io/npm/dm/eslint-plugin-vercel-ai-security)](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) [npm: eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security)
+- 🧾 [Receipt gist — raw `eslint` output, pinned SHAs, the Gemini swap](https://gist.github.com/ofri-peretz/b88fd5bb1f9df7cc0f8b566673cd1bf6)
 - 📖 [Full rule docs (per-rule CWE + examples)](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security/rules)
 - 🔐 [OWASP LLM01: Prompt Injection](https://genai.owasp.org/llmrisk/llm012025-prompt-injection/)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-vercel-ai-security)
@@ -334,4 +440,4 @@ I'm **Ofri Peretz**, a security engineering leader and the author of the
 Interlace ESLint ecosystem — domain-specific static analysis for security,
 reliability, and performance on the Node.js stack.
 
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+[ofriperetz.dev](https://ofriperetz.dev) · [Dev.to](https://dev.to/ofri-peretz) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz) · [X/Twitter](https://twitter.com/ofriperetzdev)

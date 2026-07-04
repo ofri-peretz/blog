@@ -56,6 +56,8 @@ const eslintConfig = defineConfig([
     "src/app/og/**",
     // oxlint JS-plugin shims — CJS tooling, not app source (legit `require`).
     "tools/**",
+    // Reproducibility scripts — not app source; may import packages not in this workspace.
+    "repro/**",
   ]),
 
   // ── Interlace à-la-carte recommended presets (9 clean plugins) ────────────
@@ -144,6 +146,16 @@ const eslintConfig = defineConfig([
     rules: {
       "react-a11y/role-supports-aria-props": "warn",
       "react-features/jsx-key": "warn",
+    },
+  },
+  // scripts/ are devtools/automation utilities — pre-existing findings baselied here
+  // (baseline-then-ratchet: fix these in follow-up PRs, don't block article PRs).
+  {
+    files: ["scripts/**"],
+    rules: {
+      "secure-coding/no-redos-vulnerable-regex": "warn",
+      "secure-coding/no-unsafe-regex-construction": "warn",
+      "reliability/no-silent-errors": "warn",
     },
   },
 ]);

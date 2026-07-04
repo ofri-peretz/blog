@@ -9,12 +9,12 @@ published_at: "2025-12-31T21:35:53Z"
 edited_at: "2026-01-11T10:21:49Z"
 cover_image: "https://ofriperetz.dev/og/cover/database-connection-leak-production-outage"
 social_image: "https://ofriperetz.dev/og/article/database-connection-leak-production-outage"
-reading_time_minutes: 5
+reading_time_minutes: 9
 tags:
-  - "eslint"
   - "node"
-  - "security"
-  - "devsecops"
+  - "eslint"
+  - "ai"
+  - "googleai"
 reactions: 0
 comments: 0
 views: 0
@@ -98,7 +98,10 @@ The fix and the config that enforces it, in order.
 You don't need a 3 AM outage to see this — you need a pool with a small ceiling
 and a loop that forgets to release. Here it is against a real Postgres
 (`pg@8.21.0`, Node 25, `postgres:16` in Docker), with the pool capped at 10 so the
-ceiling is obvious:
+ceiling is obvious. Two different limits are in play: the Postgres server's
+`max_connections=15` is the hard wall the _database_ enforces; the pool's `max: 10`
+(set in the client below) is the lower ceiling the _application_ hits first — so
+the pool starves at 10 long before Postgres would reject anything:
 
 ```bash
 docker run -d --name pg-leak -e POSTGRES_PASSWORD=demo -e POSTGRES_DB=demo \
@@ -198,8 +201,8 @@ And the leak that hangs your pool now fails the lint run instead. This is the
 verbatim message the rule emits — run on the `leak.js` from above:
 
 ```text
-src/orders.js
-  2:9  error  ⚡ CWE-404 OWASP:A05-Injection | PG client acquired but not released. | HIGH
+leak.js
+  9:9  error  ⚡ CWE-404 OWASP:A05-Injection | PG client acquired but not released. | HIGH
              Fix: Ensure "client.release()" is called in a finally block to return the client to the pool. | https://node-postgres.com/features/pooling#checkout-use-and-return
 ```
 
@@ -222,21 +225,72 @@ src/orders.js
 > off a plain `const client = …` assignment, so destructured checkouts are out
 > of scope.)
 
-## The AI assistant will write this leak for you
+> **Why a static check, when you could just monitor the pool?** The senior
+> instinct here is runtime telemetry — `pool.on('error')`, a Prometheus gauge on
+> `pool.waitingCount`/`pool.totalCount`, an alert when idle connections trend to
+> zero. Keep those; they're how you catch the leak a third-party client opens
+> that no AST can see. But every one of them fires _after_ the leaked checkout is
+> already running in production — the gauge climbs, the alert pages, and now
+> you're diffing deploys at 3 AM. The static rule moves the same catch to the one
+> moment it's free: the keystroke. `pool.waitingCount > 0` tells you a release is
+> missing _somewhere, right now, under load_; `no-missing-client-release` tells
+> you it's missing _on line 9, before you commit_. Runtime metrics are the safety
+> net for the leaks you can't see statically; the rule is how you stop writing
+> the ones you can.
 
-This pattern is not going away — it's accelerating. Ask any coding assistant
-(Claude, Copilot, Gemini) for "a function that fetches a user's orders from a
-Postgres pool" and a large share of the time you get the `pool.connect()` shape
-back, often without the `finally`. The model learned from the same public
-codebases that leaked connections for a decade; it reproduces the average of
-what it saw, and the average has this bug.
+## Your AI assistant writes this shape too — and up to 96% of one model's database code trips a rule
 
-Don't take my word for it — this one's a 30-second test you can run yourself:
-paste that prompt into whatever assistant you have open, drop the answer into
-`orders.js`, and run the rule on it (`npx eslint orders.js` with the config
-above). Either it releases the client or the linter lights up at the assignment.
-That's the point: you get a binary, AST-checked answer instead of squinting at
-generated code and hoping.
+This pattern is not going away — it's accelerating, and I have the numbers. Ask
+any coding assistant (Claude, Copilot, Gemini) for "a function that fetches a
+user's orders from a Postgres pool" and a large share of the time you get the
+`pool.connect()` shape back, often without the `finally`. The model learned from
+the same public codebases that leaked connections for a decade; it reproduces the
+average of what it saw, and the average has this bug.
+
+How large a share? I benchmarked it. Across [700 AI-generated functions from 5
+models, scanned by 332 ESLint
+rules](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+the **database** domain — the one this article lives in — is where models break
+down worst: the per-model vulnerability rate runs from **39% (Claude Haiku) to
+96% (Gemini 2.5 Pro)** on database tasks. And the reason the flagship models
+score _worse_ is the tell: Gemini Pro writes the most elaborate database code —
+explicit connection pooling, credential handling, column enumeration — which is
+exactly the surface where a forgotten `release()` hides. The more "production-
+shaped" the generated code looks, the more likely it is to check a client out of
+the pool, and the more places that checkout has to leak.
+
+Don't take my word for any of it — here's the whole loop as four commands you
+can run right now against Gemini, the model with the 96% database rate. This is
+the experiment behind the numbers above, shrunk to one function so you can
+reproduce the _shape_ of the finding on your own machine in a minute:
+
+```bash
+# 1. generate — ask the 96% model for the exact function from the post-mortem
+gemini -p 'Write a Node.js function getUserOrders(userId) that fetches a
+  user'\''s orders from a Postgres connection pool using the pg library.' \
+  > orders.js
+
+# 2. scan — point the rule at what it just wrote
+npx eslint orders.js   # eslint.config.js = the configs.recommended block above
+
+# 3. (if it leaked) feed the exact CWE back — the deterministic repair channel
+gemini -p "$(cat orders.js)
+
+The linter reports: CWE-404 — PG client acquired but not released.
+Fix it so the client is always returned to the pool." > orders.fixed.js
+
+# 4. re-scan — prove the finding is gone
+npx eslint orders.fixed.js
+```
+
+Step 2 gives you a binary, AST-checked verdict instead of squinting at generated
+code and hoping: either the function released the client or the linter lights up
+at the assignment. Step 3–4 is the part the benchmark measured at scale —
+Gemini Pro restructures correctly **25 of 27 times** when the feedback is a
+specific CWE, not a vague "make it more secure." Swap `gemini` for `claude` and
+you've got the same harness across models; that's the entire methodology of the
+[700-function benchmark](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+collapsed to a single file you control.
 
 The reassuring part: the rule does not care who typed the code. It is purely
 AST-structural — it sees a checked-out client with no `release()` referencing it
@@ -250,6 +304,20 @@ on [what happens when you point ESLint at AI-generated
 code](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 and [the six holes one lint run found in a Claude-written
 service](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).)
+
+That repair channel in step 3 is the part that makes the rule worth more than a
+one-time catch, and it's why the bare `CWE-404: PG client acquired but not
+released` string matters as much as the block it prevents: a specific,
+machine-checkable finding is the only kind of feedback the model reliably acts on
+— when I [broke the same 700-function benchmark down by
+domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain),
+database remediation was its single strongest category, but only ever on a
+precise CWE, never on "make it more secure." So the rule isn't just a gate that
+blocks the bad checkout; it's the deterministic feedback channel that lets the
+assistant repair its own leak. The four commands above are the minimal version of
+that loop — and a fuller run of it, swept across models, is exactly what a [Build
+with Gemini](https://dev.to/challenges) entry would be: same harness, more
+iterations, the database domain where there's the most headroom left.
 
 ## The connection-lifecycle family
 
@@ -321,7 +389,8 @@ a borrowed connection bites you in production:
 What drained your pool? I want the real story — the missing `release()`, the
 transaction that never committed, the third-party client that quietly held a
 connection per request. What was the symptom that finally pointed you at the
-pool, and how long did it take to find? Drop it in the comments.
+pool, how long did it take to find — and was it a human or your AI assistant
+that wrote the checkout that forgot to come back? Drop it in the comments.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if a missing `client.release()` has ever paged you at 3 AM.

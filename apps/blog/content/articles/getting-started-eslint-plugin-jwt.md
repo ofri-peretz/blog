@@ -67,7 +67,7 @@ is to ask a model, and the model's default is the vulnerable shape.
 - **Flat-config**, CommonJS, ESLint `8 || 9 || 10`, Node `>= 18`. AST-based —
   it reads your `jwt.sign`/`jwt.verify`/`jwt.decode` calls; no runtime peer.
 
-> **The Hardened Stack series** · [`eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) ← **`eslint-plugin-jwt` (you are here)** → [`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security). Three CWE-mapped layers for the Node request path — request handling, framework wiring, and the auth token that ties them together. New here? Start with [The 30-Minute Security Audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase), the protocol these plugins plug into.
+> **The Hardened Stack series** · [`eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) ← **`eslint-plugin-jwt` (you are here)** → [`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules). Three CWE-mapped layers for the Node request path — request handling, framework wiring, and the auth token that ties them together. New here? Start with [The 30-Minute Security Audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase), the protocol these plugins plug into.
 
 ---
 
@@ -379,11 +379,11 @@ complementary to the generic set and the other server-side plugins. If you run
 Node services, the JWT layer pairs with
 [`eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security)
 and
-[`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security)
+[`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules)
 — auth is one CWE class, and these cover the request-handling layer it sits
 behind. All three are part of the **Hardened Stack** series.
 
-> **The Hardened Stack** · [← `eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) | **`eslint-plugin-jwt` (current)** | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security)
+> **The Hardened Stack** · [← `eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) | **`eslint-plugin-jwt` (current)** | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules)
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "Your Vercel AI SDK Agent Has 19 Attack Surfaces. Here's an ESLint Rule for Each."
+title: "I Linted 3 Idiomatic Vercel AI SDK Snippets. All 3 Failed: 13 Findings, 10 Errors."
 description: "Prompt injection, tool over-permissioning, AI output that reaches eval/SQL/innerHTML, secrets in prompts — the Vercel AI SDK puts every one a single property away. 19 ESLint rules that catch them in CI, before deploy."
 slug: "getting-started-eslint-plugin-vercel-ai-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security"
@@ -44,7 +44,10 @@ prompt-injection vector (`userMessage` flows straight into the model), two
 destructive tools with no confirmation gate, no token ceiling, no step ceiling,
 and no plan for what happens when the model's output lands in your database or
 your DOM. **Six lines of code, six attack surfaces.** None of them looks wrong
-in a diff — that's exactly why it merged.
+in a diff — that's exactly why it merged. When I saved that snippet plus two
+more idiomatic AI SDK shapes to disk and ran the linter, all three files failed:
+[13 findings, 10 of them errors](#what-recommended-actually-fires--a-reproducible-scan).
+The insecure shape isn't an edge case. It's the default the SDK's own examples teach.
 
 None of it is a bug in the SDK. It's the same gap every powerful API has: the
 easy path and the safe path look almost identical, and the compiler can't tell
@@ -76,8 +79,8 @@ Agents** series — companion reads as we go:
 
 - **19 rules**, every one carrying a `CWE` id and a CVSS score, mapped to the
   OWASP LLM Top 10.
-- **4 presets**: `minimal` (2 rules), `recommended` (7 errors + 7 warnings +
-  5 off), `strict` (17 errors + 2 warnings), and `flagship` (the single
+- **4 presets**: `minimal` (2 rules), `recommended` (11 errors + 4 warnings +
+  4 off), `strict` (18 errors + 1 warning), and `flagship` (the single
   highest-severity rule, `no-unsafe-output-handling`).
 - **Flat-config native**, ESLint `8 || 9 || 10`, Node `>= 18`. Shipped as a
   CommonJS package, so it loads from both `eslint.config.js` and
@@ -332,23 +335,24 @@ All 19, with the severity each gets in the `recommended` preset:
 | `no-sensitive-in-prompt`         | Secrets/PII in prompt               | CWE-200 | error         |
 | `no-system-prompt-leak`          | System prompt in response           | CWE-200 | error         |
 | `require-tool-confirmation`      | Destructive tool, no gate           | CWE-862 | error         |
-| `require-tool-schema`            | Unconstrained tool params           | CWE-20  | warn          |
-| `require-max-tokens`             | No output ceiling                   | CWE-770 | warn          |
-| `require-max-steps`              | Unbounded agent loop                | CWE-834 | warn          |
+| `require-tool-schema`            | Unconstrained tool params           | CWE-20  | error         |
+| `require-max-tokens`             | No output ceiling                   | CWE-770 | error         |
+| `require-max-steps`              | Unbounded agent loop                | CWE-834 | error         |
 | `require-output-filtering`       | Raw data-source rows in tool result | CWE-200 | warn          |
 | `require-rag-content-validation` | Unvalidated retrieved context       | CWE-74  | warn          |
 | `no-training-data-exposure`      | User data → training endpoint       | CWE-359 | warn          |
 | `require-request-timeout`        | No timeout/abort                    | CWE-400 | warn          |
 | `require-error-handling`         | AI call not wrapped                 | CWE-755 | off           |
-| `require-abort-signal`           | Streaming call can't cancel         | CWE-404 | off           |
+| `require-abort-signal`           | Streaming call can't cancel         | CWE-404 | error         |
 | `require-audit-logging`          | AI op not logged                    | CWE-778 | off           |
 | `require-embedding-validation`   | Unvalidated embedding stored        | CWE-20  | off           |
 | `require-output-validation`      | Output shown unvalidated            | CWE-707 | off           |
 
-`recommended` ships the seven highest-severity rules as errors and seven more
-as warnings; the last five are `off` by default (enable them in `strict`, which
-turns 17 on as errors). Start with `recommended`, ratchet to `strict` per
-directory as you adopt.
+`recommended` ships **11 rules as errors and 4 as warnings**; the remaining 4
+(`require-error-handling`, `require-audit-logging`, `require-embedding-validation`,
+`require-output-validation`) are `off` by default. `strict` turns **18 on as
+errors** and leaves only `require-audit-logging` at `warn`. Start with
+`recommended`, ratchet to `strict` per directory as you adopt.
 
 ---
 
@@ -433,9 +437,9 @@ import { configs } from "eslint-plugin-vercel-ai-security";
 
 export default [
   // pick one preset (each registers the plugin under `vercel-ai-security`):
-  configs.recommended, // balanced — 7 errors + 7 warnings + 5 off
+  configs.recommended, // balanced — 11 errors + 4 warnings + 4 off
   // configs.minimal,  // 2 critical rules, for gradual adoption
-  // configs.strict,   // 17 errors + 2 warnings — production hardening
+  // configs.strict,   // 18 errors + 1 warning — production hardening
   // configs.flagship, // just no-unsafe-output-handling
 ];
 ```
@@ -546,20 +550,38 @@ model isn't being careless; it's reproducing the canonical example, which is the
 insecure one. The training data is full of the easy path because the easy path
 is what gets written.
 
-I've measured how often this happens with un-prompted AI code:
+I've measured how often this happens, and the numbers aren't close. Given no
+security context,
 [65–75% of the functions I had Claude generate carried a security
-vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-when given no security context. And it compounds — when you ask the model to fix
-one finding, it often
-[introduces two more in the patch](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
-That's the actual argument for a deterministic gate: the thing writing your AI
-call sites has no memory of your threat model, and the thing reviewing the PR is
-increasingly also a model. A lint rule keyed to the AST is the one layer in that
-loop that fails closed, every time, regardless of how the code was authored.
+vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
+That isn't a Claude problem — I ran the same harness across
+[700 AI-generated functions from five different
+models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+and every one of them shipped the insecure default; the leaderboard only argues
+about _which_ model is worst. And clean compilation buys you nothing here —
+[Claude wrote 200 lines of NestJS that TypeScript accepted without complaint, and
+the security rules found 6 holes in
+3 seconds](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
+The Vercel AI SDK surface is no different: ask any of those models for an agent
+and you get `prompt: userMessage` with no `maxSteps`.
+
+It also compounds. Ask the model to fix one finding and it often
+[introduces two more in the patch](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) —
+the AI-Hydra problem. That's the actual argument for a deterministic gate: the
+thing writing your AI call sites has no memory of your threat model, and the
+thing reviewing the PR is increasingly also a model. A lint rule keyed to the AST
+is the one layer in that loop that fails closed, every time, regardless of how
+the code was authored.
 
 This is also why I run the same rules over AI-generated code as over
 hand-written code — there's no separate "AI lint." The call site is dangerous or
-it isn't; who typed it is irrelevant to the rule.
+it isn't; who typed it is irrelevant to the rule. And this isn't a Claude-only
+tic: when I ran the same harness over Google's models,
+[Gemini 2.5 Pro carried a 73% vulnerability rate and Flash 64% across 700
+functions](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) —
+the insecure default is model-agnostic, so under the **Build with Gemini**
+challenge it's the same rules, same AST: point `npx eslint .` at the code Gemini
+hands you and `prompt: userMessage` with no `maxSteps` shows up exactly the same.
 
 ---
 
@@ -596,9 +618,15 @@ human-authored and AI-authored findings is the interesting part.
 - 🔐 [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-vercel-ai-security)
 
-**Related in the _Hardening AI Agents_ series:**
+**The _Hardening AI Agents_ series** — you're reading the map; here's the rest, in reading order:
 
-- [Prompt injection in 3 places](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability) · [Why "just sanitize it" fails](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) · [Gating every tool call](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk) · [Full OWASP LLM Top 10 coverage](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk)
+1. **This guide** — all 19 rules, the reproducible scan, install & config _(you are here)_
+2. [Prompt injection lives in 3 places →](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability) — the LLM01 rules in depth
+3. [Why "just sanitize it" won't close it →](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) — the boundary is structural, not a string filter
+4. [Gating every tool call →](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk) — the 5 rules that bound an agent's agency
+5. [Your app vs the full OWASP LLM Top 10 →](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the 8 it covers, the 2 it honestly can't
+
+**See it on AI-written code:** [I ranked 5 models on 700 functions →](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Claude's clean-compiling NestJS, 6 holes →](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes) · [Fix one AI bug, get two more →](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if this saved you an incident review.

@@ -12,7 +12,7 @@ reading_time_minutes: 9
 tags:
   - "ai"
   - "security"
-  - "node"
+  - "eslint"
   - "geminichallenge"
 reactions: 0
 comments: 0
@@ -33,7 +33,7 @@ That's the shared finding. Everything else differed — by 4 errors. And the dif
 
 This is the part most "AI writes good code now" takes skip: a model that compiles clean and a model that's *secure* are different claims, and the gap between them is invisible until something runs static analysis over the output. So I did. I gave Claude Sonnet 4.6 and Gemini 2.5 Flash the identical prompt: *"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."* Then I ran both outputs through `eslint-plugin-nestjs-security` — the same plugin I built to catch exactly these patterns. (I've run this experiment across [80 Claude-written functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), where 65–75% carried at least one vulnerability — this NestJS run is the same methodology, narrowed to one framework and two vendors.)
 
-**Claude Sonnet 4.6: 6 errors.** (Consistent with prior runs — see [the companion article](https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj))
+**Claude Sonnet 4.6: 6 errors.** (Consistent with prior runs — see [the single-model companion run](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes))
 **Gemini 2.5 Flash via Gemini CLI: 2 errors.** The default output from Google's standard developer tooling shipped structurally more secure code than Claude's.
 
 Here's what each got right, what each got wrong, and why the one finding they share is the one that matters most.
@@ -50,21 +50,7 @@ Build a NestJS users service. Authentication, registration, login, profile endpo
 
 No security requirements. No constraints. Just functionality. This is how most developers use AI code generation in practice.
 
-### Methodology (so you can reproduce it)
-
-This is the part most AI-vs-AI posts leave out. Here is exactly what produced the error counts below:
-
-| What | Pinned value |
-|------|--------------|
-| Generator A | Claude Sonnet 4.6 (Anthropic API, default settings, no system prompt) |
-| Generator B | Gemini 2.5 Flash via Gemini CLI (CLI's own default system prompt) |
-| Linter | `eslint-plugin-nestjs-security@1.2.3` + `eslint-plugin-secure-coding@3.2.0` |
-| Parser | `@typescript-eslint/parser` |
-| Config | the [exact block at the end of this article](#the-config-runs-on-output-from-either-model) — six `nestjs-security` rules at `error`, `no-missing-validation-pipe` with `assumeGlobalPipes: true` |
-| Command | `npx eslint src/` |
-| Runs | n=1 per toolchain (see the honesty note below) |
-
-What I have **not** pinned, and what you should record before treating any rerun as a controlled benchmark: the exact Gemini CLI build string, the dated model snapshots, and the Node/OS the original generation ran on. Those move the *absolute* counts; they do not move the structural finding (the shared `require-throttler` miss), which is why the load-bearing claim below rests on that, not on 6-vs-2. Pin those four and you have a fully controlled rerun — I'd take the issue.
+n=1 per toolchain, identical prompt, same machine — the [full pinned-values method is in the appendix](#methodology-pinned-values) so it isn't sitting between you and the result.
 
 ---
 
@@ -114,7 +100,7 @@ export class User {
 
 That entity, returned directly from `listAllUsers()` and `profile()`, is what trips `no-exposed-private-fields` (CWE-200) — the secret fields cross the API boundary with nothing stripping them.
 
-ESLint found **6 errors. 0 warnings. 3 seconds.**
+ESLint found **6 errors. 0 warnings.** In seconds.
 
 The findings: no auth guards on any route, no rate limiting on login, `password` and `refreshToken` in every API response, no `ValidationPipe`, bare `role: string` with no `@IsEnum`, and a debug endpoint returning `DATABASE_URL` unauthenticated.
 
@@ -173,7 +159,7 @@ The uncomfortable part isn't that Claude wrote insecure code. It's how easily th
 
 Open the PR. The controller compiles. TypeScript is green. The DTOs are typed, the routes are named sensibly, the diff reads like a complete, competent users service. A reviewer scanning for what's *there* finds nothing wrong — because the vulnerabilities are all absences. A missing `@UseGuards()` is invisible: there's no red line, no failing test, no symbol to hover over. You can't review a decorator that was never written. The reviewer would have to hold the entire NestJS security checklist in their head and walk every route asking "what's *not* here?" — and on a Friday-afternoon PR for a service that "works," nobody does.
 
-That's the failure mode static analysis is built for. A linter doesn't review what's present; it asserts what must exist. `require-guards` doesn't care that the controller looks finished — it fails because a route handler has no guard, the same way every time, in 3 seconds, before the PR ever reaches a human. The negative-space check is exactly the check a tired reviewer can't reliably perform.
+That's the failure mode static analysis is built for. A linter doesn't review what's present; it asserts what must exist. `require-guards` doesn't care that the controller looks finished — it fails because a route handler has no guard, the same way every time, in seconds, before the PR ever reaches a human. The negative-space check is exactly the check a tired reviewer can't reliably perform.
 
 ### Gemini's structure created its own finding
 
@@ -224,7 +210,7 @@ npm install --save-dev eslint-plugin-nestjs-security
 npx eslint src/
 ```
 
-Drop in the [config block at the end of this article](#the-config-runs-on-output-from-either-model) — the six rules set to `error` — and `require-throttler` fails on the unguarded login route from *either* model's output: Claude's and Gemini's both fail this rule identically. That's the config that produces the error counts above. If you've ever shipped an AI-scaffolded service, point it at that codebase before you read further. I'll wait.
+Drop in the [config block at the end of this article](#the-config-runs-on-output-from-either-model) — the six `nestjs-security` rules at `error`, plus one `secure-coding` rule for hardcoded secrets — and `require-throttler` fails on the unguarded login route from *either* model's output: Claude's and Gemini's both fail this rule identically. That's the config that produces the error counts above. If you've ever shipped an AI-scaffolded service, point it at that codebase before you read further. I'll wait.
 
 ---
 
@@ -238,7 +224,7 @@ Both will add throttling, env-variable JWT secrets, and explicit guard wiring if
 
 The rate limiting gap is the finding that answers that question. Gemini passed `require-guards`, `no-exposed-private-fields`, `require-class-validator`; Claude failed all three — but both failed `require-throttler` the same way. That's not a tooling difference. That's a prompt difference. Neither spec said "prevent brute-force attacks on login." So neither output did.
 
-**Be precise about which claim is load-bearing.** The 6-vs-2 count is one generation per toolchain — directionally consistent with my [80-function Claude run](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) and the [single-model NestJS run](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes), but still n=1 here, and I won't pretend a single sample settles a vendor ranking. The claim that *doesn't* depend on sample size is the shared one: a feature-only prompt encodes no rate-at-which constraint, so `require-throttler` fails on auth endpoints regardless of which model wrote them. That follows from how the prompt is shaped, not from how many times I ran it — which is why it's the part I'd stake the article on, and the 6-vs-2 the part I'm asking you to help replicate.
+**The load-bearing claim doesn't depend on sample size.** A feature-only prompt encodes no rate-at-which constraint, so `require-throttler` fails on auth endpoints regardless of which model wrote them — that follows from how the prompt is shaped, not from how many times I ran it. The 6-vs-2 split is the directional part: consistent with my [80-function Claude run](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) and the [single-model NestJS run](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes), and the part I'm asking you to help replicate.
 
 *(For teams that rate-limit at the edge: app-layer `@Throttle()` is defense-in-depth, not redundant. Internal callers, misconfigured ingress, and direct-to-pod paths bypass edge rules. The rule fires on the generated code — what you add upstream is a separate layer.)*
 
@@ -281,16 +267,34 @@ npm install --save-dev eslint-plugin-nestjs-security eslint-plugin-secure-coding
 npx eslint src/
 ```
 
-Full rule documentation at [eslint.interlace.tools](https://eslint.interlace.tools/docs/security/plugin-nestjs-security). If you want the per-rule walkthrough — what each of the six rules catches and why NestJS leaves the gap open in the first place — start with [the rule-by-rule guide](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security). For the single-model version of this run with the failing code shown in full, see [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
+Full rule documentation at [eslint.interlace.tools](https://eslint.interlace.tools/docs/security/plugin-nestjs-security). If you want the per-rule walkthrough — what each of the six `nestjs-security` rules catches and why NestJS leaves the gap open in the first place — start with [the rule-by-rule guide](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules). For the single-model version of this run with the failing code shown in full, see [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
 
 ---
 
-*Run the same prompt on whichever model you use, then run the lint over the output — two commands, three seconds. What's the worst thing an AI assistant scaffolded into your codebase that compiled clean, passed review, and only got caught later? Drop the rule it would have failed in the comments. I'm specifically curious whether Gemini's CLI result holds across runs — this is one data point and I want more.*
+## Methodology (pinned values)
+
+This is the part most AI-vs-AI posts leave out. Here is exactly what produced the error counts above — pin these and you have a controlled rerun:
+
+| What | Pinned value |
+|------|--------------|
+| Generator A | Claude Sonnet 4.6 (Anthropic API, default settings, no system prompt) |
+| Generator B | Gemini 2.5 Flash via Gemini CLI (CLI's own default system prompt) |
+| Linter | `eslint-plugin-nestjs-security@1.2.3` + `eslint-plugin-secure-coding@3.2.0` |
+| Parser | `@typescript-eslint/parser` |
+| Config | the [block above](#the-config-runs-on-output-from-either-model) — six `nestjs-security` rules at `error` plus `secure-coding/no-hardcoded-credentials`, with `no-missing-validation-pipe` on `assumeGlobalPipes: true` |
+| Command | `npx eslint src/` |
+| Runs | n=1 per toolchain |
+
+What I have **not** pinned, and what you should record before treating any rerun as a controlled benchmark: the exact Gemini CLI build string, the dated model snapshots, and the Node/OS the original generation ran on. Those move the *absolute* counts; they do not move the structural finding — the shared `require-throttler` miss — which is why the load-bearing claim rests on that, not on 6-vs-2. Pin those four and you have a fully controlled rerun; I'd take the issue.
+
+---
+
+*Run the same prompt on whichever model you use, then run the lint over the output — two commands, seconds to run. What's the worst thing an AI assistant scaffolded into your codebase that compiled clean, passed review, and only got caught later? Drop the rule it would have failed in the comments — and if you rerun this on Gemini's CLI, tell me whether the 2-error result holds. I want the next data point.*
 
 ---
 
 *Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/ai-security-benchmark-series):*
-*← [Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Security Holes.](https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj) | [Aggregate Benchmarks Lie →](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj)*
+*← [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes) | [Aggregate Benchmarks Lie →](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)*
 
 ---
 

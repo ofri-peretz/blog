@@ -20,7 +20,7 @@ author:
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-series: null
+series: "Server-Side Hardening"
 ---
 
 Express is unopinionated, which is a polite way of saying it ships with **no
@@ -47,9 +47,21 @@ wrong. You can't review code that was never written. That's also exactly why
 Gemini to "set up an Express server" and you get `app.use(express.json())` and a
 route — never `helmet()`, never a rate limiter, never a body `limit`. The model
 optimizes for "runs," not "hardened," and the hardening middleware is invisible
-to a reviewer scanning a green diff. I watched this happen across every
-AI-generated Express scaffold I've reviewed, the same way Claude
-[shipped 6 holes in a NestJS service that TypeScript was happy with](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
+to a reviewer scanning a green diff.
+
+This isn't a hunch. When I had Claude write 80 Node.js functions with no
+security context,
+[two out of every three shipped a vulnerability — 65-75%, consistent across Haiku 3.5, Sonnet 4.5, and Opus 4.5/4.6](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities);
+paying for the smartest model didn't move the number. And when I gave Claude one
+prompt for a NestJS service, TypeScript compiled it clean and I'd have approved
+it in review —
+[then the linter found 6 security holes in 3 seconds](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes),
+including a route with no rate limit and an endpoint with no guard: the exact
+omissions you'll see below, one framework over. Express is where this shows up
+first, because the unopinionated skeleton _is_ the path of least resistance the
+model takes. So the real test for these rules isn't your hand-written code —
+it's the next `app.ts` your assistant generates. Point `recommended` at it
+before you point it at your legacy services.
 
 `eslint-plugin-express-security` writes the missing test for you. It's **14 rules**
 (`v1.2.3`) that read your Express app and fail CI when the hardening middleware is
@@ -286,18 +298,27 @@ with a CWE and CVSS. It's the Express member of the
 each rule knows its target SDK instead of pattern-matching every `.query()` or
 `.redirect()` blindly.
 
-This is the **server-side hardening series**. If your stack reaches past Express,
-the same "the framework hands you the guard, you ship without it" failure shows up
-everywhere:
+**Series: Server-Side Hardening.** This is the Express entry. The same "the
+framework hands you the guard, you ship without it" failure shows up at every
+layer of a Node stack — and AI assistants reintroduce it at every one:
 
-- [NestJS Hands You Guards, Pipes, and Throttlers — You Ship Controllers Without Them](https://ofriperetz.dev/articles/getting-started-eslint-plugin-nestjs-security) — the same absence-of-middleware failure, one framework up.
-- [jsonwebtoken Will Verify a Token Signed With `algorithm: none`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) — the auth layer behind your Express routes, and its one-line catastrophe.
-- [I Inherited a 3,000-Line Codebase. One ESLint Run Found 26 Critical Security Bugs](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) — what running this whole family looks like on a real, inherited app.
+- **Next up — the framework above:** [NestJS Hands You Guards, Pipes, and Throttlers — You Ship Controllers Without Them](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules). Same absence-of-middleware failure; its 6-rule set is the direct sibling of these 14.
+- **The auth layer behind your routes:** [The JWT `alg:none` Attack — Change One Header Field, Forge an Admin Token](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g). One ESLint rule blocks the one-line catastrophe sitting behind every Express login.
+- **The whole family on one app:** [I Inherited a Codebase. One ESLint Run Found 26 Critical Security Bugs](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) — what running this entire ecosystem looks like on a real, inherited service.
+- **Map it to the standard:** [Mapping Your Codebase to the OWASP Top 10 With 247 ESLint Rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) — where these 14 Express CWEs land in the bigger coverage picture.
 
-And on the AI thread that runs through this piece: I ran the same prompt past two
-models in [Same NestJS Prompt. Claude Got 6 Security Errors. Gemini Got 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) —
-different assistants, same category of omission, all caught by static analysis
-that knows the framework.
+And the AI thread that runs through this piece runs through the whole series:
+[Claude wrote a NestJS service, TypeScript was happy, ESLint found 6 holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
+and [80 AI-written functions came back 65-75% vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) —
+different assistants, different frameworks, the same category of omission, all
+caught by static analysis that knows the framework. If you want the full
+cross-model picture: [we ranked 5 AI models by security and the leaderboard is
+wrong](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+and [aggregate benchmarks lie — here's what 700 AI-generated functions look like
+by security domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
+For a head-to-head comparison of every plugin competing for the Express-security
+slot, see [benchmark: 17 ESLint security plugins
+compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
 
 ---
 
@@ -311,10 +332,12 @@ that knows the framework.
 ⭐ Star on GitHub if your Express app is missing any of the above.
 ::
 
-Run `configs.recommended` on your oldest Express service and reply with the count
-it returns. Which rule fired that you'd have sworn your app already handled — the
-missing Helmet, the unbounded body, or the redirect someone wrote two years ago
-and nobody re-reviewed?
+Run `configs.recommended` on two things and reply with both counts: your oldest
+Express service, and the next `app.ts` your AI assistant generates. Which rule
+fired that you'd have sworn was already handled — the missing Helmet, the
+unbounded body, or the redirect someone (or something) wrote and nobody
+re-reviewed? Drop the count and the rule in the comments — I read every one, and
+the war stories are how I find the next rule worth writing.
 
 ---
 
