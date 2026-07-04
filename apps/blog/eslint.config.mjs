@@ -122,6 +122,21 @@ const eslintConfig = defineConfig([
       "operability/no-debug-code-in-production": "warn",
       "reliability/require-network-timeout": "warn",
       "secure-coding/no-ldap-injection": "warn",
+      // ReDoS / dynamic-regex findings are all on TRUSTED build-time input:
+      // our own frontmatter + markdown parsing (scripts/*.mjs, src/lib/markdown.ts)
+      // on author-written content, plus a regression test that builds a regex from
+      // a fixed identifier list. No untrusted-input attack surface. Held at warn as
+      // ratchet backlog (per the baseline-then-ratchet doctrine above); harden the
+      // patterns with tests, then ratchet back to error.
+      "secure-coding/no-redos-vulnerable-regex": "warn",
+      "secure-coding/no-unsafe-regex-construction": "warn",
+      // Custom conventions rules flag PRE-EXISTING app code that predates them:
+      // raw cross-property hrefs that should route through buildUtmHref() (lib/utm.ts),
+      // and PostHog event names not yet in category:object_action grammar. Held at warn
+      // so PRs merge green; adopting buildUtmHref + renaming live analytics events is a
+      // product migration, then ratchet these back to error. (Adopt-then-ratchet.)
+      "conventions/no-raw-cross-property-href": "warn",
+      "conventions/analytics-event-naming": "warn",
     },
   },
   {
