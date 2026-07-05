@@ -208,6 +208,37 @@ describe("ratchet-card alignment slots (PR #41 polish lock)", () => {
   });
 });
 
+describe("eng_github_stars/eng_github_followers show the live-fetched value (2026-07-05)", () => {
+  // Product decision: /scorecard and /api/homepage-stats must show the SAME
+  // number for GitHub stars + followers specifically. The database row
+  // keeps updating daily and still feeds north_star_total unmodified —
+  // only the two display tiles get overridden with a live fetch. See
+  // src/lib/github-live-stats.ts and homepage-stats-lock.test.ts.
+  it("imports the shared live-fetch function from lib/github-live-stats", () => {
+    expect(SCORECARD_PAGE).toMatch(
+      /getCachedGitHubStats.*from\s+["']@\/lib\/github-live-stats["']/,
+    );
+  });
+
+  it("overrides current_value only for the two github kinds, not the whole breakdown", () => {
+    expect(SCORECARD_PAGE).toMatch(/eng_github_stars/);
+    expect(SCORECARD_PAGE).toMatch(/eng_github_followers/);
+    expect(SCORECARD_PAGE).toMatch(/current_value:\s*github!?\.totalStars/);
+    expect(SCORECARD_PAGE).toMatch(/current_value:\s*github!?\.followers/);
+  });
+
+  it("does NOT let the override touch north_star_total (stays 100% database)", () => {
+    // Anti-pattern lock: north_star_total must never be recomputed from the
+    // overridden array. It's read straight off `breakdown[0]` inside
+    // NorthStarSection, which does not call withLiveGitHubOverride.
+    const northStarSection = SCORECARD_PAGE.slice(
+      SCORECARD_PAGE.indexOf("async function NorthStarSection"),
+      SCORECARD_PAGE.indexOf("async function MomentumSection"),
+    );
+    expect(northStarSection).not.toMatch(/withLiveGitHubOverride/);
+  });
+});
+
 describe("ratchet-card whole-card link (PR #41 polish lock)", () => {
   it("wraps the card in an <a> when provenance_url is present", () => {
     // The whole-card link affordance — bigger hit area, clearer click.
