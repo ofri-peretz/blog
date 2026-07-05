@@ -230,12 +230,12 @@ describe("eng_github_stars/eng_github_followers show the live-fetched value (202
   it("does NOT let the override touch north_star_total (stays 100% database)", () => {
     // Anti-pattern lock: north_star_total must never be recomputed from the
     // overridden array. It's read straight off `breakdown[0]` inside
-    // NorthStarSection, which does not call withLiveGitHubOverride.
+    // NorthStarSection, which does not call applyLiveGitHubOverride.
     const northStarSection = SCORECARD_PAGE.slice(
       SCORECARD_PAGE.indexOf("async function NorthStarSection"),
       SCORECARD_PAGE.indexOf("async function MomentumSection"),
     );
-    expect(northStarSection).not.toMatch(/withLiveGitHubOverride/);
+    expect(northStarSection).not.toMatch(/applyLiveGitHubOverride/);
   });
 });
 
