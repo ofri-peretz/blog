@@ -137,23 +137,24 @@ const findDelta = (
 // If the live fetch fails, the row's existing (database) current_value is
 // left untouched — that's already a correct non-zero fallback, so there's
 // no need for a second Supabase round-trip here.
-async function withLiveGitHubOverride(
+//
+// Takes the already-resolved live-fetch result (see BucketGridSection's
+// Promise.all) rather than awaiting getCachedGitHubStats() itself — on a
+// cold cache the GitHub GraphQL call can take up to 8s, and running it
+// after the Supabase reads resolve instead of alongside them made that
+// latency additive instead of overlapping.
+function applyLiveGitHubOverride(
   breakdown: ReadonlyArray<RatchetBreakdownRow>,
-): Promise<RatchetBreakdownRow[]> {
-  let github: Awaited<ReturnType<typeof getCachedGitHubStats>> | null = null;
-  try {
-    github = await getCachedGitHubStats();
-  } catch (err) {
-    console.warn("[scorecard] github live source unavailable:", err);
-  }
+  github: Awaited<ReturnType<typeof getCachedGitHubStats>> | null,
+): RatchetBreakdownRow[] {
   if (!github) return [...breakdown];
 
   return breakdown.map((row) => {
-    if (row.kind === "eng_github_stars" && github!.totalStars > 0) {
-      return { ...row, current_value: github!.totalStars };
+    if (row.kind === "eng_github_stars" && github.totalStars > 0) {
+      return { ...row, current_value: github.totalStars };
     }
-    if (row.kind === "eng_github_followers" && github!.followers > 0) {
-      return { ...row, current_value: github!.followers };
+    if (row.kind === "eng_github_followers" && github.followers > 0) {
+      return { ...row, current_value: github.followers };
     }
     return row;
   });
@@ -208,16 +209,20 @@ async function MomentumSection() {
 }
 
 async function BucketGridSection({ bucket }: { bucket: Bucket }) {
-  const [rawBreakdown, deltas, trends] = await Promise.all([
+  const [rawBreakdown, deltas, trends, github] = await Promise.all([
     getCachedBreakdown(),
     getCachedDeltas(),
     getCachedTrends(),
+    getCachedGitHubStats().catch((err: unknown) => {
+      console.warn("[scorecard] github live source unavailable:", err);
+      return null;
+    }),
   ]);
   // Override eng_github_stars/eng_github_followers with the live-fetched
-  // value (see withLiveGitHubOverride doc comment above) — every other
+  // value (see applyLiveGitHubOverride doc comment above) — every other
   // row, including north_star_total elsewhere on this page, keeps reading
   // straight from the database, unaffected by this per-display patch.
-  const breakdown = await withLiveGitHubOverride(rawBreakdown);
+  const breakdown = applyLiveGitHubOverride(rawBreakdown, github);
   const deltaByKind = new Map(deltas.map((d) => [d.kind, d]));
   // Hide rows whose ingest hasn't been wired yet (e.g. page views, tweet
   // engagement). `v_ratchet_deltas` always returns a delta row per kind
