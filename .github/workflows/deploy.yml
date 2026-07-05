@@ -25,6 +25,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Cap the job so a wedged `vercel build`/upload fails fast instead of
+    # hanging up to GitHub's 6h default (observed a ~25min stall before a
+    # production auth error surfaced).
+    timeout-minutes: 20
     environment:
       name: production
       url: https://ofriperetz.dev
