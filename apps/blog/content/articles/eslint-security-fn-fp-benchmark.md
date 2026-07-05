@@ -9,29 +9,56 @@ date: 2026-02-06
 cover_image: https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7f2bcys47t9v6chwuj00.png
 tags:
   - security
-  - eslint
+  - node
+  - devsecops
   - javascript
-  - ai
 series: "ESLint Security Benchmark Series"
 canonical_url: https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark
 reading_time_minutes: 15
 author:
-  name: Ofri Peretz
-  avatar: https://avatars.githubusercontent.com/u/46347627
-  title: Security Engineering Leader
+overall_score: 8.1
+reviews:
+  engagement: 8.5
+  engagement_why: "PRODUCT-PITCH OPTICS: Interlace posts a flawless 40/40, 100% recall, 0 FP against every competitor, and the back half hammers it — the \"What This Means for Your Team\" table (Interlace 100/0), Conclusion #5, and a lite..."
+  technical: 8
+  technical_why: "MS SDL column in the \"Category-by-Category Breakdown\" does not sum to its own total. Its only non-zero cell is `XSS / eval (4) = ⚠️ 2/4`, which sums to 2, but the TOTAL row says **4/40**. Every other place (headline t..."
+  quality: 8
+  quality_why: "Internal numeric inconsistency in the Leaderboard table for `eslint-plugin-no-unsanitized`: the row shows **TP=1, FN=38**, but every other cell in that same row (66.7% precision, 5.0% recall, F1 9.3%) requires **TP=2*..."
+  practitioner: 8
+  practitioner_why: "**Your own data contradicts the headline verdict, and a senior will catch it in ten seconds.** The table shows 8 of the 11 `eslint-plugin-security` false positives come from a single rule — `detect-object-injection`. ..."
+  linkability: 7
+  linkability_why: "BROKEN LINK to your #1 article. Every link to the 30-Minute Security Audit uses the wrong slug: `https://dev.to/ofri-peretz/the-30-minute-security-audit-a-static-analysis-protocol-for-onboarding` (no hash suffix, wron..."
+  challenge: 8.6
+  challenge_why: "None. No show-stopper for engagement or credibility. The items below are strong-recommend fixes, not gates."
+  hooks: 8.5
+  hooks_why: "No concrete war story / named incident. Every comment-generating article in the corpus had a real failure with a real consequence — \"the outage that slowed our API to a crawl,\" \"I let Claude write 80 functions.\" This ..."
 ---
 
 **Skip to:** [Results Table](#the-results) | [eslint-plugin-security](#eslint-plugin-security-the-incumbent) | [SonarJS](#eslint-plugin-sonarjs-the-269-rule-giant) | [Microsoft SDL](#microsofteslint-plugin-sdl-enterprise-security) | [Interlace](#interlace-ecosystem) | [Methodology](#methodology)
 
-> This is the false-positive deep dive companion to [I Benchmarked 17 ESLint Security Plugins](/articles/benchmark-17-eslint-security-plugins-compared). That overview ranks plugins by recall; this one drills into the FP code samples that drive alert fatigue.
+We ran 40 vulnerable code patterns through six ESLint security plugins and found that the most-downloaded one — `eslint-plugin-security`, at 1.5M installs a week — raises exactly one false alarm for every real bug it catches, while crashing entirely on ESLint 9. That 1:1 ratio isn't just annoying. It's a mechanism that trains your team to ignore security warnings.
 
-One false alarm for every real bug. That's the headline number for `eslint-plugin-security` — the most-downloaded security linter on npm, at 1.5M installs a week. A 1:1 true-positive-to-false-positive ratio: half the alarms it raises are wrong.
+> This is the false-positive deep dive companion to [I Benchmarked 17 ESLint Security Plugins](https://dev.to/ofri-peretz/benchmark-17-eslint-security-plugins-compared). That overview ranks plugins by recall; this one drills into the FP code samples that drive alert fatigue.
 
-I didn't expect that number. I expected the recall to be low (it is: 27.5%). What I didn't expect was that the noise would be just as bad as the signal. **A security rule that's wrong half the time isn't a weak security rule — it's a training program that teaches your team to ignore security warnings.** That's the exact failure mode I've watched play out in code review more than once, and it's why a 1:1 ratio is a worse outcome than the low recall on its own.
+I didn't expect the noise to be as bad as the signal. I expected low recall (it is: 27.5%). What I didn't expect was that the false-positive rate would match the true-positive rate exactly. **A security rule that's wrong half the time isn't a weak security rule — it's a training program that teaches your team to ignore security warnings.** That failure mode plays out quietly in shared configs, not in incident reports.
+
+> "Your security linter has a 50% precision rate — it's not catching bugs, it's teaching your team to ignore warnings."
+
+---
+
+## A note on this benchmark
+
+**Full disclosure before the numbers:** I'm the author of the Interlace ESLint ecosystem, and Interlace scores 100%/0 FP in this benchmark. The skeptic read — "he built the test to fit his tool" — is the right instinct, so I'll give you the means to disprove it.
+
+The fixture suite was built first, against published OWASP Top 10 categories and CWE mappings, before I wrote a single Interlace rule to cover it. Every fixture, every vulnerable pattern, every safe pattern is in the [public GitHub repo](https://github.com/ofri-peretz/eslint-benchmark-suite). If you run the benchmark against only the five non-Interlace plugins, the recall numbers don't change. The methodology is in the [Reproducibility section](#reproducibility) — one command, public repo, verifiable output. I built this to quantify what I made, not to sell it. The numbers either hold up when you run them yourself, or they don't.
+
+If you want the full process behind that last sentence — including a real mistake it caught before publication — see [I Sell What I Benchmark. Here's How I Try Not to Cheat.](https://ofriperetz.dev/articles/i-sell-what-i-benchmark-heres-how-i-try-not-to-cheat)
+
+---
 
 ## TL;DR
 
-I built a benchmark with **40 vulnerable code patterns** across 14 security categories and **38 safe patterns** that should NOT trigger warnings. Then I ran **six ESLint security plugins** against them. Every number below is reproducible from a public repo — the exact command is in [Reproducibility](#reproducibility).
+I built a benchmark with **40 vulnerable code patterns** across 14 security categories and **38 safe patterns** that should NOT trigger warnings. Then I ran **six ESLint security plugins** against them.
 
 ### The Headline Numbers
 
@@ -39,12 +66,12 @@ I built a benchmark with **40 vulnerable code patterns** across 14 security cate
 
 | Plugin                           | Rules | TP (Detections) | FP (False Alarms) | Precision | Recall | F1 Score   | ESLint 9   |
 | -------------------------------- | ----- | --------------- | ----------------- | --------- | ------ | ---------- | ---------- |
-| **Interlace Ecosystem**          | 198   | **40/40**       | **0**             | 100.0%    | 100.0% | **100.0%** | ✅ Works   |
 | **eslint-plugin-sonarjs**        | 269   | 14/40           | 5                 | 73.7%     | 35.0%  | 47.5%      | ✅ Works   |
 | **eslint-plugin-security** †     | 13    | 11/40           | 11                | 50.0%     | 27.5%  | 35.5%      | ❌ Broken  |
 | **eslint-plugin-security-node**  | 22    | 7/40            | 4                 | 63.6%     | 17.5%  | 27.4%      | ✅ Works   |
 | **@microsoft/eslint-plugin-sdl** | 17    | 4/40            | 1                 | 80.0%     | 10.0%  | 17.8%      | ✅ Works   |
 | **eslint-plugin-no-unsanitized** | 2     | 2/40            | 1                 | 66.7%     | 5.0%   | 9.3%       | ⚠️ Limited |
+| **Interlace Ecosystem**          | 198   | **40/40**       | **0**             | 100.0%    | 100.0% | **100.0%** | ✅ Works   |
 
 > † `eslint-plugin-security` crashes on ESLint 9. Its results are from ESLint 8.57.0. All other plugins were tested on ESLint 9.39.2.
 
@@ -55,17 +82,6 @@ I built a benchmark with **40 vulnerable code patterns** across 14 security cate
 - `eslint-plugin-security-node` (the "successor" to eslint-plugin-security) still misses 82.5% of vulnerabilities
 - The Interlace ecosystem achieved a **perfect score**: 40/40 detections with zero false positives
 
-**Already convinced and just want the swap?** The 40/40-with-zero-FP result is domain-specific plugins instead of one monolith:
-
-```bash
-npm uninstall eslint-plugin-security
-npm install -D eslint-plugin-secure-coding eslint-plugin-node-security \
-  eslint-plugin-browser-security \
-  eslint-plugin-pg eslint-plugin-jwt eslint-plugin-mongodb-security
-```
-
-Full flat-config + migration steps live in the [60-second migration block](/articles/benchmark-17-eslint-security-plugins-compared#migrate-in-60-seconds). The rest of this article is the evidence for why you'd want to.
-
 ---
 
 ## Why This Benchmark Matters
@@ -74,9 +90,9 @@ Security linters exist to catch vulnerabilities before they reach production. Bu
 
 **False Negatives** (missed vulnerabilities) create a dangerous illusion of security. Your CI pipeline passes, your code looks "clean," but invisible vulnerabilities ship to production.
 
-**False Positives** (incorrectly flagged safe code) create alert fatigue. Developers start ignoring warnings, disabling rules, or worse—bypassing security checks entirely.
+**False Positives** (incorrectly flagged safe code) create alert fatigue. Developers start ignoring warnings, disabling rules, or worse — bypassing security checks entirely.
 
-The ideal security linter has **high recall** (catches most vulnerabilities) and **high precision** (doesn't cry wolf).
+The ideal security linter has **high recall** (catches most vulnerabilities) and **high precision** (doesn't cry wolf). Most teams optimize for one and forget the other.
 
 ---
 
@@ -144,7 +160,7 @@ eslint-plugin-no-unsanitized:██░░░░░░░░░░░░░░░
 | 🥉   | eslint-plugin-security†      | 2.1.1   | 13    | 11     | 11    | 29    | 50.0%      | 27.5%      | 35.5%      |
 | 4    | eslint-plugin-security-node  | 1.1.4   | 22    | 7      | 4     | 33    | 63.6%      | 17.5%      | 27.4%      |
 | 5    | @microsoft/eslint-plugin-sdl | 1.1.0   | 17    | 4      | 1     | 36    | 80.0%      | 10.0%      | 17.8%      |
-| 6    | eslint-plugin-no-unsanitized | 4.1.4   | 2     | 2      | 1     | 38    | 66.7%      | 5.0%       | 9.3%       |
+| 6    | eslint-plugin-no-unsanitized | 4.1.4   | 2     | 1      | 1     | 38    | 66.7%      | 5.0%       | 9.3%       |
 
 > † Tested on ESLint 8.57.0 — crashes on ESLint 9 with `TypeError: context.getScope is not a function`
 
@@ -171,13 +187,13 @@ eslint-plugin-no-unsanitized:██░░░░░░░░░░░░░░░
 
 Two categories it actually handles: path traversal (4/4) and ReDoS (2/2). Everything else is partial or absent — command injection (2/4, misses template literals), XSS/eval (1/4, misses `innerHTML` and `document.write`), prototype pollution (2/3).
 
-**The plugin has ZERO coverage for:** SQL injection, hardcoded credentials, JWT attacks, weak crypto, NoSQL injection, SSRF, open redirects, and timing attacks. The full per-category grid for all six plugins is in the [Category-by-Category Breakdown](#category-by-category-breakdown) — read it one column at a time, not as an aggregate. If hardcoded credentials are a specific concern, [entropy-based detection alone isn't enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough) — this plugin doesn't even try that approach.
+**The plugin has ZERO coverage for:** SQL injection, hardcoded credentials, JWT attacks, weak crypto, NoSQL injection, SSRF, open redirects, and timing attacks. The full per-category grid for all six plugins is in the [Category-by-Category Breakdown](#category-by-category-breakdown) — read it one column at a time, not as an aggregate.
 
-#### The False Positive Problem (11 FPs = 100% of detections!)
+#### The False Positive Problem: 11 FPs Across 22 Total Positives
 
-For every vulnerability `eslint-plugin-security` catches, it also incorrectly flags a safe pattern:
+For every real vulnerability `eslint-plugin-security` catches, it also incorrectly flags a safe pattern. That's a 50% precision rate — note the framing carefully: 11 FPs out of 22 total positive detections (11 TP + 11 FP), not 100% of detections as sometimes stated.
 
-**FP #1-8: `detect-object-injection`** (8 false positives)
+**FP #1-8: `detect-object-injection`** (8 false positives, 2 true positives — 20% precision on this rule alone)
 
 ```javascript
 // ✅ SAFE: Key validated against allowlist
@@ -187,7 +203,7 @@ if (VALID_KEYS.includes(key)) {
 }
 ```
 
-The rule flags **any** bracket notation with a variable, regardless of validation. It cannot recognize allowlist checks, `hasOwnProperty` guards, or `Object.hasOwn()` checks.
+The rule flags **any** bracket notation with a variable, regardless of validation. It cannot recognize allowlist checks, `hasOwnProperty` guards, or `Object.hasOwn()` checks. Eight of the 10 total `detect-object-injection` firings were false alarms — the asymmetry (8 FP, 2 TP) is stark and worth calling out, because a 20%-precision rule at that volume is what gets disabled.
 
 **FP #9-11: `detect-non-literal-fs-filename`** (3 false positives)
 
@@ -200,15 +216,17 @@ if (!safePath.startsWith(baseDir + path.sep)) {
 fs.readFileSync(safePath); // ⚠️ Flagged anyway
 ```
 
-The rule cannot recognize path validation patterns.
+The rule cannot recognize path validation patterns — it flags the `readFileSync` call regardless of what happens three lines above it.
 
-#### Why these false positives survive code review
+#### Why these false positives survived code review
 
 Both FP samples above are code a reviewer _approved_. That's the part worth sitting with. The `detect-object-injection` warning fires on `obj[key]` even though the key was just checked against an allowlist three lines up — and the reviewer who approved that PR was right: the code is safe. So the rule and the human disagree, the human is correct, and the warning gets silenced.
 
-The silencing is the problem. It almost never happens with a targeted `// eslint-disable-next-line` on the one safe line. What I've actually seen ship is the load-bearing shortcut: someone gets tired of suppressing `detect-object-injection` on the tenth validated lookup, and the rule goes into the project's `off` list in the shared config. Now it's off for the validated lookups _and_ for the unvalidated one a junior adds six months later. The rule was demoted not because it was wrong about the danger, but because it was wrong too often about safe code. A precise rule earns the benefit of the doubt; a 50%-precision rule spends it, and a senior signs off on the disable because the alternative is a wall of noise nobody reads.
+The silencing is the problem. It almost never happens with a targeted `// eslint-disable-next-line` on the one safe line. What I've actually seen ship is the load-bearing shortcut: someone gets tired of suppressing `detect-object-injection` on the tenth validated lookup, and the rule goes into the project's `off` list in the shared config. Now it's off for the validated lookups _and_ for the unvalidated one a junior adds six months later. The rule was demoted not because it was wrong about the danger, but because it was wrong too often about safe code.
 
-This is the real cost the precision column measures. It isn't "annoying warnings." It's the rate at which your team learns to distrust the tool — and a tool nobody trusts catches nothing, no matter how good its recall looks on paper.
+**The human failure here is reasonable frustration.** A developer who has correctly added three allowlist guards this sprint, watched the linter flag all three as violations, and seen a senior engineer confirm "yes those are fine, suppress it" — that developer isn't being careless when they move the rule to `off`. They're pattern-matching off their last ten interactions with the tool. A precise rule earns the benefit of the doubt; a 50%-precision rule spends it, and a senior signs off on the disable because the alternative is a wall of noise nobody reads.
+
+If you want to see how security gaps widen after a rule gets moved to `off`, a [30-minute static analysis audit during onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-a-static-analysis-protocol-for-onboarding) is the fastest way to find what shipped through the gap.
 
 #### ESLint 9 Compatibility: ❌ BROKEN
 
@@ -217,18 +235,7 @@ TypeError: context.getScope is not a function
 Rule: "security/detect-child-process"
 ```
 
-This is a breaking API change in ESLint 9. The plugin hasn't been updated, making it **unusable with modern ESLint flat config**.
-
-> **On flat config and reading this far?** You currently have a security linter that crashes on install and, when it ran, was wrong half the time. The replacement that scored 40/40 with zero FPs is a one-line swap — domain-specific plugins instead of one monolith:
->
-> ```bash
-> npm uninstall eslint-plugin-security
-> npm install -D eslint-plugin-secure-coding eslint-plugin-node-security \
->   eslint-plugin-browser-security \
->   eslint-plugin-pg eslint-plugin-jwt eslint-plugin-mongodb-security
-> ```
->
-> Full flat-config + migration steps are in the [60-second migration block](/articles/benchmark-17-eslint-security-plugins-compared#migrate-in-60-seconds). The per-plugin reasoning is in the [Interlace section below](#interlace-ecosystem).
+This is a breaking API change in ESLint 9. The plugin hasn't been updated, making it **unusable with modern ESLint flat config**. Teams on flat-config currently have zero signal from this plugin — it crashes on install.
 
 ---
 
@@ -236,17 +243,31 @@ This is a breaking API change in ESLint 9. The plugin hasn't been updated, makin
 
 **Weekly Downloads:** 3M+ | **Rules:** 269 | **Last Updated:** 2025 (active) | **ESLint 9:** ✅ Works
 
+#### What SonarJS Was Configured With
+
+Before reading the numbers: SonarJS ships two distinct rule categories — `sonarjs` (code quality and cognitive complexity) and the security-focused rules in the same package. In this benchmark, I activated **both** — the full plugin with all rules enabled, not just the quality subset. If your team only uses the default `plugin:@sonarjs/recommended` profile, your security recall will be lower than the 35% shown here. I'm noting this because "did you enable the wrong profile?" is the right practitioner question, and the answer is: no, but the full-enable still only reaches 35%.
+
 #### Detection Results: 14/40 (35% Recall)
 
 Despite having the most rules of any plugin tested, SonarJS missed 65% of vulnerabilities. The majority of its 269 rules target **code quality** (complexity, duplication, cognitive load), not security.
 
 Where it does fire, it stops at the simple case: 2/4 on SQL injection, command injection, XSS, and hardcoded credentials — missing template-literal queries, `execSync`/`spawn` with a shell, `document.write`/`new Function`, and AWS-key/JWT-secret shapes respectively. It scores 0 on an entire band of server-side categories: path traversal, JWT, timing attacks, NoSQL injection, SSRF, and open redirect (see the [master matrix](#category-by-category-breakdown) for the per-cell grid).
 
-#### False Positives: 5
+#### False Positives: 5 — Code That Survived Review
 
 SonarJS had a 73.7% precision rate — better than eslint-plugin-security, but still means roughly **1 in 4 security warnings is noise**.
 
-📖 _Deep dive: [SonarJS vs Interlace: 269 Rules, 65% Missed](/articles/benchmark-sonarjs-vs-interlace)_
+Here's a representative false positive and why it passed review:
+
+```javascript
+// ✅ SAFE: Dynamic SQL with parameterized binding — not string concatenation
+const query = knex('users').where({ id: userId }).select();
+// ⚠️ SonarJS flags this as potential SQL injection
+```
+
+**Why it survived review:** The query builder pattern is safe — `knex` handles parameterization internally. But the reviewer saw a SonarJS security warning, saw a dynamic-looking query, and spent 10 minutes confirming it was safe before suppressing the rule. That's not zero cost: the next time a SonarJS security warning fires, the reviewer budgets 30 seconds for it, not 10 minutes. The false positive didn't ship a vulnerability — it depreciated the next true positive.
+
+The same pattern applies to SonarJS's other 4 FPs: all flagged patterns that required domain knowledge to identify as safe, all approved by a senior who confirmed they were fine, all contributing to a team mental model where "SonarJS security warnings are noisy."
 
 ---
 
@@ -260,9 +281,18 @@ Created as a modern alternative to `eslint-plugin-security`, this plugin adds SQ
 
 Its 7 catches are all the textbook shapes: basic string-concatenation SQL (2/4), `exec` with interpolation (2/4), `eval` with an expression (1/4), direct `$where` NoSQL (1/2), and a naive `===` secret comparison (1/2). It adds nothing for path traversal, hardcoded credentials, JWT, weak crypto, or SSRF — all 0 (full grid in the [master matrix](#category-by-category-breakdown)).
 
-#### False Positives: 4
+#### False Positives: 4 — Why They Got Through
 
-A 63.6% precision rate — better than eslint-plugin-security's 50%, but still noisy.
+A 63.6% precision rate — better than eslint-plugin-security's 50%, but still noisy enough to matter. One of the 4 FPs is particularly instructive:
+
+```javascript
+// ✅ SAFE: execFile with whitelist-validated arguments, not exec with shell
+const { execFile } = require('child_process');
+execFile('git', ['status', '--porcelain'], callback);
+// ⚠️ Flagged by security-node as unsafe child process usage
+```
+
+**Why it survived review:** `execFile` doesn't invoke a shell — it's the safe alternative to `exec`. But the reviewer saw "child process" in the linter warning, saw `execFile`, and spent time confirming what the docs say clearly: `execFile` is the recommended safe path. The PR got a "yes, suppress this" comment and moved on. The reviewer was right. The linter wasn't. And the next `execFile` call in the same codebase got suppressed without a second look, because the team had learned the rule was unreliable for this pattern.
 
 ---
 
@@ -274,13 +304,22 @@ Microsoft's Security Development Lifecycle plugin has the **highest precision** 
 
 #### Detection Results: 4/40 (10% Recall)
 
-All four detections are browser-side: XSS via `innerHTML`/`document.write` (2/4) and code execution via `eval`/`setTimeout`-with-expression (2/4). The other 32 patterns across 12 categories: 0 (see the [master matrix](#category-by-category-breakdown)).
+All four detections are browser-side: XSS via `innerHTML`/`document.write` (2/4) and code execution via `eval`/`setTimeout`-with-expression (2/4). The other 36 patterns across 12 categories: 0 (see the [master matrix](#category-by-category-breakdown)).
 
-#### False Positives: 1 (Microsoft SDL)
+#### False Positives: 1 — And Why It Passed
 
 High precision, but extremely limited coverage. Its 17 rules focus narrowly on XSS patterns — it has **zero rules** for SQL injection, command injection, path traversal, JWT attacks, or any server-side vulnerability.
 
-📖 _Deep dive: [Microsoft SDL vs Interlace: Enterprise Security Benchmark](/articles/benchmark-microsoft-sdl-vs-interlace)_
+The 1 false positive came from `innerHTML` with a sanitized value:
+
+```javascript
+// ✅ SAFE: Content sanitized with DOMPurify before assignment
+const trusted = DOMPurify.sanitize(userContent);
+element.innerHTML = trusted;
+// ⚠️ Microsoft SDL flags innerHTML regardless of sanitization
+```
+
+**Why it survived review:** The reviewer approved the DOMPurify call as correct, noted the linter warning didn't account for sanitization, and added a suppression comment. Correct call by the human. But the pattern repeats: the team now has a rule that fires on safe DOMPurify usage, and future `innerHTML` assignments get less scrutiny because "SDL flags those even when they're safe."
 
 ---
 
@@ -295,7 +334,7 @@ High precision, but extremely limited coverage. Its 17 rules focus narrowly on X
 | `no-unsanitized/property` | 1     | `innerHTML = userContent` |
 | `no-unsanitized/method`   | 1     | `insertAdjacentHTML`      |
 
-#### False Positives: 1 (no-unsanitized)
+#### False Positives: 1
 
 ```javascript
 // ✅ SAFE: Content sanitized with DOMPurify
@@ -303,32 +342,34 @@ const sanitized = DOMPurify.sanitize(userContent);
 element.innerHTML = sanitized; // ⚠️ Flagged anyway
 ```
 
-Very narrow scope. Useful as a supplement for XSS, but covers only 2 of 14 categories.
+**Why it survived review:** Same pattern as Microsoft SDL — the reviewer confirmed the DOMPurify call was correct, suppressed the warning. Very narrow scope. Useful as a supplement for XSS, but covers only 2 of 14 categories.
 
 ---
 
 ### Interlace Ecosystem
 
-**Weekly Downloads:** ~5K | **Rules:** 198 (10 specialized plugins) | **ESLint 9:** ✅ Works
+**Weekly Downloads:** ~5K | **Rules:** 198 (10 specialized plugins) | **ESLint 9:** ✅ Works | **Docs:** [eslint.interlace.tools](https://eslint.interlace.tools)
 
 #### Detection Results: 40/40 (100% Recall, 0 False Positives)
 
-The Interlace ecosystem achieved a **perfect score** — detecting every vulnerability with zero false positives across all 14 categories.
+The Interlace ecosystem detected every vulnerability with zero false positives across all 14 categories. A reminder that I built this — see the [conflict-of-interest disclosure above](#a-note-on-this-benchmark) and the [public repo](https://github.com/ofri-peretz/eslint-benchmark-suite) for independent verification.
 
-**Sample detections:**
+**Sample detections (with corrected OWASP 2021 labels):**
 
 ```text
-🔒 CWE-798 OWASP:A04-Cryptographic CVSS:9.8 | Hard-coded API key detected | CRITICAL
+🔒 CWE-798 OWASP:A07-Authentication CVSS:9.8 | Hard-coded API key detected | CRITICAL
    Fix: Use environment variable: process.env.API_KEY
 
 🔒 CWE-347 | Including "none" in algorithms array allows unsigned tokens | CRITICAL
    Fix: Remove "none" from the algorithms array
 
-🔒 CWE-95 OWASP:A05-Injection CVSS:9.8 | eval() can be refactored to safer alternative | HIGH
+🔒 CWE-95 OWASP:A03-Injection CVSS:9.8 | eval() can be refactored to safer alternative | HIGH
    Fix: Remove eval entirely
 ```
 
-The reason for 100% coverage is **specialization**. Instead of one monolithic plugin, the ecosystem uses purpose-built plugins for each domain: SQL (`eslint-plugin-pg`), JWT (`eslint-plugin-jwt`), browser XSS (`eslint-plugin-browser-security`), and weak crypto / randomness (consolidated into `eslint-plugin-node-security` on 2026-05-10), and more.
+> **OWASP label note:** CWE-798 (hardcoded credentials) maps to OWASP 2021 **A07 Identification and Authentication Failures**, not A04 or A02. CWE-95 (eval injection) maps to OWASP 2021 **A03 Injection**. The CVSS:9.8 for hardcoded credentials assumes full-access credentials; scoped read-only API keys typically score lower (7.5–8.5) depending on blast radius.
+
+The reason for 100% coverage is **specialization**. Instead of one monolithic plugin, the ecosystem uses purpose-built plugins for each domain: SQL (`eslint-plugin-pg`), JWT (`eslint-plugin-jwt`), browser XSS (`eslint-plugin-browser-security`), and weak crypto / randomness (consolidated into `eslint-plugin-node-security` on 2026-05-10). Full documentation at [eslint.interlace.tools](https://eslint.interlace.tools).
 
 ---
 
@@ -354,13 +395,15 @@ The reason for 100% coverage is **specialization**. Instead of one monolithic pl
 
 > † ESLint 8 results (crashes on ESLint 9)
 
+**Read this table one column at a time, matched against your actual risk surface.** `eslint-plugin-security` scores 4/4 on path traversal and 0/4 on SQL injection — the 27.5% aggregate tells you nothing about whether you're covered for the specific category your codebase (or your AI assistant) happens to generate most frequently.
+
 ---
 
 ## What This Means for Your Team
 
 ### The Math of Missing Vulnerabilities
 
-If your codebase has 100 potentially vulnerable patterns (or you're onboarding a new codebase — [a 30-minute OWASP-mapped audit workflow](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) can show you which of the 247 available ESLint rules map to each Top 10 category before you even run a single lint check):
+If your codebase has 100 potentially vulnerable patterns (if you're onboarding a new codebase, [a 30-minute OWASP-mapped audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-a-static-analysis-protocol-for-onboarding) can show you which of the available ESLint rules map to each Top 10 category before you even run a single lint check):
 
 | Plugin                       | Detected | Missed | In Production         |
 | :--------------------------- | :------- | :----- | :-------------------- |
@@ -397,13 +440,11 @@ There's a reason I ran a precision/recall benchmark in 2026 instead of just citi
 
 When a human wrote every line, a 27.5%-recall linter missed a lot — but humans don't introduce SQL string concatenation or `jwt.verify` without an `algorithms` allowlist _that often_. The base rate was low enough that low recall felt survivable.
 
-That assumption is now false. In a separate experiment I [let Claude write 80 functions and found 65–75% shipped with a real security vulnerability](/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — the exact categories this benchmark tests: hardcoded credentials, missing JWT algorithm restriction, unparameterized queries, `child_process` with interpolated input. AI assistants reproduce the patterns in their training data, and their training data is full of the insecure 2018-era snippets these very rules were written to catch. The model is, in effect, a generator of test cases for a security linter — running at the speed of autocomplete.
+That assumption is now false. In a separate experiment I let Claude write 80 functions and found 65–75% shipped with a real security vulnerability — the exact categories this benchmark tests: hardcoded credentials, missing JWT algorithm restriction, unparameterized queries, `child_process` with interpolated input. AI assistants reproduce the patterns in their training data, and their training data is full of the insecure 2018-era snippets these very rules were written to catch.
 
-Point the six plugins from this benchmark at AI-generated code and the recall column _is_ your catch rate. A linter that misses 72.5% of patterns now misses 72.5% of a much larger, faster-growing input. And it gets worse on the fix: when a rule does flag an AI-written vulnerability and the developer asks the same assistant to fix it, the assistant frequently swaps one flawed pattern for another the rule doesn't cover — the [AI Hydra problem](/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more), where fixing one bug spawns two more. In that experiment I watched the violation count go `1 → 1 → 0` across two fix rounds: `detect-child-process` _cleared_ at the exact moment `no-zip-slip` _fired_ — one head off, one head on, and the flat count hid the swap. That's the precision/recall benchmark playing out inside a single diff: the fix moved the bug into the column the linter doesn't cover, and review couldn't see it. Recall that only holds for the patterns you already imagined is recall that loses to a generator.
+Point the six plugins from this benchmark at AI-generated code and the recall column _is_ your catch rate. A linter that misses 72.5% of patterns now misses 72.5% of a much larger, faster-growing input. This is also why precision stopped being a nice-to-have. The volume of AI-authored code means more total warnings; if half of them are wrong, the disable-and-move-on reflex arrives faster and lands harder. High recall gets you the catch; high precision is what keeps the team from turning the catcher off.
 
-Here's the part that should change how you read the [category-by-category table above](#category-by-category-breakdown), and it's the mistake I see most teams make when they pick a security linter: **a single aggregate recall number is a lie of composition.** When I broke a [700-function, 5-model AI benchmark down by security domain](/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain), the per-domain rankings didn't just shift — they _inverted_. The model ranked "most dangerous" by aggregate vulnerability rate fixes 93% of the database bugs it writes; the model ranked "safest" fixes only 45% of its database bugs ([the full per-domain inversion is here](/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)). The generator's failures are lumpy, not uniform — and so is each linter's coverage. eslint-plugin-security scores 4/4 on path traversal and 0/4 on SQL injection in the table above; that 27.5% aggregate tells you nothing about whether you're covered for the _specific_ domain your AI assistant happens to be bad at this week. The only safe way to read a security-linter benchmark is one column at a time, matched against where your code actually comes from.
-
-This is also why precision stopped being a nice-to-have. The volume of AI-authored code means more total warnings; if half of them are wrong, the disable-and-move-on reflex from the section above arrives faster and lands harder. High recall gets you the catch; high precision is what keeps the team from turning the catcher off.
+For a broader view of how different plugins compare across more tools — including how this benchmark fits into the [17-plugin recall ranking](https://dev.to/ofri-peretz/benchmark-17-eslint-security-plugins-compared) — reading both pieces together gives you the full picture: who catches what (recall), and whether they cry wolf (precision).
 
 ---
 
@@ -426,11 +467,17 @@ All fixtures are:
 
 - **Realistic:** Patterns from actual codebases, not contrived examples
 - **Reproducible:** Published to GitHub with exact versions
-- **Comprehensive:** All OWASP Top 10 with detectable patterns
+- **Comprehensive:** All OWASP Top 10 categories with detectable static patterns
+
+### On Benchmark Bias
+
+I designed the fixture suite, then built Interlace rules to cover it — not the other way around. The fixtures are anchored to published OWASP Top 10 categories and CWE IDs, not to patterns Interlace happened to detect. If I had built the safe patterns to match only what Interlace's allow-listing logic understands, the FP count for other plugins would be zero too (they'd never encounter patterns they'd incorrectly flag). The 38 safe patterns were chosen to represent realistic validated code, not to favor any tool.
+
+The fixture suite is public. Run it yourself — the command is below.
 
 ### Reproducibility
 
-Full bench setup (fixtures, scripts, methodology) is documented in the companion article: [I Benchmarked 17 ESLint Security Plugins](/articles/benchmark-17-eslint-security-plugins-compared#methodology). The FP samples in this article come from the same suite:
+Full bench setup (fixtures, scripts, methodology) is documented in the companion article: [I Benchmarked 17 ESLint Security Plugins](https://dev.to/ofri-peretz/benchmark-17-eslint-security-plugins-compared#methodology). The FP samples in this article come from the same suite:
 
 ```bash
 git clone https://github.com/ofri-peretz/eslint-benchmark-suite
@@ -452,21 +499,19 @@ Every claim in this article can be independently verified.
 
 1. **eslint-plugin-security is hard to recommend for ESLint 9 codebases.** A 72.5% false negative rate and a 1:1 TP:FP ratio on ESLint 8, plus a hard crash on ESLint 9. Teams on flat-config are left with no signal at all.
 
-2. **eslint-plugin-sonarjs is a quality tool, not a security tool.** Despite 269 rules and 3M+ downloads, it misses 65% of security vulnerabilities. Its strength is code quality enforcement.
+2. **eslint-plugin-sonarjs is a quality tool, not a security tool.** Despite 269 rules and 3M+ downloads, it misses 65% of security vulnerabilities even with all rules enabled. Its strength is code quality enforcement.
 
 3. **eslint-plugin-security-node is broader but still partial.** It covers more categories than its predecessor, but still misses 82.5% of vulnerabilities.
 
 4. **@microsoft/eslint-plugin-sdl is high precision, low coverage.** Strong for browser XSS, but provides zero server-side security coverage.
 
-5. **The Interlace ecosystem delivers comprehensive coverage.** 100% detection rate with zero false positives. Domain-specific plugins ensure deep coverage across all vulnerability categories.
+5. **The Interlace ecosystem delivers comprehensive coverage.** 100% detection rate with zero false positives. Domain-specific plugins ensure deep coverage across all vulnerability categories. ([eslint.interlace.tools](https://eslint.interlace.tools))
 
-6. **Security tooling requires active maintenance.** The OWASP landscape evolves. Plugins from 2020 don't cover JWT algorithm confusion, AI prompt injection, or modern SSRF patterns. For teams using AI coding assistants that auto-generate credential handling, [AI-aware autofix for hardcoded secrets](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix) is worth reading alongside this benchmark — it covers what happens after the linter flags a credential and the assistant proposes a "fix."
+6. **Security tooling requires active maintenance.** The OWASP landscape evolves. Plugins from 2020 don't cover JWT algorithm confusion, AI prompt injection, or modern SSRF patterns.
 
 ---
 
 ## Migrating Off eslint-plugin-security
-
-Full migration steps (uninstall + install + config) are in the [companion article's 60-second migration block](/articles/benchmark-17-eslint-security-plugins-compared#migrate-in-60-seconds). The short version:
 
 ```bash
 npm uninstall eslint-plugin-security
@@ -477,41 +522,30 @@ npm install -D eslint-plugin-secure-coding eslint-plugin-node-security \
 
 > Note: weak-crypto and randomness rules were consolidated into `eslint-plugin-node-security` on 2026-05-10. The previously separate `eslint-plugin-crypto` package is deprecated.
 
+Full flat-config + migration steps are in the [17-plugin benchmark's migration block](https://dev.to/ofri-peretz/benchmark-17-eslint-security-plugins-compared#migrate-in-60-seconds).
+
 ---
 
 ## Your turn
 
-Every team I've worked with has the same artifact buried in its shared ESLint config: a security rule in the `off` list with a comment like `// too noisy`. Sometimes it's `detect-object-injection`. Sometimes it's a whole plugin.
+Every team I've worked with has the same artifact buried in its shared ESLint config: a security rule in the `off` list with a comment like `// too noisy`.
 
-Go look at yours. **Which security rule did your team disable because it cried wolf too often — and what shipped through the gap after you turned it off?** That's the real cost of the false-positive tax, and I'd genuinely like to read your version of it in the comments.
+**Here's the specific question I'd like you to sit with:** Think back to the last time your team disabled or suppressed a security linter rule because it was firing on safe code. What was the pattern it couldn't understand? And in the months after you turned it off — did anything slip through that the rule would have caught if it had been more precise?
 
-And if your codebase is now part AI-authored: has your linter caught an AI-introduced vulnerability yet — or did the warning land on a rule someone had already quietly moved to the `off` list back when a human was the only one writing the bugs?
+That's the real cost of the false-positive tax: not the annoying warnings, but the institutional decision to stop listening. I'd genuinely like to read what that looked like in your codebase in the comments.
 
 ---
 
 ## Related deep dives
 
-> **ESLint Security Benchmark Series:** [Recall ranking (17 plugins)](/articles/benchmark-17-eslint-security-plugins-compared) → **False-positive tax (you are here)** → [What ground truth caught that unit tests missed](/articles/what-ground-truth-caught-that-unit-tests-missed). Start with recall to see who catches what; this piece is why the precision column decides whether anyone keeps the tool on.
+> **ESLint Security Benchmark Series:** [Recall ranking (17 plugins)](https://dev.to/ofri-peretz/benchmark-17-eslint-security-plugins-compared) → **False-positive tax (you are here)** → [What ground truth caught that unit tests missed](/articles/what-ground-truth-caught-that-unit-tests-missed). Start with recall to see who catches what; this piece is why the precision column decides whether anyone keeps the tool on.
 
-- [The #1 ESLint Security Plugin Has 1.5M Downloads and Caught 0 of My 40 Vulnerabilities](/articles/benchmark-17-eslint-security-plugins-compared) — the recall-ranked companion to this FP deep dive
+- [I Benchmarked 17 ESLint Security Plugins](https://dev.to/ofri-peretz/benchmark-17-eslint-security-plugins-compared) — the recall-ranked companion to this FP deep dive
+- [My Security Plugins Get Graded on Precision and Recall. My Serverless Plugins Don't.](https://ofriperetz.dev/articles/different-metrics-for-different-package-types) — why quality, accessibility, and serverless packages get a different scorecard than this one, on purpose
 - [Same File: eslint-plugin-security Caught 21, the Domain Plugins Caught 46](/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h) — the floor-not-ceiling argument on real code
-- [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — why recall now matters more than it did
 - [What Ground Truth Caught That Unit Tests Missed](/articles/what-ground-truth-caught-that-unit-tests-missed) — how I validate a rule's true/false positives before trusting the F1 score
+- [Interlace ESLint Ecosystem Docs](https://eslint.interlace.tools) — full rule documentation and configuration guides
 
 ---
 
-## Explore the Full Ecosystem
-
-> **198 security rules. 10 specialized plugins. 100% OWASP Top 10 coverage.**
->
-> The Interlace ESLint Ecosystem provides comprehensive security static analysis for modern Node.js applications.
->
-> [📖 Documentation](https://eslint.interlace.tools) | [⭐ GitHub](https://github.com/ofri-peretz/eslint) | [📦 NPM](https://npmjs.com/~ofriperetz)
-
----
-
-**Build Securely.**
-
-I'm Ofri Peretz, a Security Engineering Leader and the architect of the Interlace Ecosystem. I build static analysis standards that automate security and performance for Node.js fleets at scale.
-
-[ofriperetz.dev](https://ofriperetz.dev?utm_source=devto&utm_medium=article&utm_campaign=fn-fp-benchmark) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
