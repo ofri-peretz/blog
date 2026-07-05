@@ -168,99 +168,6 @@ export const getCachedCreatorsByPlatform = unstable_cache(
   { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
 );
 
-// ─── Cumulative npm downloads since project start ──────────────────────
-//
-// Sums plugin_daily_metrics.npm_downloads_d1 across all plugins for all
-// days >= METRICS_START_DATE. Deterministic — no running-counter bookkeeping
-// that can drift (as ecosystem_daily_metrics.total_npm_downloads did when
-// backfill-history.ts re-baselined from 0 on 2026-05-24).
-//
-// Note: requires plugin_daily_metrics to be populated for the full window.
-// Backfill via the npm registry `/downloads/range/` endpoint covers any gaps.
-
-export const METRICS_START_DATE = "2025-11-30";
-
-export const getCachedNpmTotalSinceStart = unstable_cache(
-  async (): Promise<number> => {
-    const client = getClient();
-    if (!client) return 0;
-    const { data, error } = await client
-      .from("plugin_daily_metrics")
-      .select("npm_downloads_d1")
-      .gte("observed_on", METRICS_START_DATE);
-    if (error) {
-      console.error("[supabase-data] npm total sum:", error.message);
-      return 0;
-    }
-    return (data ?? []).reduce(
-      (sum, row) => sum + (row.npm_downloads_d1 ?? 0),
-      0,
-    );
-  },
-  ["npm-total-since-start"],
-  { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
-);
-
-// ─── Lifetime npm downloads — total downloads ever, across all plugins ──
-//
-// Hits npm registry's `/downloads/range/` endpoint per plugin and sums.
-// Per-plugin pacing (250ms) keeps us well under npm's anonymous rate
-// limit. Wall time: ~7-10s on a cache miss. Cache miss happens once per
-// 12 hours per cache region, so the cost is amortized to a few API calls
-// per day per region.
-//
-// Start date: 2020-01-01 — well before any of our plugins published.
-// npm returns 0 for any day predating the first publish, so the start
-// date doesn't need per-plugin tuning.
-
-export const getCachedNpmLifetimeTotal = unstable_cache(
-  async (): Promise<number> => {
-    const client = getClient();
-    if (!client) return 0;
-    const { data: plugins, error } = await client
-      .from("plugins")
-      .select("name");
-    if (error || !plugins) {
-      console.error(
-        "[supabase-data] npm lifetime: plugins query failed:",
-        error?.message,
-      );
-      return 0;
-    }
-    const today = new Date().toISOString().slice(0, 10);
-    let total = 0;
-    for (let i = 0; i < plugins.length; i += 1) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 250));
-      const name = plugins[i]!.name;
-      try {
-        const r = await fetch(
-          `https://api.npmjs.org/downloads/range/2020-01-01:${today}/${encodeURIComponent(name)}`,
-          {
-            headers: {
-              "User-Agent": "ofriperetz.dev/blog (homepage stats)",
-              Accept: "application/json",
-            },
-            signal: AbortSignal.timeout(5_000),
-          },
-        );
-        if (!r.ok) continue;
-        const json = (await r.json()) as {
-          downloads?: Array<{ downloads: number }>;
-        };
-        for (const d of json.downloads ?? []) total += d.downloads;
-      } catch (err) {
-        console.warn(
-          `[supabase-data] npm lifetime: ${name} failed`,
-          (err as Error).message,
-        );
-      }
-    }
-    return total;
-  },
-  ["npm-lifetime-total"],
-  { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
-);
-
 // ─── All-time ecosystem npm downloads — the canonical total ────────────
 //
 // Single row from v_npm_alltime_ecosystem, which sums npm_alltime_downloads
@@ -268,11 +175,18 @@ export const getCachedNpmLifetimeTotal = unstable_cache(
 // by agents/footprint/scripts/backfill-npm-alltime.ts and is the SAME source
 // the eng_downloads_cumulative ratchet on /scorecard reads — this fetcher
 // exists so /api/homepage-stats reads the identical number instead of
-// independently recomputing "npm downloads" a different way (see the
-// getCachedNpmLifetimeTotal / getCachedNpmTotalSinceStart comments below:
-// keeping either as a homepage fallback let a transient Supabase hiccup
-// silently revert the homepage to a DIFFERENT total than /scorecard shows —
-// this exact class of bug already happened once, 155k vs 192k, for weeks).
+// independently recomputing "npm downloads" a different way.
+//
+// Two earlier fetchers computed this differently — getCachedNpmLifetimeTotal
+// (summed live npm registry `/downloads/range/` calls per plugin) and
+// getCachedNpmTotalSinceStart (summed plugin_daily_metrics.npm_downloads_d1
+// from base tables since METRICS_START_DATE). Keeping either as a homepage
+// fallback let a transient Supabase hiccup silently revert the homepage to
+// a DIFFERENT total than /scorecard shows — this exact class of bug already
+// happened once, 155k vs 192k, for weeks. PR #51 made this the sole source;
+// both legacy fetchers were deleted entirely once confirmed unused
+// (see git history for apps/blog/src/lib/supabase-data.ts if you need the
+// old implementations back).
 
 export const getCachedNpmAlltimeTotal = unstable_cache(
   async (): Promise<number> => {
@@ -300,7 +214,23 @@ export const getCachedNpmAlltimeTotal = unstable_cache(
 // query — was previously duplicated (same two Supabase queries + the same
 // day-bucketing loop, hand-rolled twice) between this file and
 // npm-page-data.ts's now-removed getCachedDailyHistory().
-
+//
+// Reads v_plugin_daily (agents/supabase/migrations/202607050200_add_v_plugin_daily.sql)
+// instead of querying plugin_daily_metrics directly — the view already
+// joins plugin metadata onto each daily row, same as every other fetcher
+// in this file goes through the v_* view layer rather than base tables.
+//
+// The plugin ROSTER query stays separate from the metrics query rather
+// than being folded into "one query total": v_plugin_daily inner-joins
+// plugins ⋈ plugin_daily_metrics, so a plugin with zero rows in
+// plugin_daily_metrics for the whole 30-day window (a real, seen-before gap
+// — see agents/footprint/scripts/backfill-gaps.ts) would silently vanish
+// from `plugins` too if the roster came from the same join. Consumers rely
+// on the roster including such plugins: npm-page-data.ts's
+// getNpmPagePackages() keeps a plugin visible when it has ANY lifetime
+// downloads even with zero 30-day rows (`downloads30d > 0 ||
+// downloadsLifetime > 0`). Splitting the queries keeps that contract while
+// still eliminating the plugin_daily_metrics base-table read.
 export interface PluginMeta {
   id: number;
   name: string;
@@ -340,12 +270,12 @@ export const getCachedPluginsDailyRaw = unstable_cache(
     }
 
     const { data: daily, error: dErr } = await client
-      .from("plugin_daily_metrics")
+      .from("v_plugin_daily")
       .select("plugin_id, observed_on, npm_downloads_d1")
       .gte("observed_on", windowStart)
       .order("observed_on", { ascending: true });
     if (dErr) {
-      console.error("[supabase-data] plugin_daily_metrics:", dErr.message);
+      console.error("[supabase-data] v_plugin_daily:", dErr.message);
       return { plugins, daily: [] };
     }
 
