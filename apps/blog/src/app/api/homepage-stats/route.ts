@@ -213,6 +213,17 @@ export async function GET(): Promise<Response> {
     getCachedNpmAlltimeTotal(),
   ]);
 
+  // The fetcher only logs on a query error, not on an empty-but-successful
+  // read (e.g. v_npm_alltime_ecosystem has no rows yet because the daily
+  // backfill hasn't run). Log that case here so 0 is always visible in logs,
+  // not just silently rendered — matches the "no silent empty states" intent
+  // below.
+  if (npmAlltimeTotal === 0) {
+    console.warn(
+      "[homepage-stats] totalDownloads is 0 — v_npm_alltime_ecosystem may be unpopulated",
+    );
+  }
+
   const npm: NpmData = {
     // Total downloads ever (lifetime), from v_npm_alltime_ecosystem — the
     // SAME view the /scorecard eng_downloads_cumulative ratchet reads. This

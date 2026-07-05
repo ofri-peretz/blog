@@ -311,12 +311,16 @@ export interface PluginMeta {
 
 export interface PluginsDailyRaw {
   plugins: PluginMeta[];
-  daily: Map<number, Array<{ day: string; downloads: number }>>;
+  // Array-of-entries, not a Map: `unstable_cache` serializes its return
+  // value through JSON, and Next.js explicitly documents that Map/Set/Date
+  // aren't supported — on a cache hit a Map field comes back as `{}`. Each
+  // call site reconstructs a Map locally via `new Map(daily)`.
+  daily: Array<[number, Array<{ day: string; downloads: number }>]>;
 }
 
 export const getCachedPluginsDailyRaw = unstable_cache(
   async (): Promise<PluginsDailyRaw> => {
-    const empty: PluginsDailyRaw = { plugins: [], daily: new Map() };
+    const empty: PluginsDailyRaw = { plugins: [], daily: [] };
     const client = getClient();
     if (!client) return empty;
 
@@ -342,7 +346,7 @@ export const getCachedPluginsDailyRaw = unstable_cache(
       .order("observed_on", { ascending: true });
     if (dErr) {
       console.error("[supabase-data] plugin_daily_metrics:", dErr.message);
-      return { plugins, daily: new Map() };
+      return { plugins, daily: [] };
     }
 
     const byPlugin = new Map<
@@ -358,7 +362,7 @@ export const getCachedPluginsDailyRaw = unstable_cache(
       byPlugin.set(row.plugin_id, arr);
     }
 
-    return { plugins, daily: byPlugin };
+    return { plugins, daily: Array.from(byPlugin.entries()) };
   },
   ["plugins-daily-raw"],
   { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
@@ -372,7 +376,8 @@ export interface PluginWithDailyData {
 
 export const getCachedPluginsWithDailyData = unstable_cache(
   async (): Promise<PluginWithDailyData[]> => {
-    const { plugins, daily } = await getCachedPluginsDailyRaw();
+    const { plugins, daily: dailyEntries } = await getCachedPluginsDailyRaw();
+    const daily = new Map(dailyEntries);
 
     return plugins
       .map((p) => {

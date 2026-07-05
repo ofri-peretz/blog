@@ -76,7 +76,8 @@ const getCachedLifetimePerPackage = unstable_cache(
 
 // Composed: per-package data ready to render.
 export async function getNpmPagePackages(): Promise<NpmPagePackage[]> {
-  const { plugins, daily } = await getCachedPluginsDailyRaw();
+  const { plugins, daily: dailyEntries } = await getCachedPluginsDailyRaw();
+  const daily = new Map(dailyEntries);
   if (plugins.length === 0) return [];
 
   const lifetimeByName = await getCachedLifetimePerPackage(
