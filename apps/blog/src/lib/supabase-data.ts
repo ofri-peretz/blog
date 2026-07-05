@@ -261,22 +261,68 @@ export const getCachedNpmLifetimeTotal = unstable_cache(
   { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
 );
 
+// ─── All-time ecosystem npm downloads — the canonical total ────────────
+//
+// Single row from v_npm_alltime_ecosystem, which sums npm_alltime_downloads
+// (PRIMARY KEY plugin_id) across every plugin. That table is refreshed daily
+// by agents/footprint/scripts/backfill-npm-alltime.ts and is the SAME source
+// the eng_downloads_cumulative ratchet on /scorecard reads — this fetcher
+// exists so /api/homepage-stats reads the identical number instead of
+// independently recomputing "npm downloads" a different way (see the
+// getCachedNpmLifetimeTotal / getCachedNpmTotalSinceStart comments below:
+// keeping either as a homepage fallback let a transient Supabase hiccup
+// silently revert the homepage to a DIFFERENT total than /scorecard shows —
+// this exact class of bug already happened once, 155k vs 192k, for weeks).
+
+export const getCachedNpmAlltimeTotal = unstable_cache(
+  async (): Promise<number> => {
+    const client = getClient();
+    if (!client) return 0;
+    const { data, error } = await client
+      .from("v_npm_alltime_ecosystem")
+      .select("ecosystem_alltime")
+      .maybeSingle();
+    if (error) {
+      console.error("[supabase-data] v_npm_alltime_ecosystem:", error.message);
+      return 0;
+    }
+    return (data?.ecosystem_alltime as number | null) ?? 0;
+  },
+  ["v_npm_alltime_ecosystem"],
+  { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
+);
+
 // ─── Per-plugin daily downloads (for sparklines + per-package totals) ──
 //
 // Window: 30 days back from today. Each plugin row gets a {day, downloads}
-// array suitable for the per-package chart on /scorecard and the npm-stats
-// route's `packages[].dailyData` field.
+// array suitable for the per-package chart on /scorecard, the npm-stats
+// route's `packages[].dailyData` field, and the /npm page. Single canonical
+// query — was previously duplicated (same two Supabase queries + the same
+// day-bucketing loop, hand-rolled twice) between this file and
+// npm-page-data.ts's now-removed getCachedDailyHistory().
 
-export interface PluginWithDailyData {
+export interface PluginMeta {
+  id: number;
   name: string;
-  downloads: number;
-  dailyData: Array<{ day: string; downloads: number }>;
+  slug: string;
+  category: string | null;
+  description: string | null;
 }
 
-export const getCachedPluginsWithDailyData = unstable_cache(
-  async (): Promise<PluginWithDailyData[]> => {
+export interface PluginsDailyRaw {
+  plugins: PluginMeta[];
+  // Array-of-entries, not a Map: `unstable_cache` serializes its return
+  // value through JSON, and Next.js explicitly documents that Map/Set/Date
+  // aren't supported — on a cache hit a Map field comes back as `{}`. Each
+  // call site reconstructs a Map locally via `new Map(daily)`.
+  daily: Array<[number, Array<{ day: string; downloads: number }>]>;
+}
+
+export const getCachedPluginsDailyRaw = unstable_cache(
+  async (): Promise<PluginsDailyRaw> => {
+    const empty: PluginsDailyRaw = { plugins: [], daily: [] };
     const client = getClient();
-    if (!client) return [];
+    if (!client) return empty;
 
     // Window: last 30 days. Hard floor at 2025-11-30 (METRICS_START_DATE in
     // the old bundled-JSON route — keeps the chart's x-axis stable).
@@ -287,10 +333,10 @@ export const getCachedPluginsWithDailyData = unstable_cache(
 
     const { data: plugins, error: pErr } = await client
       .from("plugins")
-      .select("id, name");
-    if (pErr) {
-      console.error("[supabase-data] plugins:", pErr.message);
-      return [];
+      .select("id, name, slug, category, description");
+    if (pErr || !plugins) {
+      console.error("[supabase-data] plugins:", pErr?.message);
+      return empty;
     }
 
     const { data: daily, error: dErr } = await client
@@ -300,7 +346,7 @@ export const getCachedPluginsWithDailyData = unstable_cache(
       .order("observed_on", { ascending: true });
     if (dErr) {
       console.error("[supabase-data] plugin_daily_metrics:", dErr.message);
-      return [];
+      return { plugins, daily: [] };
     }
 
     const byPlugin = new Map<
@@ -316,9 +362,26 @@ export const getCachedPluginsWithDailyData = unstable_cache(
       byPlugin.set(row.plugin_id, arr);
     }
 
-    return (plugins ?? [])
+    return { plugins, daily: Array.from(byPlugin.entries()) };
+  },
+  ["plugins-daily-raw"],
+  { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
+);
+
+export interface PluginWithDailyData {
+  name: string;
+  downloads: number;
+  dailyData: Array<{ day: string; downloads: number }>;
+}
+
+export const getCachedPluginsWithDailyData = unstable_cache(
+  async (): Promise<PluginWithDailyData[]> => {
+    const { plugins, daily: dailyEntries } = await getCachedPluginsDailyRaw();
+    const daily = new Map(dailyEntries);
+
+    return plugins
       .map((p) => {
-        const dailyData = byPlugin.get(p.id) ?? [];
+        const dailyData = daily.get(p.id) ?? [];
         const total = dailyData.reduce((s, d) => s + d.downloads, 0);
         return { name: p.name, downloads: total, dailyData };
       })

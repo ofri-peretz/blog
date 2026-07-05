@@ -22,8 +22,7 @@ import { unstable_cache } from "next/cache";
 import {
   getCachedCreatorsByPlatform,
   getCachedEcosystemLatest,
-  getCachedNpmLifetimeTotal,
-  getCachedNpmTotalSinceStart,
+  getCachedNpmAlltimeTotal,
   getCachedPluginLatest,
 } from "@/lib/supabase-data";
 import { GITHUB_CONFIG } from "@/lib/metrics-config";
@@ -207,28 +206,34 @@ export async function GET(): Promise<Response> {
     console.warn("[homepage-stats] github source unavailable:", err);
   }
 
-  const [creators, ecosystem, plugins, npmLifetime, npmSinceStart] =
-    await Promise.all([
-      getCachedCreatorsByPlatform(),
-      getCachedEcosystemLatest(),
-      getCachedPluginLatest(),
-      getCachedNpmLifetimeTotal(),
-      getCachedNpmTotalSinceStart(),
-    ]);
+  const [creators, ecosystem, plugins, npmAlltimeTotal] = await Promise.all([
+    getCachedCreatorsByPlatform(),
+    getCachedEcosystemLatest(),
+    getCachedPluginLatest(),
+    getCachedNpmAlltimeTotal(),
+  ]);
+
+  // The fetcher only logs on a query error, not on an empty-but-successful
+  // read (e.g. v_npm_alltime_ecosystem has no rows yet because the daily
+  // backfill hasn't run). Log that case here so 0 is always visible in logs,
+  // not just silently rendered — matches the "no silent empty states" intent
+  // below.
+  if (npmAlltimeTotal === 0) {
+    console.warn(
+      "[homepage-stats] totalDownloads is 0 — v_npm_alltime_ecosystem may be unpopulated",
+    );
+  }
 
   const npm: NpmData = {
-    // Total downloads ever (lifetime). Sourced live from npm registry
-    // `/downloads/range/` per plugin and cached 12h. Falls back to the
-    // since-2025-11-30 plugin_daily_metrics sum if the live fetch failed
-    // (network, rate limit, etc.), then to the cumulative-counter on
-    // ecosystem_daily_metrics (which has known bookkeeping issues — see
-    // migration notes). 0 only if all three return 0.
-    totalDownloads:
-      npmLifetime > 0
-        ? npmLifetime
-        : npmSinceStart > 0
-          ? npmSinceStart
-          : (ecosystem?.total_npm_downloads ?? 0),
+    // Total downloads ever (lifetime), from v_npm_alltime_ecosystem — the
+    // SAME view the /scorecard eng_downloads_cumulative ratchet reads. This
+    // is the single source for this number; no fallback to a differently-
+    // computed total. 0 here is a genuine "no data" signal, not silently
+    // replaced by a different calculation (see the fetcher's doc comment
+    // in @/lib/supabase-data for why: a prior "pick whichever is nonzero"
+    // fallback chain let a transient hiccup silently show a DIFFERENT
+    // number than /scorecard for weeks).
+    totalDownloads: npmAlltimeTotal,
     packageCount: plugins.length,
   };
 
