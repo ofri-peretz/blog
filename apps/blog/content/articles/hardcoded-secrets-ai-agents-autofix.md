@@ -26,7 +26,7 @@ series: "Hardening AI Agents"
 AI agents autofixed 3 hardcoded secrets in our codebase — and introduced 2 new ones in the same PR. Here's why that happens and how to stop it.
 
 When I had Claude generate 80 common Node.js functions with no security context,
-[65–75% shipped with a vulnerability](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+[65–75% shipped with a vulnerability](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o)
 — and a hardcoded credential was the single most repeated pattern. Ask an AI
 assistant to "wire up Stripe" or "connect to the database" and watch what it
 produces:
@@ -71,7 +71,7 @@ single deterministic rewrite — hoist the literal to `process.env` — with no
 behavioral branches for the model to get creative in. That's why this is the
 **one** AI-introduced vulnerability worth wiring into an autonomous loop first.
 
-> **Series — Hardening AI Agents:** [I Let Claude Write 80 Functions (65–75% had a vuln)](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) → **Hardcoded secrets: the one AI can auto-fix** (you are here) → [Claude wrote a NestJS service — ESLint found 6 holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). The thread: AI writes the bug, a machine-readable lint finding closes the loop.
+> **Series — Hardening AI Agents:** [I Let Claude Write 80 Functions (65–75% had a vuln)](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) → **Hardcoded secrets: the one AI can auto-fix** (you are here) → [Claude wrote a NestJS service — ESLint found 6 holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). The thread: AI writes the bug, a machine-readable lint finding closes the loop.
 
 ---
 
@@ -326,7 +326,7 @@ domain-specific static analysis whose findings are deliberately structured for
 both humans and the agents now writing most of the code.
 
 This piece is part of my **Hardening AI Agents** series. The
-[65–75% experiment](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+[65–75% experiment](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o)
 is where the headline number comes from; if you want the same
 machine-readable-finding loop applied to a whole AI-written service, see
 [Claude wrote a NestJS service — ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes),

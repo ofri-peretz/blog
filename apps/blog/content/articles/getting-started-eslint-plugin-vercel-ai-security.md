@@ -340,8 +340,8 @@ That's the actual argument for a deterministic gate: the thing writing your AI c
 
 Related reading from the _Hardening AI Agents_ series:
 
-- [3 lines of code to hack your Vercel AI app — and 1 line to fix it](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it) — why the boundary is structural, not a string filter
-- [Vercel AI SDK prompt injection vulnerability](https://dev.to/ofri-peretz/vercel-ai-sdk-prompt-injection-vulnerability) — the LLM01 rules in depth
+- [3 lines of code to hack your Vercel AI app — and 1 line to fix it](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) — why the boundary is structural, not a string filter
+- [Vercel AI SDK prompt injection vulnerability](https://dev.to/ofri-peretz/your-vercel-ai-sdk-app-has-a-prompt-injection-vulnerability-4g7p) — the LLM01 rules in depth
 - [Your AI SDK app vs the OWASP LLM Top 10](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the 8 categories these rules cover, and the 2 they honestly can't
 
 ## Links
