@@ -71,7 +71,7 @@ This is what the matrix doesn't tell you, and what makes the difference between 
 
 The rule (`require-validated-prompt`) checks whether the value passed to the `prompt` property on a `generateText` / `streamText` call is wrapped in a validation call. It doesn't do taint analysis across the entire call graph — it enforces that a boundary function exists at the call site. If your validator is `(x) => x`, the rule stays silent; if your input goes straight from `req.body` to the model, it fires. That's the trade-off stated explicitly in the [rule docs](https://eslint.interlace.tools/rules/vercel-ai-security).
 
-See the [full Vercel AI SDK prompt injection breakdown](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it) for why "just sanitize it" doesn't close the vector.
+See the [full Vercel AI SDK prompt injection breakdown](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) for why "just sanitize it" doesn't close the vector.
 
 **LLM02 — Sensitive Information Disclosure** survives because secrets and PII passed to an LLM aren't written to a log file or returned in a response — they go into a prompt string. Reviewers scan for `console.log(apiKey)` and `res.json({ token })`. Nobody scans for `prompt: \`${systemConfig.dbPassword}\`` because the output is the model's text response, not the secret itself. The secret leaves the perimeter silently through the model API call.
 
@@ -166,7 +166,7 @@ Anyone selling you "automated 100% OWASP LLM coverage" is mapping a timeout rule
 
 ## Why CI beats code review for this class of vulnerability
 
-[I measured AI-generated security gaps across 80 functions](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — 65–75% had security vulnerabilities. The pattern wasn't random: coding assistants answer the question asked. "Add a chat endpoint" doesn't ask for injection boundaries or step caps. The happy path is the spec given. The missing guard is negative space.
+[I measured AI-generated security gaps across 80 functions](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — 65–75% had security vulnerabilities. The pattern wasn't random: coding assistants answer the question asked. "Add a chat endpoint" doesn't ask for injection boundaries or step caps. The happy path is the spec given. The missing guard is negative space.
 
 The same assistant that helped you ship the fix will, in the next session with no memory of this one, regenerate the unguarded version. Code review catches it the first time if someone thinks to ask. CI catches it every time, regardless of which model wrote the code or which engineer reviewed it.
 

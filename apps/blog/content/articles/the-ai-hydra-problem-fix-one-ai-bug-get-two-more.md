@@ -38,7 +38,7 @@ Here's the line I'd send to your team: **a security fix that removes the finding
 
 **Every AI security fix is a bet that the model understood the full context. Our data says it gets the context right about 68% of the time in guided mode — and only 25% of the time without deterministic feedback.**
 
-In [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
+In [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
 
 > **Get the Guardian Layer running in 60 seconds:**
 > ```bash
@@ -51,7 +51,7 @@ In [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had
 > ```
 > Feed the ESLint output back to your AI tool. That feedback loop is what separates the 8% Hydra rate from the 32% Hydra rate. Full config and explanation at the [end of this article](#eslint-configuration-used).
 
-> **AI Security Benchmark Series:** [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **Part 2 (you are here)** · [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
+> **AI Security Benchmark Series:** [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) · **Part 2 (you are here)** · [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
 
 I ran two parallel experiments with Claude Opus (the `opus` CLI alias, Feb 2026 run — exact model provenance in **Experimental Design** below) across 20 prompts and 3 remediation rounds each:
 
@@ -544,8 +544,8 @@ export default [
 ---
 
 **Related reading:**
-- [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — The baseline experiment that set up this remediation study
-- [Hardcoded Secrets in AI Agent Code: The Autofix Problem](https://dev.to/ofri-peretz/hardcoded-secrets-ai-agents-autofix) — How AI handles another class of security fixes
+- [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — The baseline experiment that set up this remediation study
+- [Hardcoded Secrets in AI Agent Code: The Autofix Problem](https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg) — How AI handles another class of security fixes
 - [ESLint Interlace Plugin Docs](https://eslint.interlace.tools) — All 332+ rules with fix examples
 
 ---

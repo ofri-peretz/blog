@@ -133,7 +133,7 @@ $ eslint --no-cache --config flagship.config.mjs 'packages/next/src/client/compo
 
 The narrow run finds cycles. The wide run starts from a fresh process with a fresh cache too — but it lints the 2,363 files in some order, and as it goes it fills `nonCyclicFiles` with exactly the kind of sourceFile-blind entry described above: a router-reducer file gets searched *forward* on behalf of some distant importer, the search runs past depth 10 through the cluster's barrels without closing *that* loop, and the file is cached acyclic. By the time the pass gets around to detecting the cluster's own short cycles, those nodes are already marked clean and the short-circuit skips them. The narrow run never builds those entries: with only 33 files in scope, no forward search has a 10-hop barrel chain to get lost in before the local cycle closes, so every cache write is honest. Scope isn't the cause; it's how many deep, sourceFile-blind searches get to run and poison nodes before the cluster's own short cycles are evaluated — which is why a small subtree stays clean and the 14K-file pass goes dark.
 
-oxlint, being a different process with its own implementation, doesn't share our cache. It uses oxlint's own `ModuleGraphVisitorBuilder` and finds 17 cycles. (Why oxlint's 17 differs from `eslint-plugin-import`'s 0 is a separate story about `import type` edge-counting policy — I trace that in the [companion root-cause writeup](https://dev.to/ofri-peretz/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it).)
+oxlint, being a different process with its own implementation, doesn't share our cache. It uses oxlint's own `ModuleGraphVisitorBuilder` and finds 17 cycles. (Why oxlint's 17 differs from `eslint-plugin-import`'s 0 is a separate story about `import type` edge-counting policy — I trace that in the [companion root-cause writeup](https://dev.to/ofri-peretz/import-nextno-cycle-reported-0-cycles-on-nextjs-we-found-why-and-fixed-it-ln2).)
 
 ## The fix
 
@@ -241,7 +241,7 @@ oxlint goes further: it builds an explicit module graph during parsing, then the
 
 Both approaches share a property our DFS-with-cache approach lacks: **the algorithm is exact, not approximate**. The cache trades some compute for correctness — exactly what we accidentally did the wrong way.
 
-For a full performance comparison between `eslint-plugin-import` and `eslint-plugin-import-next` (up to 100x faster on large repos), see [the benchmark writeup](https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster).
+For a full performance comparison between `eslint-plugin-import` and `eslint-plugin-import-next` (up to 100x faster on large repos), see [the benchmark writeup](https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster-1afa).
 
 ## Why AI-generated code makes this worse
 
@@ -297,7 +297,7 @@ The fix is in [packages/eslint-devkit/src/resolver/dependency-analysis.ts](https
 
 **Series — _Inside our linter benchmarks_.** This is one of three rule bugs the same bench sweep caught, and the second angle on this specific one:
 
-- [import-next/no-cycle reported 0 cycles on next.js — we found why and fixed it](https://dev.to/ofri-peretz/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it) — the same bug from the depth-limit side, including why oxlint's 17 and `eslint-plugin-import`'s 0 are both correct under different `import type` edge policies.
+- [import-next/no-cycle reported 0 cycles on next.js — we found why and fixed it](https://dev.to/ofri-peretz/import-nextno-cycle-reported-0-cycles-on-nextjs-we-found-why-and-fixed-it-ln2) — the same bug from the depth-limit side, including why oxlint's 17 and `eslint-plugin-import`'s 0 are both correct under different `import type` edge policies.
 - [What ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) — the smoke-gate that exposed all three bugs at F1=1.00.
 - [When entropy isn't enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough) — 807 false credential findings on vercel/ai, the third bug in the sweep.
 

@@ -29,7 +29,7 @@ Opus 4.6 generates vulnerable authentication code 50% of the time. Then it remed
 
 That's the lie in aggregate benchmarks. The number itself is accurate. The lie is that it flattens a two-dimensional problem (generate + remediate, across multiple domains) into a single dimension that answers the wrong question.
 
-I ran [65-75% of AI-generated functions having security vulnerabilities](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) past five models across 700 functions, scored every output with ESLint security rules, then fed violations back to the same model for remediation. In [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), I ranked them by aggregate vulnerability rate and declared Haiku the safest (49%) and Gemini Pro the most dangerous (73%).
+I ran [65-75% of AI-generated functions having security vulnerabilities](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) past five models across 700 functions, scored every output with ESLint security rules, then fed violations back to the same model for remediation. In [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), I ranked them by aggregate vulnerability rate and declared Haiku the safest (49%) and Gemini Pro the most dangerous (73%).
 
 That ranking is real. It's also misleading. When I broke the same data down by security domain, the ranking didn't just shift — it inverted.
 
@@ -506,7 +506,7 @@ Which security domain is most represented in your AI-generated code — and have
 
 **In the AI Security Benchmark Series:**
 
-- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — Establishes the baseline vulnerability rate
+- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — Establishes the baseline vulnerability rate
 - **Part 2:** [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem) — Tests whether remediation converges
 - **Part 3:** [We Ranked 5 AI Models by Security. The Leaderboard Is Wrong.](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) — Validates at scale across providers
 - **Part 4:** Aggregate Benchmarks Lie ← _You are here_ — Domain-specific deep-dive

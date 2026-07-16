@@ -128,7 +128,7 @@ finding is the one that bites in production.
 
 These are the operational half of agent safety. The _input_ half — prompt
 injection, system-prompt leakage — is the
-[prompt-injection deep-dive](https://dev.to/ofri-peretz/vercel-ai-sdk-prompt-injection-vulnerability);
+[prompt-injection deep-dive](https://dev.to/ofri-peretz/your-vercel-ai-sdk-app-has-a-prompt-injection-vulnerability-4g7p);
 the full OWASP LLM map (8 of 10, honestly) is
 [here](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk).
 
@@ -204,7 +204,7 @@ So the linter isn't only catching the human reviewer's blind spot. It's the
 thing standing between your `tools: { … }` block and the next paste from an
 assistant — Claude, Gemini, or otherwise — that has never heard of LLM06.
 
-> **Related:** [Vercel AI SDK prompt injection vulnerability](https://dev.to/ofri-peretz/vercel-ai-sdk-prompt-injection-vulnerability) — the input surface before the model ever reaches your tools. And [3 lines of code to hack your Vercel AI app](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it) — the shortest exploit path, and the one-line fix.
+> **Related:** [Vercel AI SDK prompt injection vulnerability](https://dev.to/ofri-peretz/your-vercel-ai-sdk-app-has-a-prompt-injection-vulnerability-4g7p) — the input surface before the model ever reaches your tools. And [3 lines of code to hack your Vercel AI app](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) — the shortest exploit path, and the one-line fix.
 
 ---
 

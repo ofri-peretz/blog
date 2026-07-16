@@ -143,7 +143,7 @@ src/users.js
 here for width.) The rule fires on `+`-concatenation, `${…}` template
 expressions, and cross-line tainted variables in `.query()` calls — the full
 taxonomy is in
-[Three SQL Injection Patterns That Still Ship](https://dev.to/ofri-peretz/three-sql-injection-patterns-node-postgres-eslint).
+[Three SQL Injection Patterns That Still Ship](https://dev.to/ofri-peretz/three-sql-injection-patterns-that-still-ship-in-nodejs-and-the-linter-that-catches-them-onb).
 
 ## 2. Identifier hijacking — `no-unsafe-search-path` (CWE-426)
 
@@ -371,8 +371,8 @@ Security Protocol_ series — start here, then drop into whichever failure mode 
 live in your codebase. Each has a dedicated deep-dive, and the full plugin tour
 covers the rest of the 13 rules:
 
-- [Three SQL Injection Patterns](https://dev.to/ofri-peretz/three-sql-injection-patterns-node-postgres-eslint) — the `no-unsafe-query` detection in depth
-- [COPY FROM Filesystem Access](https://dev.to/ofri-peretz/postgresql-copy-from-exploit-filesystem-access) — when user-controlled paths turn your DB into a file reader
+- [Three SQL Injection Patterns](https://dev.to/ofri-peretz/three-sql-injection-patterns-that-still-ship-in-nodejs-and-the-linter-that-catches-them-onb) — the `no-unsafe-query` detection in depth
+- [COPY FROM Filesystem Access](https://dev.to/ofri-peretz/copy-from-exploits-when-postgresql-reads-your-filesystem-127a) — when user-controlled paths turn your DB into a file reader
 - [search_path Hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the identifier attack most teams have never heard of
 - [The Connection Leak Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage) — the 3 AM pool-exhaustion post-mortem
 - [Transaction Race Conditions](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — what happens when `BEGIN` runs on the pool instead of a client

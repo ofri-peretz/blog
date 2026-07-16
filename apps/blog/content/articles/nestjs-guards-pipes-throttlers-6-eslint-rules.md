@@ -261,7 +261,7 @@ src/users.controller.ts
 
 These same six rules applied to real codebases, with full output:
 
-- [Claude wrote a NestJS service. ESLint found 6 security holes.](https://dev.to/ofri-peretz/claude-wrote-nestjs-service-eslint-found-6-security-holes) — the AI-generated controller case, verbatim
+- [Claude wrote a NestJS service. ESLint found 6 security holes.](https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj) — the AI-generated controller case, verbatim
 - [The 30-minute security audit: a static-analysis protocol for onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) — applying the same scan-first approach to a whole codebase
 
 ---
