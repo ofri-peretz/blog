@@ -8,6 +8,10 @@ published: false
 date: 2026-02-06
 cover_image: https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7f2bcys47t9v6chwuj00.png
 tags:
+  - "security"
+  - "eslint"
+  - "devsecops"
+  - "javascript"
   - security
   - node
   - devsecops

@@ -9,6 +9,10 @@ date: 2026-05-30
 cover_image: "https://ofriperetz.dev/og/cover/benchmark-sonarjs-vs-interlace"
 social_image: "https://ofriperetz.dev/og/article/benchmark-sonarjs-vs-interlace"
 tags:
+  - "security"
+  - "eslint"
+  - "devsecops"
+  - "javascript"
   - security
   - node
   - devsecops

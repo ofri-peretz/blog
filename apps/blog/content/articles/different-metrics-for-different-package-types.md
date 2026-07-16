@@ -5,6 +5,10 @@ slug: "different-metrics-for-different-package-types"
 published: false
 date: 2026-07-05
 tags:
+  - "security"
+  - "eslint"
+  - "devsecops"
+  - "javascript"
   - security
   - eslint
   - devsecops

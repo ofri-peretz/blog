@@ -12,7 +12,7 @@ social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7f2bcys4
 reading_time_minutes: 12
 tags:
   - "security"
-  - "node"
+  - "eslint"
   - "devsecops"
   - "javascript"
 series: "ESLint Security Benchmark Series"

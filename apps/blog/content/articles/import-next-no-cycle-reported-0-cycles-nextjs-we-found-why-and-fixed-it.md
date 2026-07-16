@@ -13,7 +13,7 @@ tags:
   - "javascript"
   - "nextjs"
   - "node"
-  - "devsecops"
+  - "eslint"
 reactions: 0
 comments: 0
 views: 0

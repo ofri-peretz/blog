@@ -12,8 +12,8 @@ reading_time_minutes: 9
 tags:
   - "ai"
   - "security"
-  - "nestjs"
-  - "devsecops"
+  - "googleai"
+  - "geminichallenge"
 reactions: 0
 comments: 0
 views: 0

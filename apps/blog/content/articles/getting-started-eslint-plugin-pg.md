@@ -14,7 +14,7 @@ tags:
   - "security"
   - "node"
   - "devsecops"
-  - "javascript"
+  - "eslint"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"

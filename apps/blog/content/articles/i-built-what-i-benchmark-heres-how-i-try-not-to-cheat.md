@@ -5,6 +5,10 @@ slug: "i-built-what-i-benchmark-heres-how-i-try-not-to-cheat"
 published: false
 date: 2026-07-05
 tags:
+  - "security"
+  - "eslint"
+  - "devsecops"
+  - "javascript"
   - security
   - node
   - devsecops
