@@ -8,7 +8,7 @@ tags:
   - "javascript"
   - "node"
   - "performance"
-  - "devsecops"
+  - "eslint"
 canonical_url: "https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale"
 cover_image: ""
 series: "Inside our linter benchmarks"

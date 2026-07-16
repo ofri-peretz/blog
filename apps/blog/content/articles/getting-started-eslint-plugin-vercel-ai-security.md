@@ -13,8 +13,8 @@ reading_time_minutes: 9
 tags:
   - "ai"
   - "security"
-  - "javascript"
   - "devsecops"
+  - "eslint"
 reactions: 0
 comments: 0
 views: 0

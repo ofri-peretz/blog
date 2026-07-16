@@ -11,7 +11,7 @@ cover_image: "https://ofriperetz.dev/og/cover/eslint-plugin-import-vs-eslint-plu
 social_image: "https://ofriperetz.dev/og/article/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
 reading_time_minutes: 4
 tags:
-  - "security"
+  - "eslint"
   - "node"
   - "ai"
   - "devsecops"

@@ -14,7 +14,7 @@ tags:
   - "security"
   - "nestjs"
   - "node"
-  - "devsecops"
+  - "eslint"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"

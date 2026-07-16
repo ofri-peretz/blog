@@ -9,6 +9,10 @@ date: 2026-02-08
 cover_image: "https://ofriperetz.dev/og/cover/benchmark-microsoft-sdl-vs-interlace"
 social_image: "https://ofriperetz.dev/og/article/benchmark-microsoft-sdl-vs-interlace"
 tags:
+  - "security"
+  - "eslint"
+  - "devsecops"
+  - "javascript"
   - security
   - node
   - devsecops

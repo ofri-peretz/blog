@@ -14,7 +14,7 @@ tags:
   - "security"
   - "node"
   - "devsecops"
-  - "javascript"
+  - "eslint"
 reactions: 1
 comments: 0
 views: 0

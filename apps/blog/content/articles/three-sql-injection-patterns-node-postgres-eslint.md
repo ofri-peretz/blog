@@ -13,7 +13,7 @@ tags:
   - "security"
   - "node"
   - "database"
-  - "devsecops"
+  - "eslint"
 reactions: 0
 comments: 0
 views: 0

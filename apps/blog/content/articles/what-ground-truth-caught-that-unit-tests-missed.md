@@ -8,7 +8,7 @@ tags:
   - "security"
   - "node"
   - "devsecops"
-  - "javascript"
+  - "eslint"
 canonical_url: "https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed"
 cover_image: "https://media2.dev.to/dynamic/image/width=1200,height=627,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Farticles%2F49iz3bb9eg4zte81hhqn.png"
 series: "Inside our linter benchmarks"

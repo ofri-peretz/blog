@@ -12,7 +12,7 @@ social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-b
 reading_time_minutes: 11
 tags:
   - "security"
-  - "javascript"
+  - "eslint"
   - "devsecops"
   - "node"
 author:
