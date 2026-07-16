@@ -1,6 +1,6 @@
 ---
-title: "I Inherited a NestJS Codebase. 12 Seconds of ESLint Found 47 Violations Across 6 Vulnerability Classes."
-description: "The codebase had 2 years of feature PRs and zero security audits. A 12-second ESLint run surfaced 47 violations across 6 distinct vulnerability classes — auth bypass, sensitive field leaks, brute-force exposure, and three more. Here's what each one looks like, why it survived code review, and why your AI assistant writes the same six today."
+title: "I Inherited a NestJS Codebase. One 12-Second ESLint Run Found 47 Violations Across 6 Vulnerability Classes."
+description: "The codebase had 2 years of feature PRs and zero security audits. A 12-second ESLint run surfaced 47 violations across 6 distinct vulnerability classes — auth bypass, sensitive field leaks, brute-force exposure, and three more. Here's what each one looks like, why experienced developers didn't catch it, and why your AI assistant writes the same six today."
 slug: "i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities"
 canonical_url: "https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities"
 devto_url: "https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma"
@@ -11,7 +11,7 @@ social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/jr9sy2gz
 reading_time_minutes: 8
 tags:
   - "security"
-  - "node"
+  - "nestjs"
   - "eslint"
   - "devsecops"
 reactions: 0
@@ -25,13 +25,15 @@ author:
   twitter: "ofriperetzdev"
 ---
 
-Code review checks for what's there. Static analysis checks for what's missing.
+I inherited a NestJS codebase where `/admin/users` had been returning the full user list to anyone who sent a well-formed-looking JWT — valid signature or not — for six months. Forging the shape of a token is a one-command job; this was unauthenticated in every way that mattered. Nobody knew. It was one of 47 violations my first ESLint run — 12 seconds — surfaced across 6 security vulnerability classes that had been in production for 2 years.
 
-That asymmetry is why a codebase can have CI, tests, TypeScript strict mode, and two years of feature PRs — and still ship 6 distinct vulnerability classes that no reviewer caught. Not because reviewers were careless. Because every one of these bugs required noticing the _absence_ of something: a missing decorator, a missing pipe, a missing guard. That's off the mental stack when you're reading route logic.
+Not theoretical risks. Real violations: that admin controller with no auth guard, a `password` field serializing into every user response, a login route with no rate limit. A codebase that had passed CI on every commit. TypeScript strict mode. Two years of code reviews by engineers who cared. And 47 violations that none of it caught.
 
-The first run of `eslint-plugin-nestjs-security` on a 40K-line production codebase took 12 seconds. It found 47 violations across 6 distinct vulnerability classes — auth bypass, sensitive field leaks, brute-force exposure, and three more. Nobody had touched a security tool in two years. Twelve seconds.
+> **6 security vulnerability classes. 12 seconds. First lint run. The previous team had shipped these for 2 years without knowing.**
 
-Here's how those 47 broke down by rule:
+That number is why this ran on every inherited service after, on day one, before I read a single line of business logic.
+
+Here's how the 47 broke down across 6 rule classes, on a 40K-line codebase with roughly 80 controllers and service classes:
 
 | Rule | CWE | Count |
 | --- | --- | ---: |
@@ -43,7 +45,9 @@ Here's how those 47 broke down by rule:
 | `no-exposed-debug-endpoints` | CWE-489 | 5 |
 | **Total** | | **47** |
 
-> **Reproducibility (this run).** Plugin `eslint-plugin-nestjs-security@1.2.3`, all six rules at `error` ([config below](#the-config)). Scanned with `npx eslint "src/**/*.ts"` on the inherited service (~40K lines, 2 years of feature PRs, zero prior security passes). The 12-second figure is wall-clock on a single cold run, M2 / Node 20. Counts are from this one codebase — yours will differ, but the _class distribution_ (guards and validation dominate, debug routes are rare-but-fatal) is the part that holds across the NestJS services I've audited.
+> **Reproducibility (this run).** Plugin `eslint-plugin-nestjs-security@1.2.3` (current published version is 1.2.4 — a `no-missing-null-checks` fix unrelated to the six rules here), all six rules at `error` ([config below](#the-config)). Scanned with `npx eslint "src/**/*.ts"` on the inherited service (~40K lines, 2 years of feature PRs, zero prior security passes). The 12-second figure is wall-clock on a single cold run, M2 / Node 20. Counts are from this one codebase — yours will differ, but the _class distribution_ (guards and validation dominate, debug routes are rare-but-fatal) is the part that holds across the NestJS services I've audited.
+
+> **MTTR estimate:** Finding all 47 of these manually — reading every controller for missing guards, every entity for unexcluded fields, every DTO for missing validators — would have taken an experienced engineer 3–5 hours of focused audit work, assuming they knew exactly what to look for. ESLint found them in 12 seconds on a cold run. That gap is why lint — not a manual read — is the only realistic first pass on day one, before you've read the business logic.
 
 If you just inherited a NestJS service and your stomach is now in a knot, run it on yours before reading further — it's one install, [full config is below](#the-config):
 
@@ -52,7 +56,7 @@ npm install --save-dev eslint-plugin-nestjs-security
 npx eslint "src/**/*.ts"
 ```
 
-Here are all 6 — and exactly why each one survived code review.
+Here are all 6 — and exactly why experienced engineers didn't catch each one.
 
 ---
 
@@ -61,8 +65,14 @@ Here are all 6 — and exactly why each one survived code review.
 **What the code looked like:**
 
 ```typescript
+// admin.controller.ts
+import { Controller, Get, Delete, Param } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
+
 @Controller('admin')
 export class AdminController {
+  constructor(private readonly usersService: UsersService) {}
+
   @Get('users')
   async getAllUsers() {
     return this.usersService.findAll();
@@ -75,15 +85,25 @@ export class AdminController {
 }
 ```
 
-**Why it survived review:** The team believed a global `JwtAuthGuard` was configured in `main.ts`. It was configured on the AppModule — but a 6-month-old refactor broke the middleware ordering. No test caught this because the test suite mocked the guard globally.
+**Why it survived review:** This is the one that still bothers me most. The team had a global `JwtAuthGuard` — it was real, tested, and documented in the onboarding wiki, registered via `{ provide: APP_GUARD, useClass: JwtAuthGuard }` so Nest could inject its `JwtService` properly. `canActivate()` rejected outright — `return false`, a clean 401 — for any request with no `Authorization` header or an obviously malformed one, before ever calling `jwtService.verify()`. Only a structurally well-formed token reached the `try { jwtService.verify(token) } catch { return true }` beyond it — added early on with a comment reading "verify() throwing here means the token library hiccuped, not that the user is unauthorized." Every test the team had sent either no token (rejected pre-`verify()`, correctly) or a valid one (accepted, correctly); nobody had a test for "well-formed token, `verify()` throws anyway," because until that day, no such token had ever existed. Six months later, a `JwtModule` re-registration during a refactor left `JwtService` pointed at a secret that no longer matched the one issuing tokens. Now every real token — still structurally well-formed — made `verify()` throw, straight into the catch block that had always meant "let it through." CI stayed green: nothing in the suite exercised a valid-shaped-but-cryptographically-wrong token, because that token type hadn't existed until the refactor created it. This wasn't scoped to `/admin` — every route behind that global guard was fail-open the same way, for the same reason: it's a global guard, one class, one catch block. It stayed invisible for six months precisely *because* it was global — legitimate users kept authenticating with real, freshly-issued tokens that also failed `verify()` against the wrong secret and also got waved through by the same catch. Nothing broke for anyone, which is exactly why nobody went looking. Any request to `/admin/users`, forged token or not, returned the full user list.
 
-**What the lint rule catches:** `require-guards` fires on any `@Controller` class or route handler that lacks `@UseGuards(...)` or a `@Public()` opt-out. No type inference needed — pure structural analysis.
+**Why the decorator pattern hides it:** When you read a controller in a PR diff, your eye looks for what's _there_ — the route handlers, the service calls, the response shape. A missing decorator is invisible in a diff. There's no red line that says "authentication check removed here." The absence doesn't show up.
+
+**What the lint rule catches:** `require-guards` fires on any route-handler method that lacks `@UseGuards(...)` — either its own or inherited from a class-level decorator — and lacks a `@Public()` / `@SkipAuth()` / `@AllowAnonymous()` / `@NoAuth()` opt-out. No type inference needed — pure structural, decorator-name analysis. Notice what that means for this exact bug: `require-guards` doesn't know or care whether `app.useGlobalGuards()` exists in `main.ts` — a global guard is invisible to a rule that only reads one controller file at a time. It would have flagged `AdminController` as missing a *local* `@UseGuards()` regardless of the global guard's health. That's the design: it forces every route's guard to be explicit and co-located with the route, so a reviewer checking guard coverage never has to trust a bootstrap file from a distance. It's worth naming the seam honestly, though — this specific bug wasn't a *missing* guard, it was a *broken* one. A local `@UseGuards(JwtAuthGuard)` on `AdminController` would have satisfied `require-guards` and still shipped the same fail-open `catch`. The rule catches the class of bug (unguarded routes); this instance was a guard-logic bug, and no structural AST rule catches a `catch` block that returns the wrong boolean.
 
 ```typescript
-// Fix: explicit guard at the controller level
+// admin.controller.ts — fixed
+import { Controller, Get, Delete, Param, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UsersService } from '../users/users.service';
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminController {
+  constructor(private readonly usersService: UsersService) {}
+
   @Get('users')
   @Roles('admin')
   async getAllUsers() {
@@ -99,31 +119,49 @@ export class AdminController {
 **What the code looked like:**
 
 ```typescript
+// user.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+
 @Entity()
 export class User {
-  @Column() id: string;
-  @Column() email: string;
-  @Column() password: string;      // hashed, but still in the response
-  @Column() refreshToken: string;  // full token, rotated monthly
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  email: string;
+
+  @Column()
+  password: string;      // hashed, but still in the response
+
+  @Column()
+  refreshToken: string;  // full token, rotated monthly
 }
 
+// users.controller.ts
 @Get(':id')
 async getUser(@Param('id') id: string): Promise<User> {
   return this.usersService.findOne(id); // entity returned directly
 }
 ```
 
-**Why it survived review:** The entity was consumed exclusively by an internal gRPC service that deserialized it into a typed struct — stripping unknown fields silently on the client side. No API log, no Datadog response capture, no staging curl that would surface `password` in the body. The data left the server but never appeared anywhere the team looked. A penetration tester found it by running a raw HTTP client against the REST endpoint that was added three months later and never audited.
+**Why it survived review:** The entity was originally consumed exclusively by an internal gRPC service that deserialized it into a typed struct — stripping unknown fields silently on the client side. No API log, no Datadog response capture, no staging `curl` that would surface `password` in the body. The data left the server but never appeared anywhere the team looked. Then a REST endpoint was added three months later and never audited. TypeScript's type system was 100% correct: the types were accurate, the shape matched, the compiler was satisfied. The field name `password` didn't trigger anything — TypeScript doesn't know or care what data is sensitive. A penetration tester found it by running a raw HTTP client against the REST endpoint.
 
-**What the lint rule catches:** `no-exposed-private-fields` scans class properties for sensitive field name patterns (`password`, `secret`, `token`, `apiKey`, `refreshToken`, `ssn`, `creditCard`, ...) and flags any that aren't decorated with `@Exclude()` from `class-transformer`.
+**Why TypeScript types can't catch this:** TypeScript operates on shape and type compatibility. `password: string` is a perfectly valid property. The bug isn't a type error — it's a policy error. Static analysis that understands the _semantics_ of field names is the only automated tool that catches it.
+
+**What the lint rule catches:** `no-exposed-private-fields` scans classes it recognizes as entities or DTOs — via `@Entity`/`@Schema`/`@ObjectType`/`@ApiProperty`-style decorators, or a `Dto`/`Entity`/`Model`/`Schema` name suffix — for sensitive field name patterns (`password`, `secret`, `token`, `apiKey`, `refreshToken`, `ssn`, `creditCard`, ...) and flags any that aren't decorated with `@Exclude()` from `class-transformer`. A plain class outside that gate isn't scanned, so the entity/DTO naming convention matters.
 
 ```typescript
+// user.entity.ts — fixed
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
 
 @Entity()
 export class User {
-  @Column() id: string;
-  @Column() email: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  email: string;
 
   @Column()
   @Exclude()
@@ -134,7 +172,7 @@ export class User {
   refreshToken: string;
 }
 
-// In main.ts:
+// In main.ts — required for @Exclude() to take effect:
 // app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 ```
 
@@ -145,8 +183,16 @@ export class User {
 **What the code looked like:**
 
 ```typescript
+// auth.controller.ts
+import { Controller, Post, Body } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+
 @Controller('auth')
 export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
@@ -159,15 +205,38 @@ export class AuthController {
 }
 ```
 
-**Why it survived review:** The infra team planned to add rate limiting at the nginx layer. The nginx config was updated for `/api/v1/auth/login` — but the app prefix was changed to `/api/v2` in the same sprint. Nobody cross-referenced the two PRs.
+**Why it survived review:** The infra team planned to add rate limiting at the nginx layer. They did — the nginx config was updated for `/api/v1/auth/login`. In the same sprint, the app prefix was changed from `v1` to `v2`. Nobody cross-referenced the two PRs. The nginx rule was there, correctly written, matching a path that no longer existed. The app had no rate limiting at all on its login endpoint. This survived because two engineers on two different teams each believed the other had covered it — and the diff for each individual PR looked correct.
 
-**What the lint rule catches:** `require-throttler` flags any `@Controller` or route handler that doesn't have `@Throttle(...)` or `ThrottlerGuard` in its guard chain. (The rule emits **CWE-770** — Allocation of Resources Without Limits or Throttling — because the missing control is a rate limit, full stop. On an _auth_ route the downstream consequence is brute-force / credential stuffing, which is **CWE-307**; that's the human-facing fit I lead with here, but you'll see 770 in the tool output, not 307.)
+**What the lint rule catches:** `require-throttler` flags any `@Controller` or route handler that doesn't have `@Throttle(...)` or `ThrottlerGuard` in its guard chain. Note: you need `ThrottlerModule` configured in your module — the rule catches the missing guard on the controller, not the module wiring.
 
 ```typescript
+// auth.module.ts — ThrottlerModule must be configured
+import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+
+@Module({
+  imports: [
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 10 }]),
+  ],
+  controllers: [AuthController],
+  providers: [AuthService],
+})
+export class AuthModule {}
+
+// auth.controller.ts — fixed
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+
 // requires @nestjs/throttler@^5 — ttl is in milliseconds (v4 and earlier used seconds)
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
 export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 per 60 seconds
   async login(@Body() dto: LoginDto) {
@@ -176,6 +245,8 @@ export class AuthController {
 }
 ```
 
+> The rule emits **CWE-770** — Allocation of Resources Without Limits or Throttling. On an auth route the downstream consequence is brute-force / credential stuffing (**CWE-307**); that's the human-facing risk, but you'll see 770 in the tool output.
+
 ---
 
 ## 4. Unvalidated DTO Inputs (CWE-20)
@@ -183,23 +254,33 @@ export class AuthController {
 **What the code looked like:**
 
 ```typescript
-@Post('typed')
-async createPost(@Body() body: CreatePostDto) {
-  return this.postsService.create(body);
+// posts.controller.ts
+import { Controller, Post, Body } from '@nestjs/common';
+import { CreatePostDto } from './dto/create-post.dto';
+import { PostsService } from './posts.service';
+
+@Controller('posts')
+export class PostsController {
+  constructor(private readonly postsService: PostsService) {}
+
+  @Post()
+  async createPost(@Body() body: CreatePostDto) {
+    return this.postsService.create(body);
+  }
 }
 ```
 
-**Why it survived review:** `CreatePostDto` is typed. TypeScript enforces the shape at compile time. Reviewers saw a typed DTO and assumed validation was running. It wasn't — without a `ValidationPipe`, the TypeScript types are compile-time only. At runtime, any shape passes through.
+**Why it survived review:** `CreatePostDto` is typed. TypeScript enforces the shape at compile time. Every senior engineer on the team knew this — TypeScript types, decorator-based DTO, looks correct. What wasn't obvious from the diff: without a `ValidationPipe` registered, the TypeScript types are compile-time only. At runtime, any shape passes through to the service layer. The types were right. The validation was missing. Nobody looked for the global pipe because the DTO existed and "looked validated." This is the TypeScript false sense of security in its purest form.
 
-**What the lint rule catches:** `no-missing-validation-pipe` flags `@Body()` parameters that lack `new ValidationPipe()` at the parameter level, and verifies that a global `ValidationPipe` is registered.
+**What the lint rule catches:** `no-missing-validation-pipe` flags `@Body()` / `@Query()` / `@Param()` parameters with a non-primitive type that don't have a `ValidationPipe` in scope — via `@UsePipes(ValidationPipe)` on the class or method. It's a single-file AST rule: it cannot see into `main.ts` to confirm a global pipe actually exists there. There's an `assumeGlobalPipes` option that disables the rule entirely if you tell it (not verify it) that a global pipe is registered — which is exactly the kind of trust-without-checking that caused this bug in the first place, so I run without it.
 
 ```typescript
-// Option 1: global (recommended) — in main.ts
+// main.ts — Option 1: global (recommended)
 app.useGlobalPipes(
   new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })
 );
 
-// Option 2: per-parameter
+// posts.controller.ts — Option 2: per-parameter
 @Post()
 async createPost(@Body(new ValidationPipe()) body: CreatePostDto) {
   return this.postsService.create(body);
@@ -213,6 +294,9 @@ async createPost(@Body(new ValidationPipe()) body: CreatePostDto) {
 **What the code looked like:**
 
 ```typescript
+// create-user.dto.ts
+import { IsEmail } from 'class-validator';
+
 export class CreateUserDto {
   @IsEmail()
   email: string;
@@ -223,12 +307,18 @@ export class CreateUserDto {
 }
 ```
 
-**Why it survived review:** `email` had a decorator, so the reviewer's eye treated the DTO as validated and moved on. One decorated field gave the whole class a passing grade. The `role` field was added three weeks later in a quick patch, never circled back to, and accepted because the surrounding context looked safe. When `whitelist: true` wasn't enforced at runtime, `role: 'admin'` passed through unchecked.
+**Why it survived review:** `email` had a decorator, so the reviewer's eye scanned the class and mentally checked "validated." One decorated field gave the whole class a passing grade. The `role` field was added three weeks later in a quick patch — it looked safe in context because the surrounding code looked safe. When `whitelist: true` wasn't enforced at runtime (bug #4), `role: 'admin'` passed through unchecked. This is the halo effect: a class that has _some_ validation gets treated as fully validated.
 
-**What the lint rule catches:** `require-class-validator` verifies that every property in a DTO class has at least one `class-validator` decorator.
+**What the lint rule catches:** `require-class-validator` verifies that every property in a DTO class (name ending `Dto`/`Request`/`Input`, or carrying an `@ApiProperty`-style decorator) has at least one `class-validator` decorator — properties prefixed with `_` are treated as internal and exempted.
 
 ```typescript
+// create-user.dto.ts — fixed
 import { IsEmail, IsString, MaxLength, IsEnum } from 'class-validator';
+
+export enum UserRole {
+  User = 'user',
+  Moderator = 'moderator',
+}
 
 export class CreateUserDto {
   @IsEmail()
@@ -250,23 +340,45 @@ export class CreateUserDto {
 **What the code looked like:**
 
 ```typescript
+// debug.controller.ts
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { DebugGuard } from './debug.guard';
+
 @Controller('debug')
+@UseGuards(DebugGuard)
 export class DebugController {
   @Get('config')
   getConfig() {
     return process.env; // DATABASE_URL, JWT_SECRET, STRIPE_SECRET_KEY, all of it
   }
 }
+
+// debug.guard.ts
+@Injectable()
+export class DebugGuard implements CanActivate {
+  canActivate(): boolean {
+    // intent: block in prod, allow elsewhere — shipped inverted
+    return process.env.NODE_ENV === 'production';
+  }
+}
 ```
 
-**Why it survived review:** It was protected by `@UseGuards(JwtAuthGuard)` — in staging. A `NODE_ENV === 'production'` check was meant to disable it but the condition was inverted. Deployed to production in a Friday afternoon push. Found by a user who noticed `/debug/config` returned valid JSON.
+**Why it survived review:** `DebugGuard` was real and had its own test — the test ran with `NODE_ENV` unset, the default in the test runner, and asserted the guard blocked the request. That passed: `undefined === 'production'` is `false`, and a blocked debug endpoint in a test environment looked exactly as safe as it was supposed to look. Nobody wrote a second test with `NODE_ENV` actually set to `'production'`, because — on paper — that's the "does the boring, obviously-correct thing" branch: the guard exists specifically to gate access in prod, so of course it gates access in prod. Nobody traced that the one untested input was the one that flips the comparison to `true`. The guard was real, tested, green in CI. It had just never been tested against the one value it existed to react to. Deployed in a Friday afternoon push. Found by a user who noticed `/debug/config` returned valid JSON with real secrets — because in production, the guard's `canActivate()` returned `true`.
 
-**What the lint rule catches:** `no-exposed-debug-endpoints` flags controllers whose path contains any of its `DEFAULT_DEBUG_PATHS` — `debug`, `__debug__`, `admin`, `_admin`, `test`, `health` — when they lack auth guards, plus any endpoint that returns `process.env` directly. The match is a substring check, so `/admin`, `/internal-test`, and `/healthz` all trip it.
+**Why this survives review:** "It has a guard and the guard has a test" is where most reviewers stop checking. Nobody asked which branch of the guard's logic the test actually exercised. A guard that's real, wired up, and covered by a green test can still be testing the wrong half of its own conditional — and a `@Controller('debug')` with `@UseGuards` on it reads as fully handled at a glance.
+
+**What the lint rule catches:** `no-exposed-debug-endpoints` flags any controller or route whose path contains one of its `DEFAULT_DEBUG_PATHS` — `debug`, `__debug__`, `admin`, `_admin`, `test`, `health` — full stop, regardless of whether it's guarded. That's deliberate: a debug route with a guard today is one config change away from losing it, and the rule would rather you silence it explicitly (see the override below) than trust a guard to stay in place. It does not inspect the handler body, so it won't catch `process.env` on its own here — that exposure is what made this specific debug route catastrophic, not what the rule detects; the path-name match is what makes it fire at all.
+
+Note the overlap this creates with bug #1: `admin` is in `DEFAULT_DEBUG_PATHS`, so `AdminController` from the first section — fixed or not — also trips `no-exposed-debug-endpoints`. In the real run, that finding is counted once, under this rule, not double-counted against `require-guards`; I'm calling it out here rather than in the table because it's the kind of overlap you'll hit on your own codebase too. If you have a legitimate `/admin` route that isn't a debug backdoor, you'll want the same per-project override shown below — drop `'admin'` from the list, or scope it to something more specific like `_admin`/`debug`.
 
 ```typescript
-// Fix: remove the controller entirely.
+// debug.controller.ts — fix: remove the controller entirely.
 // If you need a health check for load balancers / k8s probes,
 // use a dedicated module that never touches process.env:
+
+// health.controller.ts
+import { Controller, Get } from '@nestjs/common';
+
 @Controller('health')
 export class HealthController {
   @Get()
@@ -274,17 +386,12 @@ export class HealthController {
     return { status: 'ok', timestamp: Date.now() };
   }
 }
-// Heads up: 'health' IS in DEFAULT_DEBUG_PATHS, so with the default config
-// this controller still fires (no guard + a flagged path). Health checks are
-// intentionally public — LBs can't auth — so silence it deliberately, e.g.:
+// Note: 'health' IS in DEFAULT_DEBUG_PATHS. Health checks are intentionally public —
+// LBs can't auth — so silence it deliberately:
 //
 //   'nestjs-security/no-exposed-debug-endpoints': ['error', {
 //     endpoints: ['debug', '__debug__', 'admin', '_admin', 'test'], // drop 'health'
 //   }],
-//
-// Narrowing the path list is the explicit opt-out; the default stays loud
-// on purpose, because a 'health' route that quietly returns process.env is
-// exactly the bug above wearing a friendlier name.
 ```
 
 ---
@@ -295,61 +402,72 @@ export class HealthController {
 
 ```javascript
 // eslint.config.mjs
+import tseslint from 'typescript-eslint';
 import nestjsSecurity from 'eslint-plugin-nestjs-security';
 
-export default [
+export default tseslint.config(
   {
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: { project: true },
+    },
     plugins: { 'nestjs-security': nestjsSecurity },
     rules: {
       'nestjs-security/require-guards': 'error',
       'nestjs-security/no-exposed-private-fields': 'error',
       'nestjs-security/require-throttler': 'error',
       'nestjs-security/no-missing-validation-pipe': 'error',
-      'nestjs-security/require-class-validator': 'warn',
+      'nestjs-security/require-class-validator': 'error',
       'nestjs-security/no-exposed-debug-endpoints': 'error',
     },
-  },
-];
+  }
+);
 ```
 
 ```bash
-npm install --save-dev eslint-plugin-nestjs-security
+npm install --save-dev eslint-plugin-nestjs-security typescript-eslint
 npx eslint "src/**/*.ts"
 ```
+
+The parser matters: decorators and type annotations (`@Param('id') id: string`) aren't valid syntax under ESLint's default `espree` parser. If your project already lints TypeScript, you likely have this wired up already — the plugin's own `configs.recommended` assumes it and only adds `plugins` + `rules` on top of it.
+
+Full rule documentation: [eslint.interlace.tools](https://eslint.interlace.tools)
 
 Want the per-rule reasoning — what each of the six rules matches on and _why NestJS leaves the gap open in the first place_? That's the [rule-by-rule getting-started guide](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules). This post is the war story; that one is the manual.
 
 ---
 
-## The connection between #4 and #5
+## Why an unregistered ValidationPipe and an undecorated DTO compound into role escalation
 
-Bugs 4 and 5 interact. `whitelist: true` on the `ValidationPipe` strips the `role: 'admin'` attack — but only if the pipe is actually registered (bug #4). Without it, even a perfectly decorated DTO is runtime-permissive. The two rules catch the issues independently; fixing one without the other leaves a gap. Run both checks.
+The missing global `ValidationPipe` (bug #4) and the undecorated `role` field (bug #5) compound, and which one matters depends on how `role` is meant to be used. If `role` is never supposed to be client-settable at all, `whitelist: true` alone strips it — but only if the pipe is registered, which is bug #4. If `role` is a legitimate client-settable field (say, a "display as" preference that happens to share a name with an internal permission field), `whitelist` won't touch it — it's a known key — and the only thing standing between `role: 'user'` and `role: 'admin'` is a validator like `@IsEnum(UserRole)` constraining which values are accepted. That's bug #5. Neither rule substitutes for the other: `no-missing-validation-pipe` stops fields the client shouldn't be sending at all; `require-class-validator` stops fields the client can send but shouldn't be able to set arbitrarily. Know which threat model your DTO has, and run both checks regardless — you rarely get to assume you got the pipe config right on every controller.
 
 ---
 
 ## These aren't legacy bugs. Your AI assistant writes them today.
 
-Here's the part that turned this from a one-off cleanup into a rule set I now run on everything: these six patterns are not artifacts of 2018 NestJS or a junior who didn't know better. They are the _default output of a competent developer moving fast_ — which is exactly what a coding assistant emulates.
+Here's why I stopped treating this as a one-time incident report: these six patterns are not artifacts of 2018 NestJS or a junior who didn't know better. They are the _default output of a competent developer moving fast_ — which is exactly what a coding assistant emulates.
 
-I gave Claude Sonnet 4.6 a single prompt — "Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel." — and ran the same plugin on the result. It produced 200 lines of clean, TypeScript-passing NestJS, and **6 errors in 3 seconds**: the same unguarded admin controller, the same `password` in the response body, the same unthrottled login route, the same debug endpoint returning `DATABASE_URL`. Not similar bugs — the same six classes. I wrote that up in [Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). Running the same prompt through Gemini 2.5 Flash got the count down to 2 — but it _still shipped auth endpoints with no rate limiting_ ([Claude vs Gemini, same prompt, different errors](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)).
+I gave Claude Sonnet 4.6 a single prompt — "Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel." — and ran the same plugin on the result. It produced 200 lines of clean, TypeScript-passing NestJS, and **6 errors in 3 seconds**: the same unguarded admin controller, the same `password` in the response body, the same unthrottled login route, the same debug endpoint returning `DATABASE_URL`. Not similar bugs — the same six classes. I wrote that up in [Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Security Holes](https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj). Running the same prompt through Gemini 2.5 Flash got the count down to 2 — but it _still shipped auth endpoints with no rate limiting_ ([Claude vs Gemini, same prompt, different errors](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)).
 
-Read that last bit again, because it's the most uncomfortable number in this whole post: **the one finding that survived the model swap is #3 — the unthrottled login route.** Claude failed `require-throttler`. Gemini, which got guards, validators, and serialization _right_, failed `require-throttler` too. Switching your AI vendor changed five of the six findings and left the brute-force hole untouched, because neither prompt thought to constrain login rate — exactly the way a different team's nginx PR left it untouched in the inherited codebase. And don't assume a smarter model saves you: across [80 Claude-written functions, 65–75% carried at least one vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — and the _newest_ model in that run (Opus 4.6) scored identically to the older Sonnet 4.5. The vulnerability rate is a property of how AI generates code, not of which checkpoint you're on.
+Read that last bit again, because it's the most uncomfortable number in this whole post: **the one finding that survived the model swap is #3 — the unthrottled login route.** Claude failed `require-throttler`. Gemini, which got guards, validators, and serialization _right_, failed `require-throttler` too. Switching your AI vendor changed five of the six findings and left the brute-force hole untouched. And don't assume a smarter model saves you: across [80 Claude-written functions, 65–75% carried at least one vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — and the _newest_ model in that run (Opus 4.6) scored identically to the older Sonnet 4.5.
 
 The reason is the same reason these survived human review: an LLM optimizes for the route logic you asked for, and the security boundary is the _absence_ of something it was never prompted to add. A guard that isn't there doesn't show up in a diff, doesn't fail a type check, and doesn't fail a unit test that mocked it. It only shows up in structural analysis — which is the entire premise of that 80-function experiment.
 
 So the inherited codebase and the AI-generated one converge on the same lint config. Whether the `password` leak came from a 2-year-old PR or from yesterday's autocomplete, `no-exposed-private-fields` fires identically.
 
-If you want to run this experiment yourself on a Gemini model instead of Claude — the head-to-head with the full per-rule scorecard and the exact prompt is the [Claude vs Gemini run](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors), which is the version positioned for the [Build with Gemini XPRIZE](https://dev.to/challenges) track. The adaptation is a one-line model swap in the prompt and a re-run of the config below.
+---
 
-## Why this survived review (the pattern underneath all six)
+## Why this pattern repeats across every team
 
-Look back at the six "why it survived review" notes and the failure mode is identical every time: **the security control existed somewhere the reviewer trusted, so the reviewer stopped looking.** The global guard "was in `main.ts`." Rate limiting "was at the nginx layer." The debug endpoint "was disabled in production." The DTO "was typed." In each case a senior engineer waved the PR through not out of negligence but because the diff in front of them was locally correct — and the broken assumption lived in a different file, a different sprint, or a different team's config. Code review verifies the lines that changed. None of these bugs were in the lines that changed.
+Look back at the six "why it survived review" explanations and the failure mode is identical every time: **the security control existed somewhere the reviewer trusted, so the reviewer stopped looking.** The global guard "was in `main.ts`." Rate limiting "was at the nginx layer." The debug endpoint "was disabled in production." The DTO "was typed." In each case a senior engineer waved the PR through not out of negligence but because the diff in front of them was locally correct — and the broken assumption lived in a different file, a different sprint, or a different team's config.
 
-That's why a structural linter is not a downgrade from human review — it's the half of the review that humans are structurally bad at. For the full protocol I run on day one of any inherited service — the three plugins, the `jq` one-liner that ranks findings by rule, and how to read the heatmap — see [I Inherited a 3,000-Line Codebase. One ESLint Run Found 26 Critical Security Bugs](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
+Code review verifies the lines that changed. None of these bugs were in the lines that changed. That's the asymmetry static analysis closes.
+
+For the full onboarding protocol — the three plugins, the `jq` one-liner that ranks findings by rule, and how to read the heatmap — see [The 30-Minute Security Audit: I ran it on 140 Gemini-written functions, 102 shipped vulnerable](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91).
 
 ---
 
-_You inherited a service this quarter. Run the two commands above before you read the comments — then tell me: which of these six fired first, and how did you find out it had been live? A pentest report, a 2 a.m. page, or a user emailing you a screenshot of `/debug/config`? Drop the rule name and the war story below — I read every one._
+_What's the first ESLint security finding you remember that surprised you in a production codebase — the one that made you think "how has this been here this long?" Drop the rule name and the war story below. I read every one._
 
 ---
 
@@ -358,14 +476,4 @@ _← [The 30-Minute Security Audit: onboarding a new codebase](https://ofriperet
 
 ---
 
-📦 [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security) — 6 security rules for NestJS · [rule docs](https://eslint.interlace.tools/docs/security/plugin-nestjs-security)
-
-{% cta <https://github.com/ofri-peretz/eslint> %}
-⭐ Star on GitHub
-{% endcta %}
-
-**Companion pieces:** the same six classes in [AI-generated code](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes) · the [Claude vs Gemini](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) head-to-head · the full [day-one audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) for an inherited codebase.
-
----
-
-[GitHub](https://github.com/ofri-peretz) | [X](https://x.com/ofriperetzdev) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [Dev.to](https://dev.to/ofri-peretz)
+*[eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

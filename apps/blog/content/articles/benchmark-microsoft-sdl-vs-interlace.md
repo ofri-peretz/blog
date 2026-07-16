@@ -11,35 +11,27 @@ social_image: "https://ofriperetz.dev/og/article/benchmark-microsoft-sdl-vs-inte
 tags:
   - security
   - node
-  - ai
-  - eslint
+  - devsecops
+  - javascript
 series: "ESLint Security Benchmark Series"
 canonical_url: https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace
 reading_time_minutes: 7
 author:
-  name: Ofri Peretz
-  avatar: https://avatars.githubusercontent.com/u/46347627
-  title: Security Engineering Leader
 ---
 
-On one Node file with 12 vulnerability classes, `@microsoft/eslint-plugin-sdl`
-running its `recommended` config caught **5** (and only **3** of those came from
-its own `@microsoft/sdl/*` rules). The domain plugins caught **46** — same file.
-And you'd already told the team the backend was covered by Microsoft's Security
-Development Lifecycle, because the build went green. Your SQL injection, your path
-traversal, your unsafe deserialization — all of it walked straight past the
-linter you trusted, and the pipeline never went red to warn you.
+Your team added `@microsoft/eslint-plugin-sdl` to CI, the pipeline went green, and someone checked "security linter" off the list. Meanwhile **37 out of 46 vulnerability classes** on a standard Node backend — SQL injection, path traversal, prototype pollution, ReDoS — have zero SDL rules watching them. The build is still green. The SQL injection is still there.
 
-That gap isn't a quality verdict, and it isn't Microsoft shipping a bad tool.
-`@microsoft/eslint-plugin-sdl` is 17 rules distilled from the SDL standard, and
-it's a *good* tool — for the surface it was built for. The gap is a **layer**
-mismatch. Look at the rule list and the result is obvious: SDL was built to
-harden **frontends** (Angular, Electron, the DOM), not Node backends. Point it
-at an API and most of its rules have nothing to match.
+That's not a flaw in Microsoft's plugin. It's a layer mismatch that looks exactly like security coverage until something gets exploited.
 
 > Part of the [ESLint Security Benchmark Series](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) —
 > same fixture, same method, one tool per post. Companion piece:
 > [SonarJS has 269 rules and found 13 where the domain plugins found 46](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace).
+
+## What the numbers actually are
+
+On one Node file with 12 vulnerability classes, `@microsoft/eslint-plugin-sdl` running its `recommended` config caught **5** (and only **3** of those came from its own `@microsoft/sdl/*` rules). The domain plugins caught **46** — same file. And you'd already told the team the backend was covered by Microsoft's Security Development Lifecycle, because the build went green. Your SQL injection, your path traversal, your unsafe deserialization — all of it walked straight past the linter you trusted, and the pipeline never went red to warn you.
+
+That gap isn't a quality verdict, and it isn't Microsoft shipping a bad tool. `@microsoft/eslint-plugin-sdl` is 17 rules distilled from the SDL standard, and it's a *good* tool — for the surface it was built for. Look at the rule list and the result is obvious: SDL was built to harden **frontends** (Angular, Electron, the DOM), not Node backends. Point it at an API and most of its rules have nothing to match.
 
 ## What SDL's 17 rules actually target
 
@@ -56,6 +48,10 @@ Five are Angular/AngularJS-specific, one is Electron, two are WinJS/MSApp,
 several are DOM/browser (`innerHTML`, `document.write`, `postMessage`,
 cookies). That's a **frontend / MS-stack** security surface — and a good one for
 that surface.
+
+**What SDL wins at, honestly stated.** If you're hardening an Angular SPA, an Electron desktop app, or a Microsoft-stack browser frontend, SDL's rules are well-considered and save real time. The `no-angular-bypass-sanitizer`, `no-electron-node-integration`, and `postmessage-star-origin` rules encode real SDL guidance that a Node-backend linter won't have. SDL is also the right answer for teams already embedded in Microsoft toolchains where SDL compliance is a contractual gate. The criticism here is scoping — not quality.
+
+**What SDL can't automate, and why.** SDL's standard also covers things no linter can touch: threat modeling sessions, architectural security reviews, human penetration testing, access control design. These require runtime context, system-level knowledge, and human judgment that static analysis structurally cannot provide. A linter running on source code cannot know whether your auth layer is correctly wired to your routes — it can only see the code in the file. Pointing this out isn't a weakness of SDL; it's a reminder that "CI is green" and "the backend is secure" are different claims. The [30-minute static analysis protocol for onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) covers how to combine linting with the manual checks that survive automation.
 
 ## Detection — `vulnerable.js` (12 Node vulnerability classes)
 
@@ -145,10 +141,13 @@ Versions and exact commands in the methodology section.)
 
 </details>
 
-## One bug, end to end: the SQL line SDL can't see
+## Three bugs, end to end: what SDL can't see
 
-Aggregate counts are easy to wave away, so walk a single finding the whole way.
-Line 78 of the fixture — a line that has shipped in real services I've reviewed:
+Aggregate counts are easy to wave away. Here's what the coverage gap looks like on
+three specific lines — the ones most likely to slip through code review because
+they *look* safe.
+
+### SQL injection (CWE-89)
 
 ```js
 // vulnerable.js — queryDatabase(userId, orderBy)
@@ -162,6 +161,8 @@ and found nothing to say about it. The reviewer isn't approving SQL injection;
 they're trusting a green check that was scoped to a layer this file isn't on.
 SDL has no `query`-aware rule, so the line is invisible to it — not downgraded to
 a warning, *absent from the output entirely*.
+
+This survives automation in SDL because catching SQL injection requires understanding the call shape of a specific database driver (`pg.query`, `mysql.execute`, `knex.raw`) and recognizing when its argument is built dynamically. That context is driver-specific and runtime-adjacent — SDL's rules were written for DOM and Angular APIs, not database access patterns.
 
 **What the domain rule does instead.** `pg/no-unsafe-query` keys on the
 `.query()` call shape and flags any argument built by concatenation or
@@ -181,11 +182,59 @@ parameter so it's never part of the SQL string:
 db.query('SELECT * FROM users WHERE id = $1', [userId]);
 ```
 
-That is the entire loop the aggregate number hides, repeated 46 times across the
-file. SDL is silent on this specific line not because it's a weak linter, but
-because a `query`-shape rule was never in its frontend-hardening scope. (Deeper
-on this exact pattern:
-[three SQL-injection shapes in node-postgres and the rule that catches each](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).)
+Deeper on this exact pattern: [three SQL-injection shapes in node-postgres and the rule that catches each](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).
+
+### Path traversal (CWE-22)
+
+```js
+// route handler — serves files by user-supplied filename
+const filePath = path.join(__dirname, 'uploads', req.query.file);
+fs.readFile(filePath, 'utf8', callback);
+```
+
+**Why it ships.** `path.join` looks safe because developers associate it with "safe path construction." The CI is green. SDL has no `fs`-aware rule — `node-security/detect-non-literal-fs-filename` (an Interlace rule) flags the `fs.readFile` call because its first argument is non-literal. SDL's rules cover DOM APIs; `fs` is out of scope by design.
+
+This survives automation in SDL because it requires correlating `fs.*` call shapes with non-literal arguments — a Node.js-specific pattern that has no analog in browser or Electron contexts.
+
+**The fix:**
+
+```js
+// constrain the filename to a safe directory and reject traversal sequences
+const filename = path.basename(req.query.file); // strips ../ sequences
+const filePath = path.join(__dirname, 'uploads', filename);
+if (!filePath.startsWith(path.join(__dirname, 'uploads'))) {
+  return res.status(403).send('Forbidden');
+}
+fs.readFile(filePath, 'utf8', callback);
+```
+
+### Prototype pollution (CWE-915)
+
+```js
+// merge utility — deeply copies user-supplied object into target
+function merge(target, source) {
+  for (const key of Object.keys(source)) {
+    target[key] = source[key]; // ← no __proto__ guard
+  }
+}
+```
+
+**Why it ships.** This pattern is everywhere in utilities and config merging. No one writes it intending to enable prototype pollution. SDL has no object-injection rule — `secure-coding/detect-object-injection` flags the bracket-notation assignment because the key is dynamic.
+
+This survives automation in SDL because detecting object injection requires understanding JavaScript prototype chain semantics at the static analysis layer — a Node.js-specific risk surface that the SDL rule set doesn't cover.
+
+**The fix:**
+
+```js
+function merge(target, source) {
+  for (const key of Object.keys(source)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+    target[key] = source[key];
+  }
+}
+```
+
+> **The alarming summary:** A team that runs only SDL on a Node backend is effectively running zero security rules on SQL injection, path traversal, prototype pollution, ReDoS, weak hashing, timing attacks, and dynamic require — the exact CWE classes that account for the majority of exploitable Node.js CVEs.
 
 ## Why this mismatch survives review
 
@@ -232,8 +281,9 @@ So the failure compounds: your assistant generates a backend vuln, your
 frontend-layer linter has no rule for it, your pipeline is green, and the PR
 merges. SDL never sees the thing it was never built to see. The fix isn't to
 distrust SDL — it's to run a linter that covers the layer where the code (and
-your AI assistant) actually lives. Reproduce it yourself: paste an
-AI-generated route handler into the fixture directory below and run both configs.
+your AI assistant) actually lives.
+
+For a structured way to audit what your current linting config actually covers, the [30-minute static analysis protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) maps every major Node.js risk category to specific rules — useful for spotting exactly these kinds of coverage gaps before they become incidents.
 
 ### Cover the backend layer — copy-paste
 
@@ -292,7 +342,7 @@ export default [
   // (SDL's configs are flat-config ARRAYS, so map files onto each entry —
   //  unlike the Interlace configs, which are single objects. Spread `c`
   //  FIRST, then set `files`, so our scope wins over any files key in c.)
-  ...sdl.configs.common.map((c) => ({
+  ...sdl.configs.recommended.map((c) => ({
     ...c,
     files: ["src/web/**", "src/electron/**"],
   })),
@@ -308,10 +358,9 @@ the layer it was built for, and a green pipeline is not the same as a covered
 one.** Audit what your "security linter" actually has rules for before you tell
 the team the backend is safe.
 
-What's the security tool *you* trusted that turned out to be scoped to the wrong
-layer — the SAST that only spoke one language, the SCA that ignored your lockfile,
-the linter green on a surface you didn't have? I want the war story in the
-comments.
+The full rule documentation is at [eslint.interlace.tools](https://eslint.interlace.tools) — each plugin's page lists exactly which CWE classes it covers, so you can map your threat model to specific rules and verify there are no gaps.
+
+**Which SDL requirement do you least trust your CI to catch — and have you actually verified whether your current linting config covers it?** The comments are the right place for that war story.
 
 ## Methodology — reproduce it
 
@@ -387,6 +436,8 @@ numbers exactly.
 The full 4-engine version (ESLint + Oxlint, built-in + plugins) is in
 [the security-linter benchmark](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof).
 
+For a broader framing of how to evaluate security plugins before they land in your CI — including the questions to ask when a tool's README doesn't answer them — see the [benchmark methodology in the 17-plugin comparison](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83).
+
 ### Run it on your AI's output — including Gemini
 
 The fixture is hand-authored, but the method is the point, and it's one experiment
@@ -419,7 +470,7 @@ it would reuse.
 
 Same fixture, same method, one tool per post:
 
-- **[The benchmark hub: 17 ESLint security plugins compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared)** — the full field, all engines.
+- **[The benchmark hub: 17 ESLint security plugins compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83)** — the full field, all engines.
 - **You are here:** `@microsoft/eslint-plugin-sdl` — 5 vs 46 on recommended, wrong layer.
 - **[SonarJS has 269 rules and found 13](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)** — the rule-count-vs-coverage companion.
 - **[The 4-engine ground truth: ESLint + Oxlint, built-in + plugins](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof)** — the methodology these posts all share.
@@ -432,20 +483,16 @@ at a 49–73% clip, which is why the *layer* — not the author — is the thing
 
 ## Links
 
-- 📦 [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
-- 📦 [@microsoft/eslint-plugin-sdl](https://www.npmjs.com/package/@microsoft/eslint-plugin-sdl) — the frontend layer
-- 📖 [Full rule docs](https://eslint.interlace.tools)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint)
+- [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
+- [@microsoft/eslint-plugin-sdl](https://www.npmjs.com/package/@microsoft/eslint-plugin-sdl) — the frontend layer
+- [Full rule docs](https://eslint.interlace.tools)
+- [Source on GitHub](https://github.com/ofri-peretz/eslint)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub if your Node backend — and the code your AI assistant writes for
+Star on GitHub if your Node backend — and the code your AI assistant writes for
 it — needs more than a frontend security linter.
 ::
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

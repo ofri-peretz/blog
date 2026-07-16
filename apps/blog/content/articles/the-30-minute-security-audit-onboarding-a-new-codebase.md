@@ -12,9 +12,9 @@ social_image: "https://ofriperetz.dev/og/article/the-30-minute-security-audit-on
 reading_time_minutes: 5
 tags:
   - "security"
-  - "eslint"
-  - "googleai"
-  - "geminichallenge"
+  - "node"
+  - "devsecops"
+  - "javascript"
 reactions: 11
 comments: 6
 views: 0
@@ -26,16 +26,16 @@ author:
 series: null
 ---
 
-I've reviewed hundreds of Node.js + PostgreSQL codebases, and the same handful
-of vulnerability patterns shows up in most of them — string-concatenated SQL,
-secrets in source, MD5 where a password hash should be. So when you inherit a
-codebase — an acquisition, a departing senior engineer, or you're the new lead
-and nobody can explain the 3,000-line `utils/legacy_auth.js` — the only question
-that matters on day one is: **how bad is it?**
+You just inherited a Node.js codebase. You have **30 minutes before the standup
+where someone asks "how bad is it?"** — this is the exact protocol: three ESLint
+plugins, four shell commands, and a ranked heatmap that tells you more about the
+codebase's security posture than its previous team knew in two years.
 
+The same handful of vulnerability patterns shows up in most inherited codebases —
+string-concatenated SQL, secrets in source, MD5 where a password hash should be.
 A traditional audit takes weeks, a consultant, and a 200-page PDF you'll file and
-forget. You don't have weeks. You have **30 minutes and one ESLint run** — and it
-returns a **measurable risk heatmap** you can put in front of a board.
+forget. You have **one ESLint run** — and it returns a **measurable risk heatmap**
+you can put in front of a board.
 
 I ran exactly this protocol on a real inherited corpus last month — except the
 "departing engineer" was an AI. I had **Gemini 2.5 Pro generate 140 Node.js
@@ -61,6 +61,8 @@ the end, the live Gemini run, reproducible command for command.
 > the same protocol run on a real NestJS service —
 > [12 seconds of ESLint, 47 violations across 6 vulnerability classes](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 > — see the framework-specific walkthrough.
+
+> **30 minutes, 7 ESLint plugins, and you'll know more about a codebase's security posture than its previous team did in 2 years.**
 
 ## Step 1 — install the layers (2 min)
 
@@ -171,6 +173,11 @@ And before you start fixing those 15 SQL findings, read
 — the parameterization fix is one line, but the reason it kept shipping is the
 real lesson.
 
+If you want to know which plugins actually earn their keep, the
+[benchmark across 17 ESLint security plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83)
+measures detection rate, false-positive rate, and overlap on a shared corpus — so
+you're choosing the three plugins for this protocol based on data, not intuition.
+
 ## Then make it permanent
 
 ```yaml
@@ -261,6 +268,8 @@ All three plugins ship the same contract:
 - 📦 [eslint-plugin-node-security](https://www.npmjs.com/package/eslint-plugin-node-security) — crypto & system
 - 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint)
+- 📊 [Benchmark: 17 ESLint security plugins compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83)
+- 🔍 [I inherited a NestJS codebase — the first lint run found 6 vulnerabilities](https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you've ever inherited a codebase and had no idea how bad it was.
@@ -270,6 +279,10 @@ All three plugins ship the same contract:
 line of your heatmap.** What was your `uniq -c | sort -rn` number-one rule — and
 how long had it been quietly shipping before the scan named it? That's the war
 story I want in the comments.
+
+---
+
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
 
 ---
 

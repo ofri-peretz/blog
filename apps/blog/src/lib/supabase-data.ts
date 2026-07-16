@@ -1,3 +1,7 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
+
 // Cached Supabase queries — the single read path for blog API routes.
 //
 // Architecture (revised 2026-05-25):
@@ -26,9 +30,6 @@
 // "as fast as the cron", not "up to 12h stale".
 
 import "server-only";
-import { unstable_cache } from "next/cache";
-import { cache } from "react";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 

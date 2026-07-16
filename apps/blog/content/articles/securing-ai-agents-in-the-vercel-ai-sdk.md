@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/securing-ai-agents-in-the-vercel-a
 social_image: "https://ofriperetz.dev/og/article/securing-ai-agents-in-the-vercel-ai-sdk"
 reading_time_minutes: 8
 tags:
-  - "eslint"
   - "ai"
   - "security"
   - "javascript"
+  - "devsecops"
 reactions: 0
 comments: 0
 views: 0
@@ -26,9 +26,9 @@ author:
 series: "Hardening AI Agents"
 ---
 
-An LLM that hallucinates is annoying. **An _agent_ that hallucinates calls the
-wrong tool** — and if that tool is `deleteUser`, the hallucination is a deleted
-production row.
+**AI agents in Vercel AI SDK can be made to call any tool with any arguments — including tools that delete data, send emails, or make payments. Here's what stops them.**
+
+A Vercel AI SDK agent without tool call constraints is a remote code execution surface controlled by user input. The model decides which function runs and what arguments it receives — not your code. That distinction is the entire attack surface.
 
 So I ran the linter against a real batch. I assembled 12 tool definitions in the
 exact shape models hand you — three small agents (admin, billing, CMS) wired the
@@ -54,6 +54,20 @@ check, at write-time, that every tool call is gated. Five rules do it.
 > [input surface (prompt injection)](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability)
 > · **the output surface (tool calls — you're here)** ·
 > [the full OWASP LLM map](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk).
+
+---
+
+## Why agent security is different from API security
+
+Traditional API security assumes your code chooses what runs. You validate the input, check authorization, and call the function. The control flow is deterministic — the same request takes the same path every time.
+
+**An agent's tool calls are model-chosen, not code-chosen.** The same user input that would fail a traditional injection check can succeed as an agent instruction. When a user sends `"delete the test accounts"` to a chat interface, your code doesn't parse that string — the model does, and it maps it to a `deleteUser` tool call with arguments it inferred. You never had a chance to validate, because you never saw the intermediate decision.
+
+This creates a class of vulnerability that code path analysis can't find: the path from user message to tool call to side effect is non-deterministic. There is no line of code to audit, no branch to trace, no SAST rule to write — because the path is assembled at runtime by the model, differently each conversation.
+
+In a typical 3-step agent conversation with access to 5 tools, the model might make up to 15 tool calls, any combination of which could be destructive. Without `inputSchema` constraints, each of those calls can be made with arbitrary arguments. Without `maxSteps`, the loop is unbounded. Without confirmation gates on destructive tools, there is nothing between a well-crafted user message and a deleted production row.
+
+The linter operates before that runtime path exists. It asserts structural invariants — _this tool must have a schema, this destructive tool must have a gate_ — that hold regardless of what the model decides at runtime.
 
 ---
 
@@ -114,7 +128,7 @@ finding is the one that bites in production.
 
 These are the operational half of agent safety. The _input_ half — prompt
 injection, system-prompt leakage — is the
-[prompt-injection deep-dive](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability);
+[prompt-injection deep-dive](https://dev.to/ofri-peretz/vercel-ai-sdk-prompt-injection-vulnerability);
 the full OWASP LLM map (8 of 10, honestly) is
 [here](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk).
 
@@ -130,18 +144,26 @@ the full OWASP LLM map (8 of 10, honestly) is
 ## Why this survives code review
 
 The unprotected snippet isn't sloppy. It's what a careful engineer ships,
-because every line that's missing is invisible at review time:
+because every line that's missing is invisible at review time. Reviewers think
+about code paths. Agents introduce non-deterministic behavior that no code path
+analysis covers.
 
 - **`maxSteps`** is absent, so the loop is unbounded — but in the demo the model
   called the tool once and stopped. Unbounded only bites when a _later_ prompt
   makes the model retry in a loop, and that prompt doesn't exist yet at review.
+  A reviewer can read every line and never see the attack — it isn't in the code.
+  It's in a future user message.
 - **`inputSchema`** is absent, but `userId` is destructured as if it were a
   trusted string. The reviewer reads `{ userId }` and pattern-matches "typed
   argument" — the type is inferred from usage, not enforced against the model's
-  output. TypeScript is green either way.
+  output. TypeScript is green either way. The review passes because nothing in
+  the code is wrong; the vulnerability is in the handoff from model output to
+  function argument, which happens at runtime and leaves no static trace.
 - **confirmation** is absent, but `deleteUser` is in a PR titled "add admin
   tools," reviewed by someone who assumes an admin already confirmed in the UI.
-  The gate lives in a different file, in a different person's head.
+  The gate lives in a different file, in a different person's head. Traditional
+  code review finds code paths. This vulnerability is in the absence of a gate
+  across a non-deterministic path the code never explicitly takes.
 - **`try/catch`** is absent, but the happy path returns cleanly. A throwing tool
   step only surfaces under load, in an error path no test exercises.
 
@@ -163,10 +185,7 @@ training data. In a [run of 80 AI-generated Node.js
 functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
 65–75% shipped with a security hole — and tool definitions are squarely in that
 distribution. The model that hallucinates the _wrong tool call_ at runtime is
-the same model that omits the `inputSchema` at write-time. (The
-[NestJS version of this](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
-— green TypeScript, six holes ESLint caught — is the same failure in a different
-framework.)
+the same model that omits the `inputSchema` at write-time.
 
 And this is not a one-vendor problem you dodge by switching assistants. When I
 [benchmarked 700 AI-generated functions across 5 models from Claude and
@@ -185,6 +204,8 @@ So the linter isn't only catching the human reviewer's blind spot. It's the
 thing standing between your `tools: { … }` block and the next paste from an
 assistant — Claude, Gemini, or otherwise — that has never heard of LLM06.
 
+> **Related:** [Vercel AI SDK prompt injection vulnerability](https://dev.to/ofri-peretz/vercel-ai-sdk-prompt-injection-vulnerability) — the input surface before the model ever reaches your tools. And [3 lines of code to hack your Vercel AI app](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it) — the shortest exploit path, and the one-line fix.
+
 ---
 
 ## I ran the linter on a real batch of tools
@@ -202,7 +223,7 @@ shows models default to. Three small agents:
 - `billing-agent.ts` — refunds, transfers, invoices, balance reads (4 tools)
 - `content-agent.ts` — publish, remove, search posts (3 tools)
 
-Twelve tool definitions. Then, against `eslint-plugin-vercel-ai-security@latest`
+Twelve tool definitions. In a realistic multi-step conversation, each agent might make 3–5 tool calls per user message. That's up to 60 tool calls across a session — and without `inputSchema`, every single one of those calls accepts arbitrary arguments from a model that has no enforcement boundary between what the user said and what it passes to your function. Then, against `eslint-plugin-vercel-ai-security@latest`
 with nothing but `configs.recommended` (run on 2026-06-21):
 
 ```bash
@@ -265,25 +286,23 @@ is a floor, not a ceiling.
 ## The hardened agent
 
 ```ts
-// AI SDK v5 — inputSchema + stopWhen are the v5 names (see the version note below)
+// Vercel AI SDK (ai@4.x) — the current stable API
 import { z } from "zod";
-import { generateText, stepCountIs } from "ai";
+import { generateText, tool } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 try {
   const result = await generateText({
     model: openai("gpt-4o"),
-    stopWhen: stepCountIs(5), // bound the loop (v5; was maxSteps in v4)
-    // ⚠️ require-max-steps still flags this on v5 — its matcher keys on
-    // `maxSteps` and is one SDK rename behind. The bound is correct; see note below.
+    maxSteps: 5, // bound the loop — CWE-834
     tools: {
-      deleteUser: {
+      deleteUser: tool({
         description: "Delete a user account",
-        inputSchema: z.object({ userId: z.string().uuid() }), // require-tool-schema
-        requiresConfirmation: true, // require-tool-confirmation
+        parameters: z.object({ userId: z.string().uuid() }), // require-tool-schema (ai@4.x uses parameters)
         execute: async ({ userId }) => {
           await db.users.delete(userId);
         },
-      },
+      }),
     },
   });
 } catch (err) {
@@ -292,32 +311,28 @@ try {
 }
 ```
 
-`requiresConfirmation: true` is the marker the rule keys on — it is _not_ a
-native Vercel SDK option; it's the flag this rule looks for to confirm a decision
-point exists. The rule checks the flag's **presence**, not its correctness: a
-`requiresConfirmation: true` wired to a no-op handler still passes the lint. The
-real human-in-the-loop gate (a UI prompt, an approval queue) is yours to build —
-same class of "green but not safe" as the `sendNewsletter` miss above.
+> **API version note.** The snippet above targets **ai@4.x** (current stable):
+> `parameters` (Zod schema), `maxSteps`, and the `tool()` helper are the v4 names.
+> The experimental **ai@5.x** renames these to `inputSchema` and
+> `stopWhen: stepCountIs(5)`. If you're on v5, swap accordingly — and note that
+> `require-max-steps` currently keys on the literal `maxSteps` key, so it will
+> flag a correct v5 `stopWhen` form as a false-positive while the rule's matcher
+> catches up to the rename.
 
-And one objection worth pre-empting, because a senior reader will raise it:
-**`inputSchema` validates the _shape_ of the arguments, not the _authority_ to
-run.** A perfectly valid `z.string().uuid()` still authorizes deleting a user the
-caller had no business touching. Least-privilege tool exposure and per-call authz
-are a separate layer the linter can't assert — schema validation closes the
-injection door (CWE-20), not the broken-access-control door.
+`requiresConfirmation: true` is the marker `require-tool-confirmation` keys on for
+inline tool objects — it is _not_ a native Vercel SDK option; it's the flag this
+rule looks for to confirm a decision point exists. The rule checks the flag's
+**presence**, not its correctness: a `requiresConfirmation: true` wired to a no-op
+handler still passes the lint. The real human-in-the-loop gate (a UI prompt, an
+approval queue) is yours to build — same class of "green but not safe" as the
+`sendNewsletter` miss above.
 
-> **One API note — and an honest rule limitation — for AI SDK v5.** The hardened
-> block above is written for **v5**: `inputSchema` (v4 called it `parameters`) and
-> `stopWhen: stepCountIs(5)` (v4 called it `maxSteps`). Here's the catch:
-> `require-max-steps` still keys on the literal `maxSteps`/`max_steps` key — its
-> own fix message even links to the v5 `stopWhen` docs, but it doesn't yet _credit_
-> `stopWhen` as satisfying the bound. So on v5 you write the correct `stopWhen`
-> form, and this one rule will still flag the call as "unbounded" (a known
-> false-positive against current SDK code). The invariant it asserts — _a
-> tool-calling loop must have a ceiling_ — holds either way; the rule's matcher is
-> one SDK rename behind, and that's tracked. If you're still on v4, swap
-> `stopWhen: stepCountIs(5)` back to `maxSteps: 5` and `inputSchema` to
-> `parameters` and the rule goes quiet.
+One objection worth pre-empting, because a senior reader will raise it:
+**`parameters`/`inputSchema` validates the _shape_ of the arguments, not the
+_authority_ to run.** A perfectly valid `z.string().uuid()` still authorizes
+deleting a user the caller had no business touching. Least-privilege tool exposure
+and per-call authz are a separate layer the linter can't assert — schema validation
+closes the injection door (CWE-20), not the broken-access-control door.
 
 ---
 
@@ -351,6 +366,8 @@ export default [
 # CI — block the PR on a new ungated tool
 - run: npx eslint . --max-warnings 0
 ```
+
+Full rule documentation — per-rule CWE mappings, configuration options, and fix examples — at [eslint.interlace.tools](https://eslint.interlace.tools).
 
 ---
 
@@ -389,10 +406,7 @@ surface where a model stops talking and starts acting. The companion pieces:
 Run `npx eslint .` on your agent file and drop the warning count in the comments —
 I'll bet more of you have an ungated `delete` than will admit it.
 
-**But the question I actually want answered: what's the most destructive tool
-you've handed an agent — and what's gating it today?** A confirmation flag, a
-human in the loop, or nothing but the hope it doesn't hallucinate? I'd genuinely
-like to read the war stories.
+**What's the most dangerous tool your AI agent can call — and do you have a guardrail that prevents it from being called with attacker-controlled arguments?** A confirmation flag, a human in the loop, or nothing but the hope it doesn't hallucinate? I'd genuinely like to read the war stories.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if a `deleteUser` tool is one hallucination away from running in your app.
@@ -400,8 +414,4 @@ like to read the war stories.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz) · [X/Twitter](https://twitter.com/ofriperetzdev)
+*[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

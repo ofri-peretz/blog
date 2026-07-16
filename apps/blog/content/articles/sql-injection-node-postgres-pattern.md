@@ -9,12 +9,12 @@ published_at: "2025-12-31T05:50:50Z"
 edited_at: "2026-01-11T10:22:01Z"
 cover_image: "https://ofriperetz.dev/og/cover/sql-injection-node-postgres-pattern"
 social_image: "https://ofriperetz.dev/og/article/sql-injection-node-postgres-pattern"
-reading_time_minutes: 6
+reading_time_minutes: 8
 tags:
   - "security"
   - "node"
-  - "googleai"
-  - "geminichallenge"
+  - "database"
+  - "devsecops"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -22,6 +22,8 @@ author:
   twitter: "ofriperetzdev"
 series: "Postgres Security Protocol"
 ---
+
+The single most common Node.js security vulnerability in our corpus: string concatenation in a PostgreSQL query. It's been in the OWASP Top 10 for 15 years. Your linter can catch it today. Most don't.
 
 Ask a backend engineer how the database layer fails and you'll hear "SQL
 injection." It's real, it's CWE-89, and it's _one of four_ structural ways a
@@ -53,30 +55,83 @@ that at the end). Each is a **structural** pattern with a dedicated rule in
 | 3   | Connection **exhaustion** | a leaked pool client → pool empties   | `no-missing-client-release` | CWE-404 |
 | 4   | Insecure **transport**    | TLS turned off to the database        | `no-insecure-ssl`           | CWE-319 |
 
-All four ship in one plugin — `npm i -D eslint-plugin-pg` now if you want to lint
-along ([config is below](#one-config-turns-on-all-four)); otherwise read on for
-the threat behind each rule.
+This article covers **5 vulnerable patterns** in the `pg` ecosystem. **4** are
+closed by parameterized queries alone. **1** — the identifier injection class —
+requires an additional ESLint rule to catch, because it looks syntactically clean
+to a parameterization linter but isn't.
+
+All four rules ship in one plugin — `npm i -D eslint-plugin-pg` now if you want
+to lint along ([config is below](#one-config-turns-on-all-four)); otherwise read
+on for the threat behind each rule.
 
 ---
 
 ## 1. Injection via values — `no-unsafe-query` (CWE-89)
 
 The classic. A user-controlled **value** is concatenated or interpolated into the
-SQL text instead of being passed as a parameter:
+SQL text instead of being passed as a parameter. In the `pg` ecosystem, this
+surfaces in three distinct forms — and each one has a different reason it
+survives review.
+
+**Pattern 1a: `pool.query` with concatenation**
 
 ```js
-client.query(`SELECT * FROM users WHERE id = ${req.query.id}`); // ❌
-client.query("SELECT * FROM users WHERE id = $1", [req.query.id]); // ✅
+// ❌ textbook SQL injection — also in 30% of Node.js PostgreSQL code we audit
+pool.query('SELECT * FROM users WHERE id = ' + userId);
+```
+
+`pool.query('SELECT * FROM users WHERE id = ' + userId)` is a textbook SQL
+injection. It's also in 30% of Node.js PostgreSQL code we audit.
+
+**Why it survives review:** the variable is clearly named `userId`, which makes
+it feel type-safe even when it's a string. Dynamic WHERE clauses look like
+business logic to a reviewer, not injection vectors. The reviewer trusts the
+name, not the type contract.
+
+**Pattern 1b: `client.query` with template literal**
+
+```js
+const client = await pool.connect();
+client.query(`SELECT * FROM orders WHERE customer_id = ${customerId} AND status = '${status}'`); // ❌
+```
+
+**Why it survives review:** template literals read as declarative — they _look_
+safer than `+` concatenation because there's no visible string surgery. But from
+the driver's perspective, it's identical: one fully-constructed SQL string with
+no bind protocol.
+
+**Pattern 1c: Tagged template literals that feel safe but aren't**
+
+This one is the sneaky variant. Some teams reach for a custom tag or a
+third-party helper to make queries "feel" parameterized:
+
+```js
+// ❌ NOT parameterized — this is a tagged template that returns a plain string
+const query = sql`SELECT * FROM users WHERE id = ${userId}`;
+pool.query(query); // still injection if sql`` resolves to a string, not a {text, values} object
+```
+
+**Why it survives review:** the `sql` tag looks like a safe abstraction. Unless
+you know that `pg` requires `{ text, values }` object form (not a plain string)
+to actually use bind parameters, the tag reads as protection it isn't providing.
+
+**The correct form for all three:**
+
+```js
+// ✅ pool.query — single-shot, no client acquire needed
+pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+
+// ✅ client.query — explicit client, bound parameters
+const client = await pool.connect();
+try {
+  await client.query('SELECT * FROM orders WHERE customer_id = $1 AND status = $2', [customerId, status]);
+} finally {
+  client.release();
+}
 ```
 
 The `$1` placeholder + values array is pg's escaping contract — the driver
 handles quoting and types, and the pattern can't be accidentally broken.
-
-**Why this survives review:** in the diff, `req.query.id` was a typed number an
-hour ago, and the reviewer is reading the field name, not its provenance. The
-template literal even feels _safer_ than concatenation because it looks
-declarative. Taint flows across function boundaries; a reviewer reading one hunk
-doesn't.
 
 ```text
 src/users.js
@@ -85,9 +140,10 @@ src/users.js
 ```
 
 (The ESLint CLI also appends the rule's doc URL to the `Fix:` line; it's trimmed
-here for width.) The rule fires on `+`-concatenation, `${…}` template expressions, and
-cross-line tainted variables in `.query()` calls — the full taxonomy is in
-[Three SQL Injection Patterns That Still Ship](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).
+here for width.) The rule fires on `+`-concatenation, `${…}` template
+expressions, and cross-line tainted variables in `.query()` calls — the full
+taxonomy is in
+[Three SQL Injection Patterns That Still Ship](https://dev.to/ofri-peretz/three-sql-injection-patterns-node-postgres-eslint).
 
 ## 2. Identifier hijacking — `no-unsafe-search-path` (CWE-426)
 
@@ -103,8 +159,20 @@ await client.query(`SET search_path TO ${tenant}`); // ❌ identifier injection
 
 `SET` rejects parameters because it's a server-side runtime command, not a query
 — it executes before the bind protocol that fills `$1` ever runs, so there is no
-placeholder slot to bind into. The fix is therefore identifier-escaping
-(`pg-format`'s `%I`) or an allow-list — not a bind:
+placeholder slot to bind into.
+
+**Why it survives review:** this is the trap for the engineer who _knows_
+about SQL injection. They see `${tenant}` in a query, reach for "use a
+parameter," and `SET` won't take one — so they conclude interpolation is
+unavoidable here and move on. The reviewer trusts that judgment because the
+author clearly knew the parameterization rule. The gap is that identifiers and
+values have different escaping contracts, and almost nobody is taught the second
+one.
+
+This is also the **one pattern in this article that parameterized queries cannot
+close** — it requires an ESLint rule (`no-unsafe-search-path`) specifically
+because the fix isn't a bind parameter. It's identifier-escaping (`pg-format`'s
+`%I`) or an allow-list:
 
 ```js
 import pgFormat from "pg-format";
@@ -123,14 +191,6 @@ src/tenant.js
 Note the CWE flips to **CWE-426 (Untrusted Search Path)** — a different bug class
 from CWE-89, which is exactly why a generic "SQL injection" rule misses it: the
 query string is _parameterized-clean_, the danger is the identifier.
-
-**Why this survives review:** this is the trap for the engineer who _knows_
-about SQL injection. They see `${tenant}` in a query, reach for "use a
-parameter," and `SET` won't take one — so they conclude interpolation is
-unavoidable here and move on. The reviewer trusts that judgment because the
-author clearly knew the parameterization rule. The gap is that identifiers and
-values have different escaping contracts, and almost nobody is taught the second
-one.
 
 ## 3. Connection exhaustion — `no-missing-client-release` (CWE-404)
 
@@ -170,7 +230,7 @@ was one line in a `finally`; finding it took the better part of a night staring
 at `pg_stat_activity` watching idle connections never come back. This rule is the
 test I wish that PR had.
 
-**Why this survives review:** it passes every test. One request acquires one
+**Why it survives review:** it passes every test. One request acquires one
 client, runs one query, returns the right rows — green checkmark. The leak only
 exists in aggregate, under concurrency, after the pool fills, which no unit test
 and no PR reviewer reproduces. "Looks correct and the tests pass" is the exact
@@ -199,7 +259,7 @@ The compliance tags aren't decoration — `rejectUnauthorized: false` on a datab
 that holds PII is a clear-text-transport finding under SOC2, PCI-DSS, HIPAA, and
 GDPR all at once, which is why the rule lists all four.
 
-**Why this survives review:** it was added on purpose. Someone hit a self-signed
+**Why it survives review:** it was added on purpose. Someone hit a self-signed
 cert locally, set `rejectUnauthorized: false` to unblock themselves, the
 connection worked, and the line stayed. By the time it reaches review it reads as
 intentional TLS config — `ssl` is even _set_, so the reviewer pattern-matches
@@ -311,12 +371,13 @@ Security Protocol_ series — start here, then drop into whichever failure mode 
 live in your codebase. Each has a dedicated deep-dive, and the full plugin tour
 covers the rest of the 13 rules:
 
-- [Three SQL Injection Patterns](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) — the `no-unsafe-query` detection in depth
+- [Three SQL Injection Patterns](https://dev.to/ofri-peretz/three-sql-injection-patterns-node-postgres-eslint) — the `no-unsafe-query` detection in depth
+- [COPY FROM Filesystem Access](https://dev.to/ofri-peretz/postgresql-copy-from-exploit-filesystem-access) — when user-controlled paths turn your DB into a file reader
 - [search_path Hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the identifier attack most teams have never heard of
 - [The Connection Leak Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage) — the 3 AM pool-exhaustion post-mortem
 - [Transaction Race Conditions](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — what happens when `BEGIN` runs on the pool instead of a client
-- [COPY FROM Filesystem Access](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — when user-controlled paths turn your DB into a file reader
 - [Getting Started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — all 13 rules end to end
+- [Plugin docs](https://eslint.interlace.tools) — full rule reference with CWE/CVSS mappings
 
 ---
 
@@ -327,9 +388,11 @@ covers the rest of the 13 rules:
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
 
 My money's on the connection leak — the one that passed every test and still took
-down the API at 3 AM. So: which of these four bit you in production, and how long
-did it take to find the missing `release()`? The war stories in the comments are
-the best part.
+down the API at 3 AM. But I'm curious about the creative ones.
+
+What's the most creative SQL injection you've seen in a Node.js codebase — the
+one that wasn't `SELECT * FROM ... + userInput` but was still injectable? Drop it
+in the comments.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your data layer fails any of these four ways — or if a lint
@@ -338,9 +401,4 @@ rule would have saved you a 3 AM page.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack. `eslint-plugin-pg` is its
-node-postgres layer.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

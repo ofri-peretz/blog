@@ -6,25 +6,15 @@ canonical_url: "https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-
 devto_url: "https://dev.to/ofri-peretz/searchpath-hijacking-the-postgresql-attack-youve-never-heard-of-10co"
 devto_id: 3144104
 published_at: "2026-01-02T19:49:31Z"
-edited_at: "2026-01-11T10:21:32Z"
+edited_at: "2026-07-06T00:00:00Z"
 cover_image: "https://ofriperetz.dev/og/cover/searchpath-hijacking-postgresql-attack"
 social_image: "https://ofriperetz.dev/og/article/searchpath-hijacking-postgresql-attack"
-reading_time_minutes: 8
-# Tag strategy (DEV.to hard cap = 4):
-#   security + ai    → winner cluster (powers our highest-comment AI-security pieces)
-#   node             → node-postgres discovery path; the code is all node-postgres
-#   googleai         → Google AI / Gemini angle + the Build-with-Gemini-XPRIZE feed tag
-# Dropped "devsecops": weakest discovery tag here; "googleai" unlocks the XPRIZE feed and
-#   matches this piece's Gemini 2.5 Pro 96% datapoint (see the AI-assistant section).
-# Build-with-Gemini-XPRIZE adaptation path (window May 19–Aug 17, 2026): one-step entry —
-#   re-running eslint-plugin-pg against Gemini 2.5 Pro on Database Operations is already in
-#   the body with #googleai present. To submit, free one slot (drop "node") and add
-#   "geminichallenge". Not done here: an unsubmitted #geminichallenge tag is dead discovery.
+reading_time_minutes: 9
 tags:
   - "security"
+  - "database"
   - "node"
-  - "ai"
-  - "googleai"
+  - "devsecops"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -33,14 +23,15 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-Everyone knows SQL injection. Almost nobody guards `search_path` hijacking —
-and it turns a perfectly ordinary `SELECT * FROM users` into a read from an
-**attacker-controlled table**, no injection string required.
+PostgreSQL's `search_path` can be hijacked to redirect every unqualified table reference to a malicious schema — in a multi-tenant database, this means tenant A can read tenant B's data. Here's the exact attack.
 
 There is no `'; DROP TABLE` here. No quotes to escape, no payload to spot in a
 diff. The query that gets exploited is the most boring line in your codebase —
-which is exactly why it survives review. I've watched this pattern slip past
-engineers who would have caught a classic injection in their sleep.
+which is exactly why it survives review.
+
+> **The vulnerability is in the PostgreSQL session setup — 2 lines in a connection pool initializer that no application developer thinks to audit.** Search path attacks are invisible to application-level code review because the dangerous line and the exploited line are in completely different places: one in your connection middleware, one deep in your query layer.
+
+The numbers: **2 lines of config** enable the attack, **3 lines** fix it. In a multi-tenant app, every tenant sharing a compromised connection pool is exposed — which in most SaaS architectures means **all tenants** per session.
 
 And it's no longer just humans shipping it. When I benchmarked five AI models on
 the same PostgreSQL data-access prompts, the `eslint-plugin-pg` ruleset flagged
@@ -66,25 +57,80 @@ SELECT * FROM users;
 SELECT * FROM public.users;
 ```
 
-`search_path` is therefore a **name-resolution control surface**: change it, and
-the same query binds to a different table.
+Nobody attacks `search_path` directly — they attack the fact that you never
+have to name a schema for PostgreSQL to pick one for you. Control the list,
+and every unqualified query downstream binds to whatever table you put first.
 
-## The attack
+## The exact attack — step by step
 
-```js
-// ❌ search_path set from user input
-const schema = req.query.tenant; // attacker controls this
-await client.query(`SET search_path TO ${schema}`);
-await client.query("SELECT * FROM users"); // now reads the attacker's table
+Here is the complete exploit. You can reproduce this in any local `psql` in under two minutes.
+
+**Step 1: Attacker points `search_path` at a schema that already exists**
+
+The low-privilege version needs no special rights at all — just a shared
+connection role that can already read every tenant schema, which is exactly
+how most schema-per-tenant apps are wired (one app role, many schemas, no
+per-tenant grants):
+
+```sql
+-- victim setup — this already exists before the attacker does anything
+CREATE SCHEMA tenant_a;
+CREATE SCHEMA tenant_b;
+CREATE TABLE tenant_a.users AS SELECT 'alice_a' AS who;
+CREATE TABLE tenant_b.users AS SELECT 'alice_b' AS who;
+
+-- the attacker's only two moves, using the shared app role's existing
+-- USAGE + SELECT on both schemas — that's what "one connection pool,
+-- many tenants" usually means in practice
+SET search_path TO tenant_b, public;
+SELECT * FROM users;  -- 'alice_b' — tenant A's session just read tenant B's row
 ```
 
-The attacker creates a schema with a malicious `users` table (or a shadowing
-`crypt()` function), points `search_path` at it, and your unqualified query
-returns their data — or runs their function with your privileges.
+This precondition is the fragile part: if your roles are genuinely
+least-privileged — a distinct role per tenant, no cross-schema `SELECT` —
+this exact move fails with `permission denied`, not a leak. It's the shared,
+over-broad app role (the common case) that turns a `search_path` flip into
+a cross-tenant read.
 
-You can watch the binding flip in ~30 seconds in any local `psql` — no app, no
-exploit framework, just standard name resolution doing exactly what it's
-documented to do:
+If the attacker's role happens to have `CREATE` on the database (an
+over-privileged app role, or any pre-15 cluster that hasn't revoked the
+PG15 default — see below), the attack gets worse: they can plant their own
+shadow table instead of just reading a sibling tenant's:
+
+```sql
+-- escalation case: attacker also has CREATE — plants a fake table
+CREATE SCHEMA evil;
+CREATE TABLE evil.users AS SELECT 'pwned' AS who, 'attacker@evil.com' AS email;
+```
+
+**Step 2: The vulnerable connection setup (2 lines)**
+
+```js
+// ❌ connection pool initializer — the 2 vulnerable lines
+const schema = req.query.tenant;           // line 1: attacker controls this
+await client.query(`SET search_path TO ${schema}`);  // line 2: raw interpolation
+```
+
+**Step 3: Your app's perfectly normal query now reads the wrong table**
+
+```js
+// This query is blameless. It never changed.
+const result = await client.query("SELECT * FROM users");
+// result.rows[0] => { who: 'pwned', email: 'attacker@evil.com' }  (escalation case)
+// result.rows[0] => { who: 'alice_b' }                             (no-privilege case: reads tenant B's real row)
+```
+
+Both cases hinge on the same 2-line bug. The no-privilege case is the one
+that matters most in practice, precisely because it needs no elevated
+permissions — only the interpolation flaw and a connection role broad enough
+to read more than one tenant's schema, which is the default shape of a
+shared connection pool.
+
+**Verify it yourself in psql (30 seconds) — the escalation case**
+
+The Step 1 block above already reproduces the no-privilege read. Here's the
+`CREATE`-privileged escalation, for when the role is over-broad enough to
+also plant objects:
 
 ```sql
 CREATE SCHEMA evil;
@@ -95,9 +141,9 @@ SET search_path TO evil, public;
 SELECT * FROM users;  -- 'pwned' — same query, attacker's table
 ```
 
-That is the whole vulnerability: nothing was injected, nothing was malformed.
-The string `SELECT * FROM users` never changed — only the schema it resolved to
-did.
+That is the whole vulnerability, in either case: nothing was injected,
+nothing was malformed. The string `SELECT * FROM users` never changed —
+only the schema it resolved to did.
 
 | Vector               | Impact                                             |
 | -------------------- | -------------------------------------------------- |
@@ -125,11 +171,28 @@ await client.query("SET search_path TO $1", [schema]); // ❌ syntax error
 name is an **identifier**, and identifiers need identifier-escaping, not value
 binding.
 
-## Why this survives code review
+There is one genuinely parameterizable form — `set_config('search_path', $1,
+false)` is a regular function call, so the value *can* go through a bind
+parameter:
 
-I've approved code that looked like this. Here's the honest reason it gets
-waved through, even by people who would block a string-concatenated `WHERE`
-clause on sight:
+```js
+await client.query("SELECT set_config('search_path', $1, false)", [schema]);
+```
+
+Don't mistake this for a fix, though. Bind parameters stop SQL from being
+injected into the *statement* — they say nothing about which schema the
+*value* is allowed to name. `set_config` will happily bind-parameterize a
+value of `evil, public` exactly as willingly as `tenant_2, public`; you've
+solved the syntax-error problem, not the trust problem. It's a genuine
+answer to "isn't there a parameterizable form?" — and a non-answer to
+"is this safe with an attacker-controlled value?" You still need `%I` or an
+allow-list on what the parameter is allowed to contain.
+
+## Why it survived review
+
+> **search_path hijacking is a 2-line config mistake that gives attacker-controlled schemas precedence over your application schemas. Every unqualified table reference becomes a potential exploit.**
+
+Here is the honest reason it gets waved through, even by people who would block a string-concatenated `WHERE` clause on sight:
 
 - **The dangerous line and the exploited line are different lines.** The
   reviewer's injection radar fires on `client.query("SELECT ... " + x)`. It
@@ -163,45 +226,52 @@ allow-list is a _copy_ of a fact that lives somewhere else. That's the half-life
 of "trusted": it decays the moment the source of truth moves and the copy
 doesn't.
 
-## The real fixes
+## The real fixes (3 lines)
 
-**1. Don't use a dynamic `search_path` at all — fully-qualify names.** This
+**Fix 1: Don't use a dynamic `search_path` at all — fully-qualify names.** This
 sidesteps the whole class:
 
 ```js
-await client.query("SELECT * FROM public.users"); // resolution is explicit
+// ✅ resolution is explicit — search_path is irrelevant
+await client.query("SELECT * FROM public.users");
 ```
 
-**2. If the schema must be dynamic, escape it as an identifier** with
+**Fix 2: If the schema must be dynamic, escape it as an identifier** with
 `pg-format`'s `%I` (the client-side equivalent of `quote_ident()`):
 
 ```js
 import format from "pg-format";
-// %I quotes + escapes the value as an identifier — schema injection is impossible
+// ✅ %I quotes + escapes the value as an identifier — schema injection is impossible
 await client.query(format("SET search_path TO %I", tenantSchema));
 ```
 
-**3. Or constrain the value so it _can't_ carry injection** — an allow-list of
+**Fix 3: Constrain the value so it _can't_ carry injection** — an allow-list of
 known schemas, or an integer-only tenant id:
 
 ```js
 const ALLOWED = new Set(["tenant_1", "tenant_2", "tenant_3"]);
 if (!ALLOWED.has(schema)) throw new Error("unknown schema");
 await client.query(format("SET search_path TO %I", schema));
+```
 
-// or: a numeric id literally cannot contain SQL
+The disable comment below is only safe because `Number.isInteger` guarantees
+the interpolated value can't be anything *but* digits — a validated integer
+literally cannot carry SQL syntax. That guarantee is what earns the
+exception; swap the guard for a string check and the same line becomes the
+vulnerability again:
+
+```js
+// a numeric id literally cannot contain SQL — the guard IS the safety, not the interpolation
 if (!Number.isInteger(tenantId)) throw new Error("bad tenant id");
-// yes, this is interpolation — but after the guard the value is a provably
-// integer-suffixed literal (no attacker-controllable characters survive
-// Number.isInteger), so the conservative rule's flag here is a false positive
-// you silence with a documented disable, not a real hole:
 // eslint-disable-next-line pg/no-unsafe-search-path -- integer-suffixed literal, validated above
-await client.query(`SET search_path TO ${"tenant_" + tenantId}`); // integer-safe
+await client.query(`SET search_path TO ${"tenant_" + tenantId}`);
 ```
 
 What is **never** safe — no matter how "trusted" the source feels — is raw
-interpolation of a string identifier: `SET search_path TO ${schema}` is the
-vulnerability, not the fix.
+interpolation of a *string* identifier: `SET search_path TO ${schema}` is the
+vulnerability, not the fix. The only reason the integer case above is
+different is that a validated integer isn't a string in the way that matters —
+it can't contain a quote, a semicolon, or a schema name that isn't yours.
 
 ## The rule: `no-unsafe-search-path` (CWE-426)
 
@@ -238,12 +308,26 @@ export default [configs.recommended];
 > look. Prefer the static/qualified forms; where a validated dynamic value is
 > genuinely required, apply `%I` or an allow-list and add a documented
 > `// eslint-disable-next-line pg/no-unsafe-search-path` with the reason.
+>
+> **On the severity label.** CVSS 7.5 falls in the v3.1 **High** band (7.0–8.9);
+> `Critical` starts at 9.0. The rule's fixed label runs ahead of the number —
+> if you score the *cross-tenant confidentiality break* specifically (C:H over
+> a plausible network vector), it can land closer to 9.1 and earn `Critical`
+> honestly, but as shipped the label and the score disagree, and a
+> security-literate reader is right to notice. Treat the finding as **High**
+> until the label catches up. Same honesty applies to `OWASP:A05` — a
+> dynamically interpolated `SET` is arguably closer to **A03 (Injection)** than
+> A05 (Misconfiguration); I framed `search_path` as a config surface for this
+> rule, but the injection reading is defensible too.
 
 ## The multi-tenant pattern, done right
 
 ```js
 import format from "pg-format";
 
+// tenantId MUST come from the authenticated session (req.session.tenantId /
+// the verified JWT claim) — never from a request field the caller can set,
+// like req.query.tenant or req.body.tenantId.
 async function queryTenant(tenantId, sql, params) {
   const tenant = await getTenant(tenantId); // trusted lookup
   if (!tenant) throw new Error("unknown tenant");
@@ -265,6 +349,44 @@ source" is **not** sufficient — a future refactor, a renamed tenant, or a
 mis-seeded row makes "trusted" untrue. Routing it through `%I` makes the
 identifier safe by construction, regardless of provenance.
 
+**`%I` fixes injection, not authorization — they're different bugs.** This
+matters most for exactly the no-privilege case from Step 1. `%I` guarantees
+`tenant.schema` can't smuggle extra SQL (`evil, public` can't break out of
+the identifier). It does **nothing** to stop `%I` from safely, correctly
+setting `search_path` to a schema the *caller* isn't authorized to see. If
+`tenantId` is read from a request field instead of the authenticated
+session, `queryTenant(attackerSuppliedTenantId, ...)` runs cleanly —
+no injection, perfectly escaped, wrong tenant's data. That's not a
+`search_path` bug at that point; it's a plain IDOR wearing the same
+symptom. `%I` closes the injection axis; only deriving `tenantId` from
+something the caller can't forge closes the authorization axis. You need
+both.
+
+**Stronger still: `SET LOCAL` instead of `SET`.** The pattern above is
+correct — reset in `finally`, always released — but it depends on that reset
+actually running. `SET LOCAL search_path TO %I` scopes the change to the
+current transaction and auto-reverts at `COMMIT`/`ROLLBACK`, so a forgotten
+`release()`, an early return before the `finally`, or a thrown error in a
+code path that skips cleanup can't leak tenant A's schema onto the next
+request that borrows the same pooled connection. Wrap the query in an
+explicit transaction and `SET LOCAL` becomes the belt to the `finally`
+block's suspenders.
+
+One sharp edge: `SET LOCAL` **outside** a transaction block is a silent
+no-op — PostgreSQL emits `WARNING: SET LOCAL can only be used in transaction
+blocks` and the setting never takes effect. Drop it into an autocommit code
+path by mistake and you get zero isolation, with only a warning (which most
+apps never surface) to tell you. `BEGIN` first, or use plain `SET` with the
+`finally` reset if you can't guarantee a transaction wraps the call.
+
+**Schemas aren't the only isolation axis.** If you're choosing a multi-tenant
+strategy from scratch, row-level security (`ALTER TABLE … ENABLE ROW LEVEL
+SECURITY` plus a tenant-id policy) is the other lever, and it doesn't depend
+on `search_path` at all. Schema-per-tenant and RLS aren't mutually
+exclusive — plenty of production systems run both — but if you're on RLS
+alone, this specific class of bug doesn't apply to you. If you're on
+schemas, `search_path` hygiene is load-bearing either way.
+
 ## Why your AI assistant writes the vulnerable version
 
 Ask an LLM to "make the schema configurable per tenant" and watch what comes
@@ -276,8 +398,8 @@ almost always the interpolated form:
 await client.query(`SET search_path TO ${tenantSchema}`);
 ```
 
-It's not a dumb mistake — it's the _statistically likely_ one, for the same
-reasons a human reviewer waves it through:
+It's the statistically likely draft, for the same reasons a human reviewer
+waves it through:
 
 - The model has seen `SET search_path TO <schema>` countless times in docs and
   Stack Overflow answers, almost always with a literal or a plain variable.
@@ -305,19 +427,13 @@ I dig into the same effect with a controller a model wrote in
 and across the whole 700-function corpus in
 [I Let Claude Write 80 Functions; 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
 
-> **I re-ran this pass against Gemini specifically.** Of the five models, **Gemini
-> 2.5 Pro topped the Database Operations domain at 96%** — the same
-> `eslint-plugin-pg` ruleset flagged 96% of its generated DB functions, the
-> highest of any model in the corpus. That isn't a knock on Gemini's reasoning:
-> when I asked it to _fix_ the flagged code, it patched the large majority of its
-> own findings on request. The 96% is a write-time artifact — the model defaults
-> to the insecure-but-popular `SET search_path TO ${schema}` form for the same
-> statistical reason a human reaches for it, then cleans up once a linter points.
-> The head-to-head against Claude on the same prompts is in
-> [Claude vs Gemini Across 4 Security Domains: A Dead Heat](https://ofriperetz.dev/articles/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips).
-> (This is also why the piece carries `#googleai` — it's a one-step
-> [Build with Gemini](https://dev.to/challenges) submission: the Gemini benchmark
-> is already here.)
+> **On Gemini specifically** — the 96% high-water mark above: that isn't a knock
+> on its reasoning. When I asked it to _fix_ the flagged code, it patched the
+> large majority of its own findings on request. The number is a write-time
+> artifact, not a ceiling — it defaults to the insecure-but-popular form for the
+> same statistical reason a human reaches for it, then cleans up once a linter
+> points. The head-to-head against Claude on the same prompts is in
+> [Claude vs Gemini Across 4 Security Domains: A Dead Heat](https://ofriperetz.dev/articles/gemini-vs-claude-security-4-domains-eslint-benchmark).
 
 The practical upshot: the same `no-unsafe-search-path` rule that catches a
 human's slip is the cheapest guardrail you can put between an AI-generated
@@ -330,7 +446,11 @@ value is trusted."
 Static analysis guards the source; pair it with the server:
 
 - `REVOKE CREATE ON SCHEMA public FROM PUBLIC` so attackers can't create the
-  shadowing schema/objects in the first place.
+  shadowing schema/objects in the first place. PostgreSQL 15 made this the
+  default — but only for **newly created** databases on a fresh cluster.
+  Upgrade a pre-15 cluster with `pg_upgrade`, or restore an old dump, and it
+  keeps the permissive grant it always had. Run the `REVOKE` explicitly;
+  don't assume your version number covers you.
 - Set a safe `search_path` on the role/function (`ALTER FUNCTION … SET search_path = pg_catalog, public`)
   for `SECURITY DEFINER` functions.
 - Qualify names in security-sensitive code regardless.
@@ -355,11 +475,16 @@ the [connection leak that took down a production API](https://ofriperetz.dev/art
 and the [N+1 insert loop](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance)
 that quietly turns one request into thousands of round-trips.
 
+Related attacks in this series:
+- [PostgreSQL COPY FROM: Filesystem Access via SQL](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — another vector that lives in a "trusted" server command
+- [Three SQL Injection Patterns That Still Ship in Node.js](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) — the patterns search_path hijacking deliberately evades
+
 ---
 
 - 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
 - 📖 [Rule docs: no-unsafe-search-path](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-search-path)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
+- 🔍 [Full plugin docs](https://eslint.interlace.tools)
 
 **Now go check.** Grep your codebase for `SET search_path` — or just run the
 rule. The interpolated ones love to hide in a connection hook or tenant
@@ -372,6 +497,10 @@ trusted source" line talked out of catching it?**
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you found a `SET search_path` you didn't know was there.
 ::
+
+---
+
+*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
 
 ---
 

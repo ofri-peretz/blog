@@ -1,6 +1,6 @@
 ---
-title: "Your Frontend Stores JWTs in localStorage and Posts to '*'. 45 ESLint Rules Catch What the Backend Audit Misses."
-description: "JWT-in-localStorage, innerHTML XSS, postMessage('*'), mixed content, permissive CORS — browser-side bugs a backend pentest and a type-checker never see. 45 CWE-mapped ESLint rules that catch them in CI."
+title: "Browser Security Bugs Your Frontend Passes to Code Review — 45 ESLint Rules Catch Them in CI"
+description: "JWT-in-localStorage, innerHTML XSS, postMessage('*'), mixed content, permissive CORS — browser-side bugs a backend pentest and a type-checker never see. A findings report on the patterns that survive review, with 45 CWE-mapped ESLint rules that catch them automatically."
 slug: "getting-started-eslint-plugin-browser-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-browser-security"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-browser-security-3iop"
@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-brow
 social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-browser-security"
 reading_time_minutes: 11
 tags:
-  - "eslint"
   - "security"
-  - "webdev"
-  - "ai"
+  - "javascript"
+  - "devsecops"
+  - "node"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -23,44 +23,41 @@ author:
 series: "The Hardened Stack"
 ---
 
-**65–75% of AI-generated frontend functions shipped with a security vulnerability** — and the browser surface is the hardest to catch, because the dangerous pattern and the safe pattern produce identical runtime behavior right up until someone exploits it.
-
-Your backend gets a pentest. Your API has rate limits, parameterized queries,
-and a WAF. The whole security budget points at the server. Then the SPA — the
-part that actually holds the user's session in their browser — does this:
+Here is what four browser security bugs look like in the same PR — all of them compiling cleanly, all of them passing CI, none of them showing up in the backend pentest your team scheduled for next quarter:
 
 ```ts
-localStorage.setItem("token", jwt); // readable by any injected script
-el.innerHTML = profile.bio; // stored XSS sink
-widget.contentWindow.postMessage({ token }, "*"); // sent to any origin
-fetch("http://api.example.com/me"); // plaintext on the wire
+// Finding #1 — XSS sink with no sanitization (CWE-79)
+el.innerHTML = profile.bio;
+// Why it survived review: renders correctly; reviewer checked layout, not sink context
+// Rule: no-innerhtml | Fix: el.textContent = profile.bio
+
+// Finding #2 — JWT stored where any injected script can reach it (CWE-922)
+localStorage.setItem("token", jwt);
+// Why it survived review: first Google result for "store JWT frontend"; works in the demo
+// Rule: no-jwt-in-storage | Fix: HttpOnly cookie set by the server
+
+// Finding #3 — token broadcast to any origin that holds the window reference (CWE-346)
+widget.contentWindow.postMessage({ authToken }, "*");
+// Why it survived review: copied from the vendor's own integration docs
+// Rule: no-postmessage-wildcard-origin | Fix: postMessage(payload, "https://widget.example.com")
+
+// Finding #4 — session data transmitted in plaintext (CWE-319)
+fetch("http://api.example.com/session");
+// Why it survived review: dev environment uses http://; nobody changed it before deploy
+// Rule: no-http-urls | Fix: enforce https:// in the URL literal
 ```
 
-None of those throw. None fail a unit test. None show up in a backend audit —
-they execute in the browser, on the user's machine, after your server is done.
-The type-checker is happy; `innerHTML` is a `string`.
+None of those throw. None fail a unit test. Your type-checker is satisfied — `innerHTML` accepts a `string`. The backend pentest will never touch them because they execute in the user's browser, after your server is done.
 
-**Why these survive code review.** Every one of these lines reads as the
-boring, correct way to do the task. `localStorage.setItem("token", jwt)` is
-the first result for "store JWT frontend." `postMessage(data, "*")` is what the
-iframe vendor's own snippet ships. `el.innerHTML = bio` renders the profile and
-the reviewer is looking at whether the bio _displays_, not where the string came
-from. None of them look like a security bug — they look like working code that
-passed CI — so a senior approves the PR in thirty seconds and moves on. The
-failure isn't ignorance; it's that the dangerous version and the safe version are
-visually almost identical, and nothing in the toolchain draws the line. That's
-exactly the line a linter can draw.
+This is the shape of browser security debt: **it looks identical to correct code.** The dangerous version and the safe version are visually almost indistinguishable, and nothing in the standard toolchain draws the line. That's exactly the line a linter can draw.
 
-The browser is its own security boundary, and the bugs that live there —
-DOM XSS, token exfiltration via `postMessage`, JWT-in-`localStorage`, mixed
-content, permissive CORS — are _source patterns_. That makes them a linter's
-job. **`eslint-plugin-browser-security` is 45 rules for exactly that surface**,
-every one pinned to a CWE, organized into the categories you actually reason
-about (XSS, storage, transport, cookies, CORS/CSRF, postMessage, WebSocket).
+**`eslint-plugin-browser-security` is 45 rules for that surface** — every one pinned to a CWE, firing in CI before the code ships. The rest of this article is what those findings actually look like, how they survive review, and how to add the guard.
 
-This is the complete reference: the one attack everyone gets wrong
-(`postMessage`), the full 45-rule map, install/config across package managers,
-and the exact ESLint/Oxlint versions it runs under.
+> *A static linter catches the dangerous pattern the moment it enters the codebase — not after the pentest, not after the postmortem.*
+
+---
+
+If you are starting from scratch on static analysis security tooling, the [30-minute security audit protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) covers how to sequence plugins across a new codebase. For a cross-plugin benchmark, [17 ESLint security plugins compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) covers where `browser-security` sits relative to the field.
 
 ---
 
@@ -81,9 +78,9 @@ and the exact ESLint/Oxlint versions it runs under.
 
 ---
 
-## The one everyone gets wrong: `postMessage`
+## Finding #1: `postMessage` — the two security decisions everyone gets wrong
 
-`window.postMessage` is two security decisions, and most code gets both wrong.
+The `postMessage` pattern is the most common source of token exfiltration bugs I see in frontend code, because it requires making two correct decisions simultaneously — and most code makes neither.
 
 ### Send side — the `'*'` target origin leaks
 
@@ -92,7 +89,7 @@ and the exact ESLint/Oxlint versions it runs under.
 widget.contentWindow.postMessage({ authToken }, "*");
 ```
 
-The second argument is not decoration — it's a **delivery filter**. The browser
+The second argument is not decoration — it is a **delivery filter**. The browser
 only hands the message to `widget` if `widget`'s _current_ origin matches the
 target you specify. `"*"` disables that check: the message is delivered no
 matter what origin currently occupies that window. If the iframe has navigated
@@ -130,9 +127,7 @@ window.addEventListener("message", (event) => {
 origin sent this," not "which window sent this." If you embed _two_ frames from
 `https://widget.example.com` — the real one and a second, attacker-influenced
 instance (an ad slot, a nested iframe the widget itself loaded) — both pass the
-string compare. The origin is identical; the sender is not. For a privileged
-listener you also have to pin the sender against the window reference you
-actually trust:
+string compare. For a privileged listener you also need to pin the sender against the window reference you actually trust:
 
 ```ts
 window.addEventListener("message", (event) => {
@@ -158,7 +153,7 @@ error.
 
 ---
 
-## The second one: JWT in `localStorage`
+## Finding #2: JWT in `localStorage`
 
 ```ts
 // ❌ no-jwt-in-storage (CWE-922)
@@ -175,60 +170,9 @@ dependency, or a malicious browser extension. There is no `HttpOnly` for
 // Server sets: Set-Cookie: token=...; HttpOnly; Secure; SameSite=Strict
 ```
 
-`no-jwt-in-storage`, `no-sensitive-localstorage`, `no-sensitive-sessionstorage`,
-and `no-sensitive-indexeddb` (all **CWE-922**) cover the storage surface. If
-your codebase also has hardcoded API keys or inline secrets, the companion
-[`eslint-plugin-secure-coding`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding)
-catches those separately — including an [autofix for AI-generated hardcoded
-secrets](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
+**This is what an LLM emits when you ask it to wire up auth.** Open any assistant and paste verbatim: _"Store the JWT and read it back on reload."_ You will get `localStorage.setItem(...)` in the first response, essentially every time — because it is the statistical center of a decade of Stack Overflow answers and starter repos that did it the easy way. The model is optimizing for "code that runs," and the insecure version runs identically.
 
----
-
-## Your AI assistant ships every one of these by default
-
-Here's the part that turns this from "legacy debt" into "today's problem." The
-two patterns above — JWT in `localStorage`, `postMessage` to `"*"` — are exactly
-what an LLM emits when you ask it to wire up auth or talk to an iframe. They're
-the statistical center of its training data: a decade of Stack Overflow answers
-and starter repos that did it the easy way. The model is optimizing for "code
-that runs," and the insecure version runs identically.
-
-When I had Claude generate a batch of common backend functions with no security
-context, [65-75% shipped with a security
-vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-— consistent across four models. I widened that to a [700-function, five-model
-benchmark broken down by security
-domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain):
-storage mishandling and transport bugs — the exact categories `browser-security`
-covers — showed the highest failure rates across every model. The [five-model
-security leaderboard](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
-makes the same point: rankings shift by domain, no model is safe, and picking a
-"better" model doesn't close the gap the way a static rule does. The browser
-surface is worse than backend functions, because there's no framework guard-rail
-and no type error to catch it.
-
-You don't have to take the number on faith — this one is two prompts you can
-reproduce in under a minute. Open any assistant and paste, verbatim:
-
-> _"Store the JWT and read it back on reload."_
-
-You will get `localStorage.setItem(...)` in the first response, essentially
-every time — that's `no-jwt-in-storage` (CWE-922). Then paste:
-
-> _"Send the token to the embedded checkout widget."_
-
-You will get `iframe.contentWindow.postMessage(payload, "*")` — that's
-`no-postmessage-wildcard-origin` (CWE-346). The model isn't being careless;
-it's returning the statistical center of its training data, and the insecure
-version compiles and runs identically to the safe one. Pipe that same generated
-snippet through `npx eslint .` with `configs.recommended` and the rule fires on
-the exact line the model just wrote. That round trip — _generate → lint →
-watch it flag_ — is the demo, and it reproduces on whatever assistant you have
-open.
-
-**I ran that exact round trip for this post.** First prompt, verbatim, into the
-`claude` CLI — _"Write a TypeScript function that stores the JWT and reads it
-back on page reload."_ Here is the function it returned, pasted as-is:
+I ran that exact round trip for this post. Verbatim, into the `claude` CLI — _"Write a TypeScript function that stores the JWT and reads it back on page reload."_ Here is the function it returned, pasted as-is:
 
 ```ts
 // generated output, unedited
@@ -257,155 +201,46 @@ src/auth.ts
 ✖ 2 problems (2 errors, 0 warnings)
 ```
 
-That is not a synthetic example — it's the literal output, `JWT_KEY` and all,
-from linting code an assistant wrote thirty seconds earlier. The interesting
-part: this run was against a _security-tuned_ assistant that appended its own
-"prefer HttpOnly cookies" caveat in prose — and **still emitted the
-`localStorage` version as the actual code**. The warning in the chat doesn't
-stop the insecure line from landing in the file; the lint rule does. (One honest
-caveat on reproducibility below: the _second_ prompt — the `postMessage` one —
-came back with a pinned origin on this particular hardened CLI, so its `"*"`
-finding isn't from my run. On a vanilla assistant with no security system
-prompt you get the `"*"` every time; here the guard-rail caught it, which is
-itself the point — the posture you inherit depends on the exact tool, and the
-only layer that's constant is the lint.)
+That is not a synthetic example — it's the literal output, `JWT_KEY` and all, from linting code an assistant wrote thirty seconds earlier. The interesting part: this run was against a _security-tuned_ assistant that appended its own "prefer HttpOnly cookies" caveat in prose — and **still emitted the `localStorage` version as the actual code**. The warning in the chat does not stop the insecure line from landing in the file; the lint rule does.
 
-**And switching vendors doesn't save you.** This isn't a "Claude problem." When
-I gave Claude Sonnet 4.6 and Gemini 2.5 Flash the _identical_ NestJS prompt and
-ran both outputs through the matching plugin, [Claude shipped 6 security errors
-and Gemini shipped
-2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)
-— different counts, but the takeaway is that the toolchain you pick changes the
-security posture you _inherit_, and every model on the market still emits some
-version of these patterns by default. The two browser sinks above are the kind
-that survive across all of them, because there's no framework guard-rail and no
-type error to catch them. So run the generated code through the lint regardless
-of which assistant wrote it — the rule is vendor-agnostic on purpose. (I ran the
-Claude half above; the Gemini half is a clean [`#googleai`
-challenge](https://dev.to/challenges) entry waiting for someone — same two
-prompts, `gemini` CLI, the `recommended` preset, paste the finding. The method
-is identical to my transcript above; only the vendor changes. If you run it,
-drop the error count in the comments and I'll add it to the cross-vendor
-tally.)
+This is also why the fix has to live in CI, not in review. A human reviewer fixes one `localStorage` call; the next prompt regenerates it. A lint rule flags the regenerated bug as reliably as the original. `eslint-plugin-browser-security` turns each of these into a CI error the moment the generated code lands — whether a human or a model wrote it.
 
-This is also why the fix has to live in CI, not in review. A human reviewer
-fixes one `localStorage` call; the next prompt regenerates it. Worse, telling the
-model "make it secure" without a checker tends to spawn a _new_ class of bug
-while patching the old one — the [AI Hydra
-pattern](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
-I documented separately. A lint rule is the only thing in the loop that flags the
-regenerated bug as reliably as the original. `eslint-plugin-browser-security`
-turns each of these into a CI error the moment the generated code lands — whether
-a human or a model wrote it.
+`no-jwt-in-storage`, `no-sensitive-localstorage`, `no-sensitive-sessionstorage`,
+and `no-sensitive-indexeddb` (all **CWE-922**) cover the storage surface. If
+your codebase also has hardcoded API keys or inline secrets, the companion
+[`eslint-plugin-secure-coding`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding)
+catches those separately — including an [autofix for AI-generated hardcoded
+secrets](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
 
 ---
 
-## The full rule set
+## Finding #3: Credentials in URLs
 
-All 45, grouped by category, with each rule's declared CWE:
+Two rules in the table address credentials leaking through URLs, and both carry CWEs that are easy to confuse with adjacent weakness classes:
 
-### XSS / DOM injection
+| Rule                             | Correct CWE | What it catches |
+| -------------------------------- | ----------- | --------------- |
+| `no-credentials-in-query-params` | CWE-598     | API keys, tokens, passwords passed as query string parameters — visible in server logs, browser history, `Referer` headers |
+| `no-password-in-url`             | CWE-598     | Password values embedded in the URL itself — same exposure path |
 
-| Rule                          | CWE    |
-| ----------------------------- | ------ |
-| `no-innerhtml`                | CWE-79 |
-| `no-filereader-innerhtml`     | CWE-79 |
-| `no-postmessage-innerhtml`    | CWE-79 |
-| `no-websocket-innerhtml`      | CWE-79 |
-| `no-worker-message-innerhtml` | CWE-79 |
-| `no-unescaped-url-parameter`  | CWE-79 |
-| `no-unsafe-inline-csp`        | CWE-79 |
-| `no-eval`                     | CWE-95 |
-| `no-websocket-eval`           | CWE-95 |
-| `no-unsafe-eval-csp`          | CWE-95 |
+CWE-598 is "Use of GET Request Method With Sensitive Query Strings." Credentials in a URL are not hard-coded credentials (CWE-798, which is secrets baked into source at compile time) — they are credentials exposed through an insecure transmission path. The distinction matters when you're triaging against a CVE database or writing a security report: filing the wrong CWE causes the finding to get deprioritized or dismissed.
 
-### Token & data storage
+```ts
+// ❌ no-credentials-in-query-params (CWE-598)
+fetch(`https://api.example.com/data?api_key=${apiKey}`);
+// Appears in access logs, browser history, Referer headers on every outgoing link
 
-| Rule                             | CWE     |
-| -------------------------------- | ------- |
-| `no-jwt-in-storage`              | CWE-922 |
-| `no-sensitive-localstorage`      | CWE-922 |
-| `no-sensitive-sessionstorage`    | CWE-922 |
-| `no-sensitive-indexeddb`         | CWE-922 |
-| `no-credentials-in-query-params` | CWE-798 |
-| `no-password-in-url`             | CWE-521 |
-| `no-sensitive-data-in-cache`     | CWE-200 |
-
-### Transport security
-
-| Rule                                 | CWE     |
-| ------------------------------------ | ------- |
-| `no-http-urls`                       | CWE-319 |
-| `require-https-only`                 | CWE-319 |
-| `no-unencrypted-transmission`        | CWE-319 |
-| `detect-mixed-content`               | CWE-311 |
-| `no-disabled-certificate-validation` | CWE-295 |
-| `no-allow-arbitrary-loads`           | CWE-295 |
-
-### postMessage
-
-| Rule                               | CWE     |
-| ---------------------------------- | ------- |
-| `no-postmessage-wildcard-origin`   | CWE-346 |
-| `require-postmessage-origin-check` | CWE-346 |
-
-### WebSocket
-
-| Rule                    | CWE     |
-| ----------------------- | ------- |
-| `no-insecure-websocket` | CWE-319 |
-| `require-websocket-wss` | CWE-319 |
-
-### Cookies
-
-| Rule                          | CWE      |
-| ----------------------------- | -------- |
-| `no-cookie-auth-tokens`       | CWE-1004 |
-| `no-sensitive-cookie-js`      | CWE-1004 |
-| `require-cookie-secure-attrs` | CWE-614  |
-
-### CORS / CSRF / response headers
-
-| Rule                          | CWE      |
-| ----------------------------- | -------- |
-| `no-permissive-cors`          | CWE-942  |
-| `no-missing-cors-check`       | CWE-346  |
-| `no-missing-csrf-protection`  | CWE-352  |
-| `no-missing-security-headers` | CWE-693  |
-| `require-csp-headers`         | CWE-1021 |
-| `no-clickjacking`             | CWE-1021 |
-
-### Redirects, URLs & misc
-
-| Rule                             | CWE     |
-| -------------------------------- | ------- |
-| `no-insecure-redirects`          | CWE-601 |
-| `require-url-validation`         | CWE-601 |
-| `no-unvalidated-deeplinks`       | CWE-939 |
-| `no-dynamic-service-worker-url`  | CWE-829 |
-| `require-mime-type-validation`   | CWE-434 |
-| `require-blob-url-revocation`    | CWE-401 |
-| `no-client-side-auth-logic`      | CWE-602 |
-| `no-sensitive-data-in-analytics` | CWE-359 |
-| `no-tracking-without-consent`    | CWE-359 |
-
-That's all 45 (10 + 7 + 6 + 2 + 2 + 3 + 6 + 9). The `recommended` preset turns
-on 31 of them as errors/warnings; `strict` turns on all 45.
-
-Each rule carries its own OWASP tag in the output, mapped from its CWE rather
-than a blanket plugin-wide category — so the labels you'll actually see are
-mixed: the XSS block reports A03 (Injection), JWT-in-`localStorage` and the
-transport rules report A02 (Cryptographic Failures, as the captured findings
-above show), the `postMessage` pair reports A01 (Broken Access Control), and the
-broader auth/identity rules land in A07. If you want the client-side surface
-scored against that framework rather than rule-by-rule, I broke down [which
-OWASP categories ESLint rules actually hold up
-against](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
-separately — including the two that turn out to be vendor theater.
+// ✅ send credentials in the Authorization header
+fetch("https://api.example.com/data", {
+  headers: { Authorization: `Bearer ${apiKey}` }
+});
+```
 
 ---
 
-## Install
+## Add the guard in CI
+
+The four findings above — `postMessage` wildcard, JWT-in-localStorage, credentials in URLs, and plaintext transport — all have the same fix: add `eslint-plugin-browser-security` to your lint pipeline.
 
 ```bash
 # npm
@@ -466,13 +301,114 @@ src/widget.ts
                Fix: Specify the exact origin of the target window instead of "*".   no-postmessage-wildcard-origin
 ```
 
-One thing to notice in that line, because a careful reader will: the rule tags
-this `OWASP:A01-Broken` — **A01 (Broken Access Control)**, not the A03/Injection
-bucket you might expect. A wildcard `postMessage` is an _origin-validation_
-failure (CWE-346), so the plugin files it under access control, while the
-storage finding above carries `A02-Cryptographic` and the XSS rules carry A03.
-The OWASP tag is per-rule and reflects the actual weakness class, not a single
-blanket category for the whole plugin.
+One thing to notice in that line: the rule tags this `OWASP:A01-Broken` — **A01 (Broken Access Control)**, not the A03/Injection bucket you might expect. A wildcard `postMessage` is an _origin-validation_ failure (CWE-346), so the plugin files it under access control, while the storage finding above carries `A02-Cryptographic` and the XSS rules carry A03. The OWASP tag is per-rule and reflects the actual weakness class, not a blanket category for the whole plugin.
+
+---
+
+## The full rule set
+
+All 45, grouped by category, with each rule's declared CWE:
+
+### XSS / DOM injection
+
+| Rule                          | CWE    |
+| ----------------------------- | ------ |
+| `no-innerhtml`                | CWE-79 |
+| `no-filereader-innerhtml`     | CWE-79 |
+| `no-postmessage-innerhtml`    | CWE-79 |
+| `no-websocket-innerhtml`      | CWE-79 |
+| `no-worker-message-innerhtml` | CWE-79 |
+| `no-unescaped-url-parameter`  | CWE-79 |
+| `no-unsafe-inline-csp`        | CWE-79 |
+| `no-eval`                     | CWE-95 |
+| `no-websocket-eval`           | CWE-95 |
+| `no-unsafe-eval-csp`          | CWE-95 |
+
+### Token & data storage
+
+| Rule                             | CWE     |
+| -------------------------------- | ------- |
+| `no-jwt-in-storage`              | CWE-922 |
+| `no-sensitive-localstorage`      | CWE-922 |
+| `no-sensitive-sessionstorage`    | CWE-922 |
+| `no-sensitive-indexeddb`         | CWE-922 |
+| `no-credentials-in-query-params` | CWE-598 |
+| `no-password-in-url`             | CWE-598 |
+| `no-sensitive-data-in-cache`     | CWE-200 |
+
+### Transport security
+
+| Rule                                 | CWE     |
+| ------------------------------------ | ------- |
+| `no-http-urls`                       | CWE-319 |
+| `require-https-only`                 | CWE-319 |
+| `no-unencrypted-transmission`        | CWE-319 |
+| `detect-mixed-content`               | CWE-311 |
+| `no-disabled-certificate-validation` | CWE-295 |
+| `no-allow-arbitrary-loads`           | CWE-295 |
+
+### postMessage
+
+| Rule                               | CWE     |
+| ---------------------------------- | ------- |
+| `no-postmessage-wildcard-origin`   | CWE-346 |
+| `require-postmessage-origin-check` | CWE-346 |
+
+### WebSocket
+
+| Rule                    | CWE     |
+| ----------------------- | ------- |
+| `no-insecure-websocket` | CWE-319 |
+| `require-websocket-wss` | CWE-319 |
+
+### Cookies
+
+| Rule                          | CWE      |
+| ----------------------------- | -------- |
+| `no-cookie-auth-tokens`       | CWE-1004 |
+| `no-sensitive-cookie-js`      | CWE-1004 |
+| `require-cookie-secure-attrs` | CWE-614  |
+
+### CORS / CSRF / response headers
+
+Note: `no-permissive-cors`, `no-missing-cors-check`, `no-missing-csrf-protection`, `require-csp-headers`, and `no-missing-security-headers` check for _source-level expressions_ that configure these policies. They are not runtime enforcement — they catch code that sets a permissive CORS config or omits a CSP header value in your application source, not a policy your reverse proxy enforces separately.
+
+| Rule                          | CWE      |
+| ----------------------------- | -------- |
+| `no-permissive-cors`          | CWE-942  |
+| `no-missing-cors-check`       | CWE-346  |
+| `no-missing-csrf-protection`  | CWE-352  |
+| `no-missing-security-headers` | CWE-693  |
+| `require-csp-headers`         | CWE-1021 |
+| `no-clickjacking`             | CWE-1021 |
+
+### Redirects, URLs & misc
+
+| Rule                             | CWE     |
+| -------------------------------- | ------- |
+| `no-insecure-redirects`          | CWE-601 |
+| `require-url-validation`         | CWE-601 |
+| `no-unvalidated-deeplinks`       | CWE-939 |
+| `no-dynamic-service-worker-url`  | CWE-829 |
+| `require-mime-type-validation`   | CWE-434 |
+| `require-blob-url-revocation`    | CWE-401 |
+| `no-client-side-auth-logic`      | CWE-602 |
+| `no-sensitive-data-in-analytics` | CWE-359 |
+| `no-tracking-without-consent`    | CWE-359 |
+
+That's all 45 (10 + 7 + 6 + 2 + 2 + 3 + 6 + 9). The `recommended` preset turns
+on 31 of them as errors/warnings; `strict` turns on all 45.
+
+Each rule carries its own OWASP tag in the output, mapped from its CWE rather
+than a blanket plugin-wide category — so the labels you'll actually see are
+mixed: the XSS block reports A03 (Injection), JWT-in-`localStorage` and the
+transport rules report A02 (Cryptographic Failures, as the captured findings
+above show), the `postMessage` pair reports A01 (Broken Access Control), and the
+broader auth/identity rules land in A07. If you want the client-side surface
+scored against that framework rather than rule-by-rule, I broke down [which
+OWASP categories ESLint rules actually hold up
+against](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
+separately — including the two that turn out to be vendor theater.
 
 ---
 
@@ -538,16 +474,15 @@ Run `npx eslint .` with `configs.recommended` on your frontend before you read
 the next paragraph. The first finding it surfaces is almost always a
 `localStorage` token or a `postMessage` wildcard nobody remembered writing.
 
-What did your run flag first — and had it already shipped to production? I'm
-especially collecting the third-party-widget stories: the analytics snippet, the
-chat bubble, the embedded checkout you handed a token to with `"*"` because the
-vendor's own docs told you to. Drop the rule name (and the vendor, if you're
-brave) in the comments — I'm tracking which of these 45 fires most in the wild,
-and my money's on the `postMessage` pair.
+What's the most dangerous DOM manipulation pattern you've shipped that a reviewer missed — and would your team recognize it in an ESLint rule output? I'm especially collecting the third-party-widget stories: the analytics snippet, the chat bubble, the embedded checkout you handed a token to with `"*"` because the vendor's own docs told you to. Drop the rule name (and the vendor, if you're brave) in the comments — I'm tracking which of these 45 fires most in the wild, and my money's on the `postMessage` pair.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your frontend does any of the above.
 ::
+
+---
+
+*[eslint-plugin-browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
 
 ---
 

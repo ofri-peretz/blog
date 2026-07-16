@@ -6,15 +6,15 @@ description: "700 AI-generated functions. 5 models. The cheapest model leads the
 slug: "we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong"
 canonical_url: "https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong"
 published_at: "2026-02-11T08:14:59Z"
-edited_at: "2026-05-25T17:30:00Z"
+edited_at: "2026-07-05T08:00:00Z"
 cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2cazqf3s2d1rj53sheya.png"
 social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2cazqf3s2d1rj53sheya.png"
-reading_time_minutes: 9
+reading_time_minutes: 10
 tags:
   - "ai"
   - "security"
-  - "googleai"
-  - "gemini"
+  - "javascript"
+  - "devsecops"
 reactions: 0
 comments: 0
 views: 0
@@ -26,6 +26,8 @@ author:
 series: "AI Security Benchmark Series"
 ---
 
+We ranked 5 AI models by security. The leaderboard is wrong — here's why and what the right ranking looks like.
+
 Claude Opus generates vulnerable JWT code **every single time** — 7 out of 7 runs, always leaking sensitive user data into the token payload. Gemini Flash generates it **perfectly every single time** — 0 out of 7. Same prompt. Opposite outcomes. 100% consistency on both sides.
 
 That's the kind of finding you miss when you rank AI models by a single number.
@@ -33,6 +35,26 @@ That's the kind of finding you miss when you rank AI models by a single number.
 We benchmarked **700 AI-generated functions** across **5 models from Gemini and Claude** — 7 iterations per prompt, 20 security-critical tasks, 332 ESLint rules. The aggregate leaderboard says the cheapest model is the safest and both Gemini models are the worst. Then we looked at the data by domain — and the leaderboard fell apart.
 
 > This is Part 3 of the [AI Security Benchmark Series](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities). Parts 1-2 established a 65-75% vulnerability baseline using Claude-only models. Here, we expand to Google's Gemini models — and the picture changes entirely.
+
+---
+
+## Why the Conventional Leaderboard Is Wrong
+
+Most AI security benchmarks produce a single number — an aggregate vulnerability rate — and rank models by it. Ours does too. Claude Haiku 4.5 sits at #1 with a 49% vulnerability rate. Gemini 2.5 Pro sits at dead last with 73%.
+
+**Here's why that ranking is wrong — concretely:**
+
+**1. Aggregate scores mask complete category inversions.** Claude Opus (ranked #4 aggregate) generates perfect Configuration code; Gemini Flash (ranked #3 aggregate) generates perfect JWT code where Opus fails every single time. A model ranked "worse" outright dominates the category that matters most for your auth stack.
+
+**2. "Fewer vulnerabilities" is not the same as "more secure output."** Haiku's low rate comes from generating *simpler* code — fewer features, fewer lines, less surface area for rules to flag. Haiku's 49% isn't evidence of security expertise; it's a side effect of producing minimal implementations. Gemini Pro generates elaborate production patterns (connection pooling, retry logic, credential management) that Haiku skips entirely. The benchmark penalizes ambition.
+
+**3. The model ranked #1 is the most unpredictable.** Haiku produced mixed results (sometimes vulnerable, sometimes clean) on 75% of prompts. Opus produced the same result 85% of the time. Haiku's lead is stochastic, not deterministic — which is exactly the wrong property to optimize for in a security-sensitive pipeline.
+
+**4. Remediation ability is invisible in the aggregate.** Claude Opus — ranked #4 — fixes 60% of vulnerabilities when given ESLint feedback. Haiku — ranked #1 — fixes only 38%. The "safest" generator is the worst fixer.
+
+> **The AI security leaderboard ranks models by refusal rate. We ranked by "how bad is the code when it doesn't refuse?" — the results are completely different.**
+
+The conventional ranking would lead you to use Haiku everywhere and avoid Gemini Pro. Our methodology puts them in different slots: Haiku for bulk generation where consistency doesn't matter, Gemini Pro for complex database code where you need deep domain understanding and strong remediation.
 
 ---
 
@@ -95,6 +117,8 @@ Gemini Pro:      ░░░░░░░░░░░░░░░░█████
                  0%        25%        50%        75%       100%
 ```
 
+**The article-native ranking shift:** Gemini Flash was ranked #3 by aggregate vulnerability rate. By domain-level security methodology — accounting for category wins, consistency, and remediation — it moves to #1 for auth and configuration pipelines. Claude Haiku drops from #1 to "use with caution": highest variance, weakest fixer, stochastic not deterministic.
+
 If the story ended here, you'd conclude Haiku wins and Gemini loses. But look at what happens when you break this down by domain.
 
 ---
@@ -131,6 +155,8 @@ Three of Flash's prompts produced **zero vulnerabilities across all 7 iterations
 
 The `generateJWT` result is particularly striking. Gemini Flash generates JWT creation code with minimal payloads containing only the user ID — **perfectly clean, every single time**. Opus, the flagship Claude model, generates vulnerable JWT code with sensitive user data in every single iteration (7/7). Same prompt, opposite outcomes, 100% consistency on both sides.
 
+**Honest loss for Gemini Flash:** Flash actually generates *more* injection vulnerabilities than Haiku in the Database category (75% vs 39%). If your codebase is database-heavy rather than auth-heavy, Flash is not the right primary model. Use it for configuration and auth; reach for Haiku for database generation.
+
 When Flash does encounter configuration vulnerabilities, it fixes **100% of them** (6/6). This gives Flash the strongest end-to-end configuration security pipeline of any model tested — lowest generation rate plus perfect remediation.
 
 ### Gemini Pro: File I/O Leader, Database Remediation Champion, and the #2 Overall Remediator
@@ -150,6 +176,8 @@ But Gemini Pro's most significant strength shows up in **remediation** — speci
 | Haiku 4.5          | 11            | 5        | **45%**         |
 
 **The model with the highest database vulnerability rate (96%) also has the highest database fix rate (93%)**. When told exactly what's wrong — "CWE-1049: Avoid `SELECT *`, enumerate explicit columns" — Gemini Pro restructures the query correctly 25 out of 27 times.
+
+**Honest loss for Gemini Pro:** Pro actually generates *more total vulnerabilities* than every Claude model — 102 vs 91 for Opus. If you care only about raw generation quality and don't have a remediation pipeline, Pro is genuinely the worst choice. The 93% database fix rate only matters if you run ESLint feedback loops. Without tooling, Pro's output is the least safe.
 
 This pattern makes sense. Pro generates complex database code because it has a deep model of the domain — connection pooling, credential management, column enumeration. That same depth of understanding means it can parse a specific ESLint violation and apply the right fix. Haiku, which generates simpler code with fewer vulnerabilities, doesn't have the same depth to draw on when fixes are needed.
 
@@ -188,6 +216,8 @@ Larger models generate **more elaborate** code — connection pooling, retry log
 
 **But this complexity isn't a flaw.** It reflects deeper domain understanding. Gemini Pro's elaborate database code includes production patterns that Haiku skips entirely. The aggregate benchmark penalizes this elaboration — the domain-level data reveals its value.
 
+The practical implication: if your team uses Haiku because it "scores better on security benchmarks," you may be choosing the model that produces the least production-ready code AND the one least capable of fixing its own mistakes.
+
 ---
 
 ## The Variance Insight: Haiku's Lead Is a Coin Flip
@@ -207,6 +237,14 @@ With 7 iterations per prompt, we can measure something aggregate rankings never 
 What does this mean? Haiku's 49% aggregate rate isn't because it "knows" security better — it generates simpler, more varied code, and some variations happen to dodge the rules. **This is a stochastic advantage, not a capability advantage.**
 
 If you generate code once with Opus and get a clean result, you can trust it'll be clean next time. With Haiku, there's a ~43% chance the next run is vulnerable. Gemini Pro and Gemini Flash fall in between — more consistent than Haiku, with the domain expertise to lead in the categories that matter.
+
+---
+
+## If You've Already Read the Prior Articles
+
+[Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) established that Claude models alone generate vulnerabilities 65-75% of the time. [Part 4](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-took-like-by-security-domain) breaks the same 700 functions down by security domain and shows even more dramatic inversions — individual rule categories where the "worst" model leads by 40+ percentage points.
+
+The benchmark methodology is fully open — the runner, prompts, and raw results are in the [eslint-benchmark-suite repo](https://github.com/ofri-peretz/eslint-benchmark-suite). If you want to reproduce this against a different model (Gemini 3 is now available; we'll include it in the next run), the scripts support arbitrary CLI-accessible models.
 
 ---
 
@@ -269,12 +307,16 @@ screen -S benchmark benchmarks/ai-security/run-overnight.sh
 
 **In the AI Security Benchmark Series:**
 
-- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — Establishes the baseline vulnerability rate
+- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — Establishes the baseline vulnerability rate
 - **Part 2:** [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) — Tests whether remediation converges
 - **Part 3:** We Ranked 5 AI Models by Security. The Leaderboard Is Wrong. ← _You are here_ — Validates at scale across providers
-- **Part 4:** [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) — Domain-specific deep-dive
+- **Part 4:** [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) — Domain-specific deep-dive
 
 **Follow [@ofri-peretz](https://dev.to/ofri-peretz) to get notified when the next chapter drops.**
+
+---
+
+**Which AI model do you trust most for security-sensitive code generation — and have you measured that trust against actual vulnerability rates?**
 
 ---
 
@@ -282,3 +324,6 @@ screen -S benchmark benchmarks/ai-security/run-overnight.sh
 I'm Ofri Peretz, a Security Engineering Leader and the architect of the Interlace Ecosystem.
 
 [ofriperetz.dev](https://ofriperetz.dev?utm_source=devto&utm_medium=article&utm_campaign=700-benchmark) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
+
+---
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

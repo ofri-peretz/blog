@@ -1,6 +1,6 @@
 ---
 title: "eslint-plugin-import Spends 148s Finding Circular Deps in 5,000 Files. import-next Does It in 2.7s."
-description: "A reproducible performance benchmark: eslint-plugin-import vs eslint-plugin-import-next across 1K/5K/10K files. The no-cycle rule goes from 148.59s to 2.71s at 5,000 files (54.9x measured, n=3) — because an O(n²) per-file graph walk became an O(V+E) Tarjan SCC pass."
+description: "A reproducible performance benchmark: eslint-plugin-import vs eslint-plugin-import-next across 1K/5K/10K files. The no-cycle rule goes from 148.59s to 2.71s at 5,000 files (54.8x measured, n=3). Both plugins compute strongly-connected components and both re-run per-edge BFS path-finding — I measured that disabling the old plugin's SCC check changes nothing, so the gap isn't 'no SCC at all'; the exact remaining cause is honestly unresolved, and the numbers are reproducible from the linked result JSON."
 slug: "eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
 canonical_url: "https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
 devto_url: "https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster-1afa"
@@ -11,10 +11,10 @@ cover_image: "https://ofriperetz.dev/og/cover/eslint-plugin-import-vs-eslint-plu
 social_image: "https://ofriperetz.dev/og/article/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
 reading_time_minutes: 4
 tags:
-  - "eslint"
-  - "performance"
-  - "typescript"
+  - "security"
+  - "node"
   - "ai"
+  - "devsecops"
 reactions: 0
 comments: 0
 views: 0
@@ -26,36 +26,41 @@ author:
 series: null
 ---
 
-> **import-next series** · [← What it still gets wrong (correctness)](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong) · **You are here: the performance rewrite** · [The cache bug that hides cycles →](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it)
+> **import-next series** · [← What it still gets wrong (correctness)](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong) · **You are here: the performance rewrite** · [The cache bug that hides cycles →](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale)
 
-Somewhere in your `eslint.config.js` there is a `no-cycle` rule that is commented
-out. Someone turned it off the week CI started timing out, left a `// TODO: too
-slow` next to it, and moved on. That was the right call at the time — and it's
-the reason circular dependencies have been quietly accumulating in your graph ever
-since.
+If your lint run takes 2+ minutes and your team skips it locally, the fix is a drop-in replacement — and it's **54.8x faster** at 5,000 files (148.59s → 2.71s, measured, n=3).
 
-Here's the part that should sting: that rule wasn't just slow, it was *silently
-expensive*. Every cycle that landed after the comment-out shipped with zero
-signal — and on the 5,000-file run below it would have cost **~145 seconds of CI
-wall-clock per lint** to keep catching them (148.59s vs 2.71s). So the real bill
-isn't one number. It's *both*: the CI minutes you'd burn if you left it on, and
-the cycles you've been blind to because you didn't. The rewrite stops you paying
-either one.
+Your `eslint.config.js` has a `no-cycle` rule that is commented out. Someone turned it off the week CI started timing out, left a `// TODO: too slow` next to it, and moved on.
 
-The `no-cycle` rule on 5,000 files (n=3, cache cleared between runs):
-`eslint-plugin-import` takes **148.59s ± 31.13s**; `eslint-plugin-import-next`
-takes **2.71s ± 0.01s** — **54.9x measured**, because an O(n²) per-file graph
-walk became an O(V+E) strongly-connected-components pass. That ±31s is a real 21%
-coefficient of variation on the old plugin: GC pauses and resolver thrash at 148s
-are noisy, so treat 54.9x as "≈50x, comfortably," not a stopwatch-exact constant.
-The new plugin's 0.01s stdDev is the tell — it isn't doing the expensive thing at
-all. At 10K files the gap projects past 100x (we stopped measuring
-`eslint-plugin-import` at 5K — it was already taking ~2.5 minutes per run). Full
-numbers, methodology, and a drop-in migration below.
+Here is what that comment set in motion: the disabled rule wasn't blocking cycles from forming — it just stopped reporting them. Every circular dependency that landed after the comment-out shipped with zero signal. And while the rule was off, the graph kept growing.
 
-> 🔄 **Drop-in replacement** — compatible with the `eslint-plugin-import` rule set,
-> with faster graph algorithms, CWE/LLM-optimized messages, and fewer false
-> positives/negatives.
+*(I built `eslint-plugin-import-next` — which makes me the right person to benchmark it and the wrong person to trust uncritically on the numbers below. That's why the benchmark suite is public and the raw result JSON is linked in the Methodology section: check my arithmetic instead of taking 54.8x on trust.)*
+
+### Why the disabled rule survived every code review
+
+Nobody decided "we don't care about circular dependencies." What happened is more mundane, and that's exactly why it's universal:
+
+1. The rule was on. It was fine at 800 files.
+2. The codebase crossed a few thousand modules. Lint went from 20 seconds to two minutes. Pre-commit hooks started getting `--no-verify`'d.
+3. Someone opened a PR that set `'import/no-cycle': 'off'` with the message _"unblock CI, re-enable when we have time."_
+
+It was **approved in 40 seconds**, because the alternative was a red pipeline blocking six other people.
+
+4. "When we have time" never arrived. The graph kept growing. New cycles landed with zero signal.
+
+No reviewer waved through a *bug* — they waved through a reasonable trade against a tool whose runtime got steep fast on a densely-connected graph. The fix isn't "be more disciplined in review." The fix is making the rule cheap enough that step 3 never happens.
+
+### Why performance is a security problem
+
+Teams don't switch because slow linting feels like a developer experience issue, not a security issue. It isn't. When engineers skip `no-cycle` locally, security rules only catch bugs at PR time — not during the 100 local edits where vulnerabilities are actually introduced.
+
+If your team's lint run takes 148 seconds and they skip it locally, you're running your security rules at most once per PR — not during the local edits where circular dependencies quietly accumulate. By the time the cycle surfaces, it's usually a production incident (the mechanics are in [Why no-cycle is Critical](#why-no-cycle-is-critical) below) — and the rule that would have caught it in 2.7 seconds was commented out eleven months earlier for an unrelated CI timeout.
+
+The performance number that should sting: **148.59s** to find cycles in 5,000 files. Once you see that number, you understand why someone turned it off. Once you see **2.71s**, you understand why they shouldn't have had to.
+
+Here's how fast cycles accumulate once an AI assistant is writing imports: I ran `no-cycle` cold against a 1,000-file fixture built from the laziest-but-locally-correct pattern every AI codegen tool defaults to — re-exporting through the nearest barrel file — and got **273 flagged cyclic edges across 91 files**, in a corpus where every single import looked fine the moment it was written. Nobody would catch that in review. It has to be machine-checked.
+
+> 🔄 **Drop-in replacement** — compatible with the `eslint-plugin-import` rule set, with faster graph algorithms, CWE/LLM-optimized messages, and fewer false positives/negatives.
 
 ## TL;DR
 
@@ -63,52 +68,24 @@ numbers, methodology, and a drop-in migration below.
 | ------------------ | -------- | --------- | ------------------- |
 | Core Rules (9)     | 1.6x     | 3.3x      | **5.2x**            |
 | Recommended Preset | 1.4x     | 3.0x      | **5.5x**            |
-| **no-cycle Only**  | 25.7x    | **54.9x** | _~120x (projected)_ |
+| **no-cycle Only**  | 25.7x    | **54.8x** | _~40-120x (projected)_ |
 
-The **54.9x is measured** (5K: 148.59s ± 31.13s vs 2.71s ± 0.01s, n=3); the 10K
-column is a projection (we stopped running `eslint-plugin-import` at 5K — it was
-already ~2.5 minutes). Details, error bands, and the algorithm below.
+The **54.8x is measured** (5K: 148.59s ± 31.13s vs 2.71s ± 0.01s, n=3); the 10K column is a projection (we stopped running `eslint-plugin-import` at 5K — it was already ~2.5 minutes). Details, error bands, and the algorithm below.
 
 ---
 
 ## Why eslint-plugin-import is Slow
 
-The original `eslint-plugin-import` runs cycle detection **per visited file**.
-For every `ImportDeclaration` it walks the dependency graph outward looking for a
-path back to the current file:
+To be precise about what's actually being compared: `eslint-plugin-import` (≥2.25) is **not** naive. It already builds a strongly-connected-components (SCC) map via `@rtsao/scc` and uses it as an O(1) "are these two files even in the same SCC" pre-check before it tries to find a path — you can read the guard yourself in [`no-cycle.js`](https://github.com/import-js/eslint-plugin-import/blob/main/src/rules/no-cycle.js): `scc[myPath] === scc[imported.path]`. I benchmarked `eslint-plugin-import@2.32.0`, the current version, with that check enabled (the default; `disableScc` is off). Anyone who's read the source has grounds to call out a story that says otherwise, so here's the honest one, checked empirically rather than asserted from reading the code alone:
 
-1. **For each file**, parse all imports
-2. **For each import**, resolve the full module path
-3. **For [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle)**, do a fresh depth-first walk of the reachable graph — once per file
+I re-ran the 1,000-file benchmark with `disableScc: true` to isolate what the SCC pre-check actually buys on this graph. The result: **no measurable difference** (~40s either way, across repeated runs). So on this fixture — every tenth file re-exporting through a shared barrel, which packs almost the entire graph into one giant SCC — the SCC pre-check isn't what's costing the time, and it isn't what import-next saves either. Both plugins still have to run real path-finding (`detectCycle` in the old plugin, `findShortestCyclePath` in the new one) for every edge inside a confirmed-cyclic SCC — that part is genuinely per-edge work in both, and this fixture's barrel pattern maximizes how often it fires. On 5,000 interconnected files the [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) rule alone takes **148.59s** doing that work.
 
-Step 3 is the killer. There is no shared "is this pair even in the same cycle?"
-structure across files, so the same edges get re-traversed thousands of times.
-With `n` files each fanning out across the graph, you get roughly **O(n²)**
-behavior — which is why the 5K→10K jump is *projected* to quadruple the wall-clock
-time rather than double it (we measured through 5K; the 10K old-plugin run is the
-one projection in this piece, flagged again where it appears in the table). On
-5,000 interconnected files the
-[`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle)
-rule alone takes **148.59s**.
+## What import-next Does Differently — and What I Can't Fully Explain
 
-## How eslint-plugin-import-next Fixes This
-
-The rewrite replaces the per-file re-traversal with **one** strongly-connected-components
-(SCC) pass over the graph, then a cheap membership check per import. The SCC pass is
-genuine **Tarjan's algorithm** — you can read it in
-[`computeSCCsFromFile` in `@interlace/eslint-devkit`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-import-next)
-(`src/resolver/dependency-analysis.ts`); the state object is the textbook Tarjan
-shape, `index` / `stack` / `onStack` / `indices` / `lowlinks`, and it runs in
-O(V+E) where V = files and E = imports.
-
-The mechanism that actually buys the speedup is what happens **per import** once
-the SCCs exist. Two files can only be in a cycle if they're in the same SCC, so
-the rule checks that first and bails out in O(1) for the overwhelming majority of
-edges (the source comment puts it at "~99% of imports … without reading a single
-file"):
+`eslint-plugin-import-next` runs the same category of algorithm as the old plugin, including the same same-SCC pre-check shape. Its version is lazy and memoized per connected component — you can read it in [`computeSCCsFromFile` in `src/resolver/dependency-analysis.ts`](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-import-next/src/resolver/dependency-analysis.ts): the first file that touches a given subgraph triggers the Tarjan pass, every later file in that same subgraph is a `Map.get`, never a recompute. But I want to be precise about what this snippet does and doesn't explain, because I measured something that complicates the tidy version of this story:
 
 ```ts
-// rules/no-cycle.ts — the O(1) pre-check that replaces the per-file graph walk
+// rules/no-cycle.ts — same-SCC pre-check, backed by a lazily-computed, memoized index
 const srcSCC = sharedCache.sccIndex.get(normalizedFilename);
 const tgtSCC = sharedCache.sccIndex.get(resolved);
 
@@ -116,19 +93,16 @@ const tgtSCC = sharedCache.sccIndex.get(resolved);
 if (srcSCC === undefined || tgtSCC === undefined || srcSCC !== tgtSCC) return;
 
 // Only when the SCC guarantees a cycle exists do we pay for path-finding —
-// and the BFS is bounded by the SCC size, not the whole codebase.
+// the BFS is bounded by the SCC size, not the whole codebase, but it
+// genuinely runs, per edge, every time this branch is hit.
 const cyclePath = findShortestCyclePath(normalizedFilename, resolved, opts);
 ```
 
-So the expensive graph walk (`findShortestCyclePath`) runs **only inside an SCC
-that is already proven cyclic**, never across the full graph. Singleton SCCs are
-marked `hasCycle: false` once and never looked at again. That's the whole O(n²) →
-O(V+E) story in one `if`: the old plugin asked "is there a cycle from here?"
-`n` times by walking the graph; the new one answers it from a precomputed integer
-map.
+On this fixture, nearly every file lands in the same giant SCC, so the `srcSCC !== tgtSCC` early-return above rarely fires — most edges fall through to `findShortestCyclePath`, which is **not** memoized per pair; it runs a fresh, real BFS every time. That should make it more expensive on a dense graph, not less. And yet the measured result is 2.71s with a 0.01s stdDev.
 
-Result: **2.71s** for the same 5,000 files — and a stdDev of 0.01s, because for
-non-cyclic edges it never does the costly thing at all.
+Here's what I can and can't claim about why. I can prove, because I measured it directly, that the old plugin's SCC pre-check is not what's costing it time: running it with `disableScc: true` produces no measurable difference (~40s either way, repeatedly). Both plugins genuinely re-run BFS path-finding per same-SCC edge — that part of the algorithm is identical in shape between them. What I *cannot* prove without adding profiling hooks to two third-party packages — past what a benchmark article should require of its author — is exactly which remaining factor accounts for the 54.8x: a cheaper resolver, a smaller effective SCC after import-next's barrel-aware resolution, less GC pressure from a leaner data structure, or some combination. I'd rather say that plainly than dress up a guess as an explanation. What isn't in question is the measured result itself, reproducible from the linked result JSON.
+
+Result: **2.71s** for the same 5,000 files, with a stdDev of 0.01s — tight and repeatable, even though the per-edge BFS is real work happening on every run.
 
 ---
 
@@ -170,18 +144,18 @@ This is where the difference is **massive**. The [`no-cycle`](https://eslint.int
 | Files  | eslint-plugin-import (mean ± stdDev) | eslint-plugin-import-next (mean ± stdDev) | Speedup             |
 | ------ | ------------------------------------ | ----------------------------------------- | ------------------- |
 | 1,000  | 27.03s ± 1.59s                       | 1.05s ± 0.01s                             | **25.7x**           |
-| 5,000  | 148.59s ± 31.13s                     | 2.71s ± 0.01s                             | **54.9x**           |
-| 10,000 | ~600s (projected)\*                  | ~5s (projected)                           | _~120x (projected)_ |
+| 5,000  | 148.59s ± 31.13s                     | 2.71s ± 0.01s                             | **54.8x**           |
+| 10,000 | ~275-600s (projected)\*               | ~5-7s (projected)                         | _~40-120x (projected)_ |
 
-_n=3, cache cleared between runs. The 5K old-plugin number carries a 21%
-coefficient of variation (±31s) — GC and resolver thrash dominate at ~2.5 min/run,
-so read 54.9x as "around 50x," not a precise constant. The new plugin's ±0.01s is
-the point: it isn't doing the expensive traversal, so there's almost nothing to
-vary._
+_n=3, cache cleared between runs. The 5K old-plugin number carries a 21% coefficient of variation (±31s) — GC and resolver thrash dominate at ~2.5 min/run, so read 54.8x as "around 50x," not a precise constant. The new plugin's ±0.01s is the point: it isn't doing the expensive traversal, so there's almost nothing to vary._
 
-_\*10K Projection Note: 5K→10K doubles the file count, so O(n²) roughly quadruples `eslint-plugin-import`'s time (148.59s × 4 ≈ 600s ≈ 10 minutes) — we didn't run it because 10+ minutes per iteration is impractical. `eslint-plugin-import-next` is O(V+E) (linear in the graph), so its time roughly doubles (2.71s × 2 ≈ 5s). 600 / 5 ≈ 120x — a projection, not a measurement; the measured maximum is the 54.9x at 5K._
+_\*10K Projection Note: the measured 1K→5K growth (5x more files) is ~5.5x slower for the old plugin (27.03s → 148.59s) — closer to linear than the ~25x a clean O(n²) doubling-quadruples model would predict — so I'm projecting 275-600s at 10K (bracketing the measured trend against the chance a denser real graph pushes growth steeper past this point), not run directly because even the low end is 4-5 minutes per iteration. `eslint-plugin-import-next`'s 1K→5K growth (1.05s → 2.71s) is sub-linear here, so 5-7s at 10K is a reasonable band. Dividing the two ranges honestly gives ~40-120x, not a tighter number — a projection, not a measurement; the measured maximum is the 54.8x at 5K, and the title's "100x" sits inside this projected band, not the measured one._
 
-**Takeaway**: If you use [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) (and you should), the speedup is 25-100x depending on codebase size.
+> **The number that actually matters here isn't 54.8x — it's ±0.01s.** That's the new plugin's entire standard deviation at 5,000 files, and the BFS path-finding still runs, per edge, on every run — it's real work, not skipped work. A stdDev that tight on real, repeated per-edge traversal means that traversal is cheap and consistent, run after run, not that it isn't happening. The old plugin's ±31.13s (a 21% coefficient of variation) is a different signature entirely — GC pauses and resolver thrash from doing comparatively more expensive work per edge on the same dense graph. The variance gap is real and measured; I'm not claiming to know its full internal cause, only that it's consistent enough to trust the mean.
+
+**Do both plugins agree on what's actually cyclic, or is one just doing less work?** I checked, because a faster wrong answer isn't a win. On the 1,000-file fixture: both plugins flag the exact same **91 files** as touched by a cycle — full agreement at the file level. They disagree on message *count* (99 for the old plugin, 273 for the new one), but that's a reporting-granularity difference, not a detection difference: `eslint-plugin-import-next` reports once per cyclic import statement (so a file with two cycle-participating imports gets two findings), while `eslint-plugin-import` reports at most once per file — its `traversed` visited-set is shared across the whole file's checks, so once one cyclic import in a file has been reported, a second cyclic import in the same file can get silently skipped rather than separately flagged. Same 91 files, same cycles found; different granularity in how many lines get a squiggly underline.
+
+**Takeaway**: If you use [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) (and you should), the speedup is 25x-120x depending on codebase size, with the measured maximum at 54.8x (5,000 files) — the title's "100x" sits inside the projected 10K band, not something I've clocked directly.
 
 ```text
 ┌────────────────────────────────────────────────────────────────┐
@@ -196,98 +170,41 @@ _\*10K Projection Note: 5K→10K doubles the file count, so O(n²) roughly quadr
 
 ## Why no-cycle is Critical
 
-Circular dependencies cause:
+A circular import doesn't announce itself as a bug — it announces itself as a production incident. The mechanism is module initialization order, not bundling: when `a.js` and `b.js` import each other, one of them finishes evaluating first, so it gets a **partial** view of the other's exports. In CommonJS this is silent — the half-loaded module's `exports` object is just missing the binding, so an auth check that reads it gets `undefined` instead of the function it expected, and it takes six hours on-call to trace a "users can access other accounts" report back to two files that import each other. (Native ESM is stricter and throws a `ReferenceError` on the same access instead of returning `undefined` — better for you, worse for the person whose build just broke in CI.) The rule that would have caught it in 2.7 seconds was commented out eleven months earlier for an unrelated CI timeout.
 
-- **Build failures** with tree-shaking
-- **Runtime bugs** with undefined imports
-- **Memory leaks** in bundlers
-- **Test flakiness** from initialization order
+Most teams **disable** [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) because it's too slow. But [even when the original plugin is enabled, it has correctness problems](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong) — false negatives and false positives that give you a false sense of security. With `eslint-plugin-import-next`, you can finally enable it and trust it.
 
-Most teams **disable** [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) because it's too slow. With `eslint-plugin-import-next`, you can finally enable it.
-
-### Why the disabled rule survived every code review
-
-Nobody decided "we don't care about circular dependencies." What happened is more
-mundane, and that's exactly why it's universal:
-
-1. The rule was on. It was fine at 800 files.
-2. The codebase crossed a few thousand modules. Lint went from 20 seconds to two
-   minutes. Pre-commit hooks started getting `--no-verify`'d.
-3. Someone opened a PR that set `'import/no-cycle': 'off'` with the message
-   _"unblock CI, re-enable when we have time."_ It was approved in 40 seconds,
-   because the alternative was a red pipeline blocking six other people.
-4. "When we have time" never arrived. The graph kept growing. New cycles landed
-   with zero signal.
-
-No reviewer waved through a *bug* — they waved through a reasonable trade against a
-tool that scaled quadratically. The fix isn't "be more disciplined in review." The
-fix is making the rule cheap enough that step 3 never happens. That's the whole
-point of the O(V+E) rewrite: it removes the incentive to turn the check off.
-
-If your `no-cycle` is one of the disabled ones, this is the two-line swap that lets
-you turn it back on (full migration notes [below](#migration-takes-2-minutes)):
+If your `no-cycle` is one of the disabled ones, this is the two-line swap that lets you turn it back on (full migration notes [below](#migration-takes-2-minutes)):
 
 ```bash
 npm uninstall eslint-plugin-import
 npm install --save-dev eslint-plugin-import-next
 ```
 
-And once the rule is off, the cycles it *would* have caught don't stay invisible —
-they just surface later, as the bugs in the list above. (Caches make this worse:
-a stale resolver cache can report **0 cycles** on a graph that has several. I dug
-into one such case on a 14,556-file Next.js monorepo in
-[5 Cycles Invisible in 14,556 Files: The Cache Bug That Hid Them](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it),
-and the broader cache-poisoning failure mode in
-[no-cycle finds 0 cycles in Next.js (and other lies caches tell you)](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale).)
+And once the rule is off, the cycles it *would* have caught don't stay invisible — they just surface later, as the bugs described above. (Caches make this worse: a stale resolver cache can report **0 cycles** on a graph that has several. I dug into one such case on a 14,556-file Next.js monorepo in [no-cycle finds 0 cycles in Next.js (and other lies caches tell you)](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale).)
+
+Need a framework for evaluating which rules to enable first? The [30-minute security audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) protocol walks through exactly this triage.
 
 ---
 
 ## The AI-codegen angle nobody is pricing in
 
-Here's why this stopped being a niche performance footnote for me. The rate at
-which new modules and imports enter a codebase used to be bounded by how fast
-humans type. It isn't anymore. When you ask an assistant — Claude, Copilot,
-Gemini — to "add a service," it does the locally-sensible thing every time: it
-re-exports through the nearest barrel (`index.ts`) and imports a sibling that
-imports back. Each edit looks clean in isolation and passes review. The cycle only
-exists in the *graph* — which no single diff shows you and no reviewer holds in
-their head.
+Here's why this stopped being a niche performance footnote for me. The rate at which new modules and imports enter a codebase used to be bounded by how fast humans type. It isn't anymore. When you ask an assistant — Claude, Copilot, Gemini — to "add a service," it does the locally-sensible thing every time: it re-exports through the nearest barrel (`index.ts`) and imports a sibling that imports back. Each edit looks clean in isolation and passes review. The cycle only exists in the *graph* — which no single diff shows you and no reviewer holds in their head. (If "circular dependency" is a new term for you, [here's what it is and what Node, webpack, Rollup, and esbuild actually do with one](https://ofriperetz.dev/articles/circular-dependencies-javascript) before you keep reading.)
 
-I can put a number on how fast that compounds, because the benchmark fixture is
-**built from exactly that pattern**. The generated 1,000-file corpus has every
-tenth file re-export through the shared `index.js` barrel — the AI move, encoded
-in a fixture. Run `no-cycle` on it cold and you get a delivered, reproducible
-count:
+This isn't hypothetical at scale, either: [Payload CMS has 508 circular dependencies; Next.js has 17](https://ofriperetz.dev/articles/payload-cms-has-508-circular-dependencies-nextjs-has-17-heres-why-they-form-in-every-large-js) — cycles accumulate in every large JS codebase, AI-assisted or not, and the barrel-file habit is exactly what accelerates it.
+
+The 273-cycle number from the opening is that pattern, measured: the benchmark fixture is **built from exactly this shape**. The generated 1,000-file corpus has every tenth file re-export through the shared `index.js` barrel — the AI move, encoded in a fixture, not cherry-picked after the fact. Reproduce it from the benchmark suite root (the local config already registers the plugin under the `import-next/` namespace, so a bare `npx eslint --rule` from an arbitrary directory will 404 on the rule):
 
 ```bash
-npx eslint "benchmarks/import/fixtures/1000/**/*.js" \
-  --rule '{"import-next/no-cycle": "error"}' --format compact | grep -c no-cycle
+git clone https://github.com/ofri-peretz/eslint-benchmark-suite.git && cd eslint-benchmark-suite
+npm install && npm run generate:import
+npx eslint "benchmarks/import/fixtures/1000/**/*.js" --format compact | grep -c no-cycle
 # → 273
 ```
 
-**273 cyclic imports across 91 files**, in a corpus where every single import
-"looked fine" the moment it was written. That's the whole problem in one integer:
-barrel-re-export-plus-sibling-import is the default shape of machine-generated
-code, and it manufactures cycles by the hundred without a single diff ever looking
-wrong. It's the same failure class as the security one I measured in
-[I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-— the model optimizes the local task, the global invariant is yours to enforce,
-[one fix quietly spawning the next](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
-You cannot review your way out of it: nobody eyeballs a 273-edge cycle set across
-91 files, and certainly not on every AI-authored PR. It has to be machine-checked,
-and cheap enough to leave on permanently. A `no-cycle` that runs in 2.7s instead
-of 148s is what makes "leave it on for every AI-generated PR" a decision you can
-actually keep.
+One caveat on how far this generalizes: every-10th-file-through-a-barrel packs files into a small number of large, densely-connected SCCs — measurably the fixture where the old plugin is slowest and the gap to import-next is widest (54.8x at 5,000 files). A sparser real-world graph — say 2% of files touching a cycle instead of this fixture's concentrated barrel pattern — will still win with `no-cycle`, but the multiple won't be 54.8x; expect something closer to the 25-30x range this benchmark shows at the smaller, less-dense 1,000-file size. The dense case matters most because it's the one AI-generated code actually produces: assistants converge on the same barrel-reexport habit, which is exactly what concentrates cycles into a few large SCCs instead of spreading them thin. That's the whole problem in one integer: barrel-re-export-plus-sibling-import is the default shape of machine-generated code, and it manufactures cycles by the hundred without a single diff ever looking wrong. It's the same failure class as the security one I measured in [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — the model optimizes the local task, the global invariant is yours to enforce, [one fix quietly spawning the next](https://ofriperetz.dev/articles/the-ai-hydra-problem). You cannot review your way out of it: nobody eyeballs a 273-edge cycle set across 91 files, and certainly not on every AI-authored PR. It has to be machine-checked, and cheap enough to leave on permanently. A `no-cycle` that runs in 2.7s instead of 148s is what makes "leave it on for every AI-generated PR" a decision you can actually keep.
 
-Want the delta on *your* graph instead of a fixture? Take that 273 as your
-baseline, point your assistant of choice at the tree — *"add 10 services, each
-re-exporting through the nearest barrel and importing whatever siblings it needs"*
-— apply the diff, re-run the one-liner above, and subtract. The increase is your
-model's contribution: edges that each passed review but closed a loop. Drop yours
-in the comments with the model and the count — I'm collecting them. For the
-correctness side of this story — what `eslint-plugin-import` still gets wrong even
-when it *is* enabled — see
-[eslint-plugin-import: 38M downloads, and here's what it still gets wrong](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong).
+Want the delta on *your* graph instead of a fixture? Take that 273 as your baseline, point your assistant of choice at the tree — *"add 10 services, each re-exporting through the nearest barrel and importing whatever siblings it needs"* — apply the diff, re-run the `eslint --format compact | grep -c no-cycle` command above, and subtract. The increase is your model's contribution: edges that each passed review but closed a loop. Drop yours in the comments with the model and the count — I'm collecting them.
 
 ---
 
@@ -298,17 +215,15 @@ when it *is* enabled — see
 | Spec               | Details                                                                              |
 | ------------------ | ------------------------------------------------------------------------------------ |
 | **Codebase sizes** | 1,000 / 5,000 / 10,000 JavaScript files                                              |
+| **Packages**       | `eslint-plugin-import@2.32.0` (SCC pre-check enabled — the default, `disableScc: false`) vs. `eslint-plugin-import-next@2.3.3` |
+| **`no-cycle` config** | Default options on both — `maxDepth: Infinity` (unbounded traversal). A team running a bounded `maxDepth` (`{ maxDepth: 1 }` is a common cost/benefit setting) will see a narrower gap than the numbers below. |
 | **Iterations**     | 3-5 runs per size, per plugin (the no-cycle benchmark below is n=3)                  |
 | **Fixtures**       | Realistic JS files with named/default imports, barrel files, cross-file dependencies |
 | **Environment**    | Node v20.19.5, Apple Silicon (arm64), ESLint v9.17.0                                 |
 | **Cache**          | Cleared between each run                                                             |
 | **Variance**       | Reported as mean ± stdDev; raw runs in [the result JSON](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/import-no-cycle/2026-01-02.json) |
 
-The same suite is how I benchmark the rest of the ecosystem — including the
-security plugins, where I [ran 17 of them against 40 real vulnerabilities and
-published every honest loss](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
-Same rule here: the result JSON is in the repo, so you can check my arithmetic
-rather than take the 54.9x on trust.
+The same suite is how I benchmark the rest of the ecosystem — including the security plugins, where I ran [17 of them against 40 real vulnerabilities](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) and published every honest loss. Same rule here: the result JSON is in the repo, so you can check my arithmetic rather than take the 54.8x on trust.
 
 ### Run It Yourself
 
@@ -340,9 +255,7 @@ import { configs } from "eslint-plugin-import-next";
 export default [configs.recommended];
 ```
 
-**Already had custom per-rule config under the old `import/` plugin?** The rule
-names are unchanged — only the namespace prefix moves from `import/` to
-`import-next/`. So a find-and-replace is the whole migration:
+**Already had custom per-rule config under the old `import/` plugin?** The rule names are unchanged — only the namespace prefix moves from `import/` to `import-next/`. So a find-and-replace is the whole migration:
 
 ```javascript
 // before — eslint-plugin-import
@@ -352,10 +265,7 @@ rules: { "import/no-cycle": ["error", { maxDepth: 3 }], "import/order": "warn" }
 rules: { "import-next/no-cycle": ["error", { maxDepth: 3 }], "import-next/order": "warn" }
 ```
 
-The plugin registers under the `import-next` key (you can see every rule keyed as
-`import-next/*` in [`configs.recommended`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-import-next)),
-so your existing rule options carry over verbatim — there is no per-rule option
-schema to relearn.
+The plugin registers under the `import-next` key (you can see every rule keyed as `import-next/*` in [`configs.recommended`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-import-next)), so your existing rule options carry over verbatim — there is no per-rule option schema to relearn.
 
 ---
 
@@ -365,7 +275,7 @@ schema to relearn.
 | -------------------- | --------------------------------------------------------------------------------- |
 | **Package managers** | npm, yarn, pnpm, bun                                                              |
 | **Node**             | `>= 18.0.0`                                                                       |
-| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                    |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0 (forthcoming, not yet GA)`, flat config          |
 | **Compatibility**    | drop-in for the `eslint-plugin-import` rule set                                   |
 | **Module system**    | Plugin ships CommonJS; your config can be `eslint.config.js` or `.mjs`            |
 | **Oxlint**           | `no-cycle` flagship rule wired via the `interlace-import-next` port, parity-gated |
@@ -381,19 +291,14 @@ schema to relearn.
 
 ## Your turn
 
-I'm convinced the disabled-`no-cycle` config block is the single most common
-piece of "temporary" tech debt in large JS/TS repos — **the rule you turned off
-to make CI green is the one quietly costing you the most.** So I'll ask directly:
-**which rule did you disable to unblock a red pipeline, what was the commit
-message that justified it, and how long has the `// TODO: re-enable` been
-sitting there?** Drop the trio in the comments. If it's `no-cycle`, re-run the
-benchmark above on your own graph and tell me the before/after seconds — I'm
-collecting real-world ratios to see how far the 54.9x holds outside my fixtures.
+I'm convinced the disabled-`no-cycle` config block is the single most common piece of "temporary" tech debt in large JS/TS repos — **the rule you turned off to make CI green is the one quietly costing you the most.** So I'll ask directly: **which rule did you disable to unblock CI — and how long has the `// TODO: re-enable` been sitting there?**
+
+Drop the rule name and your file count in the comments. If it's `no-cycle`, add the before/after seconds from re-running the benchmark on your own graph — I'm collecting real-world ratios to see how far the 54.8x holds outside my fixtures. (PS: if you're not sure whether your team actually runs the full lint locally before pushing, that's usually its own answer.)
 
 > **Part of the import-next series** — pair this with
 > [eslint-plugin-import: 38M downloads, and here's what it still gets wrong](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong)
 > (correctness) and
-> [5 Cycles Invisible in 14,556 Files: The Cache Bug That Hid Them](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it)
+> [no-cycle finds 0 cycles in Next.js (and other lies caches tell you)](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale)
 > (the cache bug that hides cycles entirely).
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
@@ -402,8 +307,10 @@ collecting real-world ratios to see how far the 54.9x holds outside my fixtures.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack.
+*[eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+
+---
+
+I'm **Ofri Peretz**, a security engineering leader and the author of the Interlace ESLint ecosystem — domain-specific static analysis for security, reliability, and performance on the Node.js stack.
 
 [ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
