@@ -269,7 +269,7 @@ All three plugins ship the same contract:
 - 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint)
 - 📊 [Benchmark: 17 ESLint security plugins compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83)
-- 🔍 [I inherited a NestJS codebase — the first lint run found 6 vulnerabilities](https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
+- 🔍 [I inherited a NestJS codebase — the first lint run found 6 vulnerabilities](https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you've ever inherited a codebase and had no idea how bad it was.

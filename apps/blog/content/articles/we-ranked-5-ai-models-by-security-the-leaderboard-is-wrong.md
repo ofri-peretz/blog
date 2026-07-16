@@ -242,7 +242,7 @@ If you generate code once with Opus and get a clean result, you can trust it'll 
 
 ## If You've Already Read the Prior Articles
 
-[Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) established that Claude models alone generate vulnerabilities 65-75% of the time. [Part 4](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-took-like-by-security-domain) breaks the same 700 functions down by security domain and shows even more dramatic inversions — individual rule categories where the "worst" model leads by 40+ percentage points.
+[Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) established that Claude models alone generate vulnerabilities 65-75% of the time. [Part 4](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj) breaks the same 700 functions down by security domain and shows even more dramatic inversions — individual rule categories where the "worst" model leads by 40+ percentage points.
 
 The benchmark methodology is fully open — the runner, prompts, and raw results are in the [eslint-benchmark-suite repo](https://github.com/ofri-peretz/eslint-benchmark-suite). If you want to reproduce this against a different model (Gemini 3 is now available; we'll include it in the next run), the scripts support arbitrary CLI-accessible models.
 
@@ -307,10 +307,10 @@ screen -S benchmark benchmarks/ai-security/run-overnight.sh
 
 **In the AI Security Benchmark Series:**
 
-- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — Establishes the baseline vulnerability rate
+- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — Establishes the baseline vulnerability rate
 - **Part 2:** [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) — Tests whether remediation converges
 - **Part 3:** We Ranked 5 AI Models by Security. The Leaderboard Is Wrong. ← _You are here_ — Validates at scale across providers
-- **Part 4:** [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) — Domain-specific deep-dive
+- **Part 4:** [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj) — Domain-specific deep-dive
 
 **Follow [@ofri-peretz](https://dev.to/ofri-peretz) to get notified when the next chapter drops.**
 

@@ -18,7 +18,7 @@ I asked Claude to fix a command injection. It added an allowlist — and introdu
 
 ## TL;DR
 
-In [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) I measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
+In [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) I measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
 
 I ran two parallel experiments with Claude Sonnet 4.6 across 20 prompts and 3 remediation rounds each:
 
@@ -40,7 +40,7 @@ When models fix security vulnerabilities without deterministic feedback, they in
 
 > **The single worst run in the dataset:** `auth-verify-jwt` in the prompt-only group went **12 → 2 → 10 → 14** across three rounds of regeneration — ending with *more* vulnerabilities than it started with. The same prompt in the Guardian Layer group went **1 → 0** in a single round. Same model, same prompt, same intent. The only difference was whether ESLint's output was fed back.
 
-← [Part 1: I Let Claude Write 80 Functions](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) | **Part 2: The AI Hydra Problem** (you are here) | Part 3: Coming soon
+← [Part 1: I Let Claude Write 80 Functions](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) | **Part 2: The AI Hydra Problem** (you are here) | Part 3: Coming soon
 
 ---
 
@@ -517,7 +517,7 @@ export default [
 ---
 
 **Related reading:**
-- [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — The baseline experiment that set up this remediation study
+- [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — The baseline experiment that set up this remediation study
 - [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj) — Why the Hydra Rate needs a per-domain breakdown, not just an aggregate number
 - [Hardcoded Secrets — the #1 Vulnerability AI Agents Can Auto-Fix](https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg) — How AI handles another class of security fixes
 - [ESLint Interlace Plugin Docs](https://eslint.interlace.tools) — All 332+ rules with fix examples

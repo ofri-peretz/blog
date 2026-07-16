@@ -232,7 +232,7 @@ src/users.ts
 
 ## Where this fits in the broader picture
 
-For the deeper injection taxonomy — concat, identifiers, and the `IN (...)` trap — see [Three SQL Injection Patterns in node-postgres](https://dev.to/ofri-peretz/three-sql-injection-patterns-node-postgres-eslint). For where static analysis fits into the broader security workflow across an onboarding sprint, see [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91).
+For the deeper injection taxonomy — concat, identifiers, and the `IN (...)` trap — see [Three SQL Injection Patterns in node-postgres](https://dev.to/ofri-peretz/three-sql-injection-patterns-that-still-ship-in-nodejs-and-the-linter-that-catches-them-onb). For where static analysis fits into the broader security workflow across an onboarding sprint, see [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91).
 
 Generic security linters flag `eval` and obvious string-built SQL, but they don't know what a `Pool`, a `client.release()`, or `SET search_path` _is_. `eslint-plugin-pg` is the dedicated node-postgres layer — injection, the `search_path` resolution attack, the `COPY FROM` filesystem path, and the connection-lifecycle bugs that cause outages — each finding tagged with a CWE and CVSS.
 

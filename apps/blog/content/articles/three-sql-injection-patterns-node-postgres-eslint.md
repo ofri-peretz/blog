@@ -27,7 +27,7 @@ series: "AI Security Benchmark Series"
 
 Three SQL injection patterns in node-postgres that code reviews consistently miss — and the ESLint rules that don't.
 
-> **AI Security Benchmark Series** — [Part 1: 80 functions, 65–75% vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · [Part 2: the Hydra problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) · [Part 3: 5 models ranked](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4: the domain breakdown](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) · **Applied (you are here): the database domain, weaponized → guarded** → next up, the [full node-postgres failure surface](https://dev.to/ofri-peretz/sql-injection-node-postgres-pattern).
+> **AI Security Benchmark Series** — [Part 1: 80 functions, 65–75% vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · [Part 2: the Hydra problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) · [Part 3: 5 models ranked](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4: the domain breakdown](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) · **Applied (you are here): the database domain, weaponized → guarded** → next up, the [full node-postgres failure surface](https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-pattern-everyone-gets-wrong-54mn).
 
 TypeScript passed it clean. The code reviewer approved it. It shipped to production. Three months later, a penetration tester sent a report.
 
@@ -230,8 +230,8 @@ _Which SQL injection pattern have you found most in the wild — and was it ever
 ---
 
 **Related reading:**
-- [Your node-postgres Data Layer Fails 4 Ways in Production](https://dev.to/ofri-peretz/sql-injection-node-postgres-pattern)
-- [PostgreSQL COPY FROM exploit: filesystem access via SQL](https://dev.to/ofri-peretz/postgresql-copy-from-exploit-filesystem-access)
+- [Your node-postgres Data Layer Fails 4 Ways in Production](https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-pattern-everyone-gets-wrong-54mn)
+- [PostgreSQL COPY FROM exploit: filesystem access via SQL](https://dev.to/ofri-peretz/copy-from-exploits-when-postgresql-reads-your-filesystem-127a)
 - [Plugin docs: eslint.interlace.tools](https://eslint.interlace.tools)
 
 **→ Related (the AI angle):** [We Ranked 5 AI Models by Security — the database domain, in detail](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Same NestJS prompt: Claude got 6 security errors, Gemini got 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) · [Aggregate benchmarks lie — 700 AI functions by security domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
