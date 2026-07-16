@@ -1,14 +1,17 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { unstable_cache } from "next/cache";
-import { cache } from "react";
-
 // Data source for the /npm page. Combines:
-//   - plugins + plugin_daily_metrics from Supabase (per-package sparkline)
-//   - lifetime per-package downloads from npm registry (12h cached)
+//   - plugins + plugin_daily_metrics from Supabase, via the shared
+//     getCachedPluginsDailyRaw() fetcher (per-package sparkline) — same
+//     query the /api/npm-stats route's getCachedPluginsWithDailyData()
+//     uses, so the two pages can't silently diverge on the 30-day window.
+//   - lifetime per-package downloads from npm_alltime_downloads (12h cached)
 //
 // Single read path so the page server component stays presentational.
 
 import "server-only";
+import { unstable_cache } from "next/cache";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { cache } from "react";
+import { getCachedPluginsDailyRaw } from "@/lib/supabase-data";
 
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
@@ -33,43 +36,37 @@ export interface NpmPagePackage {
   dailyData: Array<{ day: string; downloads: number }>;
 }
 
-// Lifetime per-package downloads. One npm-registry call per plugin, paced
-// 250ms apart to stay under anonymous rate limits. ~10s wall-time on a
-// cache miss, then 12h cached. Falls back to 0 on per-plugin failure.
+// Lifetime per-package downloads, from npm_alltime_downloads (PRIMARY KEY
+// plugin_id) — the same table backing v_npm_alltime_ecosystem, which
+// /api/homepage-stats now reads for the site-wide total (see
+// getCachedNpmAlltimeTotal in @/lib/supabase-data). Refreshed daily by
+// agents/footprint/scripts/backfill-npm-alltime.ts. Replaces a former
+// per-package loop against the live npm registry `/downloads/range/`
+// endpoint — that path independently recomputed the same figure a
+// different way per package, the same SSOT hazard the homepage total had.
 const getCachedLifetimePerPackage = unstable_cache(
   async (
-    plugins: ReadonlyArray<{ name: string }>,
+    plugins: ReadonlyArray<{ pluginId: number; name: string }>,
   ): Promise<Record<string, number>> => {
-    const today = new Date().toISOString().slice(0, 10);
     const out: Record<string, number> = {};
-    for (let i = 0; i < plugins.length; i += 1) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 250));
-      const name = plugins[i]!.name;
-      try {
-        const r = await fetch(
-          `https://api.npmjs.org/downloads/range/2020-01-01:${today}/${encodeURIComponent(name)}`,
-          {
-            headers: {
-              "User-Agent": "ofriperetz.dev/blog (/npm)",
-              Accept: "application/json",
-            },
-            signal: AbortSignal.timeout(5_000),
-          },
-        );
-        if (!r.ok) {
-          out[name] = 0;
-          continue;
-        }
-        const json = (await r.json()) as {
-          downloads?: Array<{ downloads: number }>;
-        };
-        out[name] = (json.downloads ?? []).reduce(
-          (sum, d) => sum + d.downloads,
-          0,
-        );
-      } catch {
-        out[name] = 0;
-      }
+    if (plugins.length === 0) return out;
+
+    const client = getClient();
+    if (!client) return out;
+
+    const idToName = new Map(plugins.map((p) => [p.pluginId, p.name]));
+    const { data, error } = await client
+      .from("npm_alltime_downloads")
+      .select("plugin_id, alltime_total")
+      .in("plugin_id", plugins.map((p) => p.pluginId));
+    if (error) {
+      console.error("[npm-page-data] npm_alltime_downloads:", error.message);
+      return out;
+    }
+
+    for (const row of data ?? []) {
+      const name = idToName.get(row.plugin_id);
+      if (name) out[name] = row.alltime_total ?? 0;
     }
     return out;
   },
@@ -77,67 +74,14 @@ const getCachedLifetimePerPackage = unstable_cache(
   { revalidate: TWELVE_HOURS_SECONDS, tags: ["ratchet"] },
 );
 
-// Daily download history (last 30 days) per plugin, from Supabase.
-const getCachedDailyHistory = unstable_cache(
-  async (): Promise<{
-    plugins: Array<{
-      id: number;
-      name: string;
-      slug: string;
-      category: string | null;
-      description: string | null;
-    }>;
-    daily: Map<number, Array<{ day: string; downloads: number }>>;
-  }> => {
-    const empty = { plugins: [], daily: new Map() };
-    const client = getClient();
-    if (!client) return empty;
-
-    const today = new Date();
-    const thirtyAgo = new Date(today);
-    thirtyAgo.setDate(thirtyAgo.getDate() - 30);
-    const windowStart = thirtyAgo.toISOString().slice(0, 10);
-
-    const { data: plugins, error: pErr } = await client
-      .from("plugins")
-      .select("id, name, slug, category, description");
-    if (pErr || !plugins) {
-      console.error("[npm-page-data] plugins:", pErr?.message);
-      return empty;
-    }
-
-    const { data: rows, error: dErr } = await client
-      .from("plugin_daily_metrics")
-      .select("plugin_id, observed_on, npm_downloads_d1")
-      .gte("observed_on", windowStart)
-      .order("observed_on", { ascending: true });
-    if (dErr) {
-      console.error("[npm-page-data] daily:", dErr.message);
-      return { plugins, daily: new Map() };
-    }
-
-    const daily = new Map<number, Array<{ day: string; downloads: number }>>();
-    for (const row of rows ?? []) {
-      const arr = daily.get(row.plugin_id) ?? [];
-      arr.push({
-        day: row.observed_on,
-        downloads: row.npm_downloads_d1 ?? 0,
-      });
-      daily.set(row.plugin_id, arr);
-    }
-    return { plugins, daily };
-  },
-  ["npm-page-daily"],
-  { revalidate: TWELVE_HOURS_SECONDS, tags: ["ratchet"] },
-);
-
 // Composed: per-package data ready to render.
 export async function getNpmPagePackages(): Promise<NpmPagePackage[]> {
-  const { plugins, daily } = await getCachedDailyHistory();
+  const { plugins, daily: dailyEntries } = await getCachedPluginsDailyRaw();
+  const daily = new Map(dailyEntries);
   if (plugins.length === 0) return [];
 
   const lifetimeByName = await getCachedLifetimePerPackage(
-    plugins.map((p) => ({ name: p.name })),
+    plugins.map((p) => ({ pluginId: p.id, name: p.name })),
   );
 
   const packages: NpmPagePackage[] = plugins

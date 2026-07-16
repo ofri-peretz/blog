@@ -79,6 +79,16 @@ const nextConfig: NextConfig = {
           "/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster",
         permanent: true,
       },
+      // NestJS getting-started: the file was renamed to match its frontmatter
+      // slug (source.ts derives slugs from filenames, so the old filename-slug
+      // served the page while canonical/OG URLs pointed at the frontmatter
+      // slug and 404'd). Redirect the old filename-derived slug to the
+      // canonical one for any indexed/inbound links.
+      {
+        source: "/articles/getting-started-eslint-plugin-nestjs-security",
+        destination: "/articles/nestjs-guards-pipes-throttlers-6-eslint-rules",
+        permanent: true,
+      },
       // AI-security Part 1: the title + body say "80 functions" (4 models ×
       // 20), but the published canonical slug + dev.to permalink say "60"
       // (the original 3-model run, before Opus 4.6 was appended). The 60-slug
