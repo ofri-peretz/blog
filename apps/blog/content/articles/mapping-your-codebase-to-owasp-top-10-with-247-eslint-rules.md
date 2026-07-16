@@ -12,9 +12,9 @@ social_image: "https://ofriperetz.dev/og/article/mapping-your-codebase-to-owasp-
 reading_time_minutes: 8
 tags:
   - "security"
-  - "ai"
   - "node"
   - "devsecops"
+  - "javascript"
 reactions: 1
 comments: 0
 views: 0
@@ -25,6 +25,8 @@ author:
   twitter: "ofriperetzdev"
 series: null
 ---
+
+247 ESLint rules mapped to OWASP Top 10 — but most teams automate coverage for only 7 of the 10 categories. Here's which 3 categories have zero or near-zero static analysis coverage in most Node.js projects.
 
 Every "100% OWASP coverage by static analysis" slide is off by two — and the
 vendor selling it is counting on you not opening the OWASP page to check. I've
@@ -55,6 +57,43 @@ your own `node_modules`. Don't take mine — or any vendor's — on faith.)
 > This is the **web** OWASP Top 10 (2021). The AI/LLM list is mapped separately
 > in [the OWASP LLM Top 10 piece](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) —
 > also honestly, 8 of 10.
+
+---
+
+## The uncomfortable gap: which categories your linter can't touch
+
+Before the map, the insight most teams miss: **A04 (Insecure Design) has zero genuinely automatable ESLint rules** — it's a design problem, not a code problem. The rules listed for it in the table below (`require-secure-defaults`, `no-missing-validation-pipe`) nudge toward safer defaults, but they don't catch the actual A04 vulnerabilities: missing rate limits on money-moving endpoints, replayed workflows, trust boundaries in the wrong place. Those are architectural decisions that happen before a line of code is written.
+
+Most teams don't know this. They install a lint config, see OWASP categories in the output, and assume they're covered. The gap between "we have ESLint" and "we have OWASP coverage" is 247 rules and 2 categories — and no npm package tells you this automatically.
+
+Here's the distribution across all 10 categories (approximate, from the ecosystem at time of writing):
+
+| Category | Representative rule count | Coverage type |
+|---|---|---|
+| A03 Injection | ~80 rules | Full (SQL, NoSQL, DOM, LDAP, eval) |
+| A07 Auth Failures | ~40 rules | Full |
+| A02 Crypto Failures | ~35 rules | Full |
+| A05 Misconfiguration | ~30 rules | Full |
+| A01 Broken Access Control | ~25 rules | Full |
+| A08 Data Integrity | ~20 rules | Full |
+| A09 Logging Failures | ~10 rules | Full |
+| A10 SSRF | ~7 rules | Full |
+| A06 Vulnerable Components | ~5 rules | Partial (source hygiene only — not CVE graph) |
+| A04 Insecure Design | ~2 rules | Partial (defaults nudges — not design coverage) |
+
+A03 alone has more rules than A04, A06, A09, and A10 combined. If your threat model includes Insecure Design, your linter can't help — and that's the category most enterprise security questionnaires ask about first.
+
+**Slack-quotable version:** 247 ESLint rules for OWASP Top 10 — but A04 (Insecure Design) has 0 automatable rules. If your threat model includes it, your linter can't help.
+
+---
+
+## Why teams don't know their coverage
+
+The most common pattern I see: a team picks up `eslint-plugin-security` (or a bundle config), sees it run in CI, and ticks the OWASP box. They never check which categories are actually covered, because nothing tells them.
+
+The gap between "we have ESLint" and "we have OWASP coverage" is 247 rules and 2 uncovered categories — and no npm package tells you this automatically. The only way to know is to do what this article does: map each rule's CWE to its OWASP category and count.
+
+If you want to verify your own install right now, skip to the [one-liner at the bottom](#build-your-config-layer-by-layer). It counts every rule across every installed Interlace plugin — the only count that matters is the one your CI prints.
 
 ---
 
@@ -91,7 +130,9 @@ security reviewer actually wants:
   trust boundary in the wrong place, a workflow that can be replayed. That's an
   _architectural_ problem. A few rules nudge toward safe defaults
   (`require-secure-defaults`, `no-missing-validation-pipe`), but the real
-  control is **threat modeling and design review**, not a linter.
+  control is **threat modeling and design review**, not a linter. The rules that
+  exist for A04 catch symptoms of poor defaults — they don't catch the absence of
+  a rate limit or a broken trust boundary. That's the gap most teams assume is covered.
 - **A06 Vulnerable & Outdated Components** — a transitive dependency with a
   published CVE. That's a _Software Composition Analysis_ problem.
   `node-security` covers the **source-hygiene slice** — suspicious install
@@ -280,6 +321,8 @@ This is the ecosystem-level OWASP view — the index page of a larger series. Ea
 category above has a deep-dive that walks the full rule set, the attack behind
 it, and the code that survived review:
 
+- [The 30-minute security audit: a static analysis protocol for onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) — how to run this map as a structured audit from day one
+- [Benchmark: 17 ESLint security plugins compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) — how the Interlace plugins compare to every alternative
 - [`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) — the `alg:none` bypass (A07) and 12 more auth rules
 - [`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — SQL injection (A03), connection leaks, the N+1 insert loop
 - [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the A05 attack (CWE-426) most teams have never heard of
@@ -300,16 +343,8 @@ it, and the code that survived review:
 ⭐ Star on GitHub if this is on your roadmap.
 ::
 
-What's the OWASP category you've watched a team _claim_ on a security
-questionnaire and then completely fail to control in the actual code — the gap
-between the slide and the call site? I'll start: I've lost count of the "Insecure
-Design: covered ✅" answers sitting on top of a money-moving endpoint with no
-rate limit. Tell me yours.
+Which OWASP Top 10 category are you least confident your CI covers — and have you verified it with actual rule-to-category mapping? I'll start: I've lost count of the "Insecure Design: covered ✅" answers sitting on top of a money-moving endpoint with no rate limit. Tell me yours.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

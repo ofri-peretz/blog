@@ -6,19 +6,34 @@ description: "Nine flagship ESLint rules. Months of green unit tests, weeks of O
 published: true
 tags:
   - "security"
-  - "ai"
-  - "googleai"
-  - "geminichallenge"
+  - "node"
+  - "devsecops"
+  - "javascript"
 canonical_url: "https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed"
 cover_image: "https://media2.dev.to/dynamic/image/width=1200,height=627,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Farticles%2F49iz3bb9eg4zte81hhqn.png"
 series: "Inside our linter benchmarks"
 ---
 
-Two of the three bugs a 5KB corpus caught the first time we ran it were on the exact shapes an AI assistant emits by default — and the security rules meant to catch AI mistakes were the ones silently waving them through.
+Our test suite was green. Our CI was green. Ground truth analysis found 3 vulnerabilities that had been in production for months. Here's the specific difference between unit test coverage and ground truth security coverage.
 
-Three of our flagship ESLint rules had green unit tests for months and had been benchmarked against peer plugins on real OSS for weeks. Then that corpus — 12 fixtures, runs in 3 seconds — failed all three the first time we ran it. None of the prior signals had flinched.
+Three of our flagship ESLint security rules had passing unit tests for months and had been benchmarked against peer plugins on real OSS for weeks. Then a 5KB corpus — 12 fixtures, runs in 3 seconds — failed all three the first time we ran it. None of the prior signals had flinched.
 
-The reason that should worry you before you read a single fix: each rule's widest blind spot sat exactly where AI-generated code is densest. These are security rules teams adopt to backstop AI output — and they were silently trusting the one input distribution they were never tested against. The three walkthroughs below are how that happens, line by line.
+Here's the number that makes this concrete: **3 ground truth findings, all 3 had passing unit tests, 2 had 100% unit test branch coverage.** The unit tests were not inadequate — they were complete. They just validated the wrong thing.
+
+**100% unit test coverage and 3 production security vulnerabilities aren't contradictory — mocks are the gap between them.**
+
+The reason that should worry you before you read a single fix: each rule's widest blind spot sat exactly where AI-generated code is densest. These are security rules teams adopt to backstop AI output — and they were silently trusting the one input distribution they were never tested against.
+
+## Why "green unit tests" isn't "tested against the real world"
+
+Unit tests verify that the rule does what its author thought it should do. Ground truth verifies that the rule does what the world needs it to do. Those are different questions, and for security rules, the difference kills you.
+
+The crisp version:
+
+- **Unit test**: mock input `{ x: req.body.x }` fires the `no-unsafe-query` rule → test passes.
+- **Ground truth**: the real injection shape `$where: \`...${req.query.name}...\`` doesn't fire → vulnerability ships to production.
+
+Both signals are green. One is wrong in exactly the way that matters.
 
 Here's how that gate works. We added a `npm run ilb:flagship:smoke` step to the `quality` script. It's small: for each flagship rule with a labeled corpus, run the rule against `vulnerable/*` (must fire) and `safe/*` (must stay silent). Compute precision, recall, F1. Fail the build below F1=1.00.
 
@@ -62,6 +77,8 @@ React Hook useEffect has missing dependencies: r
 
 Tracing into the source, `extractLocallyDeclaredIdentifiers` walked the effect body, collected `VariableDeclaration` and `FunctionDeclaration` names, but **didn't collect `params` of nested `ArrowFunctionExpression` / `FunctionExpression`**. Every callback parameter inside the effect was treated as a closure-from-outside.
 
+**Why unit test #31 passed while the real pattern failed:** the test fixture used a closure-only effect — `useEffect(() => { setData(userId); }, [userId])` — and validated that `userId` must be in deps. Test #31 passed with green. But test #31's mock never had `.then((r) => r.json())`. The author's mental model didn't include nested callback parameters. The rule and the test shared the same blind spot — so both stayed green while the false-positive shipped.
+
 Fix: when visiting a nested function node, add its `params` to the `declared` set:
 
 ```ts
@@ -75,8 +92,6 @@ if (
 ```
 
 `collectFromPattern` handles `Identifier`, `ObjectPattern` (with nested `Property` and `RestElement`), `ArrayPattern`, `RestElement`, and `AssignmentPattern` — destructured params, rest spreads, defaults. After the fix, the fixture passes.
-
-The reason unit tests missed this: every test fixture in the suite used either a closure-only effect or an effect with a single top-level callback. None had `.then((r) => …).then((data) => …)` — the most common real-world shape.
 
 ## Bug #2: NoSQL injection via `$where` was invisible
 
@@ -113,6 +128,8 @@ function containsUserInput(node: TSESTree.Node): boolean {
 
 When the value of `$where` was a `TemplateLiteral`, `getNodeSource` returned the literal string `'[expression]'`. Then `containsUserInput` checked whether `'[expression]'` contained `req.query` — it doesn't. Silent skip.
 
+**Unit test: mock input `find({ x: req.body.x })` fires the rule → test passes. Ground truth: the real injection `$where: \`...${req.query.name}...\`` doesn't fire → the SQL-equivalent vulnerability ships.** The test corpus had `find({ x: req.body.x })` shapes — direct user input as a property value. That shape gets caught by `isUnsafePropertyValue`'s `MemberExpression` branch. The `$where` template literal is _also_ user input, but expressed differently. The pattern-matching code path was never tested against `TemplateLiteral` as the value node. 100% branch coverage of the `getNodeSource` function, zero coverage of the `TemplateLiteral` branch that didn't exist yet — and the test suite couldn't tell the difference.
+
 The fix is to recurse into composite expressions instead of stringifying them:
 
 ```ts
@@ -139,8 +156,6 @@ function containsUserInput(node: TSESTree.Node): boolean {
 ```
 
 `TemplateLiteral`, `BinaryExpression` (string concat), and `CallExpression` (e.g. `.toString()` chains, `String(req.x)`, `JSON.stringify(req.body)`) are all routes for tainted data into a query. Each gets recursed into now.
-
-Why the unit tests missed it: the existing test corpus had `find({ x: req.body.x })` shapes — direct user input as a property value. That shape gets caught by `isUnsafePropertyValue`'s `MemberExpression` branch. The `$where` template literal is _also_ user input, but expressed differently — and the pattern-matching code path didn't recurse far enough to see it.
 
 ## Bug #3: AI-output detection missed the standard SDK pattern
 
@@ -180,7 +195,7 @@ function isLikelyAIOutput(node: TSESTree.Node): boolean {
 
 When the rule visits `target.innerHTML = text`, the right-hand side is the bare identifier `text`. The string `'text'` doesn't match `'result.text'`, `'response.text'`, or `'.text'` (which all require a member-access prefix). So `isLikelyAIOutput` returns false. No diagnostic.
 
-The pattern list assumes the LLM result is referenced as a property of an object. But the destructured pattern produces a free identifier. Two completely valid sources, only one detectable.
+**Unit test: `el.innerHTML = result.text` fires the rule → test passes. Ground truth: `const { text } = await generateText(...); el.innerHTML = text` doesn't fire → XSS vulnerability ships.** The test corpus used `result.text` patterns, matching `'result.text'` in the patterns list literally. The destructured pattern was never in the test suite — even though it's the more common shape in production code copied from the official SDK docs. The test for `isLikelyAIOutput` had full branch coverage. The uncovered case was the variable binding from a destructured SDK call — which requires scope tracking, not string matching.
 
 The fix is to add scope tracking — record any local variable bound from a known AI SDK call, and treat references to those as AI output:
 
@@ -228,8 +243,6 @@ return {
 
 Now both `const result = await generateText(...)` (binding `result` → access via `result.text`) and `const { text } = await generateText(...)` (binding `text` directly) flow into `aiBoundNames`. The `isLikelyAIOutput` check picks them up by referenced identifier, regardless of how the user destructured.
 
-Why the unit tests missed it: the test corpus used `result.text` patterns, matching `'result.text'` in the patterns list literally. The destructured pattern was never in the test suite — even though it's the more common shape in production code.
-
 ## The uncomfortable part: two of these three blind spots are exactly what AI writes
 
 Re-read the fixtures with one question in mind: _what does an AI assistant produce when you ask it for this?_
@@ -241,9 +254,11 @@ That's not a coincidence. AI assistants are trained on the canonical documentati
 
 This is the same thread I keep pulling on from the other direction — [I let Claude write 80 functions and 65–75% had security vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), and [Claude wrote a NestJS service; ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). There the AI shipped the vulnerability. Here the AI ships a vulnerability the linter _silently waves through_. Both failure modes only surface when your fixtures are written from the patterns code actually takes — not the ones you imagined.
 
+Before you adopt a security plugin to audit your AI-generated code, run the [30-minute onboarding audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) and check the plugin against real AI output shapes. And if you want to compare which plugin actually catches which patterns, the [benchmark of 17 ESLint security plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) is the starting point.
+
 And the shape of the AI output is not uniform across models, which makes this worse, not better. When I ran [700 AI-generated functions through 5 models and ranked them by security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), the rankings inverted the moment I [broke them down by domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain): the "most dangerous" model fixes 93% of the database vulnerabilities it writes, the "safest" fixes 45%. Different models favor different canonical shapes — so the same rule that's blind to Claude's preferred `const { text } = await generateText(...)` may sail through a different model's `result.text` and trip on a third's. A linter validated against one model's output distribution is not validated against the next model you swap in. The corpus is the only thing that holds the line, because its fixtures come from documentation — the source _every_ model is trained on — not from whichever assistant you happened to test with.
 
-If you want to reproduce this without our corpus: paste the three fixtures above into a file, point your model of choice — Claude, GPT, Gemini, whatever your team ships on — at the same three prompts, and diff what it generates against what your linter flags. Run it across two or three models and the blind spots move; the gap between "what the model writes" and "what your linter catches" is the test you were missing. (This is also the cleanest way to extend the benchmark above to a new model: same prompts, same rules, one column added.)
+If you want to reproduce this without our corpus: paste the three fixtures above into a file, point your model of choice — Claude, GPT, Gemini, whatever your team ships on — at the same three prompts, and diff what it generates against what your linter flags. Run it across two or three models and the blind spots move; the gap between "what the model writes" and "what your linter catches" is the test you were missing.
 
 The two AI-shape detections that shipped with these patches — the destructured-`generateText` sink and the `$where`-template injection — are turned on by the single install + config block [at the bottom of this article](#the-config).
 
@@ -319,13 +334,13 @@ export default [
 ];
 ```
 
-New to these plugins? The per-rule docs and quick-starts live here: [vercel-ai-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security) and [mongodb-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-mongodb-security).
+New to these plugins? The per-rule docs and quick-starts live at [eslint.interlace.tools](https://eslint.interlace.tools). See also: [vercel-ai-security getting started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security) and [mongodb-security getting started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-mongodb-security).
 
 The three fixes here are in [`packages/eslint-plugin-react-features`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-react-features), [`eslint-plugin-mongodb-security`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-mongodb-security), and [`eslint-plugin-vercel-ai-security`](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-vercel-ai-security). The corpora are in [`benchmarks/corpus/`](https://github.com/ofri-peretz/eslint/tree/main/benchmarks/corpus). The smoke gate is [`benchmarks/suites/ilb-flagship/smoke.ts`](https://github.com/ofri-peretz/eslint/blob/main/benchmarks/suites/ilb-flagship/smoke.ts) and it runs in three seconds.
 
 Three seconds. Three bugs. Months of "fully tested." Pick which signal you trust.
 
-What's the bug that got past two green signals at once on your team — the one where the tests and the second check were both green because they shared the same blind spot, and a single fixture copied from the docs would have caught it the day it shipped? I want to hear it in the comments.
+What's the worst discrepancy you've seen between test coverage and production security — the green CI run that was hiding something?
 
 ## Two more from the same bench, written up separately
 
@@ -338,13 +353,17 @@ All of these survived months of unit-test coverage. All fell to ground-truth fix
 
 ---
 
-## 📊 About the author
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+
+---
+
+## About the author
 
 I'm Ofri Peretz, building the Interlace ESLint ecosystem — a JavaScript static-analysis catalog that runs under ESLint and Oxlint with CI-enforced parity.
 
-- 🔗 [Portfolio & live metrics](https://ofriperetz.dev?utm_source=devto&utm_medium=article&utm_campaign=ilb-ground-truth)
-- 📦 [The Interlace ESLint plugins on npm](https://npmjs.com/~ofriperetz)
-- 🐙 [GitHub: ofri-peretz/eslint](https://github.com/ofri-peretz/eslint)
-- 📈 [Live impact dashboard](https://ofriperetz.dev/stats?utm_source=devto&utm_medium=article&utm_campaign=ilb-ground-truth)
+- [Portfolio & live metrics](https://ofriperetz.dev?utm_source=devto&utm_medium=article&utm_campaign=ilb-ground-truth)
+- [The Interlace ESLint plugins on npm](https://www.npmjs.com/~ofri-peretz)
+- [GitHub: ofri-peretz/eslint](https://github.com/ofri-peretz/eslint)
+- [Live impact dashboard](https://ofriperetz.dev/stats?utm_source=devto&utm_medium=article&utm_campaign=ilb-ground-truth)
 
 {% user ofri-peretz %}

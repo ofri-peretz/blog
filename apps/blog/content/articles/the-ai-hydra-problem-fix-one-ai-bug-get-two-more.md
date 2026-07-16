@@ -13,8 +13,8 @@ reading_time_minutes: 12
 tags:
   - "ai"
   - "security"
-  - "node"
-  - "eslint"
+  - "javascript"
+  - "devsecops"
 reactions: 0
 comments: 0
 views: 0
@@ -26,13 +26,19 @@ author:
 series: "AI Security Benchmark Series"
 ---
 
+We asked Claude to fix a SQL injection. It fixed it and introduced a stored XSS in the same function. That's not a one-off. That's the Hydra Problem — cut one bug, two grow back. Here's why it keeps happening, and what the data says about containing it.
+
 ## TL;DR
 
 I asked Claude to fix its own security bugs. **One in three "fixes" introduced a brand-new vulnerability _category_** the original code never had — the linter flags it, but a human skimming the diff sees only that the original finding is gone, and approves it. I call this **the Hydra Problem**: cut one head off, and two grow back.
 
 Here's the line I'd send to your team: **a security fix that removes the finding it was asked to remove is not the same as a secure fix — and human review can't tell the two apart.** A deterministic linter re-run on the patched diff can. That gap is the whole article.
 
-In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
+**The article-native stat:** Across 44 total remediation rounds in this dataset, we fixed 15 bug instances and introduced 15 new vulnerability instances — a 1:1 ratio. For every 3 AI-fixed security bugs in the prompt-only group, we got 2 new ones introduced. The Guardian Layer (ESLint-guided feedback) drops that to roughly 1 new bug per 7 fixed.
+
+**Every AI security fix is a bet that the model understood the full context. Our data says it gets the context right about 68% of the time in guided mode — and only 25% of the time without deterministic feedback.**
+
+In [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
 
 > **Get the Guardian Layer running in 60 seconds:**
 > ```bash
@@ -45,7 +51,7 @@ In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-7
 > ```
 > Feed the ESLint output back to your AI tool. That feedback loop is what separates the 8% Hydra rate from the 32% Hydra rate. Full config and explanation at the [end of this article](#eslint-configuration-used).
 
-> **AI Security Benchmark Series:** [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **Part 2 (you are here)** · [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
+> **AI Security Benchmark Series:** [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **Part 2 (you are here)** · [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
 
 I ran two parallel experiments with Claude Opus (the `opus` CLI alias, Feb 2026 run — exact model provenance in **Experimental Design** below) across 20 prompts and 3 remediation rounds each:
 
@@ -81,11 +87,19 @@ The common assumption is: _"Sure, AI generates some insecure code, but this is w
 
 **That assumption is incomplete.** The fix process itself can introduce new attack surfaces. And because the new vulnerabilities are in _different categories_ than the original, a developer reviewing the "fix" may approve it — the original issue is gone, after all.
 
+### Why this is mechanistic, not random
+
+This isn't a model "getting careless." It's architectural: **AI models optimize for the specific fix context — they don't trace the full function's behavior.** When you flag "Line 9: SQL injection," the model attends to the tokens around line 9. It fixes that specific pattern while simultaneously regenerating the surrounding validation logic. A fix that's correct for parameter A can introduce a new flaw in the code handling parameter B in the same function — because the model is locally optimizing, not globally auditing.
+
+The clearest evidence: the `arg.includes("..")` anti-pattern. It appears thousands of times in public Node.js code marketed as "secure." The model learned it as a security primitive. When you ask it to "fix the security issue," it draws on that training distribution and reaches for the same broken fix. Generic "be more secure" pressure makes that reflex _more_ likely, not less — because the model samples from high-probability secure-looking token sequences.
+
 ### Why this survives code review
 
 Picture the PR. The first-round finding was _arbitrary command execution_, and the diff now contains a command allowlist plus an explicit `if (arg.includes(".."))` check that rejects path-traversal sequences. To a senior reviewer skimming it under deadline, that diff reads as **defense added, not removed**: the dangerous `child_process` call is gated, the scary `..` strings are blocked, the original comment thread says "fixes the command-execution hole." LGTM.
 
-What the reviewer doesn't pattern-match on is that the `..` substring check is _itself_ a path-traversal (CWE-22) antipattern — string-matching on path fragments instead of resolving and bounding the path. (ESLint flags it under `node-security/no-zip-slip`; that rule's heuristic is the `..`-substring guard, which is the same broken pattern whether or not an archive is involved — here it's the command-argument variant, not literal zip extraction.) The fix and the new bug live on adjacent lines, framed as the same security improvement. Human review is good at "is the thing they said they fixed actually fixed?" and bad at "did the fix quietly open a different hole?" — especially when the new hole is dressed as a security control. That's the gap a deterministic linter closes: it doesn't read intent, it re-scans every line.
+**The reviewer saw the fix. The new bug was in adjacent code that wasn't part of the PR diff — reviewers focus on changed lines.** The `..` substring check lives right next to the allowlist. Both look defensive. Neither was flagged in the original PR because neither existed before. The review mindset is "is the thing they said they fixed actually fixed?" — not "did the fix quietly open a different hole in the same function?"
+
+What the reviewer doesn't pattern-match on is that the `..` substring check is _itself_ a path-traversal (CWE-22) antipattern — string-matching on path fragments instead of resolving and bounding the path. ESLint flags it under `node-security/no-zip-slip` regardless of intent. The fix and the new bug live on adjacent lines, framed as the same security improvement. That's the gap a deterministic linter closes: it doesn't read intent, it re-scans every line.
 
 ---
 
@@ -327,11 +341,11 @@ function runUserCommand(command) {
 
 The model added a command allowlist (good!) — but the `arg.includes("..")` path-traversal check (CWE-22) is itself the broken substring-guard pattern. ESLint now flags it under `node-security/no-zip-slip` — the rule keys on the `..`-substring heuristic, so it fires on this command-argument check even though no archive is being extracted.
 
+**Why it survived review:** The reviewer saw the allowlist addition and the `..` block as "defense added." The new `no-zip-slip` finding was in adjacent lines that weren't in the original PR diff — reviewers focus on changed lines. Both the fix and the new bug looked like the same security improvement. The linter saw through it; the reviewer couldn't.
+
 **Generation 2: Finally clean** — the model replaced the string check with proper `path.resolve()` validation.
 
 This is why the timeline reads `1 → 1 → 0` rather than `1 → 0`: the count stayed at 1 in Gen 1 because `detect-child-process` _cleared_ (the allowlist of literal commands satisfies the rule) at the same moment `no-zip-slip` _fired_. One head off, one head on — the flat count hides the swap, which is exactly the Hydra signature. The 🐍 marker flags the category change that the raw number doesn't.
-
-**What happened?** The model fixed the original issue by adding validation, but the validation pattern it chose introduced a new vulnerability category. It took 2 rounds to converge — but it did converge, because ESLint told it _exactly what was wrong_.
 
 **Two honest caveats before you treat this as a smoking gun**, because a skeptical reader will raise both:
 
@@ -350,6 +364,8 @@ auth-verify-jwt (guardian):     1 → 0
 ```
 
 Without ESLint feedback, the model generated an over-engineered JWT verification with 12 vulnerabilities. In round 1, it happened to simplify somewhat (2 vulns). In round 2, it went back to complex code (10 vulns). In round 3 — the final attempt — **14 vulnerabilities**. More than it started with.
+
+**Why it survived review in round 1:** The reviewer saw 12 problems collapse to 2 and approved the simplification. The 10 new vulnerabilities that appeared in round 2 were introduced in code that wasn't in the previous diff. Each round reset the review context to the latest diff only — the accumulating security debt was invisible.
 
 With the Guardian Layer, the single violation was identified ("this JWT verification has X issue"), fixed in one round, and verified clean.
 
@@ -483,7 +499,7 @@ Results saved to `results/ai-security/hydra-*.json` with:
 
 ---
 
-**Your turn:** Go look at the last AI-generated "security fix" your team merged. Did anyone re-scan the diff, or did the original finding disappearing count as the fix? I want to hear the one that got through review — the bug that hid inside the patch for the bug. Drop it in the comments; I'll trade you the worst Hydra in my results JSON.
+**Has an AI-suggested fix in your codebase ever introduced a new vulnerability — and did your code review catch it before it merged?** I want to hear the one that got through review — the bug that hid inside the patch for the bug. Drop it in the comments; I'll trade you the worst Hydra in my results JSON.
 
 ---
 
@@ -527,6 +543,13 @@ export default [
 
 ---
 
+**Related reading:**
+- [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — The baseline experiment that set up this remediation study
+- [Hardcoded Secrets in AI Agent Code: The Autofix Problem](https://dev.to/ofri-peretz/hardcoded-secrets-ai-agents-autofix) — How AI handles another class of security fixes
+- [ESLint Interlace Plugin Docs](https://eslint.interlace.tools) — All 332+ rules with fix examples
+
+---
+
 **The Interlace ESLint Ecosystem**
 332+ security rules. 18 specialized plugins. 100% OWASP Top 10 coverage.
 
@@ -542,6 +565,10 @@ export default [
 - **Part 4:** [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) — Domain-specific deep-dive
 
 **Follow [@ofri-peretz](https://dev.to/ofri-peretz) to get notified when the next chapter drops.**
+
+---
+
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
 
 ---
 

@@ -12,44 +12,40 @@ reading_time_minutes: 10
 tags:
   - "ai"
   - "security"
-  - "node"
+  - "nestjs"
   - "eslint"
 reactions: 0
 comments: 0
 views: 0
 series: "AI Security Benchmark Series"
 author:
-  name: "Ofri Peretz"
-  username: "ofri-peretz"
-  avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
-  twitter: "ofriperetzdev"
 ---
 
-TypeScript passed it clean. The code ran. I would have approved it in review. Then I ran the linter.
+TypeScript said this NestJS service was clean. ESLint found 6 security holes in 3 seconds.
 
-I gave Claude Sonnet 4.6 a single prompt: _"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."_ 90 seconds later I had 200 lines of NestJS. Decorators in the right places, DTOs typed correctly, dependency injection wired. It looked like code written by a developer who knew NestJS.
+I gave Claude Sonnet 4.6 one prompt — _"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."_ — and 90 seconds later I had 200 lines of NestJS. Decorators in the right places, DTOs typed correctly, dependency injection wired. It looked like code written by a developer who knew NestJS.
 
-Then static analysis flagged six findings the compiler could not: an admin endpoint with no access-control guard (CWE-284), a login route with no rate limit (CWE-770), an entity shipping `password` in every response (CWE-200), a `@Body()` parameter with no runtime validation (CWE-20), a privilege-bearing DTO field with no constraint (CWE-20), and a debug route returning `DATABASE_URL` (CWE-489).
+Then static analysis flagged six findings the compiler could not: an admin endpoint with no access-control guard (CWE-284), a login route with no rate limit (CWE-770), an entity shipping `password` in every response (CWE-200), a `@Body()` parameter with no runtime validation (CWE-20), a privilege-bearing DTO field with no constraint (CWE-915), and a debug route returning `DATABASE_URL` (CWE-489).
 
-**6 errors. 0 warnings.**
+TypeScript: ✅ Clean. Runtime: ✅ Would work. One of the six was a debug route silently serializing the database connection string in plaintext — the kind of finding that looks like a toy example until Finding 6, below, where I've seen the exact same pattern outside a demo.
+
+> Looking at this output with no context from the generation session: 6 of these findings would have passed my own code review. The linter caught all 6 in 3 seconds.
 
 Every one of them is the _absence_ of something — a guard, a pipe, a decorator, an environment check. None of them is a thing the model got wrong; each is a constraint the prompt never stated. That is the failure class this article is about.
 
-This isn't a one-off. In a [700-function benchmark across 5 AI models](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj), Claude's vulnerability rate was 65–75%. The specific count in your run will vary — LLM output is non-deterministic — but the failure _classes_ are consistent. The missing-guard pattern does not disappear on a retry.
+The tool that caught these is [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security), a plugin I built to flag exactly this negative space. Full rule reference at [eslint.interlace.tools/docs/security/plugin-nestjs-security →](https://eslint.interlace.tools/docs/security/plugin-nestjs-security). If you want to run it against your own AI-generated controllers before reading further, it's one install — [full config is below](#the-config):
 
-The tool that caught these is [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security), a plugin I built to flag exactly this negative space. If you want to run it against your own AI-generated controllers before reading further, it's one install — [full config is below](#the-config):
+[![npm](https://img.shields.io/npm/v/eslint-plugin-nestjs-security)](https://www.npmjs.com/package/eslint-plugin-nestjs-security)
 
 ```bash
 npm install --save-dev eslint-plugin-nestjs-security
 ```
 
-> **Reproducibility (this run).** Plugin `eslint-plugin-nestjs-security@1.2.3`, all six rules at `error` ([config below](#the-config)). Generation: Claude Sonnet 4.6, the single prompt above, scanned with `npx eslint "src/**/*.ts"`. The output blocks below are the rules' actual emitted messages (`formatLLMMessage` strings), condensed to the rule id + finding line — file/line positions are from this one generation, and because LLM output is non-deterministic your counts and line numbers will differ. What stays stable is the finding _class_, not the line number.
-
 ---
 
 ## What Claude generated
 
-The prompt was intentionally minimal. No security requirements — just functionality. This is how most developers prompt AI assistants: describe what the code should _do_, not what it should _prevent_.
+Claude generated a 200-line, TypeScript-clean NestJS users service from a single prompt — no security requirements included. Here is the output. The prompt was intentionally minimal: no security requirements, just functionality. This is how most developers prompt AI assistants — describe what the code should _do_, not what it should _prevent_.
 
 ```typescript
 @Controller('users')
@@ -85,10 +81,6 @@ export class UsersController {
 
 Claude also generated the entity and DTOs referenced below — all from the same single prompt.
 
-TypeScript: ✅ Clean.
-Runtime: ✅ Would work.
-ESLint: ❌ 6 errors.
-
 Each finding follows the same structure: what ESLint caught, why AI generates this pattern, and why it survives code review. The second question is the one worth sitting with.
 
 ---
@@ -109,6 +101,12 @@ Each finding follows the same structure: what ESLint caught, why AI generates th
 
 **Why it survives review:** Reviewers know the team has `JwtAuthGuard` registered — or think they do. The guard is off the mental stack when reading route logic. Nobody scans a controller and asks "is there a guard here?" They ask "does the logic look right?" So would anyone on your team reviewing typed DTOs returning from a named service.
 
+**On the CVSS 9.8:** that's `require-guards`'s fixed class severity, not a per-handler score — a missing guard could front a read, a write, or an admin action, and the rule can't tell which from the AST alone. This example is realistically closer to a 7.5 read-only exposure; don't cite the 9.8 to a security team as if it were per-handler.
+
+**A note on scope:** the rule flags every handler lacking `@UseGuards` (or a `@Public()`/`@SkipAuth()`-style opt-out), with no built-in exception for auth entry points — `login` and `register` above are correctly unguarded (no prior session to check yet), so their fix is `@Public()`, not `@UseGuards()`. If your app relies on `app.useGlobalGuards()` in `main.ts` instead of per-route decorators, set `assumeGlobalGuards: true`.
+
+> Blind spot: guards registered via `APP_GUARD` providers or inherited from a base controller aren't visible to the rule either — it can stay silent on a route that's actually protected, the mirror image of the false positives above.
+
 ```typescript
 // The rule reports the offending route handler, but is satisfied by @UseGuards at
 // either class or method level. Method-level is correct here — this controller also
@@ -120,14 +118,12 @@ export class UsersController {
 
   @Get('admin/users')
   @UseGuards(JwtAuthGuard, RolesGuard) // satisfies require-guards; RolesGuard reads @Roles metadata
-  @Roles('admin')
+  @Roles('admin') // your own decorator: export const Roles = (...roles: string[]) => SetMetadata('roles', roles)
   async listAllUsers() {
     return this.usersService.findAll();
   }
 }
 ```
-
-> **False-positive note for CI:** Teams registering `JwtAuthGuard` as an `APP_GUARD` globally can set `assumeGlobalGuards: true` to suppress false positives on controllers that inherit protection. The rule also handles guards applied via inheritance and re-exported consts — it reads the decorator tree, not just immediate decorators on the class.
 
 See also: [the same missing-guard pattern in a 2-year-old production codebase, and why every PR approved it](https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma).
 
@@ -143,16 +139,31 @@ See also: [the same missing-guard pattern in a 2-year-old production codebase, a
   /src/users/users.controller.ts  nestjs-security/require-throttler
 ```
 
-An attacker can enumerate passwords against the login endpoint at full network speed. (The `{{name}}` token in this rule's template is filled with the route handler's name — `login` — even though the literal reads "Controller"; the rule walks every handler that has no throttler.)
-
-The rule tags this **CWE-770** (Allocation of Resources Without Limits or Throttling) — the missing control is a rate limit, full stop. The downstream consequence on an _auth_ route is brute-force / credential stuffing (CWE-307), but that is a narrative consequence, not what the linter emits: the rule fires on the absent throttler, not on the route's purpose, which is why it reports the more general CWE-770. You will see the finding cross-referenced to CWE-307 in a write-up like this one; you will not see CWE-307 in the tool output.
+An attacker can enumerate passwords against the login endpoint at full network speed. The rule tags this **CWE-770** (Allocation of Resources Without Limits or Throttling) — the missing control is a rate limit, full stop.
 
 **Why AI generates this:** Brute-force protection is a _rate-at-which_ constraint, not a _what-does-it-do_ constraint — those never appear in feature prompts. "Build a login endpoint" describes a function, not a limit on how fast it can be called. Claude Sonnet 4.6 knows `@Throttle` exists; it will add it if you ask. The prompt didn't ask.
 
 **Why it survives review:** Reviewers look at handler logic (correct), DTO types (correct), error handling (present). Rate limiting reads as an infra concern — the assumption is nginx handles it. Two sprints later, someone updates the route prefix. The nginx rule stops matching. Nobody cross-references the two PRs.
 
+The fix requires two steps: registering the module in `AppModule` **and** applying the guard to the route. Without the module registration, `NestFactory.create()` throws `UnknownDependenciesException` at bootstrap — the app never starts, rather than failing per-request — because `ThrottlerGuard` can't resolve its module options from the DI container. One more thing this fix doesn't cover: `ThrottlerModule.forRoot`'s default storage is in-memory, which means it's **per-instance**. Behind a load balancer with more than one replica, each instance counts requests independently, so the effective limit is `limit × replica count` — with the `limit: 10` configured below and 3 replicas, an attacker who rotates across instances gets 30 login attempts per window, not 10. For a real deployment, back the throttler with shared storage — `ThrottlerStorageRedisService` from the community `@nest-lab/throttler-storage-redis` package is the common choice.
+
+```typescript
+// app.module.ts — register ThrottlerModule FIRST or the app fails to boot
+import { ThrottlerModule } from '@nestjs/throttler';
+
+@Module({
+  imports: [
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 10 }]),
+    // ... your other imports
+  ],
+})
+export class AppModule {}
+```
+
 ```typescript
 // requires @nestjs/throttler@^5 — ttl is in milliseconds (v4 and earlier used seconds)
+// route-level @Throttle overrides the module-level default (10) for this handler only —
+// login gets the tighter limit (5), other routes keep the module's 10
 @Post('login')
 @UseGuards(ThrottlerGuard)
 @Throttle({ default: { limit: 5, ttl: 60000 } }) // 60 seconds
@@ -160,8 +171,6 @@ async login(@Body() dto: LoginDto) {
   return this.usersService.login(dto);
 }
 ```
-
-> **Necessary, not sufficient:** Per-IP throttling raises the cost of single-source enumeration. It does not stop distributed credential-stuffing from rotating source IPs. That requires anomaly detection at a different layer — `@Throttle` is the floor, not the ceiling.
 
 ---
 
@@ -200,11 +209,7 @@ export class User {
 
   @Column()
   @Exclude()
-  password: string;
-
-  @Column()
-  @Exclude()
-  refreshToken: string;
+  password: string; // same rule catches any other secret-bearing column you add later
 }
 ```
 
@@ -213,6 +218,10 @@ export class User {
 > ```typescript
 > app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 > ```
+>
+> One scope note: `@Exclude()` only strips the field during `ClassSerializerInterceptor`'s HTTP serialization step. It does nothing to your repository reads — `usersService.login()` still needs the hashed `password` back from `findOne()` to compare against, and it gets it, because that read never goes through the interceptor. The decorator protects the response boundary, not the query.
+>
+> `@Exclude()` also has a durability problem: it's opt-out. Add a `stripeCustomerId` or `resetToken` column six months from now and it ships exposed by default until someone remembers to decorate it. Flip the default with `new ClassSerializerInterceptor(app.get(Reflector), { excludeExtraneousValues: true })` and switch to `@Expose()` on the fields you _do_ want returned — now new columns are hidden until named. More upfront annotation, but the failure mode moves from silent leak to broken response, which is the direction you want a mistake to fail in.
 
 ---
 
@@ -228,9 +237,9 @@ nestjs-security/no-missing-validation-pipe
 
 Claude generated typed DTOs. TypeScript enforces the shape at compile time. At runtime — without a `ValidationPipe` — those types don't exist. Any JSON shape passes through.
 
-**Why AI generates this:** TypeScript types disappear at runtime. `ValidationPipe` re-enforces them on the way in. Claude Sonnet 4.6 generates correct TypeScript — it doesn't model the gap between compile-time types and runtime validation.
+**Why AI generates this:** TypeScript types are erased at compile time — there's no runtime trace of them at all, so the type-checker's guarantee ends the moment `tsc` finishes. NestJS closes that gap with `class-validator` decorators (`@IsEmail()`, `@IsString()`, etc.) evaluated by `ValidationPipe` at request time — a separate, decorator-driven check, not the TS type system somehow persisting. Claude generates correct TypeScript; it doesn't reach for the separate runtime-validation layer unless the prompt asks for it.
 
-**Why it survives review:** The DTO is typed. The parameter is typed. TypeScript shows no errors. This requires knowing what NestJS _doesn't_ do automatically.
+**Why it survives review:** The DTO is typed. The parameter is typed. TypeScript shows no errors. Nobody checks whether `app.useGlobalPipes(new ValidationPipe())` actually made it into `main.ts` — that's a one-line, easy-to-miss wiring step in a different file from the DTO the reviewer is looking at.
 
 ```typescript
 // In main.ts — global is recommended over per-parameter
@@ -243,13 +252,17 @@ app.useGlobalPipes(
 );
 ```
 
-**The hole no linter catches — and the most important paragraph in this article:** Claude also omits `@ValidateNested()` + `@Type(() => NestedDto)` on nested DTO objects. Without them, nested objects skip validation entirely — the class-validator decorators on the nested class are ignored at runtime. This is the single most frequent `ValidationPipe` hole I see in AI-generated NestJS code, and it has **no ESLint error**: TypeScript compiles, the pipe is registered, validation _appears_ to run, and the nested object passes through unchecked. Static analysis can flag the missing pipe (Finding 4) and the missing decorator (Finding 5); it cannot yet prove that a present decorator actually recurses. The lint gate narrows the gap — it does not close it, and pretending otherwise is how the nested hole survives. If you read one fix in this piece twice, make it this one.
+> **The hole no linter catches — and the most important paragraph in this article:** Claude also omits `@ValidateNested()` + `@Type(() => NestedDto)` on nested DTO objects. Without them, nested objects skip validation entirely — the class-validator decorators on the nested class are ignored at runtime. This is the single most frequent `ValidationPipe` hole I see in AI-generated NestJS code, and it has **no ESLint error**: TypeScript compiles, the pipe is registered, validation _appears_ to run, and the nested object passes through unchecked. Static analysis can flag the missing pipe (Finding 4) and the missing decorator (Finding 5); it cannot yet prove that a present decorator actually recurses. The lint gate narrows the gap — it does not close it, and pretending otherwise is how the nested hole survives. If you read one fix in this piece twice, make it this one.
+>
+> Until a rule exists for this, the working mitigation is a test, not a lint pass: write one integration test per DTO with a nested object, submit garbage inside the nested field (`{ profile: { age: 'not-a-number' } }`), and assert on the 400. If it passes with a 200 instead, `@ValidateNested()` is missing. Grep for nested class properties without `@ValidateNested()` in the meantime — it's a five-minute manual audit that catches what the pipe can't yet prove.
 
 ---
 
 ## Finding 5: DTO fields without enum constraints (CWE-915)
 
 [`nestjs-security/require-class-validator`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/require-class-validator)
+
+The `role` field in `CreateUserDto` has no class-validator decorator, which means a caller can submit any string value — including `role: 'admin'` — and nothing at the validation layer rejects it.
 
 ```text
 nestjs-security/require-class-validator
@@ -266,15 +279,13 @@ export class CreateUserDto {
 }
 ```
 
-This is mass assignment — CWE-915 (Improperly Controlled Modification of Dynamically-Determined Object Attributes). The distinction from Finding 4 matters: Finding 4 is about missing runtime enforcement; Finding 5 is about missing value constraints that survive runtime enforcement.
+This is analogous to mass assignment — CWE-915 (Improperly Controlled Modification of Dynamically-Determined Object Attributes) is the classic Rails/Python framing, where attributes are resolved dynamically at runtime; a statically-typed TypeScript DTO isn't a perfect fit for "dynamically-determined," so treat this as the closest CWE, with CWE-269 (Improper Privilege Management) as the TypeScript-native alternative. Either way, a caller can pass `role: 'admin'` and, depending on how the service layer maps the DTO to the entity, escalate their own privilege. The distinction from Finding 4 matters: Finding 4 is about missing runtime enforcement; Finding 5 is about missing value constraints that survive runtime enforcement.
 
-With `ValidationPipe({ whitelist: true })`, an undecorated `role` field is stripped — which sounds safe. It isn't, for a specific reason: **developers add decorators later**. When someone adds `@IsString()` to `role` to pass it through the whitelist (a natural refactor), `role: 'admin'` becomes a valid payload. `@IsString()` doesn't constrain the value — only `@IsEnum(SelfAssignableRole)` does.
+With `whitelist: true` alone, an undecorated `role` field is silently stripped. Add `forbidNonWhitelisted: true` (as the Finding 4 config above does) and it stops being silent — Nest throws a 400 on the unrecognized `role` key instead. Either way, this isn't the fix, for a specific reason: **developers add decorators later**. The day someone adds `@IsString()` to `role` so it clears the whitelist and stops 400ing (a natural, well-intentioned refactor), `role: 'admin'` becomes a valid, accepted payload. `@IsString()` satisfies the pipe; it doesn't constrain the value — only `@IsEnum(SelfAssignableRole)` does.
 
-**Why AI generates this:** Claude adds validation for fields where the constraint is obvious from the semantic type (`email` → `@IsEmail()`). For `role`, valid values are a domain-specific enum with no tutorial default. The model can't infer the allowed values from an unspecified domain.
+This is the one finding of the six I'd flag as hardest to catch by eye: Claude adds validation for fields where the constraint is obvious from the semantic type (`email` → `@IsEmail()`), but `role` has no tutorial default — valid values are a domain-specific enum the model can't infer from an unspecified domain. And it doesn't fail loud in review. Reviewers see `@IsEmail()` on `email` and pattern-match "this DTO is validated"; nobody audits field by field for the one bare property, especially when `role` arrives as a quick patch after the initial commit and nobody circles back.
 
-**Why it survives review:** Reviewers see `@IsEmail()` on `email` and pattern-match "this DTO is validated." They don't audit field by field for the one bare property. `role` typically arrives as a quick patch after the initial commit — nobody circles back.
-
-**Findings 4 and 5 are coupled:** `whitelist: true` strips unknown _keys_. It doesn't constrain _values_ on known keys. You need both: the pipe (Finding 4) and enum decorators (Finding 5). Either without the other leaves a privilege escalation path.
+**Findings 4 and 5 are coupled:** `whitelist`/`forbidNonWhitelisted` police unknown _keys_ — strip or reject them. Neither constrains _values_ on keys that are already known and decorated. You need both: the pipe (Finding 4) and enum decorators (Finding 5). Either without the other leaves a privilege escalation path — the pipe alone just changes whether that path fails loud (400) or silent (dropped field) today, and reopens the moment `role` gets any decorator that isn't `@IsEnum`.
 
 ```typescript
 import { IsEmail, IsString, MaxLength, IsEnum } from 'class-validator';
@@ -306,10 +317,12 @@ export class CreateUserDto {
 
 [`nestjs-security/no-exposed-debug-endpoints`](https://eslint.interlace.tools/docs/security/plugin-nestjs-security/rules/no-exposed-debug-endpoints)
 
+The `debug/config` route returns `process.env.DATABASE_URL` directly in the response body — an unauthenticated request discloses the full database connection string, credentials included.
+
 ```text
 nestjs-security/no-exposed-debug-endpoints
 Controller path 'debug/config' returns process.env — information disclosure
-  /src/users/users.controller.ts:25:3
+  /src/users/users.controller.ts
 ```
 
 ```typescript
@@ -319,13 +332,17 @@ async getConfig() {
 }
 ```
 
-One `curl` to `/users/debug/config`. Your `DATABASE_URL` — hostname, port, username, password — serialized as JSON, no authentication. I found this exact pattern live in a staging environment in under 60 seconds. It had been live for four months.
+One `curl` to `/users/debug/config`. Your `DATABASE_URL` — hostname, port, username, password — serialized as JSON, no authentication. I found this exact pattern live in a staging environment in under 60 seconds, running the same plugin against a client's repo during an onboarding audit — not a pentest, not a scan they'd scheduled. It had been live for four months. The blast radius was contained to a staging replica with no production data, which is the only reason this is a story and not an incident report.
+
+The rule reports this as CWE-489 (Active Debug Code) — the endpoint itself shouldn't ship. It's worth also naming CWE-215 (Insertion of Sensitive Information Into Debugging Code), since Finding 3 already owns CWE-200 for the entity-level leak: this is the same class of mistake — secrets reachable through a code path meant for developers, not requests — just triggered by a route instead of a serializer.
 
 **Why AI generates this:** Claude added this as a diagnostic helper. It's genuinely useful during development. AI generates code for the specification given to it and has no concept of a production boundary. "Useful during development" and "never deploy this" are the same to a model that doesn't model deployment environments.
 
-**Why it survives review:** Debug endpoints arrive via two routes: AI generates them unguarded (this case), or a developer adds one temporarily and forgets to remove it. Either way, review approves it for the same reason — the code does what it says, the name implies "development only," and nothing breaks when it ships. The linter doesn't assume intent. It sees `process.env` in a response and fires.
+**Why it survives review:** Debug endpoints arrive via two routes: AI generates them unguarded (this case), or a developer adds one temporarily and forgets to remove it. Either way, review approves it for a mundane reason, not a careless one — nobody ran `curl` against the deployed route before sign-off. Review verifies the diff; it rarely verifies the running service. The four-month staging case above fits this exactly: the code was correct enough to pass a read, and nobody executed the one request that would have caught it. The linter doesn't need to execute anything. It sees `process.env` in a response and fires.
 
 > **Guarding is not a fix.** A guarded endpoint returning `DATABASE_URL` is still a credential leak waiting for a token to be compromised. Remove the sensitive values from the response entirely.
+
+A `DATABASE_URL` leaked through a live route is one path to the same outcome as a `sk_live_` key committed straight into source — the secret ends up somewhere a scanner or a curious visitor can find it. If hardcoded credentials are more your team's failure mode than exposed routes, [the language-level version of this same problem — 28 CWE-mapped rules for hardcoded secrets, unsafe deserialization, and injection classes](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure-coding-1eda) — is the sibling plugin for it.
 
 ```typescript
 // Fix: environment-gated module — never conditionally guard a live endpoint
@@ -337,7 +354,7 @@ One `curl` to `/users/debug/config`. Your `DATABASE_URL` — hostname, port, use
 })
 export class AppModule {}
 
-// In debug.module.ts — completely absent in production builds
+// In debug.controller.ts — AdminGuard is your own CanActivate checking req.user.role === 'admin'
 @Controller('debug')
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class DebugController {
@@ -346,6 +363,10 @@ export class DebugController {
     return { env: process.env.NODE_ENV }; // never return DATABASE_URL
   }
 }
+
+// In debug.module.ts — the module itself is completely absent in production builds
+@Module({ controllers: [DebugController] })
+export class DebugModule {}
 ```
 
 ---
@@ -354,29 +375,31 @@ export class DebugController {
 
 All six findings share a root cause: **the AI fulfilled the prompt, and the prompt didn't specify a security constraint.**
 
-TypeScript can't catch any of these. They compile, run, and do exactly what the code says. What's missing in each case isn't behavior — it's the _absence_ of something: a decorator, a pipe, a guard, an enum constraint, an environment check.
+TypeScript can't catch any of these. They compile, run, and do exactly what the code says. What's missing in each case isn't behavior — it's the _absence_ of something: a decorator, a pipe, a guard, an enum constraint, an environment check. Call it the **negative-space failure class**: a bug you can't diff against working code, because the code works. There's no wrong line to point at — only a missing one.
 
 The question that surfaces all six: _"What happens when someone who isn't supposed to use this endpoint tries?"_ That's a negative-space question. AI doesn't ask it unless you do. Code reviewers often don't either — we're trained to verify correctness, not the absence of unauthorized access.
 
-Static analysis asks it on every file, every run. [The Hydra Problem](https://dev.to/ofri-peretz/the-ai-hydra-problem-fix-one-ai-bug-get-two-more-5g1l) shows what happens when you try to fix AI omissions one at a time in review: fixing one surfaces others. The 65–75% rate held [across every security domain we tested](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj). NestJS is no exception.
+One caveat on the number itself: "6 findings" spans the controller, the entity, and a DTO — not 6 findings across 5 endpoints. Findings 3 and 5 are scoped to the `User` entity and `CreateUserDto`, not to a single route, so the honest framing is 6 findings across the service, not a per-endpoint rate. It's also one generation pass, not a sampled average — run the same prompt again and the count will move. What won't move is the failure _class_: the missing-guard pattern reappears on a retry, just attached to a different endpoint.
 
-### This isn't only a Claude problem — it's a prompt problem
+Static analysis asks the negative-space question on every file, every run — and a domain-specific plugin asks a sharper version of it than a general one does: [the general-purpose ESLint security floor caught 0 of 40 vulnerabilities](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) that a NestJS-aware ruleset like this one is built to see. [The Hydra Problem](https://dev.to/ofri-peretz/the-ai-hydra-problem-fix-one-ai-bug-get-two-more-5g1l) shows what happens when you try to fix AI omissions one at a time in review: fixing one surfaces others. This run's count isn't what matters — what matters is that the same missing-guard pattern shows up [across every security domain we've benchmarked](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj). NestJS is no exception.
 
-The natural objection: maybe six is a Claude-specific weakness, and another toolchain gets it right. The count *does* move with the toolchain — but the root cause doesn't. These aren't bugs the model got wrong; they're constraints the prompt never stated. Change assistants and the count changes; the negative-space class survives.
+### The count moves by toolchain. The failure class doesn't.
 
-I ran the identical prompt through Gemini 2.5 Flash via the Gemini CLI and scanned the output with the same plugin: [Same NestJS Prompt. Claude Got 6 Errors. Gemini Got 2.](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) Gemini's default scaffolding was structurally tighter — it got guards, validators, and serialization right where Claude didn't. But both toolchains shipped the same Finding 2: **no rate limiting on the login endpoint.** The one class that survived the model swap is the one neither prompt thought to constrain.
+The natural objection: maybe six is a Claude-specific weakness, and another toolchain gets it right. The count *does* move with the toolchain — but the root cause doesn't. These aren't bugs the model got wrong; they're constraints the prompt never stated. Change assistants and the count changes; the negative-space class survives. That's also the finding of [a broader leaderboard comparing 5 AI models on security](https://dev.to/ofri-peretz/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong-5a4o): rank one model above another and you're still measuring which constraints it happened to infer, not which ones it was told.
 
-> **Running this against Gemini?** That companion article is the Gemini-CLI run of this exact methodology — same prompt, same plugin, scored against Gemini 2.5 Flash — and it's the version positioned for the [Build with Gemini XPRIZE](https://dev.to/challenges) challenge. If you want to reproduce the experiment on a Gemini model rather than Claude, start there; the adaptation is a one-line model swap in the prompt and a re-run of [the config below](#the-config).
+I ran the identical prompt through Gemini 2.5 Flash via the Gemini CLI and scanned the output with the same plugin: [Same NestJS Prompt. Claude Got 6 Errors. Gemini Got 2.](https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-and-gemini-one-got-6-security-errors-heres-what-both-1fnf) Gemini's default scaffolding was structurally tighter — it got guards, validators, and serialization right where Claude didn't. But both toolchains shipped the same Finding 2: **no rate limiting on the login endpoint.** The one class that survived the model swap is the one neither prompt thought to constrain. Zoomed out across four security domains — not just NestJS — [the pattern holds at a larger sample too](https://dev.to/ofri-peretz/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips-mpp): the two models trade wins domain by domain, but converge on skipping the same hardening step.
 
 You can verify the whole thing yourself in three steps:
 
 1. Paste the same prompt — _"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."_ — into whatever assistant you use (Claude, Gemini, GPT-4, Copilot).
 2. Run the [config below](#the-config) on the output.
-3. Count the findings by *class*, not by line. The total drifts by toolchain; the rate-limit, missing-guard, and exposed-`password` classes keep recurring. The rules read the decorator tree, not the git blame.
+3. Count the findings by *class*, not by line. The total drifts by toolchain; the rate-limit, missing-guard, and exposed-`password` classes keep recurring. The rules read the decorator tree, not the git blame. Expect at minimum: a `require-throttler` hit on `login`, a `require-guards` hit on whatever route lists all resource records, and a `no-exposed-private-fields` hit on any entity with a `password` or token column — those three classes are the ones that survived every assistant I've run this against.
 
 ---
 
 ## The config
+
+This is the full flat-config setup for `eslint-plugin-nestjs-security` — copy it into `eslint.config.mjs` to run all six rules from this article against your own NestJS code.
 
 ```javascript
 // eslint.config.mjs
@@ -401,27 +424,23 @@ export default [
 npm install --save-dev eslint-plugin-nestjs-security
 ```
 
-> **Note:** NestJS is always TypeScript. Add these rules to your existing `typescript-eslint` configuration — the config above assumes `languageOptions.parser` and `parserOptions.project` are already set. Running `eslint src/` without the TS parser will fail on decorators.
+> **Note:** NestJS is always TypeScript. Add these rules to your existing `typescript-eslint` configuration — the config above assumes `languageOptions.parser` and `languageOptions.parserOptions.project` are already set (both live under `languageOptions` in flat config). Running `eslint src/` without the TS parser will fail on decorators.
 
-Full rule documentation at [eslint.interlace.tools](https://eslint.interlace.tools/docs/security/plugin-nestjs-security). New to the plugin? [Architectural Security: The NestJS Static Analysis Standard](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-nestjs-security-32ic) covers the full rule set end to end.
+Full rule documentation at [eslint.interlace.tools/docs/security/plugin-nestjs-security](https://eslint.interlace.tools/docs/security/plugin-nestjs-security). New to the plugin? [Architectural Security: The NestJS Static Analysis Standard](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-nestjs-security-32ic) covers the full rule set end to end.
 
----
-
-_What's the most embarrassing thing a debug endpoint or an unguarded route has leaked in a codebase you inherited — and how long had it been live before anyone noticed?_
-
----
-
-_Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/ai-security-benchmark-series):_
-_← [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) | **Claude Wrote a NestJS Service (you are here)** | [Aggregate Benchmarks Lie →](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj)_
-
----
-
-📦 [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security) · [Rule docs](https://eslint.interlace.tools/docs/security/plugin-nestjs-security)
-
-{% cta <https://github.com/ofri-peretz/eslint> %}
+{% cta https://github.com/ofri-peretz/eslint %}
 ⭐ Star on GitHub
 {% endcta %}
 
 ---
 
-[GitHub](https://github.com/ofri-peretz) | [X](https://x.com/ofriperetzdev) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [Dev.to](https://dev.to/ofri-peretz) | [ofriperetz.dev](https://ofriperetz.dev)
+_Which of these six shipped in your codebase — and how long was it live before anyone noticed?_
+
+---
+
+_Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/ai-security-benchmark-series):_
+_← [I Let Claude Write 60 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) | **Claude Wrote a NestJS Service (you are here)** | [Same Prompt, Gemini →](https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-and-gemini-one-got-6-security-errors-heres-what-both-1fnf) | [Aggregate Benchmarks Lie →](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj)_
+
+---
+
+*[eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev) · [npm/~ofri-peretz](https://www.npmjs.com/~ofri-peretz)*

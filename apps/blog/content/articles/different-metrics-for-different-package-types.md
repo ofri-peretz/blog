@@ -12,53 +12,6 @@ tags:
 canonical_url: https://ofriperetz.dev/articles/different-metrics-for-different-package-types
 reading_time_minutes: 9
 author:
-  name: Ofri Peretz
-  avatar: https://avatars.githubusercontent.com/u/46347627
-  title: Security Engineering Leader
-  discovery & hook: 5
-  discovery & hook_why: "**Bait-and-switch arc**: The opening paragraph delivers a genuinely threatening hook — 140 broken API calls in code claiming ESLint 10 support — but the body never resolves that story. Instead it pivots to benchmark m..."
-  technical: 7.5
-  technical_why: "The one code example breaks on the exact versions the article discusses. `npx eslint . --no-eslintrc` is a legacy-config flag that has no meaning under ESLint 9 flat config (the default) and would error on ESLint 10, ..."
-  quality: 5.5
-  quality_why: "The article has no transferable takeaway for readers outside the ILB/Interlace ecosystem. The core thesis (\"different package types need different benchmarks\") is correct but never resolves into something a reader can..."
-  practitioner: 6
-  practitioner_why: "None that kill credibility, but the article is a framework description that never shows what the framework found. The title promises a confession; the body delivers a methodology walkthrough. That mismatch will bleed ..."
-  linkability: 6
-  linkability_why: "`cover_image` and `social_image` are absent from frontmatter. No OG image = invisible in Twitter/LinkedIn cards and excluded from Google Discover. Fix before publishing.; \"I Sell What I Benchmark. Here's How I Try Not..."
-  challenge: 5.9
-  challenge_why: "The article has no standalone finding. A reader finishes knowing how the benchmark framework is *structured* but learns nothing they couldn't have guessed (\"security plugins need precision/recall, serverless plugins d..."
-  voice & agenda: 7.5
-  voice & agenda_why: "None that kill credibility or engagement outright. The title and opening are strong enough to earn the click; the piece won't embarrass Ofri."
-  discovery & hook: 4.5
-  discovery & hook_why: "**Bait-and-switch hook**: The opening delivers real tension — \"140 files across my rules still calling `context.getFilename()`, `getSourceCode()`, and `getCwd()`\" — but the article never resolves that story. A reader ..."
-  technical: 6.5
-  technical_why: "**`--no-eslintrc` flag is wrong for the versions being discussed.** The one actionable code example in the article (`npx eslint . --no-eslintrc`) is a legacy-config flag valid only for ESLint 8 and below. Under ESLint..."
-  quality: 5.5
-  quality_why: "`--no-eslintrc` in the smoke-test command is a legacy flat-config flag that errors under ESLint 9+ — the one actionable code block in the article is broken for the exact audience reading about ESLint 10 compatibility...."
-  practitioner: 6.5
-  practitioner_why: "The code snippet `npx eslint . --no-eslintrc` is a legacy-config flag. Under ESLint 9's flat config (the default since 9.0) it either silently does nothing or errors depending on the config resolution path. ESLint 10 ..."
-  linkability: 5.5
-  linkability_why: "`cover_image` and `social_image` are absent from frontmatter — no OG image means invisible Twitter/LinkedIn cards and excluded from Google Discover; non-negotiable fix before publishing; \"eslint-plugin-security, which..."
-  challenge: 5.3
-  challenge_why: "`npx eslint . --no-eslintrc` is a legacy-config flag — errors or no-ops under ESLint 9+ flat config (the current default). Fix or remove before publishing; leaving it in undermines every version-compatibility claim in..."
-  voice & agenda: 7
-  voice & agenda_why: "None that would kill engagement outright, but the piece front-loads its best material and then becomes a reference document. The 140-files opening earns the click; the middle sections on quality/accessibility/serverle..."
-overall_score: 6.1
-reviews:
-  discovery & hook: 4.5
-  discovery & hook_why: "**Bait-and-switch arc destroys the hook.** The opening sentence is genuinely strong — \"140 files across my rules still calling `context.getFilename()`, `getSourceCode()`, and `getCwd()` — three APIs ESLint 10 removes ..."
-  technical: 7
-  technical_why: "**`--no-eslintrc` behavior is described incorrectly.** The prose says it \"silently stops meaning anything under the exact ESLint 9/10 flat-config world.\" That's wrong — ESLint 9+ uses strict flag parsing and throws a ..."
-  quality: 5.5
-  quality_why: "The article's primary audience is effectively one person: the author. \"Here's how my 23 benchmark suites are structured\" is not a problem most DEV.to practitioners have, and the article never bridges to what they shou..."
-  practitioner: 6.5
-  practitioner_why: "None that would kill publication. The `--no-eslintrc` fix from prior reviews is correctly handled in the code block — that's no longer a credibility problem."
-  linkability: 6.5
-  linkability_why: "`cover_image` and `social_image` are absent from frontmatter — no OG image means the article is invisible on Twitter/LinkedIn cards and excluded from Google Discover. Non-negotiable fix before publishing.; The \"Access..."
-  challenge: 5.2
-  challenge_why: "No `cover_image`/`social_image` in frontmatter — invisible Twitter/LinkedIn cards, excluded from Google Discover; this is a non-negotiable fix before any publish; The serverless table (3 of 4 suites are skeletons) is ..."
-  voice & agenda: 7.5
-  voice & agenda_why: "None that would kill engagement or credibility."
 ---
 
 Five days earlier, an audit of my own ESLint plugins had found 140 files across my rules still calling `context.getFilename()`, `getSourceCode()`, and `getCwd()` — three APIs ESLint 10 removes outright, not merely deprecates. Every one of my packages claims "supports ESLint 8, 9, and 10." Nobody would have hit this on ESLint 9 — those calls still work there under compatibility shims — but the moment a user upgraded to 10, my own rules would have broken the exact claim printed in my own README. `eslint-plugin-security`, which [I disqualify elsewhere on this site](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h), fails earlier and differently: it crashes outright on ESLint 9's flat config, a distinct failure mode from mine. Different bug, same root cause — a version-compatibility claim nobody had actually tested against the version in question.

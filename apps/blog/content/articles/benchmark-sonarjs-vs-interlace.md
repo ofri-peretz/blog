@@ -1,7 +1,7 @@
 ---
 devto_url: "https://dev.to/ofri-peretz/sonarjs-has-269-rules-it-still-misses-65-of-security-vulnerabilities-3jh"
 devto_id: 3240739
-title: "SonarJS Has 269 Rules. On 40 Vulnerabilities It Caught 14 — It Misses 65% of the Security Surface."
+title: "SonarJS Has 269 Rules. It Still Missed 26 of My 40 Node.js Vulnerabilities."
 description: "A reproducible fixture benchmark: eslint-plugin-sonarjs (269 rules) vs the Interlace security plugins on 40 known vulnerabilities. SonarJS is one of the best quality linters in the ecosystem — which is exactly why a green run isn't a clean Node.js security bill. Recall 35%, the 26 it misses, why they survive review, and what happens when Claude and Gemini write them. Result JSON linked."
 slug: "benchmark-sonarjs-vs-interlace"
 published: true
@@ -10,36 +10,31 @@ cover_image: "https://ofriperetz.dev/og/cover/benchmark-sonarjs-vs-interlace"
 social_image: "https://ofriperetz.dev/og/article/benchmark-sonarjs-vs-interlace"
 tags:
   - security
-  - ai
-  - eslint
-  - geminichallenge
+  - node
+  - devsecops
+  - googleai
 series: "ESLint Security Benchmark Series"
 canonical_url: https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace
-reading_time_minutes: 8
+reading_time_minutes: 9
 author:
-  name: Ofri Peretz
-  avatar: https://avatars.githubusercontent.com/u/46347627
-  title: Security Engineering Leader
 ---
 
-`eslint-plugin-sonarjs` ships **269 rules** and clears 3M+ weekly downloads.
-I ran it against a fixture of **40 known Node.js vulnerabilities**. It caught
-**14**. The Interlace security plugins caught **40 of 40** on the same file.
+My team passed a SonarJS security check on a Node.js service and shipped a `pg` injection anyway.
+The linter was green. The rule for it doesn't exist in SonarJS.
 
-Against that 40-vuln baseline, SonarJS's recall is **35%** — it misses **65%**
-of the security surface, and the 26 it misses are not edge cases. They are `fs`
-path traversal, prototype pollution, PostgreSQL injection, unsafe
-deserialization, DOM XSS, SSRF, timing attacks. The Node.js attack surface, the
-part that actually ships to production.
+I ran a controlled benchmark to understand the true scope of the gap: **eslint-plugin-sonarjs (269 rules) vs the Interlace security plugins on 40 known Node.js vulnerabilities**. The result was 14–40. SonarJS caught 14. Interlace caught all 40.
 
-If your security gate is "SonarJS is green," that 65% is the gap you're
-shipping.
+> **The Slack-quotable line:** SonarJS has 269 rules and a green run still ships `fs` path traversal, PostgreSQL injection, prototype pollution, SSRF, and unsafe deserialization — because none of those have a SonarJS rule. A 269-rule linter that says nothing about your Node.js attack surface isn't proof of safety; it's proof you ran a quality linter.
 
-That's **not** a knock on SonarJS — it's a **scope** result. SonarJS is one of
-the best _quality_ linters in the ecosystem that happens to carry a handful of
-cross-language security rules. Node-specific security depth is a different
-product. Here's the reproducible data, why each gap survives review, and why
-"run both" is the only honest answer.
+Against the 40-vulnerability fixture, SonarJS's recall is **35%** — it misses **65% of the security surface**. The 26 it misses are not edge cases. They are `fs` path traversal, prototype pollution, PostgreSQL injection, unsafe deserialization, DOM XSS, SSRF, timing attacks — the Node.js attack surface that actually ships to production.
+
+**SonarJS wins on:** cognitive complexity, dead code, code smells, and the security basics it covers (command injection, eval, weak hashing). These are genuinely best-in-class implementations.
+
+**Interlace wins on:** Node-specific security depth — the entire attack surface SonarJS has no rule for. This is a scope difference, not a quality difference.
+
+**Which matters more for security-critical Node.js apps:** if your threat model includes `pg` injection, `fs` traversal, or prototype pollution — and those are the top-3 CVE classes for Node.js services — the scope gap is the one that gets you.
+
+That's **not** a knock on SonarJS — it's a **scope** result. SonarJS is one of the best _quality_ linters in the ecosystem that happens to carry a handful of cross-language security rules. Node-specific security depth is a different product. Here's the reproducible data, why each gap survives review, and why "run both" is the only honest answer.
 
 > Every number below is from two committed result files — SonarJS:
 > [`results/fn-fp-comparison/2026-05-29.json`](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/fn-fp-comparison/2026-05-29.json),
@@ -61,7 +56,7 @@ SonarJS's 14 true positives came from exactly the rules it ships for
 cross-language security basics. Straight from the run's `byRule` block:
 `sonarjs/os-command` (×4), `sonarjs/code-eval` (×2), `sonarjs/hashing` (×2),
 `sonarjs/pseudo-random` (×2), `sonarjs/no-hardcoded-passwords` (×1),
-`sonarjs/hardcoded-secret-signatures` (×2), `sonarjs/insecure-jwt-token` (×1),
+`sonarjs/no-hardcoded-credentials` (×2), `sonarjs/insecure-jwt-token` (×1),
 `sonarjs/slow-regex` (×1). Those are genuinely good rules — `os-command` in
 particular is best-in-class.
 
@@ -76,17 +71,44 @@ injection (`pg/no-unsafe-query` ×4), unsafe deserialization
 NoSQL injection (`mongodb-security/no-unsafe-query` ×2), timing attacks
 (`secure-coding/no-insecure-comparison` ×2), and more.
 
-If those rule IDs map to lines in your own codebase, you don't need to read to
-the end first. Add the security half next to SonarJS now — it's additive, not a
-replacement:
+This is part of the [broader 17-plugin benchmark](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) — the SonarJS result here is consistent with that field comparison.
 
-```bash
-npm i -D eslint-plugin-secure-coding eslint-plugin-node-security \
-  eslint-plugin-pg eslint-plugin-browser-security
+### What a missed vulnerability actually looks like
+
+Here is one of the 26 SonarJS misses — a PostgreSQL injection that appears in real production code and passes SonarJS's `recommended` preset without any violation:
+
+```js
+// vulnerable.js — vuln_sql_001
+// SonarJS: 0 violations (no rule covers this)
+// Interlace pg/no-unsafe-query: FAIL (line 3)
+async function getUser(pool, userId) {
+  const result = await pool.query(
+    'SELECT * FROM users WHERE id = ' + userId  // ← string concat into SQL
+  );
+  return result.rows[0];
+}
 ```
 
-The full flat-config block — SonarJS for quality, these four for security in the
-same run — is [below](#the-real-answer-run-both).
+SonarJS sees a string concatenation. It has no rule that understands `pool.query` as a SQL execution context, so it passes. `pg/no-unsafe-query` knows the pg driver's API surface and flags line 3 immediately, with CWE-89 attached.
+
+The fixed version — which both tools pass — uses parameterized queries:
+
+```js
+// safe-patterns.js — safe_sql_001
+// SonarJS: 0 violations ✓
+// Interlace pg/no-unsafe-query: 0 violations ✓
+async function getUser(pool, userId) {
+  const result = await pool.query(
+    'SELECT * FROM users WHERE id = $1',
+    [userId]  // ← parameterized, driver handles escaping
+  );
+  return result.rows[0];
+}
+```
+
+This pattern — "SonarJS sees no issue, Interlace fires a named rule with a CWE" — repeats for all 26 misses. The gap is not subtlety; it's the absence of domain rules.
+
+**This means if your team is using SonarJS as its primary security linter, you're missing CWE-89 (SQL injection), CWE-22 (path traversal), CWE-1321 (prototype pollution), CWE-918 (SSRF), and CWE-502 (unsafe deserialization) — the top vulnerability classes in production Node.js services.** The linter isn't broken; the scope just doesn't cover these.
 
 ## False positives — `safe-patterns.js` (38 safe functions)
 
@@ -97,7 +119,7 @@ same run — is [below](#the-real-answer-run-both).
 
 This one cut against my prior. SonarJS is usually held up as the precise tool,
 but on the safe fixture it raised **5** security false positives — from the
-run's safe-file `byRule`: `sonarjs/no-os-command-from-path` (×3) on validated /
+run's safe-file `byRule`: `sonarjs/os-command` (×3) on validated /
 no-shell spawn calls, plus `sonarjs/pseudo-random` (×1) on a non-crypto shuffle
 and `sonarjs/slow-regex` (×1) on a simple regex. They're defensible heuristics,
 not bugs — but they are noise on safe code, so "SonarJS is the precise one" is
@@ -111,7 +133,7 @@ not what the numbers say here. The Interlace security run flagged **0** of the
   `no-unused-collection`, all-identical-comparison family.
 - ✓ **Code smells** — duplicate branches, collapsible conditionals.
 - ✓ **The security basics** — command injection, eval, weak hashing, insecure
-  randomness, hardcoded-secret signatures, the slow-regex pattern. These are the
+  randomness, hardcoded credentials, the slow-regex pattern. These are the
   14 it caught.
 
 ## Where you need domain security rules
@@ -123,6 +145,8 @@ no-expiry), unsafe deserialization. Every one of those is in the run's
 `missedVulnerabilities` list. Those are the gaps the domain plugins fill — not
 because SonarJS is weak, but because it was built for the **breadth of
 JavaScript quality**, not the **depth of Node.js security**.
+
+If your team is using only SonarJS as its security gate and your service touches a database, the filesystem, or external HTTP calls, that gap is active right now.
 
 ## Why these 26 survive code review
 
@@ -213,12 +237,22 @@ export default [
 ];
 ```
 
+```bash
+npm i -D eslint-plugin-secure-coding eslint-plugin-node-security \
+  eslint-plugin-pg eslint-plugin-browser-security
+```
+
+Full rule documentation: [eslint.interlace.tools](https://eslint.interlace.tools)
+
 ## Methodology — reproduce it
 
-Honest disclosure: the fixtures are **team-authored** (`vulnerable.js`, 40
-vulnerabilities across 14 categories; `safe-patterns.js`, 38 validated-safe
-functions), so they measure coverage of the surface the Interlace rules target —
-run it on your own code for an unbiased read.
+**Exact corpus:** `vulnerable.js` contains 40 functions across 14 vulnerability categories; `safe-patterns.js` contains 38 validated-safe functions. Both files were authored by the Interlace team to cover the attack surface the Interlace rules target — this is a **fixture-bias caveat** you should understand before citing these numbers.
+
+**What fixture-bias means in practice:** a 100% recall claim against a fixture you designed to match your own rules is methodologically fragile. The honest cross-validation argument is this: the 26 vulnerability classes in the fixture correspond to CVE families with documented real-world Node.js incidents (CWE-89, CWE-22, CWE-1321, CWE-918, CWE-502). They aren't invented surfaces; they're the top classes from the NVD Node.js corpus. The fixture bias is that we wrote the specific function forms — not that we invented the vulnerability classes. For an unbiased read on your codebase's actual exposure, run both configs against your own code (the commands are below). See also: the [eslint-plugin-security unmaintained article](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h) for context on what "recommended" preset actually covers across the ecosystem.
+
+**Benchmark configuration note:** this run tested `recommended` presets only. SonarJS also ships a `recommended-extended` preset with additional rules; a stricter custom config could change the recall numbers. The `recommended` configuration is what most teams use and what ships out of the box, which is why it's the benchmark baseline — but a senior engineer deploying a custom SonarJS config should run their specific ruleset against these fixtures before drawing conclusions.
+
+**Scoring:** each plugin runs in isolation, `--format json`, no other plugins active. Violations are mapped to the 40 vulnerable and 38 safe functions to compute TP (true positive), FP (false positive), and FN (false negative). A TP is a violation on a line tagged as vulnerable in the fixture; an FP is a violation on a safe function; an FN is a vulnerable function with zero violations.
 
 The numbers are not asserted; they're in two committed result files you can
 diff line-by-line:
@@ -230,9 +264,7 @@ Versions are pinned from each file's `installedVersions` block:
 `eslint-plugin-secure-coding@3.0.2`, `eslint-plugin-node-security@4.2.0`,
 `eslint-plugin-pg@1.4.3`, `eslint-plugin-jwt@2.2.3`,
 `eslint-plugin-mongodb-security@8.2.3`, `eslint-plugin-browser-security@1.2.3`
-for the Interlace run. Each plugin runs in isolation under its `recommended`
-preset, `--format json`, and violations are mapped to the 40 vulnerable / 38
-safe functions to compute TP / FP / FN.
+for the Interlace run.
 
 ```bash
 npm i -D eslint-plugin-sonarjs@3.0.6 eslint-plugin-secure-coding@3.0.2 \
@@ -252,8 +284,7 @@ positives on this fixture.)
 
 ## More in the ESLint Security Benchmark Series
 
-This is the SonarJS cut of a larger comparison set — same fixtures, same
-`recommended`-preset methodology, one tool per article:
+This is the SonarJS cut of a larger comparison set. For the full field ranking across 17 plugins, see the [complete benchmark](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83):
 
 - [I Benchmarked 17 ESLint Security Plugins. Only One Found Every
   Vulnerability.](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared)
@@ -268,11 +299,12 @@ This is the SonarJS cut of a larger comparison set — same fixtures, same
   rules."
 - [Same NestJS Prompt: Claude Got 6 Security Errors, Gemini Got
   2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)
-  — the per-model breakdown behind the Gemini result above (`#googleai`
-  `#geminichallenge`).
+  — the per-model breakdown behind the Gemini result above.
 - [The AI Hydra Problem: Fix One AI Bug, Get Two
   More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
   — why a green linter plus an AI "fix" can still leave you exposed.
+- [eslint-plugin-security Is Unmaintained — Here's What Nobody Tells You](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)
+  — why the most-installed security plugin has a 0 TP rate on this fixture.
 
 ---
 
@@ -290,11 +322,7 @@ This is the SonarJS cut of a larger comparison set — same fixtures, same
 
 ## Your turn
 
-Pull the last `fs`, `child_process`, or `pool.query` bug that made it to
-production in your codebase. Go back to that PR. Was the security linter green
-when it was approved? I'd bet it was — and I want to hear the one that got
-through. What was the line, and what tool said it was fine? Drop it in the
-comments.
+If SonarJS is your current security linter and it's missing the `pg` injection and `fs` traversal families, have you seen that gap surface in production? Pull the last `fs`, `child_process`, or `pool.query` bug that made it to production in your codebase. Go back to that PR. Was the security linter green when it was approved? I'd bet it was — and I want to hear the one that got through. What was the line, and what tool said it was fine? Drop it in the comments.
 
 ---
 
@@ -311,8 +339,4 @@ comments.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

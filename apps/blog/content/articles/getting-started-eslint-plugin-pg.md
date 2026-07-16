@@ -1,6 +1,6 @@
 ---
-title: "node-postgres Will Happily Build a CVSS 9.8 SQL Injection For You. 13 ESLint Rules Say No."
-description: "SQL injection (CVSS 9.8), search_path schema hijacking (CVSS 9.5), and the missing client.release() that exhausts your pool — node-postgres bugs that pass tests, survive code review, and take down production. The same bugs AI assistants generate by default. 13 CWE-mapped ESLint rules that catch them in CI."
+title: "PostgreSQL Injection in Node.js: 4 Patterns That Pass Code Review (and the Rules That Don't Let Them)"
+description: "SQL injection (CVSS 9.8), search_path schema hijacking (CVSS 9.5), COPY FROM filesystem access (CWE-73), and pool connection leaks — four node-postgres vulnerabilities that survive review every time, and the 13 ESLint rules that catch them before CI goes green."
 slug: "getting-started-eslint-plugin-pg"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj"
@@ -9,12 +9,12 @@ published_at: "2025-12-31T18:45:40Z"
 edited_at: "2026-01-11T10:21:52Z"
 cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-pg"
 social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-pg"
-reading_time_minutes: 9
+reading_time_minutes: 10
 tags:
-  - "eslint"
   - "security"
   - "node"
-  - "ai"
+  - "devsecops"
+  - "javascript"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -23,269 +23,154 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-The query passed review. It passed CI. It passed every unit test. Six weeks
-later it was a **CVSS 9.8** SQL injection in production, and the only thing
-standing between it and the `users` table was the fact that nobody had found it
-yet.
+> **Every SQL injection vulnerability that reached production had passing tests and an approved PR.** The bug was never the code that looked suspicious — it was the code that looked fine.
 
-`node-postgres` (`pg`) is a thin, honest driver. That's the whole point of it —
-and also the whole problem. It hands you a connection and runs the SQL you give
-it, including the SQL you should never have built:
-
-```ts
-// SQL injection
-pool.query(`SELECT * FROM users WHERE email = '${req.query.email}'`);
-
-// connection leak — client never returned to the pool
-const client = await pool.connect();
-const rows = await client.query("SELECT ...");
-return rows; // forgot client.release(); one of these per request and the pool dies
-```
-
-The first is **CWE-89**, a textbook injection (CVSS 9.8). The second is
-**CWE-404**: a missing `client.release()` that leaks one connection per request
-until the pool hits its limit and every subsequent request hangs — a
-slow-motion outage that passes every unit test, because tests rarely exhaust a
-10-connection pool.
-
-Here's the part that should worry you more than your own typos: **this is also
-the default output of every AI coding assistant.** I benchmarked it. When I
-asked five frontier models — Claude Haiku/Sonnet/Opus _and_ Google's Gemini 2.5
-Flash and Pro — to write database functions with `pg`, **the database category
-was the bloodiest of all**: Gemini 2.5 Pro shipped a vulnerability in **96%** of
-its database functions, Gemini Flash in **75%**, Sonnet in **71%** — and even
-the best model on that axis still failed **39% of the time** ([full per-model,
-per-domain breakdown across 700 functions](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)).
-The very first prompt of an earlier run — _"query a PostgreSQL database to
-return the user, use the pg library"_ — came back as string-interpolated
-injection ([65–75% of those functions carried a vulnerability; CWE-89 tied for
-the most common finding at 28 occurrences](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)).
-The model learned from the same public code that ships these bugs. The driver
-won't stop it, TypeScript won't stop it, the green test suite won't stop it —
-and switching to a "smarter" model makes it _worse_, not better.
-
-Both bugs are _shapes in the source_. `eslint-plugin-pg` is **13 rules** that
-read your `pg` call sites and fail CI on those shapes — SQL injection,
-`search_path` hijacking, connection leaks, transaction-on-pool mistakes — each
-pinned to a CWE. If you want to point it at your own codebase (or your AI's
-output) before reading further, it's one install — [config is below](#install):
-
-```bash
-npm install --save-dev eslint-plugin-pg
-```
-
-This guide covers the flagship injection rule, the one PostgreSQL attack almost
-nobody guards against (`search_path` hijacking, CVSS 9.5), the
-connection-lifecycle family, install/config across package managers, and exact
-engine support.
+`node-postgres` (`pg`) is a thin, honest driver. It hands you a connection and runs whatever SQL you give it, including the SQL you should never have built. Here are four patterns that pass code review consistently, why each one survives, and the ESLint rule that catches it before your CI goes green.
 
 ---
 
-## TL;DR
+## Pattern 1: String interpolation in `query()` (CVSS 9.8, CWE-89)
 
-- **13 rules**, each carrying a `CWE` id and CVSS. Flagship: `no-unsafe-query`
-  (SQL injection, CWE-89, CVSS 9.8).
-- **3 presets**: `flagship` (the 1 flagship rule), `recommended` (all 13, a few
-  as warnings), and `strict` (all 13, max severity). It's a focused plugin, so
-  the sane default _is_ everything.
-- **Flat-config**, CommonJS, ESLint `8 || 9 || 10`, Node `>= 18`. Declares a
-  `pg` peer (`^6 || ^7 || ^8`), but the rules are AST-based and lint your code
-  regardless of which `pg` you've installed.
-
----
-
-## Flagship: `no-unsafe-query` (SQL injection)
+**The vulnerable code:**
 
 ```ts
 // ❌ no-unsafe-query (CWE-89, CVSS 9.8)
-pool.query(`SELECT * FROM users WHERE email = '${email}'`);
-pool.query("SELECT * FROM users WHERE id = " + id);
+pool.query(`SELECT * FROM users WHERE email = '${req.query.email}'`);
+pool.query("SELECT * FROM users WHERE id = " + userId);
 ```
+
+**Why it survived review.** Template literals look like TypeScript, not SQL injection. The reviewer mentally traces `req.query.email` and sees a string — which it is. What they don't see is that the string value `' OR '1'='1` is also valid SQL that changes the query's structure entirely. String interpolation in a template literal doesn't look like "SQL injection" unless you've already been burned by it; it looks like normal string formatting that developers do everywhere else.
+
+**The ESLint rule:**
 
 ```ts
-// ✅ parameterized — values travel out-of-band, never parsed as SQL
-pool.query("SELECT * FROM users WHERE email = $1", [email]);
-pool.query("SELECT * FROM users WHERE id = $1", [id]);
+// ✅ no-unsafe-query: parameterized — values travel out-of-band, never parsed as SQL
+pool.query("SELECT * FROM users WHERE email = $1", [req.query.email]);
+pool.query("SELECT * FROM users WHERE id = $1", [userId]);
 ```
 
-The rule flags string concatenation and interpolated template literals in
-`query()` calls. Parameterized queries (`$1`, `$2`) send values over the wire
-separately from the statement, so they can never change its structure — the
-one defense that actually works.
+`no-unsafe-query` flags string concatenation and interpolated template literals in `query()` calls. Parameterized queries (`$1`, `$2`) send values over the wire separately from the statement, so they can never change its structure.
 
-**This is the rule that earns its keep against AI-generated code.** Prompt an
-assistant for "get a user by email with node-postgres" and the template-literal
-form isn't an edge case — it's the _modal_ answer (96% of Gemini Pro's database
-functions, 71% of Sonnet's, in the benchmark above). The model is reproducing
-the median of its training data, and the median ships injection. The fix is
-non-negotiable and identical every time (`$1` placeholders), which is exactly
-what makes it a good lint rule: no judgment call, no false-positive debate, just
-a CI gate that the AI's output has to pass like everyone else's. **If your team
-merges AI-drafted data-access code, this rule is the seatbelt — and the seatbelt
-matters more the more capable your model gets, because capability and SQL-safety
-turned out to be uncorrelated.** (For the deeper node-postgres injection
-taxonomy — concat, identifiers, and the `IN (...)` trap — see [Three SQL
-Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).)
+This is also the rule that earns its keep against AI-generated code. In [my benchmark across five frontier models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), the database category was the bloodiest: Gemini 2.5 Pro shipped a vulnerability in **96%** of its database functions, Sonnet in **71%**. The template-literal form isn't an edge case — it's the modal answer. The model learned from the same public code that ships these bugs.
+
+> **Share this:** `node-postgres` won't parameterize your queries for you. One template literal is all it takes for a CVSS 9.8 SQL injection to pass code review with a green CI.
 
 ---
 
-## Point it at your AI's output, not just your own
+## Pattern 2: Dynamic `SET search_path` (CVSS 9.5, CWE-426)
 
-The fastest way to feel why this plugin exists: make your AI assistant write the
-`pg` code, then lint it before you read it.
-
-```bash
-# generate a data-access function with whatever assistant you use…
-gemini -p "Write a Node.js function that looks up a user by email with pg" > user.ts
-# (or: claude -p "…", or paste from Copilot)
-
-# …then gate it on the way in
-npx eslint user.ts
-```
-
-In my benchmark, the database category was where the _flagship_ model did worst:
-Gemini 2.5 Pro at **96%** vulnerable, ahead of every Claude model, while the
-smallest model (Haiku) led the category at 39%. More capability did not buy more
-SQL-safety. That's not a knock on any one vendor; it's the whole point.
-**The vulnerability rate is a property of AI code generation, not a property of
-which model you picked.** So the gate has to live in CI, model-agnostic,
-firing on the _shape_ — which is exactly what `no-unsafe-query` does. Swap the
-`gemini -p` above for any model and the rule reads the AST the same way; the
-[5-model leaderboard](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
-is just this loop run 700 times. And because fixing one AI-suggested bug often
-surfaces the next, the linter is what keeps the [whack-a-mole bounded](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
-
----
-
-## The one almost nobody guards: `search_path` hijacking
-
-This is the rule worth installing the plugin for, because the attack is
-invisible to ORMs and code review alike.
+**The vulnerable code:**
 
 ```ts
 // ❌ no-unsafe-search-path (CWE-426, CVSS 9.5, CRITICAL)
 await client.query(`SET search_path TO tenant_${tenantId}`);
 ```
 
-**Why it's dangerous.** When you reference a table or function _unqualified_ —
-`SELECT * FROM accounts`, `crypt(...)` — PostgreSQL resolves the name by walking
-`search_path`, schema by schema, and uses the first match. `search_path` is
-therefore a **name-resolution control surface**. If an attacker influences it
-(a tenant id, a user-controlled value, or a schema they can create objects in),
-they can put a malicious `accounts` table or a shadowing `crypt()` function
-earlier in the path. Your unqualified query silently binds to _their_ object,
-and now it returns their data — or runs their function with your privileges.
+**Why it survived review.** This code looks more careful than a raw query, not less. The reviewer sees a tenant ID being scoped into its own schema — that reads as multi-tenancy done right, the responsible thing. The value is an internal tenant ID, not obviously user input, so nobody pattern-matches it to "SQL injection." And almost no JavaScript engineer carries the fact that `search_path` is a name-resolution surface in working memory — it's a PostgreSQL internals detail, not a web-security checklist item.
 
-**Why parameterization doesn't save you here.** `SET` does **not** accept bind
-parameters — `SET search_path = $1` is a syntax error. So the usual "just
-parameterize it" reflex fails, and people fall back to string interpolation,
-which is exactly the hole.
+Here's the attack: when you reference a table unqualified — `SELECT * FROM accounts` — PostgreSQL resolves the name by walking `search_path`, schema by schema, and uses the first match. If an attacker influences `search_path` (via a tenant ID, a user-controlled value, or a schema they can create objects in), they put a malicious `accounts` table earlier in the path. Your query silently binds to their object and returns their data.
 
-**Why this survives code review.** `tenant_${tenantId}` looks _more_ careful
-than a raw query, not less. The reviewer sees a tenant id being scoped into its
-own schema — that reads as multi-tenancy done right, the responsible thing. The
-value is an internal tenant id, not obviously user input, so nobody pattern-matches
-it to "SQL injection." And almost no JavaScript engineer carries the fact that
-`search_path` is a name-resolution surface in working memory — it's a Postgres
-internals detail, not a web-security checklist item. So it sails through: it
-isn't `' OR 1=1`, it isn't obviously user-controlled, and the danger lives one
-abstraction layer below where reviewers are looking. A linter doesn't get tired
-or trust the variable name.
+The additional trap: `SET` does **not** accept bind parameters. `SET search_path = $1` is a syntax error. So the usual "just parameterize it" reflex fails, and developers fall back to string interpolation.
+
+**The ESLint rule:**
 
 ```ts
 // ✅ make the identifier safe, or don't let it be dynamic at all
 import format from "pg-format";
 await client.query(format("SET search_path TO %I", tenantSchema)); // %I = quoted identifier
 
-// or validate against an allow-list / integer id before it ever reaches SQL:
-const schema = TENANT_SCHEMAS[tenantId]; // throws/handles if unknown
+// or validate against an allow-list before it reaches SQL:
+const schema = TENANT_SCHEMAS[tenantId]; // throws if unknown
 await client.query(format("SET search_path TO %I", schema));
 ```
 
-`%I` (or `quote_ident()`) quotes and escapes the value as an _identifier_,
-making schema injection impossible; an allow-list removes the dynamic value
-entirely. `no-unsafe-search-path` (CWE-426) makes the dynamic form a CI error.
-
-> **Static-analysis caveat.** The rule flags a _dynamic_ `SET search_path`; it
-> can't prove at lint time that `%I` escaped the value, so it may still flag the
-> `format()` form. That's the conservative-by-design behavior — the durable fix
-> is to remove the dynamic value (a static `search_path`, an allow-listed
-> schema, or fully-qualified names like `schema.accounts`). Where a validated
-> dynamic value is genuinely required, apply `%I`/allow-list and add a
-> documented scoped disable.
+`no-unsafe-search-path` (CWE-426) makes the dynamic form a CI error. The durable fix is to remove the dynamic value: a static `search_path`, an allow-listed schema, or fully qualified names like `schema.accounts`.
 
 ---
 
-## The connection-lifecycle family
+## Pattern 3: `COPY FROM` with untrusted path (CWE-73)
 
-The bugs that don't leak data — they take the database down.
+**The vulnerable code:**
 
-| Rule                        | What goes wrong                                                                                  | CWE     |
-| --------------------------- | ------------------------------------------------------------------------------------------------ | ------- |
-| `no-missing-client-release` | `pool.connect()` without `client.release()` → pool exhaustion                                    | CWE-404 |
-| `prevent-double-release`    | `release()` called twice → returns a reused/closed client                                        | CWE-415 |
-| `no-transaction-on-pool`    | `BEGIN`/`COMMIT` on the pool, not a single client → statements land on different connections     | CWE-662 |
-| `prefer-pool-query`         | manual connect/release for a one-shot query → use `pool.query()` and skip the leak risk entirely | CWE-400 |
+```ts
+// ❌ no-unsafe-copy-from (CWE-73)
+await client.query(`COPY staging FROM '${req.body.filePath}'`);
+```
 
-A single missing `release()` on a hot path is the classic "the database was
-fine, then at 3pm everything hung" outage. It survives review for a brutally
-simple reason: **the happy path returns the client, and the happy path is what
-everyone reads.** The leak lives in the `catch` block, or the early `return`
-when validation fails, or the `throw` three lines down — the branches your eye
-skips because "the logic looks right." It also passes every test, because a
-10-connection pool doesn't exhaust under the 3 requests an integration test
-fires; it exhausts under production concurrency at 3pm. The rule makes the
-omission visible at review time, not at peak traffic. (I walked a real version
-of this outage — pool exhaustion, root cause, the one-line fix — in
-[Database Connection Leak: Anatomy of a Production Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage).)
+**Why it survived review.** `COPY FROM` is a legitimate PostgreSQL command for bulk data loading, and the reviewer understands that. What's easy to miss: when running as a superuser, `COPY FROM` reads directly from the server's filesystem — not the client's. An attacker who controls `filePath` can read `/etc/passwd`, private keys, or any file the PostgreSQL process has access to. The command looks like an import operation; it reads like file access from the database server's perspective.
 
----
+**The ESLint rule:**
 
-## The full rule set
+```ts
+// ✅ validate against an allow-list of permitted paths, or use COPY FROM STDIN
+const ALLOWED_DIRS = ["/var/app/imports/"];
+if (!ALLOWED_DIRS.some(dir => filePath.startsWith(dir))) {
+  throw new Error("Disallowed import path");
+}
+await client.query("COPY staging FROM $1", [filePath]); // Note: COPY FROM STDIN avoids filesystem exposure entirely
+```
 
-All 13, with each rule's declared CWE:
-
-| Rule                        | Catches                                    | CWE      |
-| --------------------------- | ------------------------------------------ | -------- |
-| `no-unsafe-query`           | SQL injection (concat / template)          | CWE-89   |
-| `no-unsafe-search-path`     | `search_path` schema hijacking             | CWE-426  |
-| `no-unsafe-copy-from`       | `COPY FROM` with untrusted path/source     | CWE-73   |
-| `check-query-params`        | `$n` placeholders vs params array mismatch | CWE-20   |
-| `no-hardcoded-credentials`  | connection secrets in source               | CWE-798  |
-| `no-insecure-ssl`           | TLS disabled / `rejectUnauthorized:false`  | CWE-319  |
-| `no-missing-client-release` | leaked pooled connection                   | CWE-404  |
-| `prevent-double-release`    | double `release()`                         | CWE-415  |
-| `no-transaction-on-pool`    | transaction on the pool, not a client      | CWE-662  |
-| `prefer-pool-query`         | manual connect for a one-shot query        | CWE-400  |
-| `no-floating-query`         | un-awaited query promise                   | CWE-391  |
-| `no-batch-insert-loop`      | N inserts in a loop instead of one batch   | CWE-1049 |
-| `no-select-all`             | `SELECT *` (over-fetch / brittle)          | CWE-1049 |
+`no-unsafe-copy-from` (CWE-73) flags dynamic path values in `COPY FROM` statements. The safest fix is `COPY FROM STDIN`, which streams data from the client rather than reading server-side files.
 
 ---
 
-## Install
+## Pattern 4: Missing `client.release()` (CWE-404)
+
+**The vulnerable code:**
+
+```ts
+// ❌ no-missing-client-release (CWE-404) — pool exhaustion
+const client = await pool.connect();
+try {
+  const result = await client.query("SELECT ...");
+  return result.rows;
+} catch (err) {
+  throw err; // client never released — one of these per request and the pool dies
+}
+```
+
+**Why it survived review.** The happy path returns correctly, and the happy path is what reviewers read. The missing `client.release()` lives in the `catch` block, the early `return` when validation fails, or the `throw` three lines down — the branches your eye skips because "the logic looks right." This also passes every test because a 10-connection pool doesn't exhaust under 3 requests in an integration test. It exhausts under production concurrency at 3pm. The outage is slow-motion: the first few connections drain silently, and then every subsequent request hangs indefinitely.
+
+**The ESLint rule:**
+
+```ts
+// ✅ release in finally — always runs regardless of success or failure
+const client = await pool.connect();
+try {
+  const result = await client.query("SELECT ...");
+  return result.rows;
+} catch (err) {
+  throw err;
+} finally {
+  client.release(); // guaranteed
+}
+
+// or: use pool.query() for one-shot queries and skip the lifecycle entirely
+const result = await pool.query("SELECT ...");
+return result.rows;
+```
+
+`no-missing-client-release` (CWE-404) catches the omission at lint time, not at peak traffic. If you're using `pool.connect()` for a single query, `prefer-pool-query` will also flag it — `pool.query()` handles acquire-and-release internally.
+
+---
+
+## Here's the guard that catches all of this in CI
+
+One install. `configs.recommended` enables all 13 rules:
 
 ```bash
-# npm
 npm install --save-dev eslint-plugin-pg
-# yarn
-yarn add --dev eslint-plugin-pg
-# pnpm
-pnpm add --save-dev eslint-plugin-pg
-# bun
-bun add --dev eslint-plugin-pg
 ```
 
 Flat config (`eslint.config.js`):
 
 ```js
-// `configs` is a NAMED export; the default export is the plugin object.
 import { configs } from "eslint-plugin-pg";
 
 export default [
   configs.recommended, // all 13 rules
   // configs.flagship,  // just no-unsafe-query
-  // configs.strict,    // all 13 (same set, max severity)
+  // configs.strict,    // all 13, max severity
 ];
 ```
 
@@ -305,6 +190,26 @@ src/users.ts
 
 ---
 
+## The full rule set (all 13, CWE-tagged)
+
+| Rule                        | Catches                                    | CWE      |
+| --------------------------- | ------------------------------------------ | -------- |
+| `no-unsafe-query`           | SQL injection (concat / template)          | CWE-89   |
+| `no-unsafe-search-path`     | `search_path` schema hijacking             | CWE-426  |
+| `no-unsafe-copy-from`       | `COPY FROM` with untrusted path/source     | CWE-73   |
+| `check-query-params`        | `$n` placeholders vs params array mismatch | CWE-20   |
+| `no-hardcoded-credentials`  | connection secrets in source               | CWE-798  |
+| `no-insecure-ssl`           | TLS disabled / `rejectUnauthorized:false`  | CWE-319  |
+| `no-missing-client-release` | leaked pooled connection                   | CWE-404  |
+| `prevent-double-release`    | double `release()`                         | CWE-415  |
+| `no-transaction-on-pool`    | transaction on the pool, not a client      | CWE-662  |
+| `prefer-pool-query`         | manual connect for a one-shot query        | CWE-400  |
+| `no-floating-query`         | un-awaited query promise                   | CWE-391  |
+| `no-batch-insert-loop`      | N inserts in a loop instead of one batch   | CWE-1049 |
+| `no-select-all`             | `SELECT *` (over-fetch / brittle)          | CWE-1049 |
+
+---
+
 ## Compatibility
 
 | Surface              | Support                                                                                                                                                                                   |
@@ -320,33 +225,22 @@ src/users.ts
 
 ## What it does — and doesn't — see
 
-- **Source patterns, not the database.** It flags interpolated SQL, dynamic
-  `SET search_path`, and missing `release()`. It can't see your actual schema,
-  your `GRANT`s, or whether a tenant value is _really_ attacker-controlled —
-  it errs toward flagging dynamic SQL so you make the call explicitly.
-- **Pair it with the database's own defenses.** Least-privilege roles,
-  `REVOKE CREATE ON SCHEMA public`, and qualified names are the runtime half;
-  the linter ensures the source half never regresses.
+- **Source patterns, not the database.** It flags interpolated SQL, dynamic `SET search_path`, and missing `release()`. It can't see your actual schema, your `GRANT`s, or whether a tenant value is _really_ attacker-controlled — it errs toward flagging dynamic SQL so you make the call explicitly.
+- **Pair it with the database's own defenses.** Least-privilege roles, `REVOKE CREATE ON SCHEMA public`, and qualified names are the runtime half; the linter ensures the source half never regresses.
 
 ---
 
-## Where this sits in the ecosystem
+## Where this fits in the broader picture
 
-Generic security linters flag `eval` and obvious string-built SQL, but they
-don't know what a `Pool`, a `client.release()`, or `SET search_path` _is_.
-`eslint-plugin-pg` is the dedicated node-postgres layer — injection, the
-`search_path` resolution attack, and the connection-lifecycle bugs that cause
-outages — each finding tagged with a CWE and CVSS. It's the Postgres member of
-the [Interlace](https://eslint.interlace.tools) family, complementary to the
-generic set and to the other data-layer plugins (`eslint-plugin-mongodb-security`, …).
+For the deeper injection taxonomy — concat, identifiers, and the `IN (...)` trap — see [Three SQL Injection Patterns in node-postgres](https://dev.to/ofri-peretz/three-sql-injection-patterns-node-postgres-eslint). For where static analysis fits into the broader security workflow across an onboarding sprint, see [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91).
 
-This is the install-and-config entry point for the **Postgres Security
-Protocol** series. Each rule here has a deep-dive companion that walks the
-attack end to end:
+Generic security linters flag `eval` and obvious string-built SQL, but they don't know what a `Pool`, a `client.release()`, or `SET search_path` _is_. `eslint-plugin-pg` is the dedicated node-postgres layer — injection, the `search_path` resolution attack, the `COPY FROM` filesystem path, and the connection-lifecycle bugs that cause outages — each finding tagged with a CWE and CVSS.
+
+This is the install-and-config entry point for the **Postgres Security Protocol** series. Each rule here has a deep-dive companion:
 
 **→ The series (attack deep-dives):** [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) · [search_path Hijacking: A PostgreSQL Attack](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) · [Database Connection Leak: Anatomy of a Production Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage) · [Transaction Race Conditions: BEGIN on a Pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) · [COPY FROM: Filesystem Access via PostgreSQL](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access)
 
-**→ The AI angle (why this plugin matters more every quarter):** [We Ranked 5 AI Models by Security — the database numbers](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [I Let an AI Write 80 Functions: 65–75% Were Vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · [Claude Wrote a NestJS Service; ESLint Found 6 Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes) · [Same File, 4 Linters: How Much Your Plugin Actually Catches](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof)
+**→ The AI angle:** [We Ranked 5 AI Models by Security — the database numbers](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [I Let an AI Write 80 Functions: 65–75% Were Vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 
 ---
 
@@ -356,24 +250,12 @@ attack end to end:
 - 📖 [Full rule docs (per-rule CWE + examples)](https://eslint.interlace.tools/docs/security/plugin-pg/rules)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
 
-Run `configs.recommended` against your oldest `pg` service — the one written
-before the team had conventions — and one of these 13 will almost certainly
-fire. Then run it against the last data-access function your AI assistant wrote,
-and watch the same rule fire again. **Which one would it be in your codebase:
-the interpolated query nobody re-reads, the `release()` missing from a `catch`
-block, or the dynamic `search_path` that looked like good multi-tenancy?** I
-want the war story in the comments — especially the one that already cost you a
-3pm outage, or the one your AI pair-programmer slipped past review last week.
+Run `configs.recommended` against your oldest `pg` service — the one written before the team had conventions — and one of these 13 will almost certainly fire. **Have you ever had a SQL injection close call in a `pg` codebase — a query that got as far as staging before someone caught it? What pattern was it?** Drop it in the comments.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub if your `pg` code does any of the above.
+⭐ Star on GitHub if your `pg` code matches any of the above.
 ::
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack. `eslint-plugin-pg` is its
-node-postgres layer.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

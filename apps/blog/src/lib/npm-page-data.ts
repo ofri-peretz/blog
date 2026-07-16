@@ -1,3 +1,7 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
+
 // Data source for the /npm page. Combines:
 //   - plugins + plugin_daily_metrics from Supabase (per-package sparkline)
 //   - lifetime per-package downloads from npm registry (12h cached)
@@ -5,9 +9,6 @@
 // Single read path so the page server component stays presentational.
 
 import "server-only";
-import { unstable_cache } from "next/cache";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { cache } from "react";
 
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 

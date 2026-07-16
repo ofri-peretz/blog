@@ -24,22 +24,6 @@ author:
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-overall_score: 7.1
-reviews:
-  engagement: 7
-  engagement_why: "The opening paragraph burns the single most valuable engagement asset — the first-paragraph preview — on a conflict-of-interest disclosure (\"The #1 plugin in this benchmark is mine\"). The scroll-stopping stat (\"1.5M w..."
-  technical: 6
-  technical_why: "**The central factual claim about `eslint-plugin-security` is false and disprovable in 30 seconds.** The article states: \"it hasn't been updated for the flat-config API. The last npm-published version (2.1.1) dates fr..."
-  quality: 7.5
-  quality_why: "**The self-benchmark conflict is disclosed but never resolved.** The same author designed all 40 fixtures AND wrote the winning rules — and the article explicitly admits \"those two lists — the misses and the noise — *..."
-  practitioner: 7
-  practitioner_why: "**The benchmark is unfalsifiable as constructed, and the article admits it without curing it.** One person wrote the 40 fixtures, wrote the Interlace rules, and ran the harness — and the 77.5%→100% section states outr..."
-  linkability: 6.5
-  linkability_why: "**Two dead placeholder links that 404 — and the real articles already exist in the manifest.** The per-plugin deep-dive links `https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace` and `https://ofriperetz.de..."
-  challenge: 8
-  challenge_why: "In-body links to `benchmark-sonarjs-vs-interlace` and `benchmark-microsoft-sdl-vs-interlace` (both the per-plugin \"Deep dive\" callouts and the \"Related deep dives\" list) must resolve before promotion. If those slugs 4..."
-  hooks: 8
-  hooks_why: "The opening sentence burns the strongest hook the article owns. First line: \"**Full disclosure upfront:** The #1 plugin in this benchmark is mine.\" The reader's exposure (their green-checkmark security plugin catches ..."
 ---
 
 1.5 million weekly downloads go to `eslint-plugin-security`. The version most teams have pinned (2.1.1, from 2024) crashes outright on ESLint 9's flat config and catches **0 of 40** real vulnerabilities. I re-verified against the current version (4.0.1, released three weeks ago) before publishing this: it no longer crashes, but it still only catches **11 of 40** — and 0 of 6 SQL injection cases, the category most teams assume "a security linter" exists to cover. I benchmarked it, and 16 other plugins, against 40 real vulnerabilities to find out who actually fires. Only one plugin set caught all 40.
@@ -498,7 +482,7 @@ This isn't speculation; I measured it. In a separate experiment I asked Claude (
 
 And before you assume this is one vendor's problem, it isn't. I ran the same security scoring across **700 functions from 5 models — three Claude tiers and two Gemini tiers** — and every one of them shipped vulnerable code at a 49–73% rate. They just fail in different places: Claude Opus generated vulnerable JWT code in **7 out of 7** runs, while Gemini Flash got the exact same prompt **perfect 7 out of 7** — and on other domains that ranking flips. There is no "safe model" you can switch to; the leaderboard you'd pick from is itself misleading. The benchmark doesn't care which model wrote the line — it scores the line. That model-independence is the whole point: a deterministic rule is the one part of this pipeline that doesn't have a bad day.
 
-The model output is the new attack surface, and it walks straight past the human review that used to be the last line of defense — because it _looks_ senior. I gave Claude one prompt for a NestJS users service and got 200 lines that TypeScript compiled clean; a specialized linter found **6 security holes in 3 seconds** ([the full breakdown](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma)). And asking the model to _fix_ its own findings without deterministic feedback made it worse: it introduced brand-new vulnerability categories at **4× the rate** — what I call [the AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more): cut one head, two grow back.
+The model output is the new attack surface, and it walks straight past the human review that used to be the last line of defense — because it _looks_ senior. I gave Claude one prompt for a NestJS users service and got 200 lines that TypeScript compiled clean; a specialized linter found **6 security holes in 3 seconds** ([the full breakdown](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)). And asking the model to _fix_ its own findings without deterministic feedback made it worse: it introduced brand-new vulnerability categories at **4× the rate** — what I call [the AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more): cut one head, two grow back.
 
 The takeaway for this benchmark: a plugin that detects 0% or 35% of these patterns was already a liability. Pointed at AI-generated code that reintroduces the same patterns by the hundred, it's a rubber stamp on a vulnerability factory. The deterministic 100%-recall, 0%-FP layer is what gives the model an objective signal to converge against — and it's the same `npm run benchmark:fn-fp` command below, which you can rerun against your own AI's output, not just mine.
 
@@ -594,7 +578,7 @@ This article is the ecosystem overview. For the head-to-head per-plugin comparis
 And for why this benchmark matters more every quarter — the AI angle:
 
 - [I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-- [Claude Inherited a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma)
+- [Claude Inherited a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 - [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
 
 Full plugin docs: [eslint.interlace.tools](https://eslint.interlace.tools)

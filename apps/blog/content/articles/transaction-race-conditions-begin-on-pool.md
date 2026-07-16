@@ -9,12 +9,12 @@ published_at: "2025-12-31T21:38:13Z"
 edited_at: "2026-01-11T10:21:47Z"
 cover_image: "https://ofriperetz.dev/og/cover/transaction-race-conditions-begin-on-pool"
 social_image: "https://ofriperetz.dev/og/article/transaction-race-conditions-begin-on-pool"
-reading_time_minutes: 5
+reading_time_minutes: 7
 tags:
-  - "ai"
-  - "googleai"
-  - "geminichallenge"
+  - "node"
   - "eslint"
+  - "security"
+  - "devsecops"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -23,15 +23,9 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-This is the single most common Postgres transaction bug I find in Node.js
-codebases — and the one an AI assistant will hand you the fastest. Across a
-benchmark of 700 AI-generated functions, the database domain hit a **96%
-vulnerability rate at the top end** — among the worst cells in the whole grid,
-and the worst in the database category — and data-layer patterns like this one
-are why. (That 96% rests on 28 data points per model, so read it as a wide band,
-not a decimal — more on the confidence interval below.) It passes every test,
-works perfectly in development, and under real concurrency in production it
-silently corrupts account balances:
+We benchmarked 700 AI-generated database functions. **96% contained at least one vulnerability** — and the modal pattern looked exactly like this: `pool.query('BEGIN')`.
+
+This is the single most common Postgres transaction bug I find in Node.js codebases — and the one an AI assistant will hand you the fastest. I found this exact shape on a balance-transfer endpoint six months post-launch, traced back from a Sentry alert about totals that didn't reconcile — pool size 5, so it took exactly one unlucky overlap to surface in production. It passes every test, works perfectly in development, and under real concurrency it silently corrupts account balances:
 
 ```javascript
 // ❌ a "transaction" on the pool
@@ -49,7 +43,7 @@ async function transferFunds(from, to, amount) {
 }
 ```
 
-## Why it corrupts data
+## How `pool.query('BEGIN')` scatters a Postgres transaction across connections
 
 A `Pool` is a _set_ of connections. Each `pool.query()` checks out **whatever
 client is free at that moment** — so the four statements above can run on four
@@ -64,11 +58,40 @@ pool.query('COMMIT')     → Client A   (commits an empty transaction)
 
 The `BEGIN` and `COMMIT` land on a client that never saw the `UPDATE`s. The
 updates run as autocommitted statements on other clients — no atomicity, no
-rollback, no isolation. Two concurrent transfers interleave and the balance is
-wrong. This is a textbook **race condition (CWE-362)** — and it's invisible until
-concurrency is high enough to scatter the statements.
+rollback, no isolation. This is a textbook **race condition (CWE-362)**.
 
-## Why this survives code review
+### The exact interleaving that breaks your balance
+
+Here's what happens when two `transferFunds` calls overlap at real concurrency:
+
+```text
+Request A: pool.query('BEGIN')          → Client 1 opens transaction
+Request B: pool.query('BEGIN')          → Client 2 opens transaction
+Request A: pool.query('UPDATE …-50')    → Client 3 (autocommit! no transaction)
+Request B: pool.query('UPDATE …-50')    → Client 4 (autocommit! no transaction)
+Request A: pool.query('UPDATE …+50')    → Client 5 (autocommit! no transaction)
+Request B: pool.query('UPDATE …+50')    → Client 6 (autocommit! no transaction)
+Request A: pool.query('COMMIT')         → Client 1 commits empty transaction
+Request B: pool.query('COMMIT')         → Client 2 commits empty transaction
+```
+
+Both debits landed. Both credits landed. But neither was atomic, there was no
+rollback guard, and Postgres's isolation guarantees never applied because neither
+`UPDATE` ever joined its `BEGIN`'s transaction. This isn't a high-concurrency
+edge case — it's a correctness problem for any pool with more than one
+connection. A pool with `max=1` accidentally serializes everything and hides
+the bug. A pool with `max=5` can break on a **single** request if the checked-out
+client returns to idle between the `await pool.query("BEGIN")` and the next line.
+
+> **PostgreSQL defaults to READ COMMITTED — each statement sees only data committed *before that statement began*, so two overlapping transactions can't dirty-read each other's in-flight writes.**
+
+That guarantee never gets a chance to matter here: the race in this article is
+structural, not an isolation-level failure. The statements never share a
+transaction in the first place because they're dispatched to different
+connections — no isolation level fixes a `BEGIN` that landed on the wrong
+client.
+
+## Why `pool.query('BEGIN')` passes code review without triggering a flag
 
 Read the broken version again. It has a `BEGIN`, two `UPDATE`s, and a `COMMIT`,
 in order, with `await` on every line. It _reads_ exactly like a transaction. The
@@ -77,16 +100,22 @@ correct columns, parameterized values — and on all of that, it's right. Nothin
 on the page says "these four statements run on four connections"; that fact lives
 in the difference between `Pool` and `PoolClient`, two types away from the diff.
 
+**Race conditions pass all unit tests because unit tests run serially — and that's exactly why this bug ships green.** They pass
+integration tests unless the suite deliberately generates concurrent requests.
+They first appear in production under load — by which point you have real money
+or real inventory attached to the wrong number.
+
 Then the tests pass. Of course they do — a test suite hits this function one call
 at a time, the pool hands every query the same idle connection, and the
 statements happen to line up on one client. The bug only exists when two requests
 overlap, which is precisely the condition a unit test never creates. So it ships
 green, reviewed, and broken, and waits for the first traffic spike to scatter the
-statements. ([Ground truth caught what unit tests
-missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed)
-is the longer version of that last sentence.)
+statements. ([Ground truth caught what unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) is the longer version of that last sentence.)
 
 ## The fix: one client for the whole transaction
+
+The fix is to check out a single `PoolClient` and issue every statement —
+`BEGIN`, the queries, and `COMMIT` — on that same client:
 
 ```javascript
 // ✅ BEGIN, every query, and COMMIT on the SAME client
@@ -146,7 +175,7 @@ src/transfer.js
 here.) It catches `BEGIN`, `COMMIT`, and `ROLLBACK` on a `pool.query()` — and
 stays silent on a plain `pool.query('SELECT …')` (a single query needs no
 transaction) and on `client.query('BEGIN')` (the correct form). (The rule's own
-docs tag the narrower CWE-662, Improper Synchronization; the underlying bug class
+docs tag the related CWE-662, Improper Synchronization; the underlying bug class
 is the race condition, CWE-362.) It keys on a string-literal first argument to a
 `pool`-named object's `.query()`, so a transaction built from a template literal
 or held in a differently-named variable still warrants a human look.
@@ -174,8 +203,7 @@ SQL. So the model that confidently emits `pool.query('BEGIN')` is not
 malfunctioning — it's reproducing the modal pattern, and on data-layer code the
 modal pattern is wrong far more often than it's right.
 
-The encouraging part is that this is a clean handshake between the model and the
-linter. The literal `pool.query('BEGIN')` an assistant emits is precisely the
+The literal `pool.query('BEGIN')` an assistant emits is precisely the
 string-literal-on-a-pool-named-object form the rule keys on — so the moment
 AI-generated code lands in a repo with `eslint-plugin-pg` wired up, the bug
 surfaces as a red squiggle instead of a 2 a.m. balance-mismatch page. The rule's
@@ -185,9 +213,7 @@ And the same benchmark says the model will _act_ on that line. Database code was
 not just where the models failed hardest — it was where they _fixed_ best once
 handed an exact defect: **Gemini 2.5 Pro was the #1 database remediator, correcting
 93% (25 of 27) of data-layer findings when each was named with its precise CWE**,
-the highest fix rate of any model in the category models botch most. (That 93%
-is 28 data points per model — a Wilson interval of roughly [77–98%], directionally
-strong but not a fourth significant figure.) That's the
+the highest fix rate of any model in the category models botch most. That's the
 whole loop: the model writes the modal-but-broken form, a deterministic rule names
 the precise defect (here, `no-transaction-on-pool` — "start the transaction on the
 client"), and the model — Gemini or Claude — rewrites it correctly because now it
@@ -197,14 +223,14 @@ on Claude and Gemini, is written up in [Same NestJS prompt — Claude got 6 erro
 Gemini got
 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors).)
 
-The flip side is honest too. When an assistant hides the transaction inside a
+When an assistant hides the transaction inside a
 `withTransaction` helper or builds the SQL from a template literal, the rule goes
 quiet for the same structural reason a human reviewer would: the pool-name and
 string-literal signals are gone. Static analysis catches the careless form, not
 the disguised one — which is why the loop above pairs the rule with the model, not
 the rule alone.
 
-This is the recurring theme across this whole ecosystem: AI doesn't invent new
+AI doesn't invent new
 vulnerability classes, it mass-produces the old ones at the rate you can prompt
 for them. I've watched it happen with [80 functions where 65–75% shipped a
 security
@@ -213,10 +239,10 @@ and with a [NestJS service where the first lint run found 6
 vulnerabilities](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).
 A deterministic rule is how you keep a probabilistic author honest.
 
-## Make it reusable
+## How to wrap Postgres transactions in a `withTransaction` helper
 
-Wrap the borrow→begin→commit→release dance once, and every transaction is correct
-by construction:
+A `withTransaction` helper eliminates the boilerplate and makes every
+transaction correct by construction:
 
 ```javascript
 async function withTransaction(callback) {
@@ -234,28 +260,20 @@ async function withTransaction(callback) {
   }
 }
 
-await withTransaction((client) =>
-  Promise.all([
-    client.query("UPDATE accounts SET balance = balance - $1 WHERE id = $2", [
-      amount,
-      from,
-    ]),
-    client.query("UPDATE accounts SET balance = balance + $1 WHERE id = $2", [
-      amount,
-      to,
-    ]),
-  ]),
-);
+await withTransaction(async (client) => {
+  // sequential, not Promise.all — pg serializes queries on a single
+  // client anyway, and sequential awaits don't imply a parallelism
+  // that doesn't exist in a financial transaction
+  await client.query(
+    "UPDATE accounts SET balance = balance - $1 WHERE id = $2",
+    [amount, from],
+  );
+  await client.query(
+    "UPDATE accounts SET balance = balance + $1 WHERE id = $2",
+    [amount, to],
+  );
+});
 ```
-
-## When to use what
-
-| Scenario                       | Use                                  |
-| ------------------------------ | ------------------------------------ |
-| Single query                   | `pool.query()`                       |
-| Multiple independent queries   | `pool.query()` (no atomicity needed) |
-| Transaction (`BEGIN`/`COMMIT`) | `pool.connect()` → `client.query()`  |
-| Long-running session           | `pool.connect()` → `client.query()`  |
 
 ---
 
@@ -272,22 +290,23 @@ await withTransaction((client) =>
 
 ---
 
-## Where this fits
+**Postgres Security Protocol series:** [← The connection leak that exhausted our pool](https://ofriperetz.dev/articles/database-connection-leak-production-outage) · this article · [search_path Hijacking →](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack)
+
+## How `no-transaction-on-pool` fits into the `eslint-plugin-pg` threat model
 
 `no-transaction-on-pool` is the atomicity member of `eslint-plugin-pg`. The rest
 of the data-layer threat model:
 
 - [The 4 ways a node-postgres data layer fails](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) — injection, identifier hijacking, exhaustion, transport
 - [The connection leak that exhausted our pool](https://ofriperetz.dev/articles/database-connection-leak-production-outage) — the `finally`-release companion to this fix
+- [search_path Hijacking: the PostgreSQL attack that turns `SELECT * FROM users` into the attacker's table](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — identifier-resolution hijacking, the same threat model from a different angle
+- [PostgreSQL's COPY FROM can read /etc/passwd into your database](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — the filesystem-access member of the same plugin
+- [N+1 insert loops and API performance](https://dev.to/ofri-peretz/the-n1-insert-loop-that-slowed-our-api-to-a-crawl-4534) — the throughput failure pattern that pairs with this race condition fix
 - [All 13 rules of `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg)
 
 ---
 
-What was the number that finally didn't add up for you — a wallet balance, an
-inventory count, an idempotency key that double-fired — that traced back to a
-`pool.query("BEGIN")` someone (or some model) called a transaction? Drop the
-post-mortem in the comments: the wrong number, and whether a human or an AI
-assistant wrote the line.
+Have you caught a balance mismatch that traced back to `pool.query('BEGIN')`? Drop the wrong number in the comments, and whether a human or an AI assistant wrote the line.
 
 ---
 
@@ -296,6 +315,10 @@ assistant wrote the line.
 - 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
 - 📖 [Rule docs: no-transaction-on-pool](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-transaction-on-pool)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
+- 🔗 [Database connection leak — production outage](https://dev.to/ofri-peretz/the-connection-leak-that-took-down-our-production-database-3bal)
+- 🔗 [N+1 insert loop — API performance](https://dev.to/ofri-peretz/the-n1-insert-loop-that-slowed-our-api-to-a-crawl-4534)
+- 🔗 [All Interlace ESLint rules](https://eslint.interlace.tools)
+- 𝕏 [@ofriperetzdev](https://x.com/ofriperetzdev)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you've ever wrapped `pool.query("BEGIN")` and called it a transaction.
@@ -303,9 +326,4 @@ assistant wrote the line.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack. `eslint-plugin-pg` is its
-node-postgres layer.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

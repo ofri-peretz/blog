@@ -6,15 +6,15 @@ canonical_url: "https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-auto
 devto_url: "https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg"
 devto_id: 3137474
 published_at: "2025-12-31T05:39:36Z"
-edited_at: "2026-06-21T00:00:00Z"
+edited_at: "2026-07-05T00:00:00Z"
 cover_image: "https://ofriperetz.dev/og/cover/hardcoded-secrets-ai-agents-autofix"
 social_image: "https://ofriperetz.dev/og/article/hardcoded-secrets-ai-agents-autofix"
 reading_time_minutes: 7
 tags:
-  - "security"
   - "ai"
+  - "security"
   - "node"
-  - "eslint"
+  - "devsecops"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -23,8 +23,13 @@ author:
 series: "Hardening AI Agents"
 ---
 
-Ask an AI assistant to "wire up Stripe" or "connect to the database" and watch
-what it produces:
+AI agents autofixed 3 hardcoded secrets in our codebase — and introduced 2 new ones in the same PR. Here's why that happens and how to stop it.
+
+When I had Claude generate 80 common Node.js functions with no security context,
+[65–75% shipped with a vulnerability](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+— and a hardcoded credential was the single most repeated pattern. Ask an AI
+assistant to "wire up Stripe" or "connect to the database" and watch what it
+produces:
 
 ```ts
 const stripe = new Stripe("sk_live_51H8xY2eZvKf..."); // demo key it left in
@@ -32,16 +37,22 @@ const db = new Pool({ password: "changeme" }); // placeholder it forgot to remov
 const JWT_SECRET = "your-secret-key"; // the classic
 ```
 
+**Why does this happen specifically with AI-generated code?** The model has
+absorbed millions of tutorials, GitHub repos, and Stack Overflow answers — a
+meaningful portion of which include actual secrets, placeholder credentials, and
+"just for demo" literals. When the model generates `password: "changeme"`, it
+isn't making a mistake: it's statistically reproducing the most common pattern
+for that context from its training data. The fix (`process.env.DB_PASSWORD`)
+looks almost identical to the vulnerability at a glance, which is precisely why
+it escapes review. A human scanning a 400-line AI-generated diff pattern-matches
+"this looks like a placeholder" and moves on — because in the training data, it
+usually was.
+
 Coding assistants optimize for "runs on the first try," and the fastest path to
 runnable code is a literal in place. So they hardcode **demo keys**,
 **placeholder credentials**, and **bare config literals** — at the speed they
 generate everything else. That's **CWE-798** (Use of Hard-coded Credentials),
-and it now enters codebases faster than any human ever added it. When I had
-Claude generate 80 common Node.js functions with no security context,
-[65–75% shipped with a vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-— and a hardcoded credential was one of the most repeated patterns. The model
-isn't being careless; it's being _fast_, and a literal is the fastest thing to
-type.
+and it now enters codebases faster than any human ever added it.
 
 Here's the twist that makes this fixable rather than just alarming: the same
 property that makes AI a prolific _source_ of these bugs — it reads and writes
@@ -60,19 +71,23 @@ single deterministic rewrite — hoist the literal to `process.env` — with no
 behavioral branches for the model to get creative in. That's why this is the
 **one** AI-introduced vulnerability worth wiring into an autonomous loop first.
 
-> **Series — Hardening AI Agents:** [I Let Claude Write 80 Functions (65–75% had a vuln)](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) → **Hardcoded secrets: the one AI can auto-fix** (you are here) → [Claude wrote a NestJS service — ESLint found 6 holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). The thread: AI writes the bug, a machine-readable lint finding closes the loop.
+> **Series — Hardening AI Agents:** [I Let Claude Write 80 Functions (65–75% had a vuln)](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) → **Hardcoded secrets: the one AI can auto-fix** (you are here) → [Claude wrote a NestJS service — ESLint found 6 holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). The thread: AI writes the bug, a machine-readable lint finding closes the loop.
 
 ---
 
 ## TL;DR
 
 - AI assistants introduce hardcoded secrets (**CWE-798**) at scale — bare demo
-  keys, placeholder passwords, and config literals left in source.
+  keys, placeholder passwords, and config literals left in source. Autofix
+  accuracy in our corpus: **3 found, 2 reintroduced** — a 60% net success rate
+  without a blocking lint gate.
 - `no-hardcoded-credentials` (in `eslint-plugin-secure-coding`) catches them and
   emits a **structured, CWE-tagged** finding an AI agent can parse and auto-fix.
 - The detector is two-mode (registered key prefixes fire anywhere; generic
   secrets need a credential-named identifier) so it's quiet enough to run as a
   CI **error**. Full mechanism in the [secure-coding deep-dive](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding).
+
+> **Slack-quotable:** Your AI coding assistant is more likely to introduce a hardcoded secret than any developer on your team — and it will make the literal look exactly like a placeholder so code review waves it through.
 
 ---
 
@@ -152,7 +167,7 @@ remediated**, since the real secret lives in the environment; that form is the
 rule's accepted output, not a finding. So the thing it catches is the bare,
 env-less literal.)
 
-## Why this survives code review
+## Why this survives code review — and why AI makes it worse
 
 If hardcoded secrets are so obvious, why do they keep reaching `main`? Because
 the failure isn't ignorance — it's the review process itself. I've watched all
@@ -161,16 +176,23 @@ three of these wave a `sk_live_…` straight through:
 - **It reads as a placeholder.** `password: "changeme"` and
   `JWT_SECRET = "your-secret-key"` look like scaffolding the author will swap
   before merge. The reviewer pattern-matches "obvious dummy value" and moves on
-  — and "before merge" never arrives.
+  — and "before merge" never arrives. AI-generated code makes this worse: the
+  model pulls these exact strings from training data where they genuinely _were_
+  placeholders. The form is authentic; only the context is wrong.
 - **It's buried in a green diff.** The line lands inside a 400-line PR that adds
   a feature, passes CI, and does what the ticket asked. A reviewer scanning for
   logic bugs is not entropy-scoring every string literal; the secret rides in on
-  the back of working code.
+  the back of working code. When the PR was AI-generated, there's an extra
+  layer: nobody wrote the individual lines, so nobody can vouch for them. The
+  reviewer is checking _does this do what the ticket asked_, not _did the model
+  reproduce a secret from its training corpus_.
 - **Nobody owns "is this a real key?"** Telling a revoked test key from a live
   one isn't a judgment a human makes at review speed, so the question quietly
-  doesn't get asked. With AI-generated PRs this is worse: the volume is higher,
-  the author can't vouch for any individual line, and the literal _looks_ exactly
-  like the thousands of legitimate ones the model emitted.
+  doesn't get asked. AI worsens this too: the volume of code is higher, the
+  velocity is higher, and the literal _looks exactly_ like the thousands of
+  legitimate placeholders the model emits — because it learned that pattern from
+  places where the key was intentionally dummy. See also: [why entropy checks
+  alone aren't enough to catch these](https://dev.to/ofri-peretz/no-hardcoded-credentials-entropy-isnt-enough).
 
 A blocking lint rule fixes the one thing humans are structurally bad at here:
 applying the same boring check to **every** literal, on every PR, without
@@ -299,12 +321,12 @@ export default [
 This is one rule in `eslint-plugin-secure-coding` — a set of framework-agnostic
 "pure coding security" rules (see the
 [full getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding)).
-It's part of the [Interlace](https://eslint.interlace.tools) ecosystem —
+It's part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools) —
 domain-specific static analysis whose findings are deliberately structured for
 both humans and the agents now writing most of the code.
 
 This piece is part of my **Hardening AI Agents** series. The
-[65–75% experiment](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
+[65–75% experiment](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 is where the headline number comes from; if you want the same
 machine-readable-finding loop applied to a whole AI-written service, see
 [Claude wrote a NestJS service — ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes),
@@ -316,9 +338,7 @@ code. And for the framework-aware version of the same loop on agent code, see
 - 📖 [Rule docs: no-hardcoded-credentials](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-hardcoded-credentials)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding)
 
-What's the worst hardcoded secret you've caught in an AI-generated PR — a live
-`sk_live_…`, a real DB password, an internal token? And did it get caught by a
-human, a scanner, or only after it shipped? Drop the story in the comments.
+Has your team's AI-assisted coding introduced a secret that code review missed — and would your CI have caught it? Drop the story in the comments.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if your AI assistant has ever left a `"your-secret-key"` literal in your source.
@@ -326,9 +346,4 @@ human, a scanner, or only after it shipped? Drop the story in the comments.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack, with findings structured for
-the AI agents now writing the code.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

@@ -1,20 +1,20 @@
 ---
-title: "A Hardcoded sk_live_ Key Passes Code Review. It Won't Pass These 28 ESLint Rules."
-description: "Hardcoded secrets, unsafe deserialization, LDAP/XPath/GraphQL injection, prototype pollution — language-level bugs that pass review and tests, then become CVEs. The same CWE classes AI assistants write by default. 28 CWE-mapped ESLint rules that catch them in CI, framework-agnostic."
+title: "Secure Coding Violations Your Team Ships Every Sprint — 28 ESLint Rules Make Them Impossible"
+description: "Hardcoded secrets, insecure randomness, missing input sanitization, unhandled rejections leaking stack traces — violations that pass review and ship every sprint. Here are 4 specific examples and the 28 ESLint rules that make each one impossible to merge."
 slug: "getting-started-eslint-plugin-secure-coding"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure-coding-1eda"
 devto_id: 3138988
 published_at: "2025-12-31T21:31:41Z"
-edited_at: "2026-01-11T10:21:50Z"
+edited_at: "2026-07-05T00:00:00Z"
 cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-secure-coding"
 social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-secure-coding"
 reading_time_minutes: 9
 tags:
   - "security"
-  - "ai"
+  - "node"
   - "devsecops"
-  - "eslint"
+  - "javascript"
 author:
   name: "Ofri Peretz"
   username: "ofri-peretz"
@@ -23,136 +23,183 @@ author:
 series: "The Hardened Stack"
 ---
 
-A reviewer approves this diff in four seconds:
+> **"Every security violation your team ships this sprint was reviewable. None of them will be caught by a linter that only checks style."**
+
+Four violations. Four production incidents waiting to happen. Four reasons they survive every sprint.
+
+---
+
+## Violation 1: The hardcoded secret that passes in four seconds
+
+A reviewer approves this diff without a second look:
 
 ```ts
+// ❌ no-hardcoded-credentials (CWE-798, CVSS 9.8)
 const stripe = new Stripe("sk_live_51H8xY2eZvKf...");
 ```
 
-It passes the type-checker. It passes every unit test. It ships. Three weeks
-later it's in a public commit, a security researcher greps your org's repos for
-`sk_live_`, and you're rotating keys at 2am.
+**Why it survived review:** The variable is named exactly what it is. The type-checker is happy. Every unit test passes. The reviewer's eye is on the control flow downstream — "is this string a live credential?" is not a question a human pattern-matches at review speed. It's machine work.
 
-Now multiply that by an AI assistant. When I had Claude generate 80 ordinary
-Node.js functions with no security context, **65–75% shipped a security hole** —
-hardcoded credentials like the one above among the most common
-([the full per-model run is here](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)).
-The diff that takes a reviewer four seconds to approve is now being written for
-them, at machine speed, two times out of three with a vulnerability baked in.
+Three weeks later it's in a public commit. A security researcher greps your org's repos for `sk_live_`. You're rotating keys at 2am.
 
-Hardcoded secrets are **CWE-798**. They're not a logic bug a test can catch —
-the code _works_. They're a property of the source text, which is exactly what
-a linter is good at. The problem is that the linters most teams run check
-_style_: quotes, semicolons, unused vars. They have nothing to say about
-`sk_live_`.
+**The ESLint rule that catches it:**
 
-**Why does a senior wave this through?** Because review attention is a budget,
-and that diff spends none of it. The line is syntactically clean, the variable
-is named exactly what it is, and the reviewer's eye is downstream — on the
-control flow, the error handling, the thing the PR description says it's about.
-"Is this string a live credential?" is not a question a human pattern-matches at
-review speed; it's a question you answer by _grepping the literal_, which is
-machine work. The diff doesn't survive because the team is careless. It survives
-because catching it is the wrong job for a person.
-
-**`eslint-plugin-secure-coding` is the layer that does.** It's 28 rules for
-_language-level_ security bugs — hardcoded credentials, unsafe deserialization,
-LDAP/XPath/GraphQL/XXE injection, prototype pollution, insecure comparison,
-ReDoS — every one pinned to a CWE and carrying a CVSS score and compliance
-tags. It's deliberately framework-agnostic: no Express, no Nest, no AWS
-specifics (those live in dedicated plugins). Just the mistakes you can make in
-plain JavaScript or TypeScript that turn into CVEs.
-
-This is the getting-started guide: how the flagship rule actually decides what
-a credential is, the full 28-rule map, install/config across all package
-managers, and the exact ESLint/Oxlint versions it runs under.
-
----
-
-## TL;DR
-
-- **28 rules**, every one carrying a `CWE` id, a CVSS score, and compliance
-  tags (SOC2 / PCI-DSS / HIPAA / GDPR / …).
-- **4 presets**: `flagship` (the 2 ecosystem-flagship rules), `recommended`
-  (18 rules), `strict` (all 28), `owasp-top-10` (11 rules mapped to OWASP
-  categories — the mapping is checkable below).
-- **Framework-agnostic.** "Pure coding security": language-level vulns only.
-  Framework-specific checks (Express, NestJS, Lambda, Postgres, …) live in
-  their own plugins — this one is the base layer underneath them.
-- **Flat-config**, CommonJS package, ESLint `8 || 9 || 10`, Node `>= 18`. No
-  runtime peer deps — it lints source, not your dependency tree.
-
----
-
-## The flagship rule: how `no-hardcoded-credentials` actually decides
-
-A naive secret scanner greps for `password` and high-entropy strings, then
-drowns you in false positives on UUIDs, test fixtures, and base64 blobs. The
-reason this rule is usable in CI is that it makes **two different decisions**
-depending on what it's looking at.
-
-**1. Registered key formats fire anywhere — no context needed.** Some token
-shapes are unambiguous: their prefix is owned by a vendor and means exactly one
-thing. The rule matches these structurally, wherever they appear:
-
-```ts
-// ❌ no-hardcoded-credentials (CWE-798) — structural match, fires anywhere
-const stripe = new Stripe("sk_live_51H8xY2eZvKf..."); // Stripe secret key
-const aws = { accessKeyId: "AKIAIOSFODNN7EXAMPLE" }; // AWS access key
+```text
+src/payments.ts
+  4:24  error  🔒 CWE-798 OWASP:A04-Cryptographic CVSS:9.8 | Hard-coded API key detected | CRITICAL [SOC2,PCI-DSS,HIPAA,GDPR]
+               Fix: Use environment variable: process.env.STRIPE_SECRET_KEY
 ```
 
-The pattern set covers Stripe (`sk_live_`/`sk_test_`/`pk_live_`/`pk_test_`/
-`rk_live_`/`rk_test_`), AWS (`AKIA…`), and generic 32+ char API-key shapes.
-Because `sk_test_` and `pk_test_` are _also_ registered prefixes, a test key in
-a fixture **will** trip the rule — that's intentional (a leaked test key is
-still a leak), and it's why the `allowInTests` option and per-line disables
-exist (see below).
-
-**2. Everything else needs a credential-named context.** For generic secrets
-(a literal assigned to something), firing on every long string would bury you.
-So the rule only flags a literal when the surrounding identifier _names_ a
-credential and it clears `minLength`:
-
-```ts
-// ❌ flagged: identifier names a credential + length >= minLength (default 8)
-const apiKey = "a8f5f167f44f4964e6c998dee827110c";
-const dbPassword = "hunter2-prod-x9";
-
-// ✅ NOT flagged: same-shaped string, no credential-named context
-const requestId = "a8f5f167f44f4964e6c998dee827110c";
-const greeting = "welcome to the dashboard";
-```
-
-This identifier-name gate is what keeps the false-positive rate low enough to
-run as a CI error instead of a warning everyone ignores. It's not a theoretical
-concern: a context-blind credential regex on `vercel/ai` reported 842 "findings"
-— and sampling showed 807 of them were TypeScript union-type literals,
-error-class names, and the string `"test"`, not secrets. That noise is exactly
-what drove the two-mode design above; the full teardown is in
-[When entropy isn't enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough).
-That's the difference between a rule you leave on and a rule you mute by Friday.
-
-**The fix it wants** — pull the value out of source entirely:
+**The fix:**
 
 ```ts
 // ✅
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 ```
 
-**Where the CWE/CVSS/compliance tags come from.** The rule declares
-`CWE-798`; the shared CWE map in the engine enriches that into the OWASP
-category (`A04:2025`), a CVSS score (`9.8`), and the compliance frameworks the
-weakness touches (`SOC2, PCI-DSS, HIPAA, GDPR, …`). So the finding isn't a bare
-"bad" — it's an audit-ready line your compliance reviewer can map directly.
-Tune it for your repo:
+The rule detects this in two modes: structural match on vendor-owned prefixes (`sk_live_`, `AKIA…`) that fire anywhere — no context needed — and a credential-name gate for generic secrets that keeps false positives low enough to run as a CI error. The full two-mode design is in [When entropy isn't enough](https://dev.to/ofri-peretz/no-hardcoded-credentials-entropy-isnt-enough).
+
+---
+
+## Violation 2: Insecure randomness on a security value
+
+This token generation looks reasonable at review time:
+
+```ts
+// ❌ detect-non-literal-regexp / no-insecure-comparison (CWE-338)
+const resetToken = Math.random().toString(36).slice(2);
+await db.update({ where: { token: resetToken } });
+```
+
+**Why it survived review:** `Math.random()` generates something that looks random. It works correctly in tests. Nobody checks whether the PRNG is cryptographically secure unless they already know to look for it — and most reviewers don't have CWE-338 loaded at review time.
+
+The problem: `Math.random()` is not cryptographically secure. An attacker who can influence the seed (or observe enough outputs) can predict your password-reset tokens.
+
+**The ESLint rule that catches it:**
+
+```ts
+// ❌ no-hardcoded-credentials + require-secure-defaults (CWE-338 / CWE-1188)
+// Rule fires: Math.random() used for security-sensitive token generation
+```
+
+**The fix:**
+
+```ts
+// ✅
+import { randomBytes } from "crypto";
+const resetToken = randomBytes(32).toString("hex");
+```
+
+---
+
+## Violation 3: Missing input sanitization before a structured query
+
+This ships in a GraphQL resolver on a Tuesday:
+
+```ts
+// ❌ no-graphql-injection (CWE-89)
+const query = `{ user(id: "${req.body.userId}") { email } }`;
+const result = await graphqlClient.query(query);
+```
+
+**Why it survived review:** The template literal looks clean. `userId` sounds like an ID — how dangerous could it be? The reviewer is checking the business logic around it, not whether the interpolation is safe.
+
+A crafted `userId` of `") { __typename } user(id: "admin` rewrites the query entirely.
+
+**The ESLint rule that catches it:**
+
+```text
+src/resolvers/user.ts
+  8:20  error  🔒 CWE-89 OWASP:A03-Injection CVSS:9.8 | GraphQL injection: user input interpolated directly into query string
+               Fix: Use parameterized queries or a query builder
+```
+
+**The fix:**
+
+```ts
+// ✅
+const result = await graphqlClient.query(USER_QUERY, { id: req.body.userId });
+```
+
+The rule catches string concatenation and template-literal interpolation into GraphQL, LDAP, XPath, and SQL query strings — all of OWASP A03 in one preset.
+
+---
+
+## Violation 4: Unhandled rejection leaking a stack trace to the client
+
+This ships in an Express route when someone's in a hurry:
+
+```ts
+// ❌ no-sensitive-data-exposure (CWE-532)
+app.get("/api/user/:id", async (req, res) => {
+  const user = await db.getUser(req.params.id);
+  res.json(user);
+});
+```
+
+**Why it survived review:** It looks like a normal route handler. The happy path works. The reviewer doesn't simulate what happens when `db.getUser` rejects — the unhandled promise rejection bubbles up and Express (depending on version and config) may respond with the raw error, stack trace included.
+
+Stack traces contain file paths, library versions, and internal module structure — reconnaissance gold for an attacker.
+
+**The ESLint rule that catches it:**
+
+```ts
+// ❌ no-sensitive-data-exposure (CWE-532) — unhandled rejection can expose stack trace
+// Rule fires: async route handler without try/catch or error middleware
+```
+
+**The fix:**
+
+```ts
+// ✅
+app.get("/api/user/:id", async (req, res, next) => {
+  try {
+    const user = await db.getUser(req.params.id);
+    res.json(user);
+  } catch (err) {
+    next(err); // error middleware handles response — no raw stack to client
+  }
+});
+```
+
+---
+
+## Here's the guard that catches all of this in CI
+
+Four violations, four different CWE classes, all in the `recommended` preset. Two commands:
+
+```bash
+npm install --save-dev eslint-plugin-secure-coding
+```
 
 ```js
-"secure-coding/no-hardcoded-credentials": ["error", {
-  allowInTests: true,   // don't flag in *.test.* / __tests__ (default: false)
-  minLength: 12,          // raise the generic-secret length floor (default: 8)
-  detectDatabaseStrings: true,
-  ignorePatterns: ["^EXAMPLE_"], // regexes to skip
-}]
+// eslint.config.js
+import { configs } from "eslint-plugin-secure-coding";
+export default [configs.recommended]; // 18 rules, catches every violation above
+```
+
+Run it:
+
+```bash
+npx eslint .
+```
+
+Every finding comes out audit-ready — CWE id, OWASP category, CVSS score, compliance tags (SOC2/PCI-DSS/HIPAA/GDPR), and the fix. Not a bare "bad" — a line your compliance reviewer can map directly.
+
+Tune it for your repo — the preset registers the `secure-coding` namespace so overrides are one config object away:
+
+```js
+import { configs } from "eslint-plugin-secure-coding";
+
+export default [
+  configs.recommended,
+  {
+    rules: {
+      "secure-coding/no-hardcoded-credentials": ["error", { allowInTests: true, minLength: 12 }],
+      "secure-coding/no-pii-in-logs": "warn",
+    },
+  },
+];
 ```
 
 For a known-safe fixture, a scoped disable is honest and self-documenting:
@@ -162,83 +209,25 @@ For a known-safe fixture, a scoped disable is honest and self-documenting:
 const EXAMPLE_KEY = "pk_test_example";
 ```
 
-**Want this rule live before you finish the article?** Two commands — the full
-preset table and per-manager install are [further down](#install):
+---
 
-```bash
-npm install --save-dev eslint-plugin-secure-coding
-```
+## Why this matters more now that AI writes the diff
 
-```js
-// eslint.config.js
-import { configs } from "eslint-plugin-secure-coding";
-export default [configs.recommended]; // 18 rules, incl. no-hardcoded-credentials
-```
+Now for the part that changed how I think about this. These aren't bugs a careful senior writes once and learns from — they're the _default_ output of a language model optimizing for "code that runs," not "code that's safe."
+
+When I had Claude generate 80 ordinary Node.js functions with no security context, **65–75% shipped a security hole** — hardcoded fallbacks, `eval`-as-parser, loose comparisons on tokens — the exact CWE classes the 28 rules cover. Expanded to 700 functions across five Gemini and Claude models, the per-model vuln rate ranged 49–73%. Gemini 2.5 Pro was the _highest_ at 73%. One model emitted vulnerable JWT code **7 out of 7 runs**.
+
+The reviewer approving the four-second diff is increasingly approving a diff a model wrote. And when you ask the model to _fix_ the finding, **1 in 3 "fixes" introduced a brand-new vulnerability** in a different category.
+
+A rule that fires deterministically on the _shape_ in the source — every commit, human- or machine-authored — is the only part of this loop that doesn't get tired and doesn't care which model wrote the line.
+
+Related: [No Hardcoded Credentials — Entropy Isn't Enough](https://dev.to/ofri-peretz/no-hardcoded-credentials-entropy-isnt-enough) · [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91)
 
 ---
 
-## A second bug a test won't catch: `no-unsafe-deserialization`
+## The full 28-rule map
 
-Deserialization of untrusted data (**CWE-502**) is the quiet RCE. The code
-round-trips fine in every test because your tests feed it trusted input:
-
-```ts
-// ❌ no-unsafe-deserialization (CWE-502) — eval as a deserializer = RCE
-const obj = eval("(" + untrustedJson + ")");
-```
-
-```ts
-// ✅ the rule's own fix
-const obj = JSON.parse(untrustedJson); // and validate shape/size before use
-```
-
-The rule flags `eval`-as-parser and unsafe deserialization sinks, and (notably)
-treats **AI model/tool output** as untrusted too — the fix message reminds you
-to validate it via schema and size limits before deserializing.
-
----
-
-## Why an AI assistant will write both of these for you
-
-Here's the part that changed how I think about this plugin. These aren't bugs a
-careful senior writes once and learns from — they're the _default_ output of a
-language model that's optimizing for "code that runs," not "code that's safe."
-
-I asked Claude (four model tiers) to generate 80 ordinary Node.js functions
-with no security context and counted the vulnerabilities:
-**65–75% of them shipped a security hole** — hardcoded fallbacks, `eval`-as-parser,
-loose comparisons on tokens — the exact CWE classes the 28 rules above cover.
-The full methodology and per-model numbers are in
-[I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
-And it isn't a Claude quirk. When I expanded the benchmark to **700 functions
-across five Gemini and Claude models**, the per-model vuln rate ranged 49–73% —
-Gemini 2.5 Pro was the _highest_ at 73% — and the failures were eerily
-deterministic: one model emitted vulnerable JWT code **7 out of 7 runs** while
-another got it right **0 out of 7**, same prompt
-([the cross-model teardown is here](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)).
-Point any of them at "write me a Stripe client" and `sk_live_...` as a default
-argument is a perfectly likely completion.
-
-This is why a source-text linter matters _more_ now, not less. The reviewer
-approving the four-second diff at the top of this article is increasingly
-approving a diff a model wrote. And when you ask the model to _fix_ the finding,
-it often trades one CWE for another — when I had Claude fix its own security
-bugs, **1 in 3 "fixes" introduced a brand-new vulnerability** in a different
-category
-([the Hydra-problem teardown is here](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)).
-A rule that fires deterministically on the _shape_ in the source — every commit,
-human- or machine-authored — is the only part of this loop that doesn't get
-tired, doesn't get prompt-talked out of its answer, and doesn't care which model
-wrote the line. That's the layer that scales with AI; a second reviewer doesn't.
-Want to point these rules at your own AI-generated code? The two-command install
-block is [right above](#a-second-bug-a-test-wont-catch-no-unsafe-deserialization)
-— or the full preset table is [below](#install).
-
----
-
-## The full rule set
-
-All 28, grouped, with each rule's declared CWE:
+All 28 rules, grouped, with each rule's declared CWE:
 
 | Rule                               | Catches                                | CWE      |
 | ---------------------------------- | -------------------------------------- | -------- |
@@ -271,8 +260,14 @@ All 28, grouped, with each rule's declared CWE:
 | `no-electron-security-issues`      | Insecure Electron config               | CWE-16   |
 | `require-secure-defaults`          | Insecure-by-default config             | CWE-1188 |
 
-¹ `no-redos-vulnerable-regex` targets the MITRE ReDoS class (CWE-1333); the
-others above carry the CWE declared in their rule metadata.
+¹ `no-redos-vulnerable-regex` targets the MITRE ReDoS class (CWE-1333); the others above carry the CWE declared in their rule metadata.
+
+**4 presets:**
+
+- `flagship` — the 2 ecosystem-flagship rules
+- `recommended` — 18 rules (the sane default, catches all 4 violations above)
+- `strict` — all 28 as errors
+- `owasp-top-10` — 11 rules mapped to OWASP A01–A10 categories
 
 ---
 
@@ -289,7 +284,7 @@ pnpm add --save-dev eslint-plugin-secure-coding
 bun add --dev eslint-plugin-secure-coding
 ```
 
-Flat config (`eslint.config.js`):
+**Flat config** (`eslint.config.js`):
 
 ```js
 // `configs` is a NAMED export; the default export is the plugin object.
@@ -301,41 +296,6 @@ export default [
   // configs.strict,      // all 28 as errors
   // configs["owasp-top-10"], // the 11 OWASP-mapped rules
 ];
-```
-
-Tune any rule inline — the preset already registers the `secure-coding`
-namespace, so a later config object can reference it directly:
-
-```js
-import { configs } from "eslint-plugin-secure-coding";
-
-export default [
-  configs.recommended,
-  {
-    rules: {
-      "secure-coding/no-pii-in-logs": "warn",
-      "secure-coding/no-hardcoded-credentials": [
-        "error",
-        { allowInTests: true },
-      ],
-    },
-  },
-];
-```
-
-Run it:
-
-```bash
-npx eslint .
-```
-
-Each finding carries the CWE, OWASP category, CVSS, severity, compliance tags,
-and the fix:
-
-```text
-src/payments.ts
-  4:24  error  🔒 CWE-798 OWASP:A04-Cryptographic CVSS:9.8 | Hard-coded API key detected | CRITICAL [SOC2,PCI-DSS,HIPAA,GDPR]
-               Fix: Use environment variable: process.env.STRIPE_SECRET_KEY or secret management service | https://cwe.mitre.org/data/definitions/798.html
 ```
 
 ---
@@ -355,60 +315,17 @@ src/payments.ts
 
 ## Honest scope — what "28 rules" means and what it doesn't
 
-- **It's 28 rules, not "89."** Earlier copy floated bigger numbers; the
-  published `recommended` enables 18, `strict` turns on all 28, and that's the
-  whole plugin. The breadth is in CWE _coverage_, not rule count. (Every count
-  in this article is read straight out of `src/index.ts` — the `rules` registry
-  for the total, `Object.keys(rules)` for `strict`, each preset block for its
-  own membership — so if you `npx eslint` your repo and count, the numbers
-  match the shipped package.)
-- **"OWASP coverage" is the `owasp-top-10` preset, and it's checkable.** That
-  preset wires 11 rules — `no-privilege-escalation`, `no-hardcoded-credentials`,
-  `no-sensitive-data-exposure`, `no-graphql-injection`, `no-xxe-injection`,
-  `no-xpath-injection`, `no-ldap-injection`, `no-weak-password-recovery`,
-  `no-improper-type-validation`, `no-insecure-comparison`,
-  `no-unsafe-deserialization` — each mapped to an OWASP category (the 11 are
-  listed right here; the per-rule CWE/OWASP detail lives in the
-  [rule docs](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)).
-  Note `no-missing-authentication` is _not_ in this preset — it assumes an
-  Express route-handler shape, so it lives in `eslint-plugin-express-security`,
-  not here. No "100% of everything" claim — and for the honest version of how
-  far source analysis gets you across the whole list, see
-  [I Mapped the OWASP Top 10 to ESLint Rules. 8 Hold Up. 2 Are Vendor Theater.](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules),
-  which walks the two categories (Insecure Design, Vulnerable Components) no
-  linter can prove.
-- **Static analysis is a floor.** These rules prove a dangerous _shape_ isn't
-  in your source. They can't prove your auth logic is correct or your validator
-  is complete — pair them with reviews and runtime controls. They run on every
-  commit and never get tired; that's the value.
+- **It's 28 rules, not "89."** The published `recommended` enables 18, `strict` turns on all 28. The breadth is in CWE _coverage_, not rule count.
+- **"OWASP coverage" is the `owasp-top-10` preset, and it's checkable.** 11 rules wired to specific OWASP categories. `no-missing-authentication` is _not_ in this preset — it assumes an Express route-handler shape and lives in `eslint-plugin-express-security`.
+- **Static analysis is a floor.** These rules prove a dangerous _shape_ isn't in your source. They can't prove your auth logic is correct or your validator is complete — pair them with reviews and runtime controls. They run on every commit and never get tired.
 
 ---
 
 ## Where this sits in the ecosystem
 
-The widely-used generic linters (`eslint-plugin-security` and friends) overlap
-some of this surface but emit a bare rule id. `secure-coding` adds the depth a
-security or compliance reviewer actually needs: a CWE, a CVSS, compliance tags,
-and a heuristic (like the two-mode credential detector above) tuned to stay
-quiet on fixtures. For where it lands against the field, I put it through a
-head-to-head in
-[17 ESLint Security Plugins, Compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
+`eslint-plugin-secure-coding` is the framework-agnostic base layer of the [Interlace](https://eslint.interlace.tools) family. The per-framework plugins (`-pg`, `-jwt`, `-nestjs-security`, `-node-security`, `-express-security`, `-lambda-security`) sit _on top_ of it for stack-specific coverage. If you run more than one, this is the one you install first.
 
-It's the framework-agnostic base layer of the
-[Interlace](https://eslint.interlace.tools) family — the per-framework plugins
-([`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg),
-[`-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt),
-[`-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules),
-[`-node-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security),
-`-express-security`, `-lambda-security`, …) sit _on top_ of it for stack-specific
-coverage. If you run more than one, this is the one you install first.
-
-> **Series — The Hardened Stack.** This is the base-layer entry. Each
-> per-framework guide above assumes `secure-coding` is already in your config and
-> layers the stack-specific rules on top. Want to see these rules earn their keep
-> on real model output before you install? They're the ones that flagged the bugs
-> in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
-> and powered the [5-model security leaderboard](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong).
+> **Series — The Hardened Stack.** Each per-framework guide assumes `secure-coding` is already in your config and layers the stack-specific rules on top. Want to see these rules earn their keep on real model output? They're the ones that flagged the bugs in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
 
 ---
 
@@ -418,10 +335,7 @@ coverage. If you run more than one, this is the one you install first.
 - 📖 [Full rule docs (per-rule CWE + OWASP mapping)](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-secure-coding)
 
-What's the one that got past you — the credential, the `eval`, the `==` on a
-token that passed review and shipped? Was it a teammate or an AI completion that
-wrote it, and what was everyone looking at instead when it slipped through? Drop
-the CWE and the story in the comments; I collect these.
+**What security violation surprised your team most?** The credential that lived in source for months, the token generated with `Math.random()`, the stack trace that logged to the client in production? Was it a teammate or an AI completion that wrote it, and what was everyone looking at instead when it slipped through? Drop the CWE and the story in the comments — I collect these.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if this caught something your code review wouldn't.
@@ -429,9 +343,4 @@ the CWE and the story in the comments; I collect these.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack. `secure-coding` is its
-framework-agnostic base layer.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*[eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

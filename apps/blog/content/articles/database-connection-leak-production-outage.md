@@ -12,9 +12,9 @@ social_image: "https://ofriperetz.dev/og/article/database-connection-leak-produc
 reading_time_minutes: 9
 tags:
   - "node"
-  - "eslint"
-  - "ai"
-  - "googleai"
+  - "database"
+  - "devsecops"
+  - "security"
 reactions: 0
 comments: 0
 views: 0
@@ -27,24 +27,21 @@ series: "Postgres Security Protocol"
 ---
 
 > **Postgres Security Protocol** — a series on the bugs that pass review and melt
-> in production. **← Prev:** [Getting started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) · **You are here:** the connection leak · **Next →** [Transaction race conditions: `BEGIN` on the pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool)
+> in production. **← Prev:** [Getting started with `eslint-plugin-pg`](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj) · **You are here:** the connection leak · **Next →** [Transaction race conditions: `BEGIN` on the pool](https://dev.to/ofri-peretz/transaction-race-conditions-why-begin-on-pool-breaks-everything-117h)
 
-3 AM. PagerDuty. Every API request returning 500.
-
-The database was healthy — CPU fine, memory fine, disk fine. But every query
-timed out against the same error:
+At 3:02 AM, PagerDuty fired. API response time had climbed to 18 seconds. Then the 500s started — every endpoint, every user. The database was healthy: CPU at 12%, memory nominal, disk fine. But every query returned the same error:
 
 ```text
 FATAL: too many connections for role "app_user"
 ```
 
-We had a 100-connection pool and _normal_ traffic. So where had all 100
-connections gone?
+We had a 100-connection pool and normal traffic. 47 minutes later — after ruling out a Postgres config change, a traffic spike, and a memory leak in the wrong service — we had the root cause: **3 lines of code that every code review had approved.**
+
+A single missing `client.release()` in the catch path is enough to exhaust a 10-connection pool under production load — and TypeScript won't catch it.
 
 ## The leak
 
-After too long staring at logs, here it was — a single helper, called on a hot
-path:
+Here it was — a single helper, called on a hot path:
 
 ```javascript
 // ❌ the leak
@@ -61,7 +58,7 @@ async function getUserOrders(userId) {
 `pool.connect()` checks a connection _out_ of the pool. Without
 `client.release()`, it's never returned. Every call permanently burns one slot,
 and when the pool is empty the next `pool.connect()` doesn't error — it **blocks,
-waiting for a client that never comes back**. That silent wait is why the symptom
+waiting for a client that never comes back** (assuming the default `connectionTimeoutMillis: 0`, which disables the timeout and waits indefinitely; if you've set a positive value, you'll get an error instead of a hang — but you still leak the connection). That silent wait is why the symptom
 is timeouts, not a stack trace: the leak strangles the pool, and everything else
 that needs the database queues behind it. The blast radius of one missing line is
 the whole service.
@@ -75,17 +72,24 @@ Nobody waved this through because they were careless. They waved it through
 because the function is _correct in isolation_. Read it top to bottom: it
 connects, it queries, it returns the rows. Every line that's present does the
 right thing. The bug is a line that **isn't there** — and a diff shows you what
-was added, not what was forgotten. Reviewers catch wrong code; they rarely catch
-absent code.
+was added, not what was forgotten.
+
+There's a subtler reason too. The leak isn't in the happy path — it's in the
+`finally`-less catch path. Reviewers trusted that `pool.connect()` borrows a
+client and the query uses it. What they missed: `pool.connect()` can succeed
+(checking out a client) and then `client.query()` can throw — and if
+`client.release()` isn't in a `finally` block, that client is gone permanently.
+The leak happens on the error path that reviewers rarely exercise mentally.
+That's the structural omission: a `finally` that was never written.
 
 It also passed every test. A leak doesn't fail the first request, or the
 hundredth. It fails the _N-thousandth_ concurrent checkout, after the pool is
 drained — which never happens in a unit test, never happens in CI, and never
 happens in a dev environment running one request at a time. The cost is paid
 only under sustained production concurrency, which is exactly where you can't
-afford it. This is a structural omission, and structural omissions are what
-static analysis is built to catch — at write-time, in the editor, before the
-diff is even opened. One line, before any of this pages you:
+afford it.
+
+Before you pair this with a [security audit protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91), make sure static analysis has already closed this class of bug. One line, before any of this pages you:
 
 ```bash
 npm install --save-dev eslint-plugin-pg
@@ -114,6 +118,7 @@ const { Pool } = require("pg");
 const pool = new Pool({
   host: "localhost", port: 55432, user: "postgres",
   password: "demo", database: "demo", max: 10,
+  connectionTimeoutMillis: 0, // default: wait forever (no timeout)
 });
 
 async function getUserOrders(userId) {
@@ -135,7 +140,7 @@ node leak.js
 ```
 
 The measured result — the pool serves **exactly 10 calls, then call 11 hangs
-forever**:
+forever** (with `connectionTimeoutMillis: 0`):
 
 ```text
 call 1: ok (1 clients checked out, 0 returned)
@@ -157,7 +162,7 @@ Two patterns close the hole. First — if you need an explicit client, release i
 in a `finally` so it returns **even when the query throws**:
 
 ```javascript
-// ✅ finally guarantees the release
+// ✅ finally guarantees the release — even when client.query() throws
 async function getUserOrders(userId) {
   const client = await pool.connect();
   try {
@@ -171,6 +176,10 @@ async function getUserOrders(userId) {
   }
 }
 ```
+
+The `finally` is the key: if `client.query()` throws, the catch path still
+executes `client.release()` before the error propagates. Without it, the error
+path leaks the client permanently.
 
 Better still — a single-shot query doesn't need a manual checkout at all.
 `pool.query()` borrows and returns a connection for you:
@@ -191,29 +200,34 @@ You don't find this leak at 3 AM. You find it at write-time. With the plugin
 installed (above), wire the recommended config:
 
 ```js
-// eslint.config.js — `configs` is a NAMED export (default export is the plugin)
+// eslint.config.js — requires ESM. For CommonJS projects, save as
+// eslint.config.mjs or add "type": "module" to package.json first.
 import { configs } from "eslint-plugin-pg";
 
 export default [configs.recommended];
 ```
+
+> **CommonJS projects:** If your project doesn't have `"type": "module"` in `package.json`, the `import` above throws a `SyntaxError`. Either rename the file to `eslint.config.mjs` (works in any project) or add `"type": "module"` to `package.json`. Both produce identical behavior; the `.mjs` rename is the safer zero-risk path.
 
 And the leak that hangs your pool now fails the lint run instead. This is the
 verbatim message the rule emits — run on the `leak.js` from above:
 
 ```text
 leak.js
-  9:9  error  ⚡ CWE-404 OWASP:A05-Injection | PG client acquired but not released. | HIGH
+  9:9  error  ⚡ CWE-404 OWASP:A05 | PG client acquired but not released. | HIGH
              Fix: Ensure "client.release()" is called in a finally block to return the client to the pool. | https://node-postgres.com/features/pooling#checkout-use-and-return
 ```
 
 > **A note on the OWASP tag.** A connection leak is fundamentally an
-> _availability/resource_ bug (CWE-404), not injection — and yet the finding
-> stamps `OWASP:A05-Injection`. That tag is faithfully reproduced from the
-> plugin's own metadata: `eslint-plugin-pg` maps this rule's CWE to A05 under the
-> 2025 OWASP numbering, where A05 is the Injection category. It's the plugin's
-> taxonomy choice, not a claim that a leak _is_ injection. If that mapping bugs
-> you as much as it bugs some reviewers, the CWE is the load-bearing identifier
-> here; treat the OWASP label as a secondary cross-reference.
+> _availability/resource_ bug (CWE-404), not injection. The finding stamps
+> `OWASP:A05` — which in the only published OWASP Top 10 (2021) maps to
+> **Security Misconfiguration**, not Injection (that's A03). The `A05` label is
+> faithfully reproduced from the plugin's own metadata; it's arguably defensible
+> for an unclosed resource under Security Misconfiguration, but the plugin's
+> internal labeling calls it `A05-Injection`, which is an acknowledged
+> metadata bug in the plugin, not a taxonomy claim. If that mapping bugs you
+> as much as it bugs some reviewers, treat the CWE-404 as the load-bearing
+> identifier; the OWASP label is a secondary cross-reference.
 
 > **What it actually checks — and what it doesn't.** The rule is deliberately
 > AST-structural: it finds `const client = await pool.connect()` and flags it
@@ -259,6 +273,8 @@ exactly the surface where a forgotten `release()` hides. The more "production-
 shaped" the generated code looks, the more likely it is to check a client out of
 the pool, and the more places that checkout has to leak.
 
+If you haven't yet benchmarked your own ESLint security plugin stack against competitors, the [17-plugin comparison](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) gives you a framework to do it honestly — including where `eslint-plugin-pg` ranks on database-specific rules.
+
 Don't take my word for any of it — here's the whole loop as four commands you
 can run right now against Gemini, the model with the 96% database rate. This is
 the experiment behind the numbers above, shrunk to one function so you can
@@ -299,25 +315,14 @@ copy-paste-from-StackOverflow put it there. That's the whole argument for
 running structural rules on AI-generated code: the assistant optimizes for "this
 looks like working code," and a checked-out connection with no release _looks_
 like working code. The lint rule is the layer that checks what the model can't —
-that the resource you borrowed is the resource you returned. (I've written more
-on [what happens when you point ESLint at AI-generated
-code](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-and [the six holes one lint run found in a Claude-written
-service](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).)
+that the resource you borrowed is the resource you returned.
 
 That repair channel in step 3 is the part that makes the rule worth more than a
 one-time catch, and it's why the bare `CWE-404: PG client acquired but not
 released` string matters as much as the block it prevents: a specific,
-machine-checkable finding is the only kind of feedback the model reliably acts on
-— when I [broke the same 700-function benchmark down by
-domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain),
-database remediation was its single strongest category, but only ever on a
-precise CWE, never on "make it more secure." So the rule isn't just a gate that
-blocks the bad checkout; it's the deterministic feedback channel that lets the
-assistant repair its own leak. The four commands above are the minimal version of
-that loop — and a fuller run of it, swept across models, is exactly what a [Build
-with Gemini](https://dev.to/challenges) entry would be: same harness, more
-iterations, the database domain where there's the most headroom left.
+machine-checkable finding is the only kind of feedback the model reliably acts on.
+So the rule isn't just a gate that blocks the bad checkout; it's the deterministic
+feedback channel that lets the assistant repair its own leak.
 
 ## The connection-lifecycle family
 
@@ -352,7 +357,7 @@ sees in the terminal.
 | **Node**             | `>= 18.0.0`                                                                           |
 | **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                        |
 | **`pg` driver**      | peer `^6 \|\| ^7 \|\| ^8`; AST-based, lints regardless of installed version           |
-| **Module system**    | CommonJS — `eslint.config.js` or `.mjs`                                               |
+| **Module system**    | ESM native; CommonJS — save config as `eslint.config.mjs`                             |
 | **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-pg` port, parity-gated in CI |
 
 ```bash
@@ -372,11 +377,9 @@ the same plugin that catches SQL injection and the N+1 insert loop. It's part of
 the **Postgres Security Protocol** series; its closest sibling is the other way
 a borrowed connection bites you in production:
 
-- [Transaction race conditions: `BEGIN` on the pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — the same checkout lifecycle, the inverse failure: a transaction split across pooled connections
-- [The N+1 insert loop](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance) — the other "fine in dev, melts in prod" pattern
-- [The SQL-injection pattern in node-postgres](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) — the confidentiality member of the same plugin, when the string you concatenated is the attack
-- [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the obscure A05 attack
-- [The full `eslint-plugin-pg` set](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — all 13 rules
+- [Transaction race conditions: `BEGIN` on the pool](https://dev.to/ofri-peretz/transaction-race-conditions-why-begin-on-pool-breaks-everything-117h) — the same checkout lifecycle, the inverse failure: a transaction split across pooled connections
+- [The SQL-injection pattern in node-postgres](https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-pattern-everyone-gets-wrong-54mn) — the confidentiality member of the same plugin, when the string you concatenated is the attack
+- [Getting started with `eslint-plugin-pg`](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj) — all 13 rules
 
 ---
 
@@ -386,11 +389,7 @@ a borrowed connection bites you in production:
 - 📖 [Rule docs: no-missing-client-release](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-missing-client-release)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
 
-What drained your pool? I want the real story — the missing `release()`, the
-transaction that never committed, the third-party client that quietly held a
-connection per request. What was the symptom that finally pointed you at the
-pool, how long did it take to find — and was it a human or your AI assistant
-that wrote the checkout that forgot to come back? Drop it in the comments.
+Have you ever traced a production incident to a resource leak that passed all your code reviews — and what was the reviewer's reaction when you showed them the root cause?
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if a missing `client.release()` has ever paged you at 3 AM.
@@ -398,9 +397,4 @@ that wrote the checkout that forgot to come back? Drop it in the comments.
 
 ---
 
-I'm **Ofri Peretz**, a security engineering leader and the author of the
-Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack. `eslint-plugin-pg` is its
-node-postgres layer.
-
-[ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
