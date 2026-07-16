@@ -76,34 +76,34 @@ Here's the entropy gap made concrete. Each of these is a real secret type; each 
 
 **Case 1 — Low-entropy API keys**
 
-An API key that's 16 lowercase characters has an entropy of roughly 3.7 bits — below most detection thresholds. They're everywhere in production.
+An API key built from readable words or short patterns has entropy well below most detection thresholds. They're everywhere in staging and CI environments.
 
 ```ts
-// Entropy: ~3.7 — scanner silent
-const stripeKey = "sk_live_abc123xyz789def"; // structural catch: prefix shape
+// Entropy: ~3.8 — scanner silent
+const stripeKey = "sk_live_testmode1234"; // structural catch: prefix shape
 ```
 
-(a) The string `sk_live_abc123xyz789def` slides under a 4.0 entropy threshold. (b) It's a live Stripe key — billing access, no scope limit. (c) What catches it: prefix-pattern matching (`sk_live_`), not entropy.
+(a) The string `sk_live_testmode1234` has entropy ~3.8 — below the 4.0 threshold, so the scanner stays silent. (b) It's a live Stripe key format — billing access, no scope limit. (c) What catches it: prefix-pattern matching (`sk_live_`), not entropy.
 
 **Case 2 — Dictionary-word passwords in configs**
 
 ```ts
-// Entropy: ~2.1 — scanner silent
+// Entropy: ~3.3 — scanner silent
 const dbConfig = {
   password: "correct-horse-battery"  // context catch: property name
 };
 ```
 
-(a) Three common English words, entropy ~2.1. (b) It's a database password. (c) What catches it: the property name `password` paired with any string of meaningful length.
+(a) Three common English words, entropy ~3.3. (b) It's a database password. (c) What catches it: the property name `password` paired with any string of meaningful length.
 
 **Case 3 — Internal token formats with repeated characters**
 
 ```ts
-// Entropy: ~3.4 — scanner silent
+// Entropy: ~2.6 — scanner silent
 const internalToken = "aaaa-bbbb-cccc-dddd-eeee"; // often internal UUIDs or fixed tokens
 ```
 
-(a) Structured but low-variety — entropy collapses around ~3.4. (b) Could be an internal service token, an activation code, a fixed auth cookie. (c) What catches it: variable name (`internalToken`) plus minimum length floor.
+(a) Structured but low-variety — entropy collapses around ~2.6. (b) Could be an internal service token, an activation code, a fixed auth cookie. (c) What catches it: variable name (`internalToken`) plus minimum length floor.
 
 These are three categories of low-entropy secrets that entropy checkers miss. The entropy approach handles the category most people picture ("random-looking string") but not the others.
 
@@ -265,7 +265,7 @@ So the real recall change on vercel/ai was zero — there were no real hardcoded
 
 vercel/ai is a hand-written human library, and it still buried my rule under 807 false positives. The reason was identifier density: a TypeScript codebase that names things `experimental_onToolExecutionStart` and `AI_ToolCallNotFoundForApprovalError` produces long, alphanumeric, underscore-laced strings by the hundred. That's precisely the texture of code an LLM emits — verbose, descriptively-named, type-literal-heavy. Run a context-blind credential regex over a folder of Claude- or Gemini-generated TypeScript and you don't get a security report; you get noise proportional to how thoroughly the model named its symbols. Precision collapses on exactly the code people are now generating fastest.
 
-The other half is worse, and it's the half the context-positive path was built for. AI assistants don't just generate identifiers that _look_ like secrets — they cheerfully generate the real thing. Ask a model to "wire up the API client" and it will happily write `const apiKey = "sk-..."` inline, because the training data is full of quickstarts that do exactly that. I've watched it happen often enough to write a separate piece on autofixing it: [hardcoded secrets in AI-agent code](https://dev.to/ofri-peretz/hardcoded-secrets-ai-agents-autofix). A purely entropy-based rule has a coin-flip shot at those — high-entropy keys it catches, a 15-char project password it won't. The `isCredentialContext` check catches them by the variable name (`apiKey`, `password`, `clientSecret`) regardless of the value's entropy or shape. Both halves of the AI-codegen problem — the identifier flood and the inline-secret habit — trace to the same gap: the rule has to know what a string is _for_, not just what it looks like.
+The other half is worse, and it's the half the context-positive path was built for. AI assistants don't just generate identifiers that _look_ like secrets — they cheerfully generate the real thing. Ask a model to "wire up the API client" and it will happily write `const apiKey = "sk-..."` inline, because the training data is full of quickstarts that do exactly that. I've watched it happen often enough to write a separate piece on autofixing it: [hardcoded secrets in AI-agent code](https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg). A purely entropy-based rule has a coin-flip shot at those — high-entropy keys it catches, a 15-char project password it won't. The `isCredentialContext` check catches them by the variable name (`apiKey`, `password`, `clientSecret`) regardless of the value's entropy or shape. Both halves of the AI-codegen problem — the identifier flood and the inline-secret habit — trace to the same gap: the rule has to know what a string is _for_, not just what it looks like.
 
 If you've ever onboarded a new codebase and wanted a fast read on its credential hygiene without pulling every file manually, the [30-minute static analysis protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) pairs well with this rule — it's how I run the bench sweep on unfamiliar repos.
 
