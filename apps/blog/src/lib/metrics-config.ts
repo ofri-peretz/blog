@@ -5,13 +5,6 @@ export const GITHUB_CONFIG = {
 
 export const NPM_CONFIG = {
   username: "ofriperetz",
-  excludedPackages: [
-    "eslint-plugin-mcp",
-    "eslint-plugin-llm-optimized",
-    "eslint-plugin-llm",
-    "eslint-plugin-mcp-optimized",
-  ],
-  excludedPrefixes: ["@forge-js/"],
 };
 
 export const DEVTO_CONFIG = {

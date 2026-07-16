@@ -68,6 +68,7 @@ import {
   getCachedAnomalies,
   getCachedNorthStarHistory,
 } from "#interlace/lib/scorecard-data";
+import { getCachedGitHubStats } from "@/lib/github-live-stats";
 
 // Render per-request, not at build time. The fetchers throw when
 // SUPABASE_URL / SUPABASE_ANON_KEY are missing, so we can't safely
@@ -129,6 +130,36 @@ const findDelta = (
   kind: string,
 ): RatchetDeltaRow | undefined => deltas.find((d) => d.kind === kind);
 
+// eng_github_stars/eng_github_followers display live-fetched values per
+// product decision — the underlying database row still updates daily and
+// feeds north_star_total; only the display tile is live. Same shared
+// fetcher /api/homepage-stats uses, so both surfaces agree on the number.
+// If the live fetch fails, the row's existing (database) current_value is
+// left untouched — that's already a correct non-zero fallback, so there's
+// no need for a second Supabase round-trip here.
+//
+// Takes the already-resolved live-fetch result (see BucketGridSection's
+// Promise.all) rather than awaiting getCachedGitHubStats() itself — on a
+// cold cache the GitHub GraphQL call can take up to 8s, and running it
+// after the Supabase reads resolve instead of alongside them made that
+// latency additive instead of overlapping.
+function applyLiveGitHubOverride(
+  breakdown: ReadonlyArray<RatchetBreakdownRow>,
+  github: Awaited<ReturnType<typeof getCachedGitHubStats>> | null,
+): RatchetBreakdownRow[] {
+  if (!github) return [...breakdown];
+
+  return breakdown.map((row) => {
+    if (row.kind === "eng_github_stars" && github.totalStars > 0) {
+      return { ...row, current_value: github.totalStars };
+    }
+    if (row.kind === "eng_github_followers" && github.followers > 0) {
+      return { ...row, current_value: github.followers };
+    }
+    return row;
+  });
+}
+
 // ─── Async section components ────────────────────────────────────────
 // Each one awaits ONLY what it needs. React.cache() inside the baseline
 // fetchers makes overlapping reads coalesce, so we never over-fetch.
@@ -178,11 +209,20 @@ async function MomentumSection() {
 }
 
 async function BucketGridSection({ bucket }: { bucket: Bucket }) {
-  const [breakdown, deltas, trends] = await Promise.all([
+  const [rawBreakdown, deltas, trends, github] = await Promise.all([
     getCachedBreakdown(),
     getCachedDeltas(),
     getCachedTrends(),
+    getCachedGitHubStats().catch((err: unknown) => {
+      console.warn("[scorecard] github live source unavailable:", err);
+      return null;
+    }),
   ]);
+  // Override eng_github_stars/eng_github_followers with the live-fetched
+  // value (see applyLiveGitHubOverride doc comment above) — every other
+  // row, including north_star_total elsewhere on this page, keeps reading
+  // straight from the database, unaffected by this per-display patch.
+  const breakdown = applyLiveGitHubOverride(rawBreakdown, github);
   const deltaByKind = new Map(deltas.map((d) => [d.kind, d]));
   // Hide rows whose ingest hasn't been wired yet (e.g. page views, tweet
   // engagement). `v_ratchet_deltas` always returns a delta row per kind
@@ -228,10 +268,13 @@ async function DownloadsByPackageSection() {
     if (res.ok) {
       const data = (await res.json()) as { packages?: PackageDatum[] };
       packages = data.packages ?? [];
+    } else {
+      console.error(`[scorecard] npm-stats → ${res.status}`);
     }
-  } catch {
+  } catch (error) {
     // Network/transient failure — render the empty state instead of
-    // breaking the whole page.
+    // breaking the whole page, but don't swallow it silently.
+    console.error("[scorecard] npm-stats fetch failed:", error);
   }
   return (
     <section className="mt-4 flex flex-col gap-4 border-t border-border pt-12">
