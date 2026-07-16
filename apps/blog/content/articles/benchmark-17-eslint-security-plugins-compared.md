@@ -464,7 +464,7 @@ The reason Interlace achieves 100% coverage is **specialization**. Instead of on
 | `eslint-plugin-jwt`                | Algorithm confusion, token safety              | 13    |
 | `eslint-plugin-mongodb-security`   | NoSQL injection, operator injection            | 16    |
 | `eslint-plugin-vercel-ai-security` | Prompt injection, output validation            | 19    |
-| `eslint-plugin-lambda-security`    | IAM, cold starts, secrets                      | 14    |
+| [`eslint-plugin-lambda-security`](/articles/getting-started-with-eslint-plugin-lambda-security) | IAM, cold starts, secrets | 14 |
 | `eslint-plugin-express-security`   | Helmet, CORS, sessions                         | 10    |
 | `eslint-plugin-nestjs-security`    | Guards, pipes, decorators                      | 6     |
 
