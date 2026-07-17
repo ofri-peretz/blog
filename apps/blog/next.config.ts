@@ -89,6 +89,16 @@ const nextConfig: NextConfig = {
         destination: "/articles/nestjs-guards-pipes-throttlers-6-eslint-rules",
         permanent: true,
       },
+      // AI-security Part 2 (Hydra): two local files served the same article.
+      // The retired blog-only twin had no devto_id, matched dev.to post
+      // 3241678 by exact title, and PUT last on every publish run — clobbering
+      // the live canonical_url back to this old slug. The kept file carries
+      // the devto_id, so its filename-derived slug is canonical.
+      {
+        source: "/articles/the-ai-hydra-problem",
+        destination: "/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more",
+        permanent: true,
+      },
       // AI-security Part 1: the title + body say "80 functions" (4 models ×
       // 20), but the published canonical slug + dev.to permalink say "60"
       // (the original 3-model run, before Opus 4.6 was appended). The 60-slug

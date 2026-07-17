@@ -38,20 +38,29 @@ Here's the line I'd send to your team: **a security fix that removes the finding
 
 **Every AI security fix is a bet that the model understood the full context. Our data says it gets the context right about 68% of the time in guided mode — and only 25% of the time without deterministic feedback.**
 
-In [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
+In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
 
 > **Get the Guardian Layer running in 60 seconds:**
 > ```bash
-> npm install -D @interlace/eslint-config
+> npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt
 > ```
 > ```javascript
 > // eslint.config.js
-> import interlace from "@interlace/eslint-config";
-> export default [...interlace.security];
+> import secure from "eslint-plugin-secure-coding";
+> import nodeSecurity from "eslint-plugin-node-security";
+> import pg from "eslint-plugin-pg";
+> import jwt from "eslint-plugin-jwt";
+>
+> export default [
+>   secure.configs.recommended,
+>   nodeSecurity.configs.recommended,
+>   pg.configs.recommended,
+>   jwt.configs.recommended,
+> ];
 > ```
 > Feed the ESLint output back to your AI tool. That feedback loop is what separates the 8% Hydra rate from the 32% Hydra rate. Full config and explanation at the [end of this article](#eslint-configuration-used).
 
-> **AI Security Benchmark Series:** [Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) · **Part 2 (you are here)** · [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
+> **AI Security Benchmark Series:** [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **Part 2 (you are here)** · [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
 
 I ran two parallel experiments with Claude Opus (the `opus` CLI alias, Feb 2026 run — exact model provenance in **Experimental Design** below) across 20 prompts and 3 remediation rounds each:
 
@@ -352,7 +361,7 @@ This is why the timeline reads `1 → 1 → 0` rather than `1 → 0`: the count 
 1. **A rule firing is a _signal_, not a proof of exploitability.** `no-zip-slip` keys on the `..`-substring heuristic; in this Gen-1 code there's no archive extraction, so the finding flags a _weak, incomplete_ control (a blocklist that string-matches `..`) rather than a definitely-exploitable hole. I'm counting "a new rule category fired" as a Hydra event, not "a new RCE shipped." The reason that's still the point: the human reviewer can't distinguish "weak new control" from "real new hole" any better than the linter can — both see only that the diff added something that _looks_ defensive. The Hydra Rate measures **how often the fix quietly changes the security category under review**, which is exactly the thing diff-review is blind to.
 2. **Not all head-swaps are equal in severity.** Trading a command-injection (critical, RCE) for a weak `..` path check (low) is, on a severity-weighted view, arguably a _net risk reduction_ — and my equal-weight Hydra Rate scores it as "got worse." That's the most attackable choice in the methodology, so I'll name it plainly: the metric counts _category churn_, not CVSS deltas. The workflow finding survives the objection anyway, because the failure mode isn't "the code got more dangerous" — it's "the diff silently swapped one security property for another and review couldn't see it." Severity-weighting the Hydra Rate is the obvious refinement and it's on the list for the next run.
 
-That whole loop — generate, scan, feed the _specific_ rule back, re-scan — is the entire Guardian Layer, and the four plugins behind it install in one line (`npm install -D @interlace/eslint-config`); the [copy-paste config is at the end](#eslint-configuration-used). I walk through what this looks like catching real Claude-generated bugs in a single pass in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
+That whole loop — generate, scan, feed the _specific_ rule back, re-scan — is the entire Guardian Layer, and the four plugins behind it install in one line (`npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt`); the [copy-paste config is at the end](#eslint-configuration-used). I walk through what this looks like catching real Claude-generated bugs in a single pass in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
 
 ### Case Study 2: Auth Verification — The Prompt-Only Nightmare (Group B)
 
@@ -491,7 +500,7 @@ Results saved to `results/ai-security/hydra-*.json` with:
 
 2. **Don't rely on security prompts alone.** Telling the AI "write secure code" reduces simple vulnerabilities but doesn't prevent the Hydra effect — and can actually increase complexity-driven attack surface.
 
-3. **Add ESLint security rules to your CI pipeline** — `npm install -D @interlace/eslint-config`, then [the two-line config](#eslint-configuration-used), and fail CI on a non-zero ESLint exit code. That deterministic gate catches vulnerabilities whether they're original or Hydra-introduced. For the bigger picture, [Mapping Your Codebase to OWASP Top 10 with 247 ESLint Rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) walks the rule-to-CWE map, and the [docs](https://eslint.interlace.tools) list every rule with a fix example.
+3. **Add ESLint security rules to your CI pipeline** — `npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt`, then [the config](#eslint-configuration-used), and fail CI on a non-zero ESLint exit code. That deterministic gate catches vulnerabilities whether they're original or Hydra-introduced. For the bigger picture, [Mapping Your Codebase to OWASP Top 10 with 247 ESLint Rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) walks the rule-to-CWE map, and the [docs](https://eslint.interlace.tools) list every rule with a fix example.
 
 4. **Use the Guardian Layer pattern:** Feed ESLint violations back to the model **once**, verify the fix with ESLint again. If violations persist after 1-2 rounds, escalate to human review — don't keep looping.
 
@@ -507,16 +516,11 @@ Results saved to `results/ai-security/hydra-*.json` with:
 
 **ESLint Configuration Used:**
 
-**Recommended path —** one package ([**@interlace/eslint-config** on npm](https://www.npmjs.com/package/@interlace/eslint-config)), two lines of flat config. Its `security` preset bundles the four plugins that produced every finding here — `secure-coding`, `node-security`, `pg`, `jwt` — plus the rest of the ecosystem:
+The four plugins that produced every finding in this benchmark — `secure-coding`, `node-security`, `pg`, `jwt` — wired via their recommended configs:
 
-```javascript
-// npm install -D @interlace/eslint-config
-import interlace from "@interlace/eslint-config";
-
-export default [...interlace.security];
+```bash
+npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt
 ```
-
-**Exact-pin path —** if you want _only_ the four plugins that ran in this benchmark (`npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt`), wire them à la carte:
 
 ```javascript
 import secure from "eslint-plugin-secure-coding";
@@ -544,7 +548,7 @@ export default [
 ---
 
 **Related reading:**
-- [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — The baseline experiment that set up this remediation study
+- [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — The baseline experiment that set up this remediation study
 - [Hardcoded Secrets in AI Agent Code: The Autofix Problem](https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg) — How AI handles another class of security fixes
 - [ESLint Interlace Plugin Docs](https://eslint.interlace.tools) — All 332+ rules with fix examples
 
