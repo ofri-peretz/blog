@@ -37,6 +37,13 @@ const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 // tagged below in a single call.
 const TAG_RATCHET = "ratchet";
 
+// Separate tag for the /go/ redirect mapping: routing rows change on
+// publish (publisher upsert), not on the daily metrics ingest, so they
+// get their own invalidation channel — revalidateTag('short-links')
+// after an article_platforms upsert repoints every /go/ link in seconds
+// without flushing the metrics caches (and vice versa).
+const TAG_SHORT_LINKS = "short-links";
+
 // Per-render Supabase client — React.cache() dedupes within one server render
 // so multiple sections of the same page share a single connection.
 const getClient = cache((): SupabaseClient | null => {
@@ -321,4 +328,44 @@ export const getCachedPluginsWithDailyData = unstable_cache(
   },
   ["plugins-with-daily-data"],
   { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
+);
+
+// ─── /go/ redirect mapping (article_platforms) ───────────────────────
+//
+// Where each article lives on each third-party platform. Read by the
+// /go/<slug> route handler (src/app/go/[...key]/route.ts): a request
+// stamped `?utm_source=devto` looks up (slug, 'devto') here and 302s to
+// the dev.to copy so platform readers stay native; no row (or no param)
+// falls back to the blog canonical. Rows are upserted by the publisher
+// pipeline at publish time (see agents/supabase/migrations/
+// 20260717120000_article_platforms.sql for the upsert) — zero manual rows.
+//
+// Whole-table fetch, not per-key: the table is tiny (articles ×
+// platforms, well under the 1000-row API cap for years) and one cache
+// entry beats a cache entry per (slug, platform) pair. Same
+// fetch-all-then-filter shape as getCachedCreatorsByPlatform above.
+
+export interface ArticlePlatformRow {
+  slug: string;
+  platform: string;
+  url: string;
+}
+
+export const getCachedArticlePlatforms = unstable_cache(
+  async (): Promise<ArticlePlatformRow[]> => {
+    const client = getClient();
+    if (!client) return [];
+    const { data, error } = await client
+      .from("article_platforms")
+      .select("slug, platform, url");
+    if (error) {
+      // Table missing / RLS misconfig degrades to "no overrides": every
+      // /go/<slug> still 302s to the blog canonical. Never a 500.
+      console.error("[supabase-data] article_platforms:", error.message);
+      return [];
+    }
+    return (data as ArticlePlatformRow[]) ?? [];
+  },
+  ["article_platforms"],
+  { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_SHORT_LINKS] },
 );

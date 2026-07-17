@@ -17,7 +17,10 @@
 
 import { revalidateTag } from "next/cache";
 
-const TAGS = ["ratchet", "github"] as const;
+// "short-links" covers the /go/ redirect mapping (article_platforms via
+// getCachedArticlePlatforms) — the publisher hits this route after its
+// upsert so new platform rows repoint /go/ links in seconds.
+const TAGS = ["ratchet", "github", "short-links"] as const;
 
 export async function POST(request: Request): Promise<Response> {
   const secret = process.env.REVALIDATE_SECRET;
