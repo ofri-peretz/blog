@@ -28,6 +28,8 @@ import { join, dirname, basename } from "path";
 import { fileURLToPath } from "url";
 import * as dotenv from "dotenv";
 
+import { transformBodyForDevto } from "./devto-link-transforms.mjs";
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -196,6 +198,12 @@ function createArticlePayload(article) {
     return `**[${label}](${url})**`;
   });
 
+  // Dev.to render only: absolutize relative /articles/ links, route
+  // cross-article + npm/GitHub links through /go/, decorate remaining
+  // owned-domain links with UTMs. Local markdown stays UTM-free and
+  // timeless; canonical_url is NEVER touched by this.
+  transformedBody = transformBodyForDevto(transformedBody, slug);
+
   // Build tags array
   let tags = frontmatter.tags || [];
   if (typeof tags === "string") {
@@ -219,6 +227,58 @@ function createArticlePayload(article) {
       series: frontmatter.series || null,
     },
   };
+}
+
+/**
+ * Fire-and-forget PostHog annotation marking the publish, so pre/post metric
+ * reads know exactly when each article shipped.
+ *
+ * Requires POSTHOG_API_KEY + POSTHOG_PROJECT_ID; silently skips when absent.
+ * Never throws — a failed annotation must not fail the publish.
+ */
+async function sendPublishAnnotation(slug) {
+  const apiKey = process.env.POSTHOG_API_KEY;
+  const projectId = process.env.POSTHOG_PROJECT_ID;
+  if (!apiKey || !projectId) return;
+
+  const host = process.env.POSTHOG_HOST || "https://us.posthog.com";
+  try {
+    await fetch(`${host}/api/projects/${projectId}/annotations/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        content: `published: ${slug}`,
+        date_marker: new Date().toISOString(),
+      }),
+    });
+  } catch {
+    // fire-and-forget: annotation failure never affects the publish result
+  }
+}
+
+/**
+ * TODO: upsert (slug, 'devto', devto_url) into Supabase `article_platforms`
+ * so the /go/ handler can route dev.to readers to the dev.to copy
+ * (platform-native routing). Intended implementation — REST upsert:
+ *
+ *   POST ${SUPABASE_URL}/rest/v1/article_platforms
+ *   headers: apikey + Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY},
+ *            Prefer: resolution=merge-duplicates
+ *   body: [{ slug, platform: "devto", url: devtoUrl }]
+ *
+ * Requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY; silently skips when
+ * absent. Never throws. Stubbed (no-op) until the article_platforms table
+ * exists, so the publish flow stays byte-identical.
+ */
+async function upsertArticlePlatform(slug, devtoUrl) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey || !slug || !devtoUrl) return;
+
+  // TODO: implement the upsert described above once article_platforms lands.
 }
 
 /**
@@ -311,6 +371,10 @@ async function publishArticle(article, existingArticles, dryRun = false) {
     if (!existingArticle && result.id) {
       updateLocalArticle(article, result);
     }
+
+    // Post-publish side effects — env-gated, silent no-ops when unset
+    await sendPublishAnnotation(slug);
+    await upsertArticlePlatform(slug, result.url);
 
     return {
       success: true,
