@@ -4,18 +4,14 @@ devto_id: 3241882
 title: "1.5M Weekly Downloads, 1 False Alarm per Real Bug: the eslint-plugin-security False-Positive Tax"
 description: "The most-installed security linter on npm flags one safe pattern for every real vulnerability it catches — a 1:1 true-positive-to-false-positive ratio at 27.5% recall. Six plugins benchmarked side-by-side, with the false-positive code samples that train teams to ignore the tool."
 slug: "eslint-security-fn-fp-benchmark"
-published: false
-date: 2026-02-06
+published: true
+date: 2026-02-08
 cover_image: https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7f2bcys47t9v6chwuj00.png
 tags:
   - "security"
   - "eslint"
   - "devsecops"
   - "javascript"
-  - security
-  - node
-  - devsecops
-  - eslint
 series: "ESLint Security Benchmark Series"
 canonical_url: https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark
 reading_time_minutes: 15
@@ -577,6 +573,13 @@ That's the real cost of the false-positive tax: not the annoying warnings, but t
 - [What Ground Truth Caught That Unit Tests Missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) — how I validate a rule's true/false positives before trusting the F1 score
 - [Interlace ESLint Ecosystem Docs](https://eslint.interlace.tools) — full rule documentation and configuration guides
 
+**The foundations behind these numbers:**
+
+- [The Confusion Matrix: What TP, FP, FN, and TN Actually Mean](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) — the four counts every precision/recall figure in this article is built from
+- [Precision, Recall, and F1 for Static Analysis](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) — how the leaderboard's three columns are defined, and why F1 alone can't tell two tools apart
+- [The Base Rate Problem](https://ofriperetz.dev/articles/base-rate-problem-explained) — why a recall number's real-world cost depends on how often the vulnerable pattern actually occurs
+- [Ground Truth in Security Testing](https://ofriperetz.dev/articles/ground-truth-in-security-testing) — how each fixture's vulnerable-or-safe label is decided before any plugin runs
+
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · [npm](https://www.npmjs.com/~ofri-peretz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · [npm](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
