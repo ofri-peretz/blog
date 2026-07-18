@@ -2,38 +2,29 @@
 title: "I Maintain 23 Benchmark Suites Across My Own Packages. Only 1 of the Serverless Ones Has Real Numbers Yet."
 description: "eslint-plugin-jwt gets scored on precision and recall against a labeled vulnerability corpus. My serverless caching plugin doesn't — and 3 of its 4 benchmark suites aren't built yet. Here's why that gap is honest, not an inconsistency."
 slug: "different-metrics-for-different-package-types"
-published: false
-date: 2026-07-05
+published: true
+date: 2026-07-17
 tags:
   - "security"
-  - "eslint"
   - "devsecops"
-  - "javascript"
-  - security
-  - eslint
-  - devsecops
-  - node
+  - "eslint"
+  - "node"
 canonical_url: https://ofriperetz.dev/articles/different-metrics-for-different-package-types
-reading_time_minutes: 9
+reading_time_minutes: 7
+tier: "T2"
 author:
+  name: Ofri Peretz
+  avatar: https://avatars.githubusercontent.com/u/46347627
+  title: Security Engineering Leader
 ---
 
-Five days earlier, an audit of my own ESLint plugins had found 140 files across my rules still calling `context.getFilename()`, `getSourceCode()`, and `getCwd()` — three APIs ESLint 10 removes outright, not merely deprecates. Every one of my packages claims "supports ESLint 8, 9, and 10." Nobody would have hit this on ESLint 9 — those calls still work there under compatibility shims — but the moment a user upgraded to 10, my own rules would have broken the exact claim printed in my own README. `eslint-plugin-security`, which [I disqualify elsewhere on this site](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h), fails earlier and differently: it crashes outright on ESLint 9's flat config, a distinct failure mode from mine. Different bug, same root cause — a version-compatibility claim nobody had actually tested against the version in question.
+Five days earlier, an audit of my own ESLint plugins found 140 files still calling `context.getFilename()`, `getSourceCode()`, and `getCwd()` — three APIs ESLint 10 removes outright, not merely deprecates. Every one of my packages claims "supports ESLint 8, 9, and 10." Nobody hits this on ESLint 9, where the calls still work under compatibility shims — but on ESLint 10, my own rules would break the exact claim printed in my own README. `eslint-plugin-security` fails earlier and differently: it crashes outright on ESLint 9's flat config. Different bug, same root cause: an untested version-compatibility claim.
 
-A version-compatibility fixture caught mine before a user did. A blended "code quality score" never would have. A passing quality score and a runtime crash on `npm install` are two different failures, and no single number covers both — that's the whole argument this article makes, and every section below is a different version of it.
+A version-compatibility fixture caught mine before a user did. A blended "code quality score" never would have. A passing quality score and a runtime crash on `npm install` are two different failures, and no single number covers both — that's the argument this article makes, section by section.
 
-Here's the other half of that same honesty, and it's less flattering: `eslint-plugin-jwt` gets scored on precision and recall against a labeled vulnerability corpus, with real numbers behind every claim. My serverless caching plugin doesn't get that treatment yet. Here's the gap, plainly, before anything else:
+Here's the less flattering half of the same honesty: `eslint-plugin-jwt` gets scored on [precision, recall, and F1](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) against a labeled vulnerability corpus, with real numbers behind every claim. My serverless plugins run four benchmark suites; only one, `api-gateway-caching`, has real numbers behind it — the other three are still empty skeletons. Until an hour before this paragraph was finished, the draft claimed that one working suite was itself only 4-of-7 finished. It wasn't — the run had completed weeks earlier and the article hadn't caught up. Catching your own stale number inside an article about not publishing stale numbers is either a credibility problem or exactly what credibility is made of. I'm betting on the second one.
 
-| Suite | Question | Status |
-| --- | --- | --- |
-| api-gateway-caching | How does the caching plugin compare to the community alternative? | **4 of 7 dimensions real**, 3 null pending live-deploy harness |
-| cold-start | Cold-start latency added by the plugin? | skeleton, no numbers |
-| deploy-latency | How long does `serverless deploy` take vs. alternatives? | skeleton, no numbers |
-| feature-coverage | Of the AWS features people actually use, what fraction does each plugin support? | skeleton, no numbers |
-
-Three of four suites are skeletons. The one suite marked "implemented" is only 4-of-7 dimensions populated. If you've read "4 benchmark suites" anywhere and inferred four benchmarks' worth of proof, that inference was wrong, and I'd rather correct it here than let it stand. A version-compat fixture would never have caught that gap either, because "the benchmark doesn't exist yet" isn't a bug a test suite finds — it's a backlog item, and no metric of any kind reports it unless I say so directly. That's why this is paragraph two instead of the end of a methodology tour: the confession is the finding, and the rest of this article is why that gap is correctly sized instead of something to paper over.
-
-If you maintain anything with a "supports version X, Y, Z" claim in its README, the fastest way to check whether that claim is still true is to actually run your test suite against each version in a matrix, not to read the changelog and assume. The command itself is a small version of the same lesson. `--no-eslintrc` is an ESLint 8 flag; ESLint 9+ throws a fatal `Unknown option: '--no-eslintrc'` — the flag you want there is `--no-config-lookup`. eslint-plugin-security has a 35.5% F1 score and it still crashes on ESLint 9 flat config. No precision metric reports that. Only running it does.
+If your README claims "supports version X, Y, Z," run the test suite against each version in a matrix — don't read the changelog and assume. `--no-eslintrc` is an ESLint 8 flag; ESLint 9+ throws a fatal `Unknown option: '--no-eslintrc'` — the flag you want is `--no-config-lookup`. `eslint-plugin-security` has a 35.5% F1 score and still crashes on ESLint 9 flat config. No precision or recall number reports that. Only running it does.
 
 ```bash
 # ESLint 8 (legacy config)
@@ -47,20 +38,20 @@ npx eslint --version && npx eslint . --no-config-lookup
 
 ## ILB vs. @interlace/serverless-benchmarks: what each framework measures
 
-I run two separate, public benchmark stacks — neither is a private doc I'm describing from memory:
+I run two separate, public benchmark stacks:
 
-- **ILB (Interlace Lint Bench)** — [`eslint/benchmarks/`](https://github.com/ofri-peretz/eslint/tree/main/benchmarks), 23 suites, covers all 20 ESLint plugins.
-- **`@interlace/serverless-benchmarks`** — [`serverless/benchmarks/`](https://github.com/ofri-peretz/serverless/tree/main/benchmarks), 4 suites, covers the serverless plugins.
+- **ILB (Interlace Lint Bench)** — [`eslint/benchmarks/`](https://github.com/ofri-peretz/eslint/tree/main/benchmarks), 23 suites, all 20 ESLint plugins.
+- **`@interlace/serverless-benchmarks`** — [`serverless/benchmarks/`](https://github.com/ofri-peretz/serverless/tree/main/benchmarks), 4 suites, the 3 serverless plugins.
 
-Neither one would have caught the 140-files bug from the opening — that was a version-compatibility fixture, a different check entirely. What follows is why each framework below measures what it measures, and, section by section, what it would and wouldn't have told me about that specific incident.
+Neither would have caught the 140-files bug — that's a version-compatibility fixture, a different check entirely.
 
 ## Security plugins: precision and recall, weighted by where the false positive happens
 
-Every finding in Interlace Lint Bench (ILB)'s security benches is a TP, FP, FN, or TN against a CWE-labeled corpus, collapsed into precision, recall, and F1 — the same numbers behind the [ESLint security benchmarks](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark) already on this site (`eslint-plugin-security`: 35.5% F1, 0 of 4 SQL injection (CWE-89) fixtures caught).
+Every finding in ILB's security benches is a [TP, FP, FN, or TN](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) against a CWE-labeled corpus, collapsed into precision, recall, and F1 — the same numbers behind the [ESLint security benchmarks](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark) already on this site (`eslint-plugin-security`: 35.5% F1, 0 of 4 SQL injection fixtures caught).
 
-What those articles don't spell out: **synthetic corpora prove the label is right; real-world code proves the rule survives contact with reality — and neither is sufficient alone.** I learned that the hard way once: an early rule scored a clean F1 on Arena and then false-positived on nearly every dynamic import in a real `lodash` build — the label was right, the rule just hadn't met reality yet. Arena and CWE-Corpus are the hand-built, CWE-mapped fixture sets. Wild and Edge run the same rules against real open-source repositories — Wild against 22 real OSS projects at 1.8M lines of code, Edge specifically against FP-prone repos like three.js, webpack, and lodash, where some over-firing is *expected* and the rule is judged on a false-positive ceiling, not on hitting zero.
+What those articles don't spell out: synthetic corpora prove the label is right; real-world code proves the rule survives contact with reality — neither is sufficient alone. Arena and CWE-Corpus are the hand-built, CWE-mapped fixture sets. Wild and Edge run the same rules against real repositories — Wild against 22 OSS projects at 1.8M lines, Edge against FP-prone repos like three.js and lodash.
 
-A false positive doesn't cost the same everywhere, so ILB weights it by which bench it came from — call it **context-weighted FP scoring**, because a flat, unweighted false-positive rate produces a systematically misleading number for any tool maintainer, not just for Interlace: equal-weight Arena and Wild, and you either make the synthetic benchmark unpassable or the real-world one meaningless.
+A false positive doesn't cost the same everywhere, so ILB weights it by which bench it came from — call it context-weighted FP scoring, because a flat FP rate is systematically misleading: equal-weight Arena and Wild, and you either make the synthetic benchmark unpassable or the real-world one meaningless.
 
 | Bench | FP weight | Why |
 | --- | --- | --- |
@@ -70,36 +61,48 @@ A false positive doesn't cost the same everywhere, so ILB weights it by which be
 | Wild | ×1 | Real-world baseline |
 | Edge | ×0.1 | FP-prone repos by design — over-firing here is close to expected |
 
-A concrete version of that table: a rule that passes Wild clean (real-world FP rate near zero) can still fail Arena outright if its one adversarial fixture trips it, and under context-weighting that Arena miss dominates the blended score instead of getting diluted by 22 clean OSS repos. That asymmetry is the point — this is a precision/recall check, and it would have caught a rule that *detects the wrong thing*. It's the wrong tool for catching the 140-files bug, which wasn't a detection failure at all — the rules fired correctly, they just called APIs that no longer exist.
+That asymmetry is the point — and still the wrong tool for the 140-files bug: the rules fired correctly, they just called APIs that no longer exist.
 
 ## Quality plugins: pairwise agreement instead of a single ground truth
 
-`eslint-plugin-conventions`, `maintainability`, `reliability`, `modularity`, `operability`, `modernization`, and `import-next` don't get scored against the security Arena — they get their own suite, **Arena-Quality**, benchmarked against `eslint-plugin-n`, `import`, `jsdoc`, `promise`, `regexp`, `sonarjs`, and `unicorn`.
+`eslint-plugin-conventions`, `maintainability`, `reliability`, `modularity`, `operability`, `modernization`, and `import-next` get their own suite, Arena-Quality, benchmarked against `eslint-plugin-n`, `import`, `jsdoc`, `promise`, `regexp`, `sonarjs`, and `unicorn`.
 
-The reason isn't cosmetic. A SQL injection either exists in the fixture or it doesn't — that's a label you can defend. "This function is too complex" is closer to a judgment call, and a judgment call needs a different check: do two independent classifiers agree with each other, not just with the rule author. ILB computes **Cohen's κ pairwise** — Interlace's classification against sonarjs's, separately against `@microsoft/eslint-plugin-sdl`'s — as a check against one fixture set just encoding one person's opinion of what "too complex" means. Run Arena's binary pass/fail against `eslint-plugin-conventions` instead of κ, and the number would just encode whichever engineer wrote the fixture — precise-looking, and wrong in a way F1 can't expose.
+The reason isn't cosmetic. A SQL injection either exists in the fixture or it doesn't — a label you can defend. "This function is too complex" has no [single ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing) to grade against: it's a judgment call, and a judgment call needs a different check — do two independent classifiers agree with each other, not just with the rule author. ILB computes [Cohen's κ pairwise](https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa) — Interlace's classification against sonarjs's, separately against Microsoft SDL's — as a check against one fixture set encoding one person's opinion of what "too complex" means. Run Arena's binary pass/fail against `eslint-plugin-conventions` instead, and the number would encode whichever engineer wrote the fixture — precise-looking, and wrong in a way F1 can't expose.
 
-This bench wouldn't have caught the 140-files bug either — κ measures whether two classifiers agree on a judgment call, and "does this API still exist in ESLint 10" isn't a judgment call, it's a fact a version matrix answers directly.
+This bench wouldn't have caught the 140-files bug either — κ measures agreement on a judgment call, and "does this API still exist in ESLint 10" isn't one; it's a fact a version matrix answers directly.
 
-## Accessibility: the ground truth changes, the fixture discipline doesn't
+## Accessibility: the label changes, the fixture discipline doesn't
 
-`eslint-plugin-react-a11y` extends the same idea to a domain where the label isn't a CWE — it's a **WCAG success criterion** (`corpus/WCAG-1.1.1/`). Same structure: a fixture still needs an author, a reviewer, and an expected verdict. The open question I don't have a clean answer for yet: some accessibility failures (screen-reader behavior, focus order under real assistive tech) aren't statically detectable at all. I don't have a fix for that ceiling — I route around it by treating ILB's a11y score as a floor, not a certification, and telling readers explicitly that passing this suite means "the static subset of WCAG is covered," not "this component is accessible." That's a limit of the method, not something ILB solves, and it's the same shape of gap as the serverless suites below: honest about what the number does and doesn't cover.
+`eslint-plugin-react-a11y` extends the same idea to a domain where the label is a WCAG success criterion, not a CWE — a fixture still needs an author, a reviewer, and an expected verdict. The open question I don't have a clean answer for: some accessibility failures — screen-reader behavior, focus order under real assistive tech — aren't statically detectable at all. I treat ILB's a11y score as a floor, not a certification: passing means "the static subset of WCAG is covered," not "this component is accessible." Same shape of gap as the serverless suites below — honest about what the number does and doesn't cover.
 
-## Serverless: no detection at all, and 3 of 4 suites still don't have numbers
+## Serverless: the caching composite is done; the gap moved to three empty suites
 
-`@interlace/serverless-benchmarks` isn't a detection benchmark — there's no vulnerable/safe fixture to label, because these plugins don't flag anything, they change runtime behavior. Even the one suite marked "implemented" — `api-gateway-caching` — only has real numbers for 4 of its 7 weighted dimensions right now: TypeScript coverage, bundle weight, maintenance signal, and documentation quality, all sourced statically from the npm registry. On those four, the plugin currently comes out ahead of the community alternative on TypeScript coverage and documentation quality, roughly even on bundle weight — the other 3 (lifecycle correctness, hook coverage, CLI surface) require an actual AWS deployment to measure and currently report `null`, pending a suite that doesn't exist yet.
+`@interlace/serverless-benchmarks` isn't a detection benchmark — there's no vulnerable/safe fixture to label, because these plugins change runtime behavior instead of flagging it. As of **2026-05-04 (v1.0)**, `api-gateway-caching` moved from partially populated to fully measured: all 7 weighted dimensions now have real numbers, sourced from the npm registry, local source, and a live AWS deploy through the E2E harness at [`packages/serverless-api-gateway-caching/scripts/e2e/run.ts`](https://github.com/ofri-peretz/serverless/tree/main/packages/serverless-api-gateway-caching/scripts/e2e). Composite: Interlace **0.88**, the community plugin **0.3025**.
+
+| Dimension | Weight | Interlace | Community |
+| --- | --- | --- | --- |
+| Lifecycle Correctness | 25% | 1.0 | 0.5 |
+| CLI Surface | 15% | 1.0 | 0 |
+| TypeScript Coverage | 15% | 1.0 | 0 |
+| Maintenance Signal | 15% | 1.0 | 0 |
+| Bundle Weight | 10% | 0 | 1.0 |
+| Hook Coverage | 10% | 1.0 | 0.375 |
+| Documentation | 10% | 0.8 | 0.4 |
+
+The weights are an editorial call, not a law of nature, and I'm not pretending otherwise — the [composite-scores-and-weighting](https://ofriperetz.dev/articles/composite-scores-and-weighting) canonical covers how to audit a weighting scheme like this one, OECD-methodology style, and why publishing the weights matters more than publishing the score. Six of seven dimensions favor Interlace outright; lifecycle correctness came from the live-deploy run rather than a guess, because the community package ships no remove-phase hook and no safe-offboarding command. The seventh, bundle weight, doesn't: 78KB unpacked against the community package's 47KB. I ship the bigger bundle and still win the composite, and I'd rather print that than round it off.
+
+The honest gap moved. It used to sit inside this composite — three of seven dimensions null. Now it sits outside it: cold-start, deploy-latency, and feature-coverage are still skeleton suites, a `methodology.md` and a `run.ts` each, zero executions. The E2E harness they'd build on already exists and already runs; what's missing is roughly 14 hours of runner work per suite, per the internal evidence plan. Same honesty as the 140-files bug, priced differently: a version matrix is cheap, and I built it the same day I found the bug. A live-deploy cold-start harness is not cheap, and three suites are still waiting on one.
 
 | Suite | Question | Status |
 | --- | --- | --- |
-| api-gateway-caching | How does the caching plugin compare to the community alternative? | **4 of 7 dimensions real**, 3 null pending live-deploy harness |
+| api-gateway-caching | Interlace vs. community, 7 weighted dimensions | **real — 0.88 vs 0.3025** (measured 2026-05-04, v1.0) |
 | cold-start | Cold-start latency added by the plugin? | skeleton, no numbers |
 | deploy-latency | How long does `serverless deploy` take vs. alternatives? | skeleton, no numbers |
 | feature-coverage | Of the AWS features people actually use, what fraction does each plugin support? | skeleton, no numbers |
 
-I'd rather say that plainly than let "4 suites" imply four benchmarks' worth of proof. It means one, partially populated, with three more built to the same discipline once there's a deploy harness to fill them. And this is the closest any suite here comes to what caught the 140-files bug: both are "the check doesn't exist yet, so the gap is invisible until someone states it out loud." A version matrix is cheap to build and I built it. A live-deploy harness for Lambda cold starts is not cheap, and three suites are still waiting on it — same honesty, different cost to close the gap.
-
 ---
 
-*My 140-files bug shipped because a version-compatibility check didn't exist yet — not because any existing metric lied to me. What's the equivalent gap on your team: the check that would catch your next incident, that nobody's built because it doesn't map cleanly onto precision, recall, or any other number you already report? I'd rather hear that than a general opinion on measurement.*
+*My 140-files bug shipped because a version-compatibility check didn't exist yet — not because any existing metric lied to me. The stale "4-of-7" line earlier in this draft shipped for the same reason any wrong composite ever ships: nobody re-ran the check before publishing. What's the equivalent gap on your team — the check that would catch your next incident, that nobody's built because it doesn't map cleanly onto precision, recall, or any other number you already report? I'd rather hear that than a general opinion on measurement.*
 
 ---
 
@@ -108,6 +111,11 @@ I'd rather say that plainly than let "4 suites" imply four benchmarks' worth of 
 ## Related deep dives
 
 - [I Built What I Benchmark. Here's How I Try Not to Cheat.](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat) — the self-validation process this framework is built to satisfy
+- [Confusion Matrix: TP, FP, FN, TN](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) — what the four counts behind every precision/recall number mean
+- [Precision, Recall, and F1 for Static Analysis](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) — the worked numbers behind the security-plugin scores above
+- [Ground Truth in Security Testing](https://ofriperetz.dev/articles/ground-truth-in-security-testing) — who decides the label when there's no CWE to point to
+- [Cohen's κ / Inter-Rater Agreement](https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa) — the full math behind the Arena-Quality pairwise check
+- [Composite Scores & Weighting](https://ofriperetz.dev/articles/composite-scores-and-weighting) — how to audit any weighted score, including the two above
 - [I Benchmarked 17 ESLint Security Plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) — the security precision/recall numbers referenced above
 - [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj) — the same principle applied to AI-generated code instead of linter rules
 - [ILB README on GitHub](https://github.com/ofri-peretz/eslint/tree/main/benchmarks) — the full 10-principle philosophy and all 23 suites
@@ -119,4 +127,4 @@ Next up: [Aggregate Benchmarks Lie](https://dev.to/ofri-peretz/aggregate-benchma
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofri-peretz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
