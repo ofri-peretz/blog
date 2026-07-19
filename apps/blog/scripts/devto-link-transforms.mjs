@@ -5,17 +5,16 @@
  * render never calls this — local markdown keeps canonical absolute
  * /articles/ links and stays UTM-free and timeless.
  *
- * EVERY outbound link in the dev.to copy is routed through /go/ so every click
- * is ours to measure and every destination is repointable. Two kinds of key:
- *   - DERIVABLE (no DB row needed): /go/<article-slug>, /go/npm/<pkg>,
- *     /go/gh/<owner>/<repo>. The resolver reconstructs the destination from the
- *     key; a row only ADDS a per-platform copy (dev.to reader → dev.to copy).
- *   - STORED  (DB row REQUIRED): everything else — owned non-article pages,
- *     *.interlace.tools, dev.to, and every academic / commercial reference —
- *     becomes /go/r/<hash>, a deterministic slug whose destination lives in the
- *     short_links table. The client link NEVER carries the destination URL
- *     (no ?to=): the reader passes a saved slug, the server looks it up. The
- *     publisher upserts these slug→URL rows at publish time (collectDevtoLinks).
+ * EVERY outbound link in the dev.to copy is routed through /go/ AND stored in
+ * the short_links table (like bitly): the client link carries only a /go/ id,
+ * the destination lives in the DB, and the resolver looks it up. Two id shapes:
+ *   - READABLE ids for our own surfaces: /go/<article-slug>, /go/npm/<pkg>,
+ *     /go/gh/<owner>/<repo>. An article row also gets a platforms.devto copy
+ *     (dev.to reader → dev.to copy) from that article's own publish.
+ *   - HASH ids for everything else — owned non-article pages, *.interlace.tools,
+ *     dev.to, and every academic / commercial reference — /go/r/<cyrb53>.
+ * Either way collectDevtoLinks(body) returns the {key,destination,kind} rows and
+ * the publisher upserts them at publish time; the client NEVER passes a URL.
  *
  * Also strips blog-only heading `{#anchor}` ids and the "**Skip to:**" jump-nav
  * (dev.to renders neither).
@@ -101,8 +100,8 @@ function buildGoUrl(goPath, sourceUrl, articleSlug) {
  * @param {string} articleSlug - slug of the SOURCE article
  * @returns {{ href: string, stored: {key:string,destination:string,kind:string}|null }}
  *   href   — what to write into the markdown (rawUrl unchanged if no rule fits);
- *   stored — the slug→URL row to upsert (only for /go/r/ stored redirects; null
- *            for derivable article/npm/gh links and untouched pass-throughs).
+ *   stored — the {key,destination,kind} row to upsert for this link (null only
+ *            for untouched pass-throughs: anchors, mailto, already-/go/ links).
  */
 function classifyDevtoLink(rawUrl, articleSlug) {
   // 1. Absolutize relative /articles/... links.
@@ -126,34 +125,47 @@ function classifyDevtoLink(rawUrl, articleSlug) {
     return { href: rawUrl, stored: null };
   }
 
-  // DERIVABLE: cross-article → /go/<target-slug>
+  // cross-article → /go/<target-slug>; row destination = blog canonical, and
+  // the target's own publish adds platforms.devto (dev.to reader → dev.to copy).
   if (isSiteHost(host)) {
     const m = url.pathname.match(/^\/articles\/([^/]+)\/?$/);
     if (m) {
       return {
         href: buildGoUrl(`/go/${m[1]}`, url, articleSlug),
-        stored: null,
+        stored: {
+          key: m[1],
+          destination: `${url.origin}${url.pathname}`,
+          kind: "article",
+        },
       };
     }
   }
-  // DERIVABLE: npm package → /go/npm/<pkg> (profile/other npm → STORED below)
+  // npm package → /go/npm/<pkg> (profile / other npm pages → STORED below)
   if (host === "npmjs.com" || host === "www.npmjs.com") {
     const m = url.pathname.match(/^\/package\/(.+?)\/?$/);
     if (m) {
       return {
         href: buildGoUrl(`/go/npm/${m[1]}`, url, articleSlug),
-        stored: null,
+        stored: {
+          key: `npm/${m[1]}`,
+          destination: `${url.origin}${url.pathname}`,
+          kind: "npm",
+        },
       };
     }
   }
-  // DERIVABLE: our GitHub repo ROOT → /go/gh/ofri-peretz/<repo>
+  // our GitHub repo ROOT → /go/gh/ofri-peretz/<repo>
   // (deep paths / other orgs → STORED below, so their exact URL is preserved).
   if (host === "github.com" || host === "www.github.com") {
     const m = url.pathname.match(/^\/ofri-peretz\/([^/]+)\/?$/);
     if (m) {
       return {
         href: buildGoUrl(`/go/gh/ofri-peretz/${m[1]}`, url, articleSlug),
-        stored: null,
+        stored: {
+          key: `gh/ofri-peretz/${m[1]}`,
+          destination: `${url.origin}${url.pathname}`,
+          kind: "gh",
+        },
       };
     }
   }
@@ -180,10 +192,11 @@ export function rewriteUrlForDevto(rawUrl, articleSlug) {
 }
 
 /**
- * Collect the stored-redirect rows (slug → external URL) a body needs, so the
- * publisher can upsert them BEFORE it publishes (the destination never rides in
- * the client link). Deduped by slug; fenced code blocks and derivable links are
- * skipped.
+ * Collect the {key,destination,kind} row EVERY routed link in a body maps to,
+ * so the publisher can upsert them all — article, npm, gh, and every external
+ * reference — before it publishes. The destination is stored server-side and
+ * never rides in the client link. Deduped by key; fenced code blocks and pure
+ * pass-throughs (anchors, mailto, already-/go/) are skipped.
  *
  * @returns {Array<{key:string,destination:string,kind:string}>}
  */
