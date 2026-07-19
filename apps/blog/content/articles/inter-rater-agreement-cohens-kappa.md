@@ -124,13 +124,13 @@ Bookmark this for the next time someone quotes "94% agreement" at you — and if
 
 ## References
 
-Cohen, J. (1960). A coefficient of agreement for nominal scales. *Educational and Psychological Measurement*, 20(1), 37–46. The original paper: chance-corrected agreement for two raters over nominal categories, motivated by exactly the imbalance problem in the hook.
+Cohen, J. (1960). [A coefficient of agreement for nominal scales](https://doi.org/10.1177/001316446002000104). *Educational and Psychological Measurement*, 20(1), 37–46. The original paper: chance-corrected agreement for two raters over nominal categories, motivated by exactly the imbalance problem in the hook.
 
-Landis, J. R., & Koch, G. G. (1977). The measurement of observer agreement for categorical data. *Biometrics*, 33(1), 159–174. Source of the interpretation bands — and of the in-print admission that the divisions are arbitrary.
+Landis, J. R., & Koch, G. G. (1977). [The measurement of observer agreement for categorical data](https://doi.org/10.2307/2529310). *Biometrics*, 33(1), 159–174. Source of the interpretation bands — and of the in-print admission that the divisions are arbitrary.
 
-Spitzer, R. L., & Fleiss, J. L. (1974). A re-analysis of the reliability of psychiatric diagnosis. *British Journal of Psychiatry*, 125(587), 341–347. The field-changing application: chance-corrected agreement overturning conclusions that raw agreement supported.
+Spitzer, R. L., & Fleiss, J. L. (1974). [A re-analysis of the reliability of psychiatric diagnosis](https://doi.org/10.1192/bjp.125.4.341). *British Journal of Psychiatry*, 125(587), 341–347. The field-changing application: chance-corrected agreement overturning conclusions that raw agreement supported.
 
-Krippendorff, K. (2004). *Content Analysis: An Introduction to Its Methodology* (2nd ed.). Sage. Develops α, the generalization of κ to many raters, missing data, and non-nominal scales — the reliability standard in content analysis and dataset annotation.
+Krippendorff, K. (2004). *[Content Analysis: An Introduction to Its Methodology](https://books.google.com/books/about/Content_Analysis.html?id=q657o3M3C8cC)* (2nd ed.). Sage. Develops α, the generalization of κ to many raters, missing data, and non-nominal scales — the reliability standard in content analysis and dataset annotation.
 
 ---
 

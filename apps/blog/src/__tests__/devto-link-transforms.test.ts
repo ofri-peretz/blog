@@ -128,30 +128,27 @@ describe("rewriteUrlForDevto", () => {
     expect(rewriteUrlForDevto(go, SLUG)).toBe(go);
   });
 
-  it("appends full UTMs to remaining ofriperetz.dev links", () => {
-    expect(rewriteUrlForDevto("https://ofriperetz.dev/foundations", SLUG)).toBe(
-      `https://ofriperetz.dev/foundations?utm_source=devto&utm_medium=article&utm_campaign=${SLUG}`,
+  it("routes owned ofriperetz.dev pages through the /go/l passthrough", () => {
+    const out = new URL(
+      rewriteUrlForDevto("https://ofriperetz.dev/foundations", SLUG),
     );
+    expect(`${out.origin}${out.pathname}`).toBe("https://ofriperetz.dev/go/l");
+    expect(out.searchParams.get("to")).toBe(
+      "https://ofriperetz.dev/foundations",
+    );
+    expect(out.searchParams.get("utm_source")).toBe("devto");
+    expect(out.searchParams.get("from")).toBe(SLUG);
   });
 
-  it("appends full UTMs to *.interlace.tools links", () => {
-    expect(rewriteUrlForDevto("https://eslint.interlace.tools", SLUG)).toBe(
-      `https://eslint.interlace.tools/?utm_source=devto&utm_medium=article&utm_campaign=${SLUG}`,
-    );
-  });
-
-  it("uses & when the owned-domain link already has a query string", () => {
-    expect(
+  it("routes *.interlace.tools links through /go/l (destination rides in ?to=)", () => {
+    const out = new URL(
       rewriteUrlForDevto("https://eslint.interlace.tools/docs?tab=rules", SLUG),
-    ).toBe(
-      `https://eslint.interlace.tools/docs?tab=rules&utm_source=devto&utm_medium=article&utm_campaign=${SLUG}`,
     );
-  });
-
-  it("skips owned-domain links that already carry utm_source", () => {
-    const decorated =
-      "https://ofriperetz.dev/stats?utm_source=devto&utm_medium=article&utm_campaign=ilb-ground-truth";
-    expect(rewriteUrlForDevto(decorated, SLUG)).toBe(decorated);
+    expect(`${out.origin}${out.pathname}`).toBe("https://ofriperetz.dev/go/l");
+    expect(out.searchParams.get("to")).toBe(
+      "https://eslint.interlace.tools/docs?tab=rules",
+    );
+    expect(out.searchParams.get("from")).toBe(SLUG);
   });
 
   it("leaves unrelated links untouched", () => {
@@ -201,7 +198,7 @@ describe("transformBodyForDevto", () => {
       `](https://ofriperetz.dev/go/gh/ofri-peretz/eslint?utm_source=devto&from=${SLUG})`,
     );
     expect(out).toContain(
-      `](https://ofriperetz.dev/?utm_source=devto&utm_medium=article&utm_campaign=${SLUG})`,
+      `](https://ofriperetz.dev/go/l?to=https%3A%2F%2Fofriperetz.dev%2F&utm_source=devto&from=${SLUG})`,
     );
   });
 
@@ -229,7 +226,7 @@ describe("transformBodyForDevto", () => {
   it("preserves link titles", () => {
     const body = 'See [docs](https://eslint.interlace.tools "Interlace docs").';
     expect(transformBodyForDevto(body, SLUG)).toBe(
-      `See [docs](https://eslint.interlace.tools/?utm_source=devto&utm_medium=article&utm_campaign=${SLUG} "Interlace docs").`,
+      `See [docs](https://ofriperetz.dev/go/l?to=https%3A%2F%2Feslint.interlace.tools%2F&utm_source=devto&from=${SLUG} "Interlace docs").`,
     );
   });
 

@@ -98,7 +98,7 @@ If this is the kind of reference you'll want at your next metrics review, [follo
 - Messick, S. (1989). "Validity." In R. L. Linn (Ed.), *Educational Measurement* (3rd ed., pp. 13–103). American Council on Education / Macmillan. The authoritative construct-validity treatment; the source of the modern view that validity is about the *interpretation* of a score, not the score itself.
 - Jacobs, A. Z., & Wallach, H. (2021). "Measurement and Fairness." *Proceedings of the ACM Conference on Fairness, Accountability, and Transparency (FAccT '21)*. [arxiv.org/abs/1912.05511](https://arxiv.org/abs/1912.05511). Measurement theory applied to computational systems — the bridge between psychometrics and the numbers you actually ship.
 - Trochim, W. M. K. *Research Methods Knowledge Base*. [conjointly.com/kb](https://conjointly.com/kb/). Free online reference; the fastest concept-check for reliability/validity vocabulary, including the dartboard figure.
-- DeMarco, T. (2009). "Software Engineering: An Idea Whose Time Has Come and Gone?" *IEEE Software*, 26(4). The recantation of "you can't control what you can't measure" — metrics humility from one of the field's original measurement advocates.
+- DeMarco, T. (2009). "[Software Engineering: An Idea Whose Time Has Come and Gone?](https://doi.org/10.1109/MS.2009.101)" *IEEE Software*, 26(4). The recantation of "you can't control what you can't measure" — metrics humility from one of the field's original measurement advocates.
 
 *Foundations series: ← [Inter-Rater Agreement & Cohen's κ](https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa) · [hub](https://ofriperetz.dev/foundations) · [Proxy Metrics](https://ofriperetz.dev/articles/proxy-metrics) →*
 

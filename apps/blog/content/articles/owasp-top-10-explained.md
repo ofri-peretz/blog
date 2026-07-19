@@ -98,13 +98,13 @@ Used this way, the list earns its reputation: Top 10 for shared vocabulary and r
 
 ## References
 
-OWASP Top 10:2021 (owasp.org/Top10/2021/). The edition cited throughout this article. The per-category pages list every mapped CWE, and the "Methodology" section documents the eight-from-data, two-from-survey selection — worth reading before quoting the list in any policy document.
+[OWASP Top 10:2021](https://owasp.org/Top10/2021/) (owasp.org/Top10/2021/). The edition cited throughout this article. The per-category pages list every mapped CWE, and the "Methodology" section documents the eight-from-data, two-from-survey selection — worth reading before quoting the list in any policy document.
 
-OWASP Application Security Verification Standard (owasp.org/www-project-application-security-verification-standard/). The document OWASP points to when teams ask for a standard. If "OWASP compliance" appears in a contract you sign, this is what it should mean.
+[OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/) (owasp.org/www-project-application-security-verification-standard/). The document OWASP points to when teams ask for a standard. If "OWASP compliance" appears in a contract you sign, this is what it should mean.
 
-OWASP Cheat Sheet Series (cheatsheetseries.owasp.org). The fix-side companion: concise, maintained, per-topic defensive guidance mapped to Top 10 categories.
+[OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/) (cheatsheetseries.owasp.org). The fix-side companion: concise, maintained, per-topic defensive guidance mapped to Top 10 categories.
 
-OWASP Web Security Testing Guide (owasp.org/www-project-web-security-testing-guide/). The verify-side companion — how to actually test for the weaknesses the Top 10 names.
+[OWASP Web Security Testing Guide](https://owasp.org/www-project-web-security-testing-guide/) (owasp.org/www-project-web-security-testing-guide/). The verify-side companion — how to actually test for the weaknesses the Top 10 names.
 
 *Cited by: [Mapping a codebase to the OWASP Top 10 with 247 lint rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) — a worked example applying this address system to one ecosystem's rule coverage.*
 

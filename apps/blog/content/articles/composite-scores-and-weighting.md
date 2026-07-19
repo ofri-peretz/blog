@@ -118,11 +118,11 @@ Every component inside every composite rests on something more fundamental: some
 
 ## References
 
-- OECD / JRC European Commission (2008). *Handbook on Constructing Composite Indicators: Methodology and User Guide*. OECD Publishing. The authoritative methodology reference — a ten-step construction process in which normalization and sensitivity analysis are required, not optional. Free PDF from the OECD.
-- Greco, S., Ishizaka, A., Tasiou, M., & Torrisi, G. (2019). "On the Methodological Framework of Composite Indices: A Review of the Issues of Weighting, Aggregation, and Robustness." *Social Indicators Research*, 141, 61–94. Survey of composite-indicator critiques; weight sensitivity is the recurring one.
-- Google Chrome team. *Lighthouse performance scoring* (developer.chrome.com/docs/lighthouse/performance/performance-scoring). Per-metric weights, per version, with a public score calculator — the worked example of versioned weights.
-- OpenSSF. *Scorecard documentation* (github.com/ossf/scorecard). Checks, weights, and aggregation for the 0–10 composite — the transparency benchmark for a security-health score.
-- UNDP. *Human Development Report — Technical Notes* (hdr.undp.org). The HDI methodology, including the 2010 shift from an arithmetic to a geometric mean — a worked example of an aggregation choice moving rankings with no change in the data.
+- OECD / JRC European Commission (2008). *[Handbook on Constructing Composite Indicators: Methodology and User Guide](https://doi.org/10.1787/9789264043466-en)*. OECD Publishing. The authoritative methodology reference — a ten-step construction process in which normalization and sensitivity analysis are required, not optional. Free PDF from the OECD.
+- Greco, S., Ishizaka, A., Tasiou, M., & Torrisi, G. (2019). "[On the Methodological Framework of Composite Indices: A Review of the Issues of Weighting, Aggregation, and Robustness](https://doi.org/10.1007/s11205-017-1832-9)." *Social Indicators Research*, 141, 61–94. Survey of composite-indicator critiques; weight sensitivity is the recurring one.
+- Google Chrome team. *[Lighthouse performance scoring](https://developer.chrome.com/docs/lighthouse/performance/performance-scoring)* (developer.chrome.com/docs/lighthouse/performance/performance-scoring). Per-metric weights, per version, with a public score calculator — the worked example of versioned weights.
+- OpenSSF. *[Scorecard documentation](https://github.com/ossf/scorecard)* (github.com/ossf/scorecard). Checks, weights, and aggregation for the 0–10 composite — the transparency benchmark for a security-health score.
+- UNDP. *[Human Development Report — Technical Notes](https://hdr.undp.org/)* (hdr.undp.org). The HDI methodology, including the 2010 shift from an arithmetic to a geometric mean — a worked example of an aggregation choice moving rankings with no change in the data.
 
 ---
 

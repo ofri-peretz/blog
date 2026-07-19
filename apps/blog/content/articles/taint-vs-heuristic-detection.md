@@ -95,9 +95,9 @@ So the one question to ask any static analysis tool — before the demo, before 
 
 ## References
 
-- Denning, D. E. (1976). A lattice model of secure information flow. *Communications of the ACM*, 19(5). The founding citation — every source/sink/label system in use today descends from this model.
-- Livshits, V. B., & Lam, M. S. (2005). Finding security vulnerabilities in Java applications with static analysis. *USENIX Security Symposium*. The paper that made taint-based static analysis practical against real web-application vulnerability classes.
-- Chess, B., & West, J. (2007). *Secure Programming with Static Analysis*. Addison-Wesley. The standard industrial treatment of both detection families, including why commercial SAST engines mix them.
+- Denning, D. E. (1976). [A lattice model of secure information flow](https://doi.org/10.1145/360051.360056). *Communications of the ACM*, 19(5). The founding citation — every source/sink/label system in use today descends from this model.
+- Livshits, V. B., & Lam, M. S. (2005). [Finding security vulnerabilities in Java applications with static analysis](https://www.usenix.org/conference/14th-usenix-security-symposium/finding-security-vulnerabilities-java-applications-static). *USENIX Security Symposium*. The paper that made taint-based static analysis practical against real web-application vulnerability classes.
+- Chess, B., & West, J. (2007). *[Secure Programming with Static Analysis](https://books.google.com/books/about/Secure_Programming_with_Static_Analysis.html?id=DnUbmQEACAAJ)*. Addison-Wesley. The standard industrial treatment of both detection families, including why commercial SAST engines mix them.
 - OWASP Community: [Static Code Analysis](https://owasp.org/www-community/controls/Static_Code_Analysis). Practitioner-level survey of the technique, with an unusually honest limitations list.
 
 ---

@@ -77,6 +77,10 @@ describe("classifyKey", () => {
   it("bare /go/gh (no repo) falls through to article", () => {
     expect(classifyKey(["gh"])).toEqual({ key: "gh", kind: "article" });
   });
+
+  it("l → external (the /go/l passthrough; destination rides in ?to=)", () => {
+    expect(classifyKey(["l"])).toEqual({ key: "l", kind: "external" });
+  });
 });
 
 // ── deriveDefault ────────────────────────────────────────────────────
@@ -107,6 +111,58 @@ describe("deriveDefault", () => {
 
   it("external / empty key → blog home", () => {
     expect(deriveDefault("external", "", params())).toBe(`${BLOG}/`);
+  });
+
+  it("external + owned ?to= → forwards to the owned page (utm_* carried)", () => {
+    expect(
+      deriveDefault(
+        "external",
+        "l",
+        params("to=https://ofriperetz.dev/foundations&utm_source=devto"),
+      ),
+    ).toBe("https://ofriperetz.dev/foundations?utm_source=devto");
+  });
+
+  it("external + owned *.interlace.tools ?to= → forwards through", () => {
+    expect(
+      deriveDefault(
+        "external",
+        "l",
+        params("to=https://eslint.interlace.tools/docs"),
+      ),
+    ).toBe("https://eslint.interlace.tools/docs");
+  });
+
+  it("external + FOREIGN ?to= → blog home (open redirect blocked)", () => {
+    expect(
+      deriveDefault(
+        "external",
+        "l",
+        params("to=https://evil.example.com/phish"),
+      ),
+    ).toBe(`${BLOG}/`);
+  });
+
+  it("external + look-alike host (ofriperetz.dev.evil.com) → blog home", () => {
+    expect(
+      deriveDefault(
+        "external",
+        "l",
+        params("to=https://ofriperetz.dev.evil.com/x"),
+      ),
+    ).toBe(`${BLOG}/`);
+  });
+
+  it("external + malformed ?to= → blog home", () => {
+    expect(deriveDefault("external", "l", params("to=notaurl"))).toBe(
+      `${BLOG}/`,
+    );
+  });
+
+  it("external + non-http ?to= (javascript:) → blog home", () => {
+    expect(
+      deriveDefault("external", "l", params("to=javascript:alert(1)")),
+    ).toBe(`${BLOG}/`);
   });
 });
 
@@ -384,7 +440,11 @@ describe("resolveGoDestination", () => {
     // No `now` passed → exercises the default-parameter branch. A far-future
     // expiry must still pass under the real clock.
     const rows: ShortLinkRow[] = [
-      { key: "my-slug", expires_at: "2999-01-01T00:00:00Z", destination: `${BLOG}/x` },
+      {
+        key: "my-slug",
+        expires_at: "2999-01-01T00:00:00Z",
+        destination: `${BLOG}/x`,
+      },
     ];
     const res = resolveGoDestination({
       keyParts: ["my-slug"],
@@ -442,7 +502,11 @@ describe("buildClickEventBody", () => {
   };
 
   it("emits the spectator schema with app + no person profile", () => {
-    const body = buildClickEventBody(props, "https://dev.to", "2026-07-18T00:00:00Z");
+    const body = buildClickEventBody(
+      props,
+      "https://dev.to",
+      "2026-07-18T00:00:00Z",
+    );
     expect(body).toEqual({
       event: "short_link_click",
       distinct_id: "server-go",
@@ -511,10 +575,18 @@ describe("GET /go/[...key] (route wrapper)", () => {
     delete process.env.NEXT_PUBLIC_POSTHOG_HOST;
   });
 
-  const call = (path: string, headers: Record<string, string> = {}, key?: string[]) =>
+  const call = (
+    path: string,
+    headers: Record<string, string> = {},
+    key?: string[],
+  ) =>
     GET(new Request(`${BLOG}${path}`, { headers }), {
       params: Promise.resolve({
-        key: (key ?? path.replace(/^\/go\//, "").split("?")[0].split("/")) as string[],
+        key: (key ??
+          path
+            .replace(/^\/go\//, "")
+            .split("?")[0]
+            .split("/")) as string[],
       }),
     });
 

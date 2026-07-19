@@ -134,15 +134,18 @@ export function rewriteUrlForDevto(rawUrl, articleSlug) {
     return rawUrl;
   }
 
-  // 4. Remaining owned-domain links → UTM decoration
+  // 4. Remaining owned-domain links (blog home, /foundations, docs on
+  //    *.interlace.tools) → /go/l?to=<owned-url>, so every owned link is a
+  //    tracked, repointable /go/ hop too — not just articles/npm/gh. The
+  //    resolver guards `to` to owned hosts, so this can't become an open
+  //    redirector. dev.to and third-party links never reach here (rule falls
+  //    through to `return rawUrl`), so they stay native/direct.
   if (isSiteHost(host) || isInterlaceHost(host)) {
-    if (url.searchParams.has("utm_source")) {
-      return rawUrl; // already decorated (hand-written UTMs in older articles)
-    }
-    url.searchParams.set("utm_source", "devto");
-    url.searchParams.set("utm_medium", "article");
-    url.searchParams.set("utm_campaign", articleSlug);
-    return url.href;
+    const go = new URL(`${SITE_URL}/go/l`);
+    go.searchParams.set("to", url.href);
+    go.searchParams.set("utm_source", "devto");
+    go.searchParams.set("from", articleSlug);
+    return go.href;
   }
 
   return rawUrl;

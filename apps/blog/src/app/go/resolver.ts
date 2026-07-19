@@ -112,14 +112,33 @@ export function classifyKey(keyParts: string[]): {
   const key = segments.join("/");
   if (ns === "npm" && rest.length > 0) return { key, kind: "npm" };
   if (ns === "gh" && rest.length > 0) return { key, kind: "gh" };
+  // /go/l?to=<owned-url> — a tracked passthrough for owned pages (home,
+  // /foundations, *.interlace.tools). The destination rides in ?to=, so the
+  // key itself is inert; classify as external for the click taxonomy.
+  if (ns === "l") return { key, kind: "external" };
   return { key, kind: "article" };
 }
 
 // ── Default destination (used when no row, or a guarded-out row) ──────
 /**
+ * Owned hosts the /go/l passthrough may forward to. This is the open-redirect
+ * guard: a ?to= pointing anywhere else is ignored (→ blog home), so /go/l can
+ * never be weaponized as a generic redirector.
+ */
+export function isOwnedHost(hostname: string): boolean {
+  return (
+    hostname === "ofriperetz.dev" ||
+    hostname === "www.ofriperetz.dev" ||
+    hostname === "interlace.tools" ||
+    hostname.endsWith(".interlace.tools")
+  );
+}
+
+/**
  * Derive the zero-config destination for a key. Articles get utm_* params
  * forwarded (attribution continuity); npm/gh map to the public package /
- * repo page; `external` with no row has nowhere to go, so → blog home.
+ * repo page; `external` is the /go/l passthrough — an owned ?to= (guarded),
+ * else the blog home.
  */
 export function deriveDefault(
   kind: LinkKind,
@@ -140,7 +159,26 @@ export function deriveDefault(
     }
     return dest.toString();
   }
-  // external / empty key — no derivable target, land on the blog home.
+  // external → the /go/l passthrough: forward to an owned ?to= target (utm_*
+  // carried along), guarded to owned hosts only. Malformed / foreign / absent
+  // `to` lands on the blog home — never an open redirect.
+  const to = incomingSearchParams.get("to");
+  if (to) {
+    try {
+      const dest = new URL(to);
+      if (
+        (dest.protocol === "https:" || dest.protocol === "http:") &&
+        isOwnedHost(dest.hostname)
+      ) {
+        for (const [k, v] of incomingSearchParams) {
+          if (k.startsWith("utm_")) dest.searchParams.set(k, v);
+        }
+        return dest.href;
+      }
+    } catch {
+      // malformed `to` — fall through to home
+    }
+  }
   return `${BLOG_ORIGIN}/`;
 }
 
