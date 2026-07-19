@@ -246,7 +246,7 @@ But none of the three misses above are exotic. They show up wherever `maxDepth` 
 
 ---
 
-*Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/inside-our-linter-benchmarks) series:*
+*Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/39642) series:*
 *← [What Ground Truth Caught That Unit Tests Missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) | [eslint-plugin-import-next: Up to 100x Faster →](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster)*
 
 ---

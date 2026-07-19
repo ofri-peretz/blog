@@ -83,7 +83,7 @@ I re-ran the 1,000-file benchmark with `disableScc: true` to isolate what the SC
 
 ## What import-next Does Differently — and What I Can't Fully Explain
 
-`eslint-plugin-import-next` runs the same category of algorithm as the old plugin, including the same same-SCC pre-check shape. Its version is lazy and memoized per connected component — you can read it in [`computeSCCsFromFile` in `src/resolver/dependency-analysis.ts`](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-import-next/src/resolver/dependency-analysis.ts): the first file that touches a given subgraph triggers the Tarjan pass, every later file in that same subgraph is a `Map.get`, never a recompute. But I want to be precise about what this snippet does and doesn't explain, because I measured something that complicates the tidy version of this story:
+`eslint-plugin-import-next` runs the same category of algorithm as the old plugin, including the same same-SCC pre-check shape. Its version is lazy and memoized per connected component — you can read it in [`computeSCCsFromFile` in `src/resolver/dependency-analysis.ts`](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-devkit/src/resolver/dependency-analysis.ts): the first file that touches a given subgraph triggers the Tarjan pass, every later file in that same subgraph is a `Map.get`, never a recompute. But I want to be precise about what this snippet does and doesn't explain, because I measured something that complicates the tidy version of this story:
 
 ```ts
 // rules/no-cycle.ts — same-SCC pre-check, backed by a lazily-computed, memoized index

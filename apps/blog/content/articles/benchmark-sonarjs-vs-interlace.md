@@ -41,10 +41,9 @@ Against the 40-vulnerability fixture, SonarJS v3.0.6's [recall](https://ofripere
 
 That's **not** a knock on SonarJS — it's a **scope** result. SonarJS is one of the best _quality_ linters in the ecosystem that happens to carry a handful of cross-language security rules. Node-specific security depth is a different product. Here's the [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) data, why each gap survives review, and why "run both" is the only honest answer.
 
-> Every number below is from two committed result files — SonarJS:
-> [`results/fn-fp-comparison/2026-05-29.json`](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/fn-fp-comparison/2026-05-29.json),
-> Interlace:
-> [`2026-05-30.json`](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/fn-fp-comparison/2026-05-30.json).
+> Every number below is from one committed golden result file holding both
+> plugins' runs —
+> [`results/fn-fp-comparison/golden-2026-05-29.json`](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/fn-fp-comparison/golden-2026-05-29.json).
 > Each plugin runs in isolation against the identical fixture under its
 > `recommended` preset; TP/FP/FN are computed by mapping violations to the 40
 > vulnerable and 38 safe functions. Versions and the exact commands are at the
@@ -198,8 +197,7 @@ To be sure this wasn't one vendor, I ran the same generate-then-scan harness on
 Gemini. Asked to write 195 ordinary Node.js functions (database access,
 auth, file I/O, command execution, secrets) at 10 samples per prompt,
 **`gemini-3-pro-cli` shipped a vulnerability in 113 of them — a 58%
-vulnerability rate, average [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) 8.9**
-([checkpoint JSON](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/ai-security/checkpoints/checkpoint-gemini-3-pro-cli-treatment-10iter.json)).
+vulnerability rate, average [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) 8.9**.
 The rules that fired on Gemini's code are the exact families SonarJS has no rule
 for: `pg/no-unsafe-query`, `secure-coding/detect-object-injection`,
 `node-security/detect-non-literal-fs-filename`, `node-security/no-ssrf`,
@@ -259,12 +257,11 @@ Full rule documentation: [eslint.interlace.tools](https://eslint.interlace.tools
 
 **Scoring:** each plugin runs in isolation, `--format json`, no other plugins active. Violations are mapped to the 40 vulnerable and 38 safe functions to compute TP (true positive), FP (false positive), and FN (false negative). A TP is a violation on a line tagged as vulnerable in the fixture; an FP is a violation on a safe function; an FN is a vulnerable function with zero violations.
 
-The numbers are not asserted; they're in two committed result files you can
-diff line-by-line:
-[SonarJS run](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/fn-fp-comparison/2026-05-29.json)
-and
-[Interlace run](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/fn-fp-comparison/2026-05-30.json).
-Versions are pinned from each file's `installedVersions` block:
+The numbers are not asserted; they're in a committed golden result file you can
+read line-by-line —
+[`golden-2026-05-29.json`](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/results/fn-fp-comparison/golden-2026-05-29.json),
+which carries a `plugins.sonarjs` and a `plugins.interlace` block side by side.
+The versions pinned for each run:
 `eslint-plugin-sonarjs@3.0.6` (269 rules) for the SonarJS run;
 `eslint-plugin-secure-coding@3.0.2`, `eslint-plugin-node-security@4.2.0`,
 `eslint-plugin-pg@1.4.3`, `eslint-plugin-jwt@2.2.3`,
