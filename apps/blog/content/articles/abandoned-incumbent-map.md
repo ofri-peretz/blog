@@ -86,7 +86,6 @@ The map moves, in both directions. `serverless-associate-waf` shows demand final
 The honest counter-case, because the map's arithmetic will lie to you twice.
 
 First: **stable is not dead.** `serverless-prune-plugin` sits at 414,154 downloads a week (measured 2026-07-19), last publish 2024-10-16. Twenty-one quiet months — and it may simply be done: its job is narrow, its surface barely moves. The separating question: **does the surface underneath the package move?** IAM — the ground `serverless-iam-roles-per-function` stands on — moves constantly: new AWS services, new actions, new policy patterns. Five silent years on a moving surface is decay; on a frozen surface, it can be completion. Same silence, opposite meanings — a classic [measurement-bias](https://ofriperetz.dev/articles/bias-in-measurement) trap.
-<!-- LINK WHEN LIVE: T1 maintenance-signal article (canonical plan §5 serverless pack) — link "does the surface move" to it at first mention -->
 
 Second: **platform absorption.** `serverless-plugin-typescript`: 151,586 downloads a week (measured 2026-07-19), dormant since 2023-06-05 — by raw arithmetic the juiciest target on the board. It's not on my list: Serverless Framework v4 builds TypeScript natively and won't run build plugins like it unless you explicitly opt out of the native build. That niche isn't undefended; it's dissolving. A replacement would be competing with the platform itself.
 
