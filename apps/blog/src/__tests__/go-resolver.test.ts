@@ -226,6 +226,20 @@ describe("pickDestination", () => {
       `${BLOG}/articles/my-slug`,
     );
   });
+
+  it("crafted utm_source (__proto__/constructor/toString) → own-property only, no inherited leak (CWE-20)", () => {
+    const row: ShortLinkRow = {
+      key: "my-slug",
+      platforms: { devto: "https://dev.to/x" },
+    };
+    // A prototype key must not read an inherited Object.prototype value and
+    // return it as the destination — it has no OWN entry, so fall through.
+    for (const evil of ["__proto__", "constructor", "toString", "hasOwnProperty"]) {
+      expect(pickDestination({ ...base, row, utmSource: evil })).toBe(
+        `${BLOG}/articles/my-slug`,
+      );
+    }
+  });
 });
 
 // ── Step 5: buildCapture ─────────────────────────────────────────────
