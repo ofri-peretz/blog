@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/owasp-top-10-explained-an-address-system-not-a-severity-scale-3aem"
+devto_id: 4182374
 title: "OWASP Top 10, Explained: An Address System, Not a Severity Scale"
 description: "A03:2021 is Injection. That's an address, not a severity. What the OWASP Top 10 ordering actually encodes, why 'we cover the Top 10' is a breadth claim and not a depth claim, and how the 2021 categories map onto CWE classes and what a source linter can and cannot see."
 slug: "owasp-top-10-explained"

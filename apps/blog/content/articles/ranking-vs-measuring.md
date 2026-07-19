@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/ranking-vs-measuring-what-a-leaderboard-throws-away-31d0"
+devto_id: 4182377
 title: "Ranking vs. Measuring: What a Leaderboard Throws Away"
 description: "A rank is what's left of a measurement after you throw away the distances, the uncertainty, and the ties. When a leaderboard means something, when it's just ordering noise, and the four scales of measurement that tell them apart."
 slug: "ranking-vs-measuring"
