@@ -30,7 +30,7 @@ The defense is sequencing: this corpus was designed against published OWASP cate
 
 ## How do you choose categories — and how many of each? {#category-selection}
 
-Anchor categories to a public taxonomy, not instinct. The vulnerable corpus is 40 exported fixture functions across 14 categories, each mapped to a [CWE ID](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — from four SQL-injection fixtures (CWE-89) down to a single open redirect (CWE-601), 17 distinct CWE IDs in total. Paired with those are 38 safe fixtures — 78 in all ("the 40-fixture corpus" names the vulnerable half; precision is computed against the safe half).
+Anchor categories to a public taxonomy, not instinct. The vulnerable corpus is 40 exported fixture functions across 14 categories, each mapped to a [CWE ID](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — from four SQL-injection fixtures (CWE-89) down to a single open redirect (CWE-601), 17 distinct CWE IDs in total. Paired with those are 38 safe fixtures — 78 in all ("the 40-fixture corpus" names the vulnerable half; [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) is computed against the safe half).
 
 Prior art: NIST's SARD is the canonical labeled vulnerable-code corpus family — the Juliet suites cover C/C++ and Java, with PHP and C# suites alongside; OWASP's Benchmark Project is the closest scored SAST analog; and SecBench.js (ICSE 2023) labels ~600 real-world server-side JavaScript vulnerabilities with executable exploits. What none of them offered Node.js-native is an OWASP-Benchmark-style scored SAST leaderboard — this corpus is that analog, smaller.
 
@@ -42,7 +42,7 @@ The `parseInt` label is an author judgment inside the CWE-89 definition, and it 
 
 This corpus has one rater, and [inter-rater agreement](https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa) needs at least two — there is no kappa to report, only me agreeing with myself. That's the weakest joint in the design, and why the reasoning must be public: so a second rater can show up later and disagree precisely.
 
-Labels live *with* the code: a manifest at the fixture file's bottom (`EXPECTED_DETECTIONS`: function → `{cwe, severity}`; `EXPECTED_NO_DETECTIONS`: the safe list) is what the runner imports to score TP/FP/FN/TN — no spreadsheet drifting out of sync.
+Labels live *with* the code: a manifest at the fixture file's bottom (`EXPECTED_DETECTIONS`: function → `{cwe, severity}`; `EXPECTED_NO_DETECTIONS`: the safe list) is what the runner imports to score [TP/FP/FN/TN](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) — no spreadsheet drifting out of sync.
 
 ## How do you make a corpus result reproducible? {#pinning-and-publishing}
 
