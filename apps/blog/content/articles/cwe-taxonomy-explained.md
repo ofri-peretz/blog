@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/the-cwe-taxonomy-explained-a-name-is-not-a-verdict-bpl"
+devto_id: 4182372
 title: "The CWE Taxonomy, Explained: A Name Is Not a Verdict"
 description: "CWE-89 means SQL injection. That's a name, not a verdict. What the Common Weakness Enumeration actually encodes — views, abstraction levels, the Top 25 formula — and why a CWE id can never carry a severity."
 slug: "cwe-taxonomy-explained"

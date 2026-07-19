@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/reproducibility-vs-replicability-why-benchmark-numbers-need-both-26jh"
+devto_id: 4182379
 title: "Reproducibility vs Replicability: Why Benchmark Numbers Need Both"
 description: "A result is reproducible when the same team runs it twice and gets the same number. It is replicable when an independent team runs it and gets the same number. Most published results clear the first bar; far fewer clear the second — and that gap is where trustworthy numbers quietly break."
 slug: "reproducibility-vs-replicability"

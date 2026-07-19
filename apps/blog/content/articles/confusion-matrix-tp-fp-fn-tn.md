@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/the-confusion-matrix-what-tp-fp-fn-and-tn-actually-mean-1h32"
+devto_id: 4182366
 title: "The Confusion Matrix: What TP, FP, FN, and TN Actually Mean"
 description: "A cancer screen can be 90% accurate and still wave through two-thirds of the tumors it exists to catch. The confusion matrix is the honest ledger behind that number — and accuracy is usually the last thing you should read."
 slug: "confusion-matrix-tp-fp-fn-tn"

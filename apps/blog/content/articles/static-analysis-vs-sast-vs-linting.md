@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/static-analysis-vs-sast-vs-linting-the-taxonomy-that-matters-for-security-teams-g5o"
+devto_id: 4182399
 title: "Static Analysis vs. SAST vs. Linting: The Taxonomy That Matters for Security Teams"
 description: "A linter runs at edit time. CodeQL runs on your PRs. SonarQube runs in CI. All three get called 'static analysis' — and vendors call the linter 'SAST.' The three are not the same thing, and the differences decide what each can and cannot catch."
 slug: "static-analysis-vs-sast-vs-linting"

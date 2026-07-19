@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/cvss-scores-explained-the-number-measures-severity-not-risk-4k6i"
+devto_id: 4182369
 title: "CVSS Scores Explained: The Number Measures Severity, Not Risk"
 description: "A scanner can print CVSS 9.1 and the word LOW on the same line. What the score actually measures, what it doesn't, and why you should gate on the number — never the word."
 slug: "cvss-scores-explained"

@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/valid-vs-reliable-metrics-consistent-numbers-can-still-be-wrong-1a2m"
+devto_id: 4182401
 title: "Valid vs. Reliable Metrics: Consistent Numbers Can Still Be Wrong"
 description: "A clock that runs ten minutes fast is perfectly reliable — the same wrong time every read — and completely invalid. Reliability and validity are independent properties, and confusing them is how confident dashboards stay green while the thing they measure quietly fails."
 slug: "valid-vs-reliable-metrics"

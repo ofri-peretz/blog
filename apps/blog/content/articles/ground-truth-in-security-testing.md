@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/ground-truth-in-security-testing-who-decides-whats-vulnerable-3oek"
+devto_id: 4182373
 title: "Ground Truth in Security Testing: Who Decides What's Vulnerable?"
 description: "To benchmark a security linter or SAST tool, you need labeled examples: 'this code is vulnerable,' 'this code is safe.' That labeling decision IS the ground truth. It's made by a human, not an algorithm — and the benchmark inherits every assumption that human brought."
 slug: "ground-truth-in-security-testing"

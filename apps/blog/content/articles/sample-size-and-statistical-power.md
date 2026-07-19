@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/sample-size-and-statistical-power-what-a-small-sample-can-and-cannot-tell-you-p5h"
+devto_id: 4182398
 title: "Sample Size and Statistical Power: What a Small Sample Can and Cannot Tell You"
 description: "A small test set is enough to prove a detector misses an entire category. It is not enough to support a confidence interval on a score. Both are true — here's how to know which claims your sample size actually supports."
 slug: "sample-size-and-statistical-power"
