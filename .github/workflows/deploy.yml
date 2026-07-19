@@ -67,6 +67,15 @@ jobs:
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
       - name: Build + deploy prebuilt to production
+        # Explicit promote (2026-07-19): production deployments were completing
+        # Ready WITHOUT taking ofriperetz.dev — an opaque promotion pin that
+        # survived autoAssignCustomDomains=true and lastRollbackTarget=null
+        # (see agents/footprint/incident-ledger.md, "production apex was
+        # PINNED"). Waiting for Ready and promoting explicitly makes
+        # main -> apex deterministic regardless of platform pin state.
+        # (--no-wait removed: promote 422s on a not-yet-ready deployment.)
         run: |
           NEXT_PUBLIC_SITE_URL=https://ofriperetz.dev vercel build --prod --token="$VERCEL_TOKEN"
-          vercel deploy --prebuilt --prod --no-wait --token="$VERCEL_TOKEN"
+          URL=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "deployed: $URL"
+          vercel promote "$URL" --yes --token="$VERCEL_TOKEN"
