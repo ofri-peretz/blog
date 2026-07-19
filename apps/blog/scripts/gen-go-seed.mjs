@@ -34,7 +34,7 @@ for (const file of readdirSync(CONTENT_DIR).filter((f) => f.endsWith(".md"))) {
 const esc = (s) => s.replace(/'/g, "''");
 const values = [...rows.values()]
   .sort((a, b) => a.key.localeCompare(b.key))
-  .map((r) => `  ('${esc(r.key)}', 'external', '${esc(r.destination)}')`)
+  .map((r) => `  ('${esc(r.key)}', '${esc(r.kind)}', '${esc(r.destination)}')`)
   .join(",\n");
 
 console.log(
