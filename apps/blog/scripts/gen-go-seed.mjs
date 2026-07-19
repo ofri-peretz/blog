@@ -37,13 +37,11 @@ const values = [...rows.values()]
   .map((r) => `  ('${esc(r.key)}', 'external', '${esc(r.destination)}')`)
   .join(",\n");
 
-process.stdout.write(
+console.log(
   `-- ${rows.size} stored redirects from ${articleCount} articles\n` +
     `INSERT INTO public.short_links (key, kind, destination) VALUES\n` +
     `${values}\n` +
     `ON CONFLICT (key) DO UPDATE\n` +
-    `  SET destination = EXCLUDED.destination, kind = EXCLUDED.kind, updated_at = now();\n`,
+    `  SET destination = EXCLUDED.destination, kind = EXCLUDED.kind, updated_at = now();`,
 );
-process.stderr.write(
-  `✓ ${rows.size} stored redirects from ${articleCount} articles\n`,
-);
+console.error(`✓ ${rows.size} stored redirects from ${articleCount} articles`);
