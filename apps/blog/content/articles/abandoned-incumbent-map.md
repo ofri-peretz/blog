@@ -1,6 +1,6 @@
 ---
 title: "142,076 Weekly Downloads. Zero Releases Since 2021. Is the Niche Defended?"
-description: "A Serverless plugin with 142k weekly downloads last shipped a release in 2021. Downloads said taken; the registry said abandoned; the platform's roadmap said something else entirely. The incumbent map — weekly downloads × years since last publish × open-issue decay — is how I decide what to build next, including the two rows the method deleted from my own roadmap."
+description: "A Serverless plugin with 142k weekly downloads last shipped a release in 2021. Downloads said taken; the registry said abandoned; the platform's roadmap said something else entirely. The incumbent map — weekly downloads × years since last publish × open-issue decay — is how I decide what to build next, including the pick I shipped against two months before the fact-check caught up with me."
 slug: "abandoned-incumbent-map"
 published: false
 date: 2026-07-19
@@ -29,7 +29,7 @@ last publish:          2021-05-21  (v3.2.0)
 
 The package isn't surviving abandonment — its installed base is growing straight through it.
 
-My first read was the common one: "142k a week, the niche is taken, I'm five years late." That's the misconception this article exists to correct. **High downloads don't mean a niche is taken. Downloads measure the installed base; maintenance decay measures whether the niche is defended.** The gap between those signals is where I decide what to build next, using what I call the **incumbent map**. Fair warning: run honestly, the method ends by deleting this very package from my roadmap. That's the method working.
+My first read was the common one: "142k a week, the niche is taken, I'm five years late." That's the misconception this article exists to correct. **High downloads don't mean a niche is taken. Downloads measure the installed base; maintenance decay measures whether the niche is defended.** The gap between those signals is where I decide what to build next, using what I call the **incumbent map**. Fair warning: I ran the arithmetic in May, shipped against its #1 row on 2026-05-07, and only ran the filter that kills that row while fact-checking this article in July. The method works; I ran half of it. Both halves are below, in the order I should have run them.
 
 ---
 
@@ -100,7 +100,7 @@ The full pipeline, as actually run for the serverless line:
 3. **Filter: is the incumbent truly undefended?** — re-pull the registry the week you commit; that check removed `serverless-openapi-documenter`.
 4. **Filter: is the unmet demand documented in public — and still unmet?** The newest open issue asks "Serverless Framework V4 Support?" — and the thread answers itself: a collaborator's "it works," then a comment pointing at the v4 docs above. The two features its tracker spent years asking for — managed policies, custom role names — shipped in v4's native implementation, not the plugin's. The counter-evidence to my top pick sat in the tracker I was reading for demand. Read the replies.
 
-The worked example deleted two of its own rows — one while I drafted, one while I fact-checked. They stay in because they *are* the method: arithmetic generates the shortlist; filters, run against primary sources, make the decision. What survived became my serverless line's roadmap, and the ranked ROI analysis lives in the repo — numbers and dates included — so you can check that the map I published is the map I'm building against.
+The worked example deleted two of its own rows — one while I drafted, one while I fact-checked. Here is what the second deletion cost, stated plainly: my May map scored `serverless-iam-roles-per-function` 23/25 — "the biggest single-plugin opportunity in the portfolio" — and I shipped `@interlace/serverless-iam-roles-per-function` 1.0.0 off that row on 2026-05-07 (the npm publish date; check it). The filter you just read ran two months later. The package stays published and does what it says; what it is not, anymore, is the line's growth bet — v4 owns that niche now. The ranked ROI analysis lives in the repo, unchanged, dates included — deliberately, as the before-artifact: you can see exactly the map I built from, and exactly what running filter 2 late overturned. Arithmetic generates the shortlist; filters, run against primary sources — *before you build* — make the decision.
 
 Notice the conflict of interest: the person selling replacements is grading the incumbents — the same conflict as [building what I benchmark](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat), with the same mitigation: every number here is a public registry read, stamped with its measurement date, re-runnable in one `curl` without me in the loop.
 
