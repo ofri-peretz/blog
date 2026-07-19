@@ -255,4 +255,57 @@ describe("transformBodyForDevto", () => {
 
     expect(transformBodyForDevto(body, SLUG)).toBe(body);
   });
+
+  it("strips blog `{#anchor}` suffixes from headings (dev.to prints them literally)", () => {
+    const body = [
+      "## The math, stated plainly {#the-math}",
+      "",
+      "Body paragraph.",
+      "",
+      "### Quick reference {#quick-reference}",
+    ].join("\n");
+    expect(transformBodyForDevto(body, SLUG)).toBe(
+      [
+        "## The math, stated plainly",
+        "",
+        "Body paragraph.",
+        "",
+        "### Quick reference",
+      ].join("\n"),
+    );
+  });
+
+  it("leaves a heading without an anchor suffix unchanged", () => {
+    expect(transformBodyForDevto("## A plain heading", SLUG)).toBe(
+      "## A plain heading",
+    );
+  });
+
+  it("drops the blog-only **Skip to:** jump-nav (dev.to renders no heading ids)", () => {
+    const body = [
+      "Intro.",
+      "",
+      "**Skip to:** [The math](#the-math) | [Quick reference](#quick-reference)",
+      "",
+      "## The math, stated plainly {#the-math}",
+    ].join("\n");
+    expect(transformBodyForDevto(body, SLUG)).toBe(
+      ["Intro.", "", "", "## The math, stated plainly"].join("\n"),
+    );
+  });
+
+  it("leaves brace-hash text that is not a heading untouched", () => {
+    const body = "A CSS-ish `a {#id}` snippet in prose stays put.";
+    expect(transformBodyForDevto(body, SLUG)).toBe(body);
+  });
+
+  it("leaves `{#anchor}` and Skip-to lines inside a code fence byte-identical", () => {
+    const body = [
+      "```md",
+      "## Heading {#kept}",
+      "**Skip to:** [x](#kept)",
+      "```",
+    ].join("\n");
+    expect(transformBodyForDevto(body, SLUG)).toBe(body);
+  });
 });

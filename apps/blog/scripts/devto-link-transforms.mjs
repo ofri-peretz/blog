@@ -34,6 +34,12 @@ const INLINE_LINK_REGEX = /\]\(([^()\s]+)((?:\s+"[^"]*")?)\)/g;
 /** Matches an opening or closing fenced-code-block line. */
 const FENCE_REGEX = /^\s*(```|~~~)/;
 
+/** A heading line (H1–H6) carrying a blog `{#custom-anchor}` id suffix. */
+const HEADING_ANCHOR_REGEX = /^(#{1,6}\s.*?)\s*\{#[^}]+\}\s*$/;
+
+/** The blog-only "**Skip to:**" jump-nav line (dead on dev.to — no heading ids). */
+const SKIP_TO_REGEX = /^\s*\*\*Skip to:\*\*/;
+
 /**
  * Check if a hostname is the blog's own domain
  */
@@ -51,24 +57,15 @@ function isInterlaceHost(hostname) {
 }
 
 /**
- * Drop utm_* / from params (they get replaced by the /go/ params)
- */
-function stripTrackingParams(searchParams) {
-  for (const key of [...searchParams.keys()]) {
-    if (key.startsWith("utm_") || key === "from") {
-      searchParams.delete(key);
-    }
-  }
-}
-
-/**
- * Build a /go/ URL: preserve non-tracking query params and the hash,
- * then stamp utm_source=devto&from=<source-slug> (routing + attribution).
+ * Build a /go/ URL: carry over the source's non-tracking query params and the
+ * hash, then stamp utm_source=devto&from=<source-slug> (routing + attribution).
+ * Reads `sourceUrl` without mutating it — incoming utm_* and from params are
+ * skipped in place, never deleted from the caller's URL object.
  */
 function buildGoUrl(goPath, sourceUrl, articleSlug) {
   const go = new URL(`${SITE_URL}${goPath}`);
-  stripTrackingParams(sourceUrl.searchParams);
   for (const [key, value] of sourceUrl.searchParams) {
+    if (key.startsWith("utm_") || key === "from") continue;
     go.searchParams.append(key, value);
   }
   go.searchParams.set("utm_source", "devto");
@@ -132,11 +129,7 @@ export function rewriteUrlForDevto(rawUrl, articleSlug) {
   if (host === "github.com" || host === "www.github.com") {
     const repoMatch = url.pathname.match(/^\/ofri-peretz\/([^/]+)\/?$/);
     if (repoMatch) {
-      const go = new URL(`${SITE_URL}/go/gh/ofri-peretz/${repoMatch[1]}`);
-      go.searchParams.set("utm_source", "devto");
-      go.searchParams.set("from", articleSlug);
-      go.hash = url.hash;
-      return go.href;
+      return buildGoUrl(`/go/gh/ofri-peretz/${repoMatch[1]}`, url, articleSlug);
     }
     return rawUrl;
   }
@@ -156,8 +149,14 @@ export function rewriteUrlForDevto(rawUrl, articleSlug) {
 }
 
 /**
- * Transform every markdown inline-link destination in a dev.to body.
- * Pure and idempotent — fenced code blocks pass through byte-identical.
+ * Transform a dev.to body: drop the blog-only heading anchors and jump-nav
+ * dev.to can't render, then route every inline link. Pure and idempotent;
+ * fenced code blocks pass through byte-identical.
+ *
+ * dev.to gives rendered headings no `id`, so `## H {#anchor}` would print the
+ * `{#anchor}` verbatim and `[x](#anchor)` jump links would have no target. We
+ * strip the `{#anchor}` suffix and drop the "**Skip to:**" line — dev.to has no
+ * native table of contents to replace it with. The blog render keeps both.
  *
  * @param {string} body - The article body markdown (post component-transforms)
  * @param {string} articleSlug - Slug of the article being rendered
@@ -165,20 +164,34 @@ export function rewriteUrlForDevto(rawUrl, articleSlug) {
  */
 export function transformBodyForDevto(body, articleSlug) {
   let inFence = false;
+  const out = [];
 
-  return body
-    .split("\n")
-    .map((line) => {
-      if (FENCE_REGEX.test(line)) {
-        inFence = !inFence;
-        return line;
-      }
-      if (inFence) return line;
-
-      return line.replace(INLINE_LINK_REGEX, (match, linkUrl, title) => {
+  for (const line of body.split("\n")) {
+    if (FENCE_REGEX.test(line)) {
+      inFence = !inFence;
+      out.push(line);
+      continue;
+    }
+    if (inFence) {
+      out.push(line);
+      continue;
+    }
+    // Drop the blog-only jump-nav — its anchors have no target on dev.to.
+    if (SKIP_TO_REGEX.test(line)) continue;
+    // Strip a heading's `{#anchor}` suffix (dev.to would print it literally).
+    const heading = line.match(HEADING_ANCHOR_REGEX);
+    if (heading) {
+      out.push(heading[1]);
+      continue;
+    }
+    // Route every inline link through the dev.to rewrite rules.
+    out.push(
+      line.replace(INLINE_LINK_REGEX, (match, linkUrl, title) => {
         const rewritten = rewriteUrlForDevto(linkUrl, articleSlug);
         return rewritten === linkUrl ? match : `](${rewritten}${title})`;
-      });
-    })
-    .join("\n");
+      }),
+    );
+  }
+
+  return out.join("\n");
 }
