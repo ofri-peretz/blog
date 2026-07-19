@@ -11,6 +11,7 @@
     "lint:oxlint": "oxlint -c .oxlintrc.json src",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "publish:devto": "node scripts/publish-to-devto.mjs",
     "deploy": "NEXT_PUBLIC_SITE_URL=https://ofriperetz.dev vercel build --prod && vercel deploy --prebuilt --prod"
   },
@@ -56,6 +57,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "6.0.2",
+    "@vitest/coverage-v8": "4.1.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "eslint-plugin-browser-security": "^1.2.3",
