@@ -406,6 +406,14 @@ async function publishArticle(article, existingArticles, dryRun = false) {
 
   const payload = createArticlePayload(article);
 
+  // Draft mode (DEVTO_DRAFT=1): a NEW article is created as a dev.to draft
+  // (published:false) so a cover image can be added and it can be reviewed
+  // before going public. An already-live post keeps its published state —
+  // draft mode must NEVER unpublish a live article, so gate on !existingArticle.
+  if (process.env.DEVTO_DRAFT === "1" && !existingArticle) {
+    payload.article.published = false;
+  }
+
   if (dryRun) {
     if (existingArticle) {
       console.log(
@@ -418,7 +426,13 @@ async function publishArticle(article, existingArticles, dryRun = false) {
       console.log(
         `   🆕 [NEW] No match found on DEV.TO (checked by ID and Title)`,
       );
-      console.log(`   📋 [DRY RUN] Mode: CREATE new post`);
+      console.log(
+        `   📋 [DRY RUN] Mode: CREATE new post${
+          process.env.DEVTO_DRAFT === "1"
+            ? " (DRAFT — private until you publish it)"
+            : ""
+        }`,
+      );
     }
     console.log(`      Slug: ${slug}`);
     console.log(`      Title: ${payload.article.title}`);
@@ -463,16 +477,29 @@ async function publishArticle(article, existingArticles, dryRun = false) {
 
     const result = await response.json();
 
-    // Update local file with devto_id and devto_url if it's a new article
-    if (!existingArticle && result.id) {
-      updateLocalArticle(article, result);
+    // A draft's dev.to `url` is a TEMPORARY slug that changes when it's published
+    // (that's the temp-slug bug fixed in #74). So for a draft, record only the
+    // stable devto_id and defer every URL-dependent side effect — frontmatter
+    // devto_url, platforms.devto, and the "published" annotation — to a later
+    // live run that repoints them to the real URL.
+    const isLive = payload.article.published !== false;
+
+    // Record dev.to metadata. updateLocalArticle only fills MISSING frontmatter
+    // fields, and it runs for updates too — so a draft's deferred devto_url is
+    // backfilled on the later live run (matched by devto_id). Without running on
+    // updates, an existing article would never get its devto_url, breaking the
+    // draft→live contract.
+    if (result.id) {
+      updateLocalArticle(article, result, isLive);
     }
 
     // Post-publish side effects — env-gated, silent no-ops when unset, so
     // the publish flow is byte-identical without them.
-    await sendPublishAnnotation(slug);
-    await upsertStoredLinks(payload.storedLinks);
-    await upsertShortLink(slug, result.url);
+    await upsertStoredLinks(payload.storedLinks); // body's /go/r/ rows; publish-state-independent
+    if (isLive) {
+      await sendPublishAnnotation(slug);
+      await upsertShortLink(slug, result.url);
+    }
 
     return {
       success: true,
@@ -491,7 +518,7 @@ async function publishArticle(article, existingArticles, dryRun = false) {
 /**
  * Update local article with DEV.TO metadata
  */
-function updateLocalArticle(article, devtoResult) {
+function updateLocalArticle(article, devtoResult, writeUrl = true) {
   const { content, filePath, frontmatter } = article;
 
   // Add devto_id and devto_url to frontmatter if not present
@@ -504,7 +531,9 @@ function updateLocalArticle(article, devtoResult) {
     );
   }
 
-  if (!frontmatter.devto_url) {
+  // Skip the URL for drafts: a draft's `url` is a temp slug that changes on
+  // publish. devto_id is stable, so a later live run still matches and fills it.
+  if (writeUrl && !frontmatter.devto_url) {
     updatedContent = updatedContent.replace(
       /^(---\n)/,
       `$1devto_url: "${devtoResult.url}"\n`,
