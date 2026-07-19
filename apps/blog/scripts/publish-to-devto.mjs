@@ -477,16 +477,25 @@ async function publishArticle(article, existingArticles, dryRun = false) {
 
     const result = await response.json();
 
-    // Update local file with devto_id and devto_url if it's a new article
+    // A draft's dev.to `url` is a TEMPORARY slug that changes when it's published
+    // (that's the temp-slug bug fixed in #74). So for a draft, record only the
+    // stable devto_id and defer every URL-dependent side effect — frontmatter
+    // devto_url, platforms.devto, and the "published" annotation — to a later
+    // live run that repoints them to the real URL.
+    const isLive = payload.article.published !== false;
+
+    // Update local file with dev.to metadata if it's a new article
     if (!existingArticle && result.id) {
-      updateLocalArticle(article, result);
+      updateLocalArticle(article, result, isLive);
     }
 
     // Post-publish side effects — env-gated, silent no-ops when unset, so
     // the publish flow is byte-identical without them.
-    await sendPublishAnnotation(slug);
-    await upsertStoredLinks(payload.storedLinks);
-    await upsertShortLink(slug, result.url);
+    await upsertStoredLinks(payload.storedLinks); // body's /go/r/ rows; publish-state-independent
+    if (isLive) {
+      await sendPublishAnnotation(slug);
+      await upsertShortLink(slug, result.url);
+    }
 
     return {
       success: true,
@@ -505,7 +514,7 @@ async function publishArticle(article, existingArticles, dryRun = false) {
 /**
  * Update local article with DEV.TO metadata
  */
-function updateLocalArticle(article, devtoResult) {
+function updateLocalArticle(article, devtoResult, writeUrl = true) {
   const { content, filePath, frontmatter } = article;
 
   // Add devto_id and devto_url to frontmatter if not present
@@ -518,7 +527,9 @@ function updateLocalArticle(article, devtoResult) {
     );
   }
 
-  if (!frontmatter.devto_url) {
+  // Skip the URL for drafts: a draft's `url` is a temp slug that changes on
+  // publish. devto_id is stable, so a later live run still matches and fills it.
+  if (writeUrl && !frontmatter.devto_url) {
     updatedContent = updatedContent.replace(
       /^(---\n)/,
       `$1devto_url: "${devtoResult.url}"\n`,
