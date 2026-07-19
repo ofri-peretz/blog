@@ -406,6 +406,14 @@ async function publishArticle(article, existingArticles, dryRun = false) {
 
   const payload = createArticlePayload(article);
 
+  // Draft mode (DEVTO_DRAFT=1): a NEW article is created as a dev.to draft
+  // (published:false) so a cover image can be added and it can be reviewed
+  // before going public. An already-live post keeps its published state —
+  // draft mode must NEVER unpublish a live article, so gate on !existingArticle.
+  if (process.env.DEVTO_DRAFT === "1" && !existingArticle) {
+    payload.article.published = false;
+  }
+
   if (dryRun) {
     if (existingArticle) {
       console.log(
@@ -418,7 +426,13 @@ async function publishArticle(article, existingArticles, dryRun = false) {
       console.log(
         `   🆕 [NEW] No match found on DEV.TO (checked by ID and Title)`,
       );
-      console.log(`   📋 [DRY RUN] Mode: CREATE new post`);
+      console.log(
+        `   📋 [DRY RUN] Mode: CREATE new post${
+          process.env.DEVTO_DRAFT === "1"
+            ? " (DRAFT — private until you publish it)"
+            : ""
+        }`,
+      );
     }
     console.log(`      Slug: ${slug}`);
     console.log(`      Title: ${payload.article.title}`);
