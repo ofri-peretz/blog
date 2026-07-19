@@ -112,14 +112,20 @@ export function classifyKey(keyParts: string[]): {
   const key = segments.join("/");
   if (ns === "npm" && rest.length > 0) return { key, kind: "npm" };
   if (ns === "gh" && rest.length > 0) return { key, kind: "gh" };
+  // /go/r/<hash> — a STORED redirect: the destination lives in the short_links
+  // row, never in the client link (no ?to=). Classified external so a missing
+  // row fails safe to the blog home instead of deriving an /articles/ path.
+  if (ns === "r") return { key, kind: "external" };
   return { key, kind: "article" };
 }
 
 // ── Default destination (used when no row, or a guarded-out row) ──────
 /**
  * Derive the zero-config destination for a key. Articles get utm_* params
- * forwarded (attribution continuity); npm/gh map to the public package /
- * repo page; `external` with no row has nowhere to go, so → blog home.
+ * forwarded (attribution continuity); npm/gh map to the public package / repo
+ * page. `external` is a /go/r/ STORED redirect with NO derivable target — its
+ * destination lives in the short_links row, so with no row it fails safe to the
+ * blog home. The client never passes a URL (no ?to=); only a saved slug.
  */
 export function deriveDefault(
   kind: LinkKind,
@@ -140,7 +146,8 @@ export function deriveDefault(
     }
     return dest.toString();
   }
-  // external / empty key — no derivable target, land on the blog home.
+  // external / empty key — no derivable target (a stored redirect resolves from
+  // its row; a missing row lands here). Land on the blog home.
   return `${BLOG_ORIGIN}/`;
 }
 

@@ -89,15 +89,15 @@ If this page earns a bookmark, take it — and [follow me on Dev.to](https://dev
 
 Goodhart, C. A. E. (1975). "Problems of Monetary Management: The UK Experience." *Papers in Monetary Economics*, Reserve Bank of Australia. The original observation that statistical regularities collapse once used for control — the mechanism behind every widening proxy gap.
 
-Strathern, M. (1997). "'Improving Ratings': Audit in the British University System." *European Review*, 5(3), 305–321. The source of the familiar measure-becomes-target phrasing commonly misattributed to Goodhart; her university-audit case is itself a proxy-gap study.
+Strathern, M. (1997). "['Improving Ratings': Audit in the British University System](https://www.cambridge.org/core/journals/european-review/article/abs/improving-ratings-audit-in-the-british-university-system/FC2EE640C0C44E3DB87C29FB666E9AAB)." *European Review*, 5(3), 305–321. The source of the familiar measure-becomes-target phrasing commonly misattributed to Goodhart; her university-audit case is itself a proxy-gap study.
 
-Muller, J. Z. (2018). *The Tyranny of Metrics*. Princeton University Press. The book-length catalog of proxy failures across medicine, education, policing, and business — the surgeon-scorecard case above is his.
+Muller, J. Z. (2018). *[The Tyranny of Metrics](https://press.princeton.edu/books/paperback/9780691191911/the-tyranny-of-metrics)*. Princeton University Press. The book-length catalog of proxy failures across medicine, education, policing, and business — the surgeon-scorecard case above is his.
 
-Forsgren, N., Humble, J., & Kim, G. (2018). *Accelerate: The Science of Lean Software and DevOps*. IT Revolution Press. Defines the DORA metrics and, notably, pairs speed metrics with stability metrics precisely to resist single-proxy gaming.
+Forsgren, N., Humble, J., & Kim, G. (2018). *[Accelerate: The Science of Lean Software and DevOps](https://itrevolution.com/product/accelerate/)*. IT Revolution Press. Defines the DORA metrics and, notably, pairs speed metrics with stability metrics precisely to resist single-proxy gaming.
 
-Forsgren, N., Storey, M.-A., Maddila, C., Zimmermann, T., Houck, B., & Butler, J. (2021). "The SPACE of Developer Productivity." *ACM Queue*, 19(1). The framework that made "no single metric" a design principle rather than a disclaimer — prior art for per-metric counter-pairing.
+Forsgren, N., Storey, M.-A., Maddila, C., Zimmermann, T., Houck, B., & Butler, J. (2021). "[The SPACE of Developer Productivity](https://doi.org/10.1145/3454122.3454124)." *ACM Queue*, 19(1). The framework that made "no single metric" a design principle rather than a disclaimer — prior art for per-metric counter-pairing.
 
-DeMarco, T. (2009). "Software Engineering: An Idea Whose Time Has Come and Gone?" *IEEE Software*, 26(4). A founder of software-metrics culture revisiting how much control measurement should really carry — the field's most cited note of metrics humility.
+DeMarco, T. (2009). "[Software Engineering: An Idea Whose Time Has Come and Gone?](https://doi.org/10.1109/MS.2009.101)" *IEEE Software*, 26(4). A founder of software-metrics culture revisiting how much control measurement should really carry — the field's most cited note of metrics humility.
 
 ---
 

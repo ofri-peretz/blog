@@ -88,13 +88,13 @@ If this is the reference page you'll reach for the next time someone hands you a
 
 ## References
 
-1. Sokolova, M., & Lapalme, G. (2009). A systematic analysis of performance measures for classification tasks. *Information Processing & Management*, 45(4), 427–437. First comprehensive treatment of the conditions under which accuracy fails as a classification metric, including the base-rate sensitivity problem.
+1. Sokolova, M., & Lapalme, G. (2009). [A systematic analysis of performance measures for classification tasks](https://doi.org/10.1016/j.ipm.2009.03.002). *Information Processing & Management*, 45(4), 427–437. First comprehensive treatment of the conditions under which accuracy fails as a classification metric, including the base-rate sensitivity problem.
 
-2. Davis, J., & Goadrich, M. (2006). The relationship between Precision-Recall and ROC curves. *Proceedings of the 23rd International Conference on Machine Learning (ICML)*. Foundational work on why precision-recall curves dominate ROC curves for imbalanced class distributions — the theoretical grounding for why recall matters more than accuracy when one class is rare.
+2. Davis, J., & Goadrich, M. (2006). [The relationship between Precision-Recall and ROC curves](https://doi.org/10.1145/1143844.1143874). *Proceedings of the 23rd International Conference on Machine Learning (ICML)*. Foundational work on why precision-recall curves dominate ROC curves for imbalanced class distributions — the theoretical grounding for why recall matters more than accuracy when one class is rare.
 
 3. NIST Software Assurance Reference Dataset (SARD). NIST SAMATE project. [samate.nist.gov/SARD/](https://samate.nist.gov/SARD/). Ground-truth labeled corpus used as the methodological basis for fixture design in structured detector benchmarks.
 
-4. Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, 27(8), 861–874. Best single-paper reference for the full classification metric landscape, including the relationship between sensitivity (recall), specificity, and the tradeoffs that determine which metrics apply in a given problem domain.
+4. Fawcett, T. (2006). [An introduction to ROC analysis](https://doi.org/10.1016/j.patrec.2005.10.010). *Pattern Recognition Letters*, 27(8), 861–874. Best single-paper reference for the full classification metric landscape, including the relationship between sensitivity (recall), specificity, and the tradeoffs that determine which metrics apply in a given problem domain.
 
 ---
 

@@ -128,15 +128,15 @@ If this is the reference page you wished vendor tables came with, bookmark it an
 
 ## References
 
-Sokolova, M., & Lapalme, G. (2009). A systematic analysis of performance measures for classification tasks. *Information Processing & Management*, 45(4), 427–437. The standard taxonomy of classification metrics — which measures are invariant to which changes in the confusion matrix, and therefore which are safe to compare across corpora.
+Sokolova, M., & Lapalme, G. (2009). [A systematic analysis of performance measures for classification tasks](https://doi.org/10.1016/j.ipm.2009.03.002). *Information Processing & Management*, 45(4), 427–437. The standard taxonomy of classification metrics — which measures are invariant to which changes in the confusion matrix, and therefore which are safe to compare across corpora.
 
-Van Rijsbergen, C. J. (1979). *Information Retrieval* (2nd ed.). Butterworths. The origin of the effectiveness measure that F1 descends from, including the β parameter — the primary source for the fact that F1's equal weighting was always meant to be adjustable.
+Van Rijsbergen, C. J. (1979). *[Information Retrieval](https://www.dcs.gla.ac.uk/Keith/Preface.html)* (2nd ed.). Butterworths. The origin of the effectiveness measure that F1 descends from, including the β parameter — the primary source for the fact that F1's equal weighting was always meant to be adjustable.
 
-Davis, J., & Goadrich, M. (2006). The relationship between Precision-Recall and ROC curves. *Proceedings of ICML 2006*. Why precision-recall space is the right lens under class imbalance, and the context for when curves (threshold tools) versus points (binary tools) are the honest report.
+Davis, J., & Goadrich, M. (2006). [The relationship between Precision-Recall and ROC curves](https://doi.org/10.1145/1143844.1143874). *Proceedings of ICML 2006*. Why precision-recall space is the right lens under class imbalance, and the context for when curves (threshold tools) versus points (binary tools) are the honest report.
 
 OWASP Benchmark Project. [owasp.org/www-project-benchmark](https://owasp.org/www-project-benchmark/). A public, scored SAST benchmark built on TP/FP-derived metrics over a Java test suite — the closest existing prior art to a hand-labeled, operating-point leaderboard.
 
-Saito, T., & Rehmsmeier, M. (2015). The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets. *PLOS ONE*, 10(3), e0118432. The companion piece for why ROC-style reporting flatters tools when real positives are rare — which in security codebases they always are.
+Saito, T., & Rehmsmeier, M. (2015). [The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets](https://doi.org/10.1371/journal.pone.0118432). *PLOS ONE*, 10(3), e0118432. The companion piece for why ROC-style reporting flatters tools when real positives are rare — which in security codebases they always are.
 
 ---
 

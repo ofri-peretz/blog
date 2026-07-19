@@ -116,7 +116,7 @@ NIST SAMATE. (2024). *Software Assurance Reference Dataset (SARD)*. National Ins
 
 Jacobs, A. Z., & Wallach, H. (2021). Measurement and fairness. *Proceedings of the 2021 ACM Conference on Fairness, Accountability, and Transparency (FAccT)*. https://doi.org/10.1145/3442188.3445901 — On measurement validity in machine learning systems; the concept of construct validity (are you measuring what you think you're measuring?) applies directly to security ground truth.
 
-Krippendorff, K. (2004). *Content Analysis: An Introduction to Its Methodology* (2nd ed.). SAGE Publications. — The standard reference for inter-rater reliability; the quantitative method for measuring how much two human labelers agree, which is what you'd need to formally validate a security ground truth corpus.
+Krippendorff, K. (2004). *[Content Analysis: An Introduction to Its Methodology](https://books.google.com/books/about/Content_Analysis.html?id=q657o3M3C8cC)* (2nd ed.). SAGE Publications. — The standard reference for inter-rater reliability; the quantitative method for measuring how much two human labelers agree, which is what you'd need to formally validate a security ground truth corpus.
 
 MITRE. (2024). *Common Weakness Enumeration (CWE)*. https://cwe.mitre.org — The community-maintained taxonomy of software weaknesses; using CWE IDs anchors ground truth labels to a community-reviewed definition rather than to individual author judgment alone.
 

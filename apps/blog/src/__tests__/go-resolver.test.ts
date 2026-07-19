@@ -77,6 +77,13 @@ describe("classifyKey", () => {
   it("bare /go/gh (no repo) falls through to article", () => {
     expect(classifyKey(["gh"])).toEqual({ key: "gh", kind: "article" });
   });
+
+  it("r/<hash> → external (a stored redirect; destination lives in the row)", () => {
+    expect(classifyKey(["r", "abc123"])).toEqual({
+      key: "r/abc123",
+      kind: "external",
+    });
+  });
 });
 
 // ── deriveDefault ────────────────────────────────────────────────────
@@ -107,6 +114,14 @@ describe("deriveDefault", () => {
 
   it("external / empty key → blog home", () => {
     expect(deriveDefault("external", "", params())).toBe(`${BLOG}/`);
+  });
+
+  it("external stored redirect with no row also lands on the blog home", () => {
+    // /go/r/<hash> whose row is missing (or guarded out) has no derivable
+    // destination — deriveDefault sends it home, never a 404 or an
+    // /articles/<hash> path. (The client never passes a URL, so there is
+    // nothing else to fall back to.)
+    expect(deriveDefault("external", "r/deadbeef", params())).toBe(`${BLOG}/`);
   });
 });
 
@@ -384,7 +399,11 @@ describe("resolveGoDestination", () => {
     // No `now` passed → exercises the default-parameter branch. A far-future
     // expiry must still pass under the real clock.
     const rows: ShortLinkRow[] = [
-      { key: "my-slug", expires_at: "2999-01-01T00:00:00Z", destination: `${BLOG}/x` },
+      {
+        key: "my-slug",
+        expires_at: "2999-01-01T00:00:00Z",
+        destination: `${BLOG}/x`,
+      },
     ];
     const res = resolveGoDestination({
       keyParts: ["my-slug"],
@@ -442,7 +461,11 @@ describe("buildClickEventBody", () => {
   };
 
   it("emits the spectator schema with app + no person profile", () => {
-    const body = buildClickEventBody(props, "https://dev.to", "2026-07-18T00:00:00Z");
+    const body = buildClickEventBody(
+      props,
+      "https://dev.to",
+      "2026-07-18T00:00:00Z",
+    );
     expect(body).toEqual({
       event: "short_link_click",
       distinct_id: "server-go",
@@ -511,10 +534,18 @@ describe("GET /go/[...key] (route wrapper)", () => {
     delete process.env.NEXT_PUBLIC_POSTHOG_HOST;
   });
 
-  const call = (path: string, headers: Record<string, string> = {}, key?: string[]) =>
+  const call = (
+    path: string,
+    headers: Record<string, string> = {},
+    key?: string[],
+  ) =>
     GET(new Request(`${BLOG}${path}`, { headers }), {
       params: Promise.resolve({
-        key: (key ?? path.replace(/^\/go\//, "").split("?")[0].split("/")) as string[],
+        key: (key ??
+          path
+            .replace(/^\/go\//, "")
+            .split("?")[0]
+            .split("/")) as string[],
       }),
     });
 

@@ -139,13 +139,13 @@ Teams that skip positions 1–2 pay for 3–4 to catch what the editor could hav
 
 ## References
 
-1. Chess, B., & West, J. (2007). *Secure Programming with Static Analysis*. Addison-Wesley. The foundational industrial treatment of static analysis for security — data-flow and taint techniques, rule design, and the false-positive economics that separate a linter from a SAST engine.
+1. Chess, B., & West, J. (2007). *[Secure Programming with Static Analysis](https://books.google.com/books/about/Secure_Programming_with_Static_Analysis.html?id=DnUbmQEACAAJ)*. Addison-Wesley. The foundational industrial treatment of static analysis for security — data-flow and taint techniques, rule design, and the false-positive economics that separate a linter from a SAST engine.
 
-2. NIST IR 8397: *Guidelines on Minimum Standards for Developer Verification of Software*. National Institute of Standards and Technology, 2021. nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8397.pdf. Note that NIST itself uses "static analysis" and "SAST" interchangeably here — even listing ESLint among its example SAST tools — which is itself a data point on how loosely the industry applies the label.
+2. NIST IR 8397: *[Guidelines on Minimum Standards for Developer Verification of Software](https://nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8397.pdf)*. National Institute of Standards and Technology, 2021. nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8397.pdf. Note that NIST itself uses "static analysis" and "SAST" interchangeably here — even listing ESLint among its example SAST tools — which is itself a data point on how loosely the industry applies the label.
 
-3. OWASP Source Code Analysis Tools. owasp.org/www-community/Source_Code_Analysis_Tools. OWASP's community-maintained list of source-code (SAST) analysis tools. For the automated-analysis-vs-manual-review distinction specifically, see OWASP's [Static Code Analysis](https://owasp.org/www-community/controls/Static_Code_Analysis) control page.
+3. [OWASP Source Code Analysis Tools](https://owasp.org/www-community/Source_Code_Analysis_Tools). owasp.org/www-community/Source_Code_Analysis_Tools. OWASP's community-maintained list of source-code (SAST) analysis tools. For the automated-analysis-vs-manual-review distinction specifically, see OWASP's [Static Code Analysis](https://owasp.org/www-community/controls/Static_Code_Analysis) control page.
 
-4. Livshits, B., & Lam, M. S. (2005). Finding security vulnerabilities in Java applications with static analysis. *USENIX Security Symposium*, 14. The structural basis for what makes taint analysis different from pattern matching.
+4. Livshits, B., & Lam, M. S. (2005). [Finding security vulnerabilities in Java applications with static analysis](https://www.usenix.org/conference/14th-usenix-security-symposium/finding-security-vulnerabilities-java-applications-static). *USENIX Security Symposium*, 14. The structural basis for what makes taint analysis different from pattern matching.
 
 5. Zakas, N. C. (2013, July 16). Introducing ESLint. humanwhocodes.com. https://humanwhocodes.com/blog/2013/07/16/introducing-eslint/. The original announcement of ESLint's pluggable, per-file rule architecture — the design decision this whole taxonomy hangs on.
 

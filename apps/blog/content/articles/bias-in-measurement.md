@@ -105,13 +105,13 @@ If a suspiciously clean number ever lands in your own draft, bookmark this page 
 
 ## References
 
-Campbell, D. T. (1979). Assessing the impact of planned social change. *Evaluation and Program Planning*, 2(1), 67–90. Introduces Campbell's Law — "the more any quantitative social indicator is used for social decision-making, the more subject it will be to corruption pressures" — the governance version of measurement bias, where the act of measuring a metric changes the behavior being measured.
+Campbell, D. T. (1979). [Assessing the impact of planned social change](https://doi.org/10.1016/0149-7189%2879%2990048-X). *Evaluation and Program Planning*, 2(1), 67–90. Introduces Campbell's Law — "the more any quantitative social indicator is used for social decision-making, the more subject it will be to corruption pressures" — the governance version of measurement bias, where the act of measuring a metric changes the behavior being measured.
 
 Goodhart, C. (1975). Problems of monetary management: the UK experience. *Papers in Monetary Economics*, Reserve Bank of Australia. The original observation behind corpus bias: when a measure becomes a target, the measure ceases to be a good measure. (The familiar "becomes a target" phrasing is Strathern's 1997 gloss on Goodhart, not a direct quote — see [Goodhart's Law, explained](https://ofriperetz.dev/articles/goodharts-law-explained) for the distinction.)
 
 Huff, D. (1954). *How to Lie with Statistics*. W. W. Norton & Company. Chapter 1, "The Sample with the Built-in Bias," covers selection bias — and the built-in exclusions behind survivorship — with examples that are still the clearest treatment of the problem in print.
 
-Kitchenham, B., & Pfleeger, S. (2002). Principles of Survey Research Part 4: Questionnaire Evaluation. *ACM SIGSOFT Software Engineering Notes*, 27(3), 20–23. On questionnaire validity and reliability — the framework that distinguishes construct validity (measuring what you claim to measure) from reliability (the instrument producing consistent readings, not introducing error).
+Kitchenham, B., & Pfleeger, S. (2002). [Principles of Survey Research Part 4: Questionnaire Evaluation](https://doi.org/10.1145/638574.638580). *ACM SIGSOFT Software Engineering Notes*, 27(3), 20–23. On questionnaire validity and reliability — the framework that distinguishes construct validity (measuring what you claim to measure) from reliability (the instrument producing consistent readings, not introducing error).
 
 ---
 
