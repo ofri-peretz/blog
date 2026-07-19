@@ -17,7 +17,10 @@
 
 import { revalidateTag } from "next/cache";
 
-const TAGS = ["ratchet", "github"] as const;
+// "short-links" covers the /go/ short_links routing table (read via
+// getCachedShortLinks) — the publisher hits this route after its upsert so
+// new/repointed rows repoint /go/ links in seconds.
+const TAGS = ["ratchet", "github", "short-links"] as const;
 
 export async function POST(request: Request): Promise<Response> {
   const secret = process.env.REVALIDATE_SECRET;

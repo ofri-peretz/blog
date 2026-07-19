@@ -2,6 +2,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
+import type { ShortLinkRow } from "@/app/go/resolver";
+
 // Cached Supabase queries — the single read path for blog API routes.
 //
 // Architecture (revised 2026-05-25):
@@ -36,6 +38,13 @@ const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 // Cache-bust tags. revalidateTag('ratchet') from a webhook flips every entry
 // tagged below in a single call.
 const TAG_RATCHET = "ratchet";
+
+// Separate tag for the /go/ short-link table: routing rows change on
+// publish (publisher upsert), not on the daily metrics ingest, so they get
+// their own invalidation channel — revalidateTag('short-links') after a
+// short_links upsert repoints every /go/ link in seconds without flushing
+// the metrics caches (and vice versa).
+const TAG_SHORT_LINKS = "short-links";
 
 // Per-render Supabase client — React.cache() dedupes within one server render
 // so multiple sections of the same page share a single connection.
@@ -321,4 +330,41 @@ export const getCachedPluginsWithDailyData = unstable_cache(
   },
   ["plugins-with-daily-data"],
   { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_RATCHET] },
+);
+
+// ─── /go/ short-link table (short_links) ─────────────────────────────
+//
+// The routing table behind the /go/ redirect layer (a small URL
+// shortener — see src/app/go/resolver.ts and supabase/migrations/
+// *_short_links.sql). Read by the /go/[...key] route handler: a request
+// stamped `?utm_source=devto` looks up its key here and, if the row has a
+// `platforms.devto` copy, 302s there so platform readers stay native; no
+// row (or no override) falls back to the derived default (blog canonical
+// /articles/<slug>, npm/gh page). Rows are upserted by the publisher at
+// publish time — zero manual rows for the common case.
+//
+// Whole-table fetch, not per-key: the table is tiny (one row per
+// OVERRIDDEN link — most links have none) and one cache entry beats a
+// cache entry per key. Same fetch-all-then-filter shape as the metrics
+// fetchers above; the route closes a sync `lookup` over the result.
+
+export const getCachedShortLinks = unstable_cache(
+  async (): Promise<ShortLinkRow[]> => {
+    const client = getClient();
+    if (!client) return [];
+    const { data, error } = await client
+      .from("short_links")
+      .select(
+        "key, kind, destination, platforms, campaign, tags, active, created_at, expires_at, note",
+      );
+    if (error) {
+      // Table missing / RLS misconfig degrades to "no overrides": every
+      // /go/<slug> still 302s to its derived default. Never a 500.
+      console.error("[supabase-data] short_links:", error.message);
+      return [];
+    }
+    return (data as ShortLinkRow[]) ?? [];
+  },
+  ["short_links"],
+  { revalidate: TWELVE_HOURS_SECONDS, tags: [TAG_SHORT_LINKS] },
 );
