@@ -17,7 +17,15 @@ const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
 // Plugins we no longer actively promote. Hardcoded for v1 — a `deprecated`
 // column on the `plugins` table would be the right long-term fix.
-const DEPRECATED = new Set<string>(["eslint-plugin-crypto"]);
+const DEPRECATED = new Set<string>([
+  "eslint-plugin-crypto",
+  // Internal preset — never surface publicly
+  "@interlace/eslint-config",
+  // Serverless ecosystem — not part of the ESLint package page
+  "@interlace/serverless-iam-roles-per-function",
+  "@interlace/serverless-api-gateway-caching",
+  "@interlace/serverless-devkit",
+]);
 
 const getClient = cache((): SupabaseClient | null => {
   const url = process.env.SUPABASE_URL;
