@@ -192,7 +192,13 @@ export function pickDestination(args: {
   const { kind, key, row, utmSource, incomingSearchParams } = args;
   if (row) {
     if (utmSource && row.platforms) {
-      const platformUrl = row.platforms[utmSource];
+      // Own-property only. `utmSource` is raw `?utm_source`, so a crafted
+      // `__proto__` / `constructor` / `toString` must not read an inherited
+      // Object.prototype value (truthy, non-string → a broken `[object Object]`
+      // Location). hasOwn keeps the lookup to real per-platform copies.
+      const platformUrl = Object.hasOwn(row.platforms, utmSource)
+        ? row.platforms[utmSource]
+        : undefined;
       if (platformUrl) return platformUrl;
     }
     if (row.destination) return row.destination;
