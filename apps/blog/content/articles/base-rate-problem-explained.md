@@ -123,13 +123,13 @@ The honest version: high precision on a balanced benchmark means the detector **
 
 1. Kahneman, D. (2011). *Thinking, Fast and Slow*. Farrar, Straus and Giroux. Chapter 16 covers base rate neglect — the cognitive failure mode that makes this problem invisible even to people who know the math.
 
-2. Bayes, T., & Price, R. (1763). An essay towards solving a problem in the doctrine of chances. *Philosophical Transactions of the Royal Society*, 53, 370–418. The original formulation, available in full from JSTOR.
+2. Bayes, T., & Price, R. (1763). [An essay towards solving a problem in the doctrine of chances](https://doi.org/10.1098/rstl.1763.0053). *Philosophical Transactions of the Royal Society*, 53, 370–418. The original formulation, available in full from JSTOR.
 
-3. Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, 27(8), 861–874. Section 7 on class imbalance covers this same mechanism in machine-learning framing — the math is identical.
+3. Fawcett, T. (2006). [An introduction to ROC analysis](https://doi.org/10.1016/j.patrec.2005.10.010). *Pattern Recognition Letters*, 27(8), 861–874. Section 7 on class imbalance covers this same mechanism in machine-learning framing — the math is identical.
 
-4. Saito, T., & Rehmsmeier, M. (2015). The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets. *PLOS ONE*, 10(3), e0118432. The direct argument for why precision-recall curves matter more than ROC on imbalanced data — where a low base rate does its damage.
+4. Saito, T., & Rehmsmeier, M. (2015). [The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets](https://doi.org/10.1371/journal.pone.0118432). *PLOS ONE*, 10(3), e0118432. The direct argument for why precision-recall curves matter more than ROC on imbalanced data — where a low base rate does its damage.
 
-5. Ioannidis, J. P. A. (2005). Why most published research findings are false. *PLOS Medicine*, 2(8), e124. The base rate problem applied to entire research literatures: when the prior probability of a true hypothesis is low, even well-powered studies produce mostly false positives — the closest prior art for what a low base rate does to any detector, statistical test, or screen.
+5. Ioannidis, J. P. A. (2005). [Why most published research findings are false](https://doi.org/10.1371/journal.pmed.0020124). *PLOS Medicine*, 2(8), e124. The base rate problem applied to entire research literatures: when the prior probability of a true hypothesis is low, even well-powered studies produce mostly false positives — the closest prior art for what a low base rate does to any detector, statistical test, or screen.
 
 ---
 

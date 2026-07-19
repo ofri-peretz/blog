@@ -81,13 +81,13 @@ If this cleared up why a rising score can still be the wrong signal, bookmark th
 
 Goodhart, C. A. E. (1975). Problems of Monetary Management: The UK Experience. *Papers in Monetary Economics*, Reserve Bank of Australia, vol. 1. The original paper — monetary policy context, but Goodhart himself never claimed the principle was domain-specific.
 
-Strathern, M. (1997). "Improving Ratings": Audit in the British University System. *European Review*, 5(3), 305–321. The source of the "measure becomes a target" phrasing commonly misattributed to Goodhart; her academic-audit case is the generalization that made it a standalone aphorism.
+Strathern, M. (1997). ["Improving Ratings": Audit in the British University System](https://doi.org/10.1002/%28SICI%291234-981X%28199707%295:3%3C305::AID-EURO184%3E3.0.CO;2-4). *European Review*, 5(3), 305–321. The source of the "measure becomes a target" phrasing commonly misattributed to Goodhart; her academic-audit case is the generalization that made it a standalone aphorism.
 
-Campbell, D. T. (1979). Assessing the Impact of Planned Social Change. *Evaluation and Program Planning*, 2(1), 67–90. Campbell's Law — the independent social-science formulation of the same structural mechanism, reached from outside economics entirely.
+Campbell, D. T. (1979). [Assessing the Impact of Planned Social Change](https://doi.org/10.1016/0149-7189%2879%2990048-X). *Evaluation and Program Planning*, 2(1), 67–90. Campbell's Law — the independent social-science formulation of the same structural mechanism, reached from outside economics entirely.
 
-Graham, J. R., Harvey, C. R., & Rajgopal, S. (2005). The Economic Implications of Corporate Financial Reporting. *Journal of Accounting and Economics*, 40(1–3), 3–73. A survey of 401 financial executives in which a large majority — roughly 78% — reported they would sacrifice long-term economic value to smooth reported earnings or hit an earnings target. The empirical source behind the earnings-management example above.
+Graham, J. R., Harvey, C. R., & Rajgopal, S. (2005). [The Economic Implications of Corporate Financial Reporting](https://doi.org/10.1016/j.jacceco.2005.01.002). *Journal of Accounting and Economics*, 40(1–3), 3–73. A survey of 401 financial executives in which a large majority — roughly 78% — reported they would sacrifice long-term economic value to smooth reported earnings or hit an earnings target. The empirical source behind the earnings-management example above.
 
-Manheim, D., & Garrabrant, S. (2018). Categorizing Variants of Goodhart's Law. *arXiv:1803.04585*. A modern taxonomy separating the distinct failure modes bundled under "Goodhart's Law" (regressional, extremal, causal, adversarial) — useful background before designing a measurement system of your own.
+Manheim, D., & Garrabrant, S. (2018). [Categorizing Variants of Goodhart's Law](https://arxiv.org/abs/1803.04585). *arXiv:1803.04585*. A modern taxonomy separating the distinct failure modes bundled under "Goodhart's Law" (regressional, extremal, causal, adversarial) — useful background before designing a measurement system of your own.
 
 ---
 

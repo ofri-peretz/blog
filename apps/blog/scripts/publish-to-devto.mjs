@@ -28,7 +28,10 @@ import { join, dirname, basename } from "path";
 import { fileURLToPath } from "url";
 import * as dotenv from "dotenv";
 
-import { transformBodyForDevto } from "./devto-link-transforms.mjs";
+import {
+  collectDevtoLinks,
+  transformBodyForDevto,
+} from "./devto-link-transforms.mjs";
 
 dotenv.config();
 
@@ -198,11 +201,12 @@ function createArticlePayload(article) {
     return `**[${label}](${url})**`;
   });
 
-  // Dev.to render only: absolutize relative /articles/ links, then route
-  // EVERY owned link through /go/ — cross-article + npm/GitHub by namespace,
-  // and other owned pages (home, /foundations, *.interlace.tools) via the
-  // /go/l?to= passthrough. dev.to and third-party links stay native/direct.
-  // Local markdown stays UTM-free and timeless; canonical_url is NEVER touched.
+  // Dev.to render only: route EVERY link through /go/ (analytics + repointable),
+  // absolutize /articles/ links, strip blog-only heading anchors + jump-nav.
+  // collectDevtoLinks records the slug→URL rows for external destinations so we
+  // upsert them before publish — the destination never rides in the client
+  // link. Local markdown stays UTM-free and timeless; canonical_url is UNTOUCHED.
+  const storedLinks = collectDevtoLinks(transformedBody, slug);
   transformedBody = transformBodyForDevto(transformedBody, slug);
 
   // Build tags array
@@ -227,6 +231,9 @@ function createArticlePayload(article) {
       main_image: frontmatter.cover_image || null,
       series: frontmatter.series || null,
     },
+    // slug→URL rows for the external /go/r/ links in this body (upserted at
+    // publish time; not sent to the dev.to API).
+    storedLinks,
   };
 }
 
@@ -326,6 +333,50 @@ async function upsertShortLink(slug, devtoUrl) {
 }
 
 /**
+ * Batch-upsert the stored-redirect rows (slug → external URL) a dev.to body
+ * needs, so every /go/r/ link in it resolves. Runs at publish time, BEFORE the
+ * article is live — the destination is saved server-side and the client link
+ * only ever carries the slug (no ?to=). Deterministic slugs make this
+ * idempotent. Requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY; never throws.
+ */
+async function upsertStoredLinks(links) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey || !links || links.length === 0) return;
+
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/short_links?on_conflict=key`,
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceKey,
+          authorization: `Bearer ${serviceKey}`,
+          "content-type": "application/json",
+          prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(
+          links.map((l) => ({
+            key: l.key,
+            kind: l.kind,
+            destination: l.destination,
+          })),
+        ),
+      },
+    );
+    if (!res.ok) {
+      // Table missing (migration not applied) / RLS → skip; those /go/r/ links
+      // fail safe to the blog home until the rows exist. Never fails a publish.
+      console.warn(
+        `      short_links stored upsert: ${res.status} (${links.length} rows)`,
+      );
+    }
+  } catch (err) {
+    console.warn("      short_links stored upsert failed:", err.message);
+  }
+}
+
+/**
  * Publish article to DEV.TO
  */
 async function publishArticle(article, existingArticles, dryRun = false) {
@@ -389,7 +440,7 @@ async function publishArticle(article, existingArticles, dryRun = false) {
             "api-key": DEVTO_API_KEY,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ article: payload.article }),
         },
       );
     } else {
@@ -419,6 +470,7 @@ async function publishArticle(article, existingArticles, dryRun = false) {
     // Post-publish side effects — env-gated, silent no-ops when unset, so
     // the publish flow is byte-identical without them.
     await sendPublishAnnotation(slug);
+    await upsertStoredLinks(payload.storedLinks);
     await upsertShortLink(slug, result.url);
 
     return {

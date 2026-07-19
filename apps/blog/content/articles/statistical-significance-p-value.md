@@ -93,15 +93,15 @@ A p-value is a narrow tool with one honest job: stopping you from selling noise 
 
 ## References
 
-Wasserstein, R. L., & Lazar, N. A. (2016). The ASA Statement on p-Values: Context, Process, and Purpose. *The American Statistician*, 70(2), 129–133. Six principles from the field's own professional body; principle 2 — "p-values do not measure the probability that the studied hypothesis is true" — is the direction-of-conditioning error in one line.
+Wasserstein, R. L., & Lazar, N. A. (2016). [The ASA Statement on p-Values: Context, Process, and Purpose](https://doi.org/10.1080/00031305.2016.1154108). *The American Statistician*, 70(2), 129–133. Six principles from the field's own professional body; principle 2 — "p-values do not measure the probability that the studied hypothesis is true" — is the direction-of-conditioning error in one line.
 
-Greenland, S., Senn, S. J., Rothman, K. J., Carlin, J. B., Poole, C., Goodman, S. N., & Altman, D. G. (2016). Statistical tests, P values, confidence intervals, and power: a guide to misinterpretations. *European Journal of Epidemiology*, 31, 337–350. The catalog of 25 misinterpretations. Read it before reviewing anything with a p in it.
+Greenland, S., Senn, S. J., Rothman, K. J., Carlin, J. B., Poole, C., Goodman, S. N., & Altman, D. G. (2016). [Statistical tests, P values, confidence intervals, and power: a guide to misinterpretations](https://doi.org/10.1007/s10654-016-0149-3). *European Journal of Epidemiology*, 31, 337–350. The catalog of 25 misinterpretations. Read it before reviewing anything with a p in it.
 
 Fisher, R. A. (1925). *Statistical Methods for Research Workers*. Oliver & Boyd. Where the 0.05 convention comes from — notable for how loosely Fisher himself held the line that later hardened into dogma.
 
-McNemar, Q. (1947). Note on the sampling error of the difference between correlated proportions or percentages. *Psychometrika*, 12(2), 153–157. The paired-proportions test — the correct tool whenever two systems are scored on the same items.
+McNemar, Q. (1947). [Note on the sampling error of the difference between correlated proportions or percentages](https://doi.org/10.1007/BF02295996). *Psychometrika*, 12(2), 153–157. The paired-proportions test — the correct tool whenever two systems are scored on the same items.
 
-Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). The extent and consequences of p-hacking in science. *PLOS Biology*, 13(3), e1002106. Text-mined p-value distributions across disciplines; the empirical case that selective analysis is widespread, and why pre-declared tests and published nulls matter.
+Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). [The extent and consequences of p-hacking in science](https://doi.org/10.1371/journal.pbio.1002106). *PLOS Biology*, 13(3), e1002106. Text-mined p-value distributions across disciplines; the empirical case that selective analysis is widespread, and why pre-declared tests and published nulls matter.
 
 ---
 

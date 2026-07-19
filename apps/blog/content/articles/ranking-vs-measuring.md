@@ -100,11 +100,11 @@ This page is built to be a reference — bookmark it for the next time a leaderb
 
 ## References
 
-Stevens, S. S. (1946). On the Theory of Scales of Measurement. *Science*, 103(2684), 677–680. The origin of nominal/ordinal/interval/ratio and of the legal-operations idea this article's first table compresses.
+Stevens, S. S. (1946). [On the Theory of Scales of Measurement](https://doi.org/10.1126/science.103.2684.677). *Science*, 103(2684), 677–680. The origin of nominal/ordinal/interval/ratio and of the legal-operations idea this article's first table compresses.
 
-Benjamini, Y., & Hochberg, Y. (1995). Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing. *Journal of the Royal Statistical Society, Series B*, 57(1), 289–300. The modern answer to leaderboards that run hundreds of comparisons: control the fraction of false discoveries, not the chance of any.
+Benjamini, Y., & Hochberg, Y. (1995). [Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x). *Journal of the Royal Statistical Society, Series B*, 57(1), 289–300. The modern answer to leaderboards that run hundreds of comparisons: control the fraction of false discoveries, not the chance of any.
 
-Demšar, J. (2006). Statistical Comparisons of Classifiers over Multiple Data Sets. *Journal of Machine Learning Research*, 7, 1–30. The canonical benchmarking protocol — rank-based tests used deliberately, with significance machinery attached.
+Demšar, J. (2006). [Statistical Comparisons of Classifiers over Multiple Data Sets](https://www.jmlr.org/papers/v7/demsar06a.html). *Journal of Machine Learning Research*, 7, 1–30. The canonical benchmarking protocol — rank-based tests used deliberately, with significance machinery attached.
 
 MITRE. *CWE Top 25 Most Dangerous Software Weaknesses — Methodology*. https://cwe.mitre.org/top25/ — a real-world ranking with a published, recomputable formula; the standard other leaderboards should be held to.
 

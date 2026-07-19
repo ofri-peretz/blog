@@ -119,13 +119,13 @@ This page is built to be a reference — bookmark it, and [follow me on Dev.to](
 
 1. National Academies of Sciences, Engineering, and Medicine. (2019). *Reproducibility and Replicability in Science*. The National Academies Press. [nap.nationalacademies.org](https://nap.nationalacademies.org/catalog/25303/reproducibility-and-replicability-in-science) — The authoritative report that standardized these definitions. Available free.
 
-2. Drummond, C. (2009). Replicability is not reproducibility: nor is it good science. *Proceedings of the Evaluation Methods for Machine Learning Workshop, 26th ICML*. — First cleanly distinguished the two in a computational context, a decade before the NAS report.
+2. Drummond, C. (2009). [Replicability is not reproducibility: nor is it good science](https://www.site.uottawa.ca/~cdrummon/pubs/ICMLws09.pdf). *Proceedings of the Evaluation Methods for Machine Learning Workshop, 26th ICML*. — First cleanly distinguished the two in a computational context, a decade before the NAS report.
 
-3. Open Science Collaboration. (2015). Estimating the reproducibility of psychological science. *Science*, 349(6251). — The 100-study replication project behind this article's opening numbers.
+3. Open Science Collaboration. (2015). [Estimating the reproducibility of psychological science](https://doi.org/10.1126/science.aac4716). *Science*, 349(6251). — The 100-study replication project behind this article's opening numbers.
 
-4. Begley, C. G., & Ellis, L. M. (2012). Raise standards for preclinical cancer research. *Nature*, 483, 531–533. — The industrial audit that confirmed 6 of 53 landmark studies; a foundational document of the reproducibility crisis.
+4. Begley, C. G., & Ellis, L. M. (2012). [Raise standards for preclinical cancer research](https://doi.org/10.1038/483531a). *Nature*, 483, 531–533. — The industrial audit that confirmed 6 of 53 landmark studies; a foundational document of the reproducibility crisis.
 
-5. Collberg, C., & Proebsting, T. A. (2016). Repeatability in computer systems research. *Communications of the ACM*, 59(3), 62–69. — Found that a large fraction of published results couldn't be independently built or run. The gap between "we ran it" and "someone else can run it" appears in every field.
+5. Collberg, C., & Proebsting, T. A. (2016). [Repeatability in computer systems research](https://doi.org/10.1145/2812803). *Communications of the ACM*, 59(3), 62–69. — Found that a large fraction of published results couldn't be independently built or run. The gap between "we ran it" and "someone else can run it" appears in every field.
 
 ---
 

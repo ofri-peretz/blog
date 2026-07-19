@@ -103,13 +103,13 @@ Four rules for reading any benchmark, audit, or scorecard:
 
 ## References
 
-Cohen, J. (1988). *Statistical Power Analysis for the Behavioral Sciences* (2nd ed.). Lawrence Erlbaum Associates. The foundational book on power analysis — defines the small/medium/large effect size conventions (d = 0.2 / 0.5 / 0.8) used throughout statistics and cited in this article.
+Cohen, J. (1988). [*Statistical Power Analysis for the Behavioral Sciences*](https://doi.org/10.4324/9780203771587) (2nd ed.). Lawrence Erlbaum Associates. The foundational book on power analysis — defines the small/medium/large effect size conventions (d = 0.2 / 0.5 / 0.8) used throughout statistics and cited in this article.
 
-Lakens, D. (2013). Calculating and reporting effect sizes to facilitate cumulative science: a practical primer for t-tests and ANOVAs. *Frontiers in Psychology*, 4, 863. Accessible practical guide to effect size and statistical power — freely available online and the clearest non-textbook treatment of the topic.
+Lakens, D. (2013). [Calculating and reporting effect sizes to facilitate cumulative science: a practical primer for t-tests and ANOVAs](https://doi.org/10.3389/fpsyg.2013.00863). *Frontiers in Psychology*, 4, 863. Accessible practical guide to effect size and statistical power — freely available online and the clearest non-textbook treatment of the topic.
 
-Faul, F., Erdfelder, E., Lang, A.-G., & Buchner, A. (2007). G\*Power 3: A flexible statistical power analysis program for the social, behavioral, and biomedical sciences. *Behavior Research Methods*, 39(2), 175–191. The paper behind the G\*Power tool (freely available at gpower.hhu.de) — the standard software for the power calculations referenced in this article.
+Faul, F., Erdfelder, E., Lang, A.-G., & Buchner, A. (2007). [G\*Power 3: A flexible statistical power analysis program for the social, behavioral, and biomedical sciences](https://doi.org/10.3758/BF03193146). *Behavior Research Methods*, 39(2), 175–191. The paper behind the G\*Power tool (freely available at gpower.hhu.de) — the standard software for the power calculations referenced in this article.
 
-Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). The extent and consequences of p-hacking in science. *PLOS Biology*, 13(3). On what goes wrong when significance tests are applied carelessly — the publication bias and null-result-suppression problem that motivates rule four above.
+Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). [The extent and consequences of p-hacking in science](https://doi.org/10.1371/journal.pbio.1002106). *PLOS Biology*, 13(3). On what goes wrong when significance tests are applied carelessly — the publication bias and null-result-suppression problem that motivates rule four above.
 
 ---
 

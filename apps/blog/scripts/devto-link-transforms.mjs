@@ -5,23 +5,25 @@
  * render never calls this — local markdown keeps canonical absolute
  * /articles/ links and stays UTM-free and timeless.
  *
- * At publish time the dev.to copy gets (plan L5 / L5.5 / L5.6):
- *   1. Relative /articles/... links absolutized to https://ofriperetz.dev/...
- *      (relative links pushed to dev.to resolve against dev.to and break).
- *   2. Cross-article links routed through /go/<target-slug> — repointable
- *      links + X→Y edge analytics via ?from=<source-slug>.
- *   3. npmjs.com/package/<pkg> → /go/npm/<pkg> and
- *      github.com/ofri-peretz/<repo> (repo ROOT only) → /go/gh/ofri-peretz/<repo>
- *      for exact per-article click attribution. Deep GitHub paths
- *      (tree/blob/issues) and other orgs' GitHub links are never touched.
- *   4. Remaining ofriperetz.dev / *.interlace.tools links (footer, homepage,
- *      docs sites) decorated with UTMs — only domains where our PostHog runs.
+ * EVERY outbound link in the dev.to copy is routed through /go/ so every click
+ * is ours to measure and every destination is repointable. Two kinds of key:
+ *   - DERIVABLE (no DB row needed): /go/<article-slug>, /go/npm/<pkg>,
+ *     /go/gh/<owner>/<repo>. The resolver reconstructs the destination from the
+ *     key; a row only ADDS a per-platform copy (dev.to reader → dev.to copy).
+ *   - STORED  (DB row REQUIRED): everything else — owned non-article pages,
+ *     *.interlace.tools, dev.to, and every academic / commercial reference —
+ *     becomes /go/r/<hash>, a deterministic slug whose destination lives in the
+ *     short_links table. The client link NEVER carries the destination URL
+ *     (no ?to=): the reader passes a saved slug, the server looks it up. The
+ *     publisher upserts these slug→URL rows at publish time (collectDevtoLinks).
+ *
+ * Also strips blog-only heading `{#anchor}` ids and the "**Skip to:**" jump-nav
+ * (dev.to renders neither).
  *
  * Guarantees:
- *   - Links already pointing at /go/ are never rewritten (idempotent — the
- *     whole transform is a fixed point on its own output).
+ *   - Links already pointing at /go/ are never rewritten (idempotent).
  *   - Fenced code blocks are left byte-identical.
- *   - Unrecognized / non-http destinations (anchors, mailto:) pass through.
+ *   - Non-http destinations (anchors, mailto:) pass through untouched.
  *
  * @author Ofri Peretz
  */
@@ -40,27 +42,45 @@ const HEADING_ANCHOR_REGEX = /^(#{1,6}\s.*?)\s*\{#[^}]+\}\s*$/;
 /** The blog-only "**Skip to:**" jump-nav line (dead on dev.to — no heading ids). */
 const SKIP_TO_REGEX = /^\s*\*\*Skip to:\*\*/;
 
-/**
- * Check if a hostname is the blog's own domain
- */
+/** Check if a hostname is the blog's own domain. */
 function isSiteHost(hostname) {
   return hostname === "ofriperetz.dev" || hostname === "www.ofriperetz.dev";
 }
 
 /**
- * Check if a hostname is an owned interlace.tools domain
+ * cyrb53 — a small, fast, dependency-free string hash (well-known public
+ * domain). Pure integer math, so it is byte-identical across Node / vitest /
+ * browser and stable forever: the same destination URL always yields the same
+ * /go/r/ slug, which keeps the DB rows idempotent across re-publishes.
  */
-function isInterlaceHost(hostname) {
-  return (
-    hostname === "interlace.tools" || hostname.endsWith(".interlace.tools")
-  );
+function cyrb53(str) {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 
 /**
- * Build a /go/ URL: carry over the source's non-tracking query params and the
- * hash, then stamp utm_source=devto&from=<source-slug> (routing + attribution).
- * Reads `sourceUrl` without mutating it — incoming utm_* and from params are
- * skipped in place, never deleted from the caller's URL object.
+ * Deterministic stored-redirect slug for an external destination URL.
+ * `r/` namespaces it so the resolver looks the row up instead of deriving an
+ * article path (and a missing row fails safe to the blog home, never a 404).
+ */
+export function slugForExternal(destUrl) {
+  return `r/${cyrb53(destUrl).toString(36)}`;
+}
+
+/**
+ * Build a DERIVABLE /go/ URL (article/npm/gh): carry the source's non-tracking
+ * query params + hash, then stamp utm_source=devto&from=<slug>. Reads
+ * `sourceUrl` without mutating it.
  */
 function buildGoUrl(goPath, sourceUrl, articleSlug) {
   const go = new URL(`${SITE_URL}${goPath}`);
@@ -75,95 +95,127 @@ function buildGoUrl(goPath, sourceUrl, articleSlug) {
 }
 
 /**
- * Rewrite a single link destination for the dev.to render.
- * Pure — returns the input string unchanged when no rule applies.
+ * Classify + rewrite one link for the dev.to render.
  *
- * @param {string} rawUrl - The link destination as written in the markdown
- * @param {string} articleSlug - Slug of the article being rendered (the SOURCE)
- * @returns {string} The rewritten destination, or rawUrl unchanged
+ * @param {string} rawUrl - the link destination as written in the markdown
+ * @param {string} articleSlug - slug of the SOURCE article
+ * @returns {{ href: string, stored: {key:string,destination:string,kind:string}|null }}
+ *   href   — what to write into the markdown (rawUrl unchanged if no rule fits);
+ *   stored — the slug→URL row to upsert (only for /go/r/ stored redirects; null
+ *            for derivable article/npm/gh links and untouched pass-throughs).
  */
-export function rewriteUrlForDevto(rawUrl, articleSlug) {
-  // 1. Absolutize relative /articles/... links
+function classifyDevtoLink(rawUrl, articleSlug) {
+  // 1. Absolutize relative /articles/... links.
   let candidate = rawUrl;
-  if (candidate.startsWith("/articles/")) {
-    candidate = `${SITE_URL}${candidate}`;
-  }
+  if (candidate.startsWith("/articles/")) candidate = `${SITE_URL}${candidate}`;
 
   let url;
   try {
     url = new URL(candidate);
   } catch {
-    return rawUrl; // anchors, other relative paths, malformed — leave as-is
+    return { href: rawUrl, stored: null }; // anchors, relative paths, malformed
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return rawUrl; // mailto:, etc.
+    return { href: rawUrl, stored: null }; // mailto:, etc.
   }
 
   const host = url.hostname;
 
-  // Never rewrite links already pointing at /go/
+  // Already a /go/ link — idempotent fixed point.
   if (isSiteHost(host) && url.pathname.startsWith("/go/")) {
-    return rawUrl;
+    return { href: rawUrl, stored: null };
   }
 
-  // 2. Cross-article links → /go/<target-slug>
+  // DERIVABLE: cross-article → /go/<target-slug>
   if (isSiteHost(host)) {
-    const articleMatch = url.pathname.match(/^\/articles\/([^/]+)\/?$/);
-    if (articleMatch) {
-      return buildGoUrl(`/go/${articleMatch[1]}`, url, articleSlug);
+    const m = url.pathname.match(/^\/articles\/([^/]+)\/?$/);
+    if (m) {
+      return {
+        href: buildGoUrl(`/go/${m[1]}`, url, articleSlug),
+        stored: null,
+      };
     }
   }
-
-  // 3a. npm package links → /go/npm/<pkg>
+  // DERIVABLE: npm package → /go/npm/<pkg> (profile/other npm → STORED below)
   if (host === "npmjs.com" || host === "www.npmjs.com") {
-    const pkgMatch = url.pathname.match(/^\/package\/(.+?)\/?$/);
-    if (pkgMatch) {
-      return buildGoUrl(`/go/npm/${pkgMatch[1]}`, url, articleSlug);
+    const m = url.pathname.match(/^\/package\/(.+?)\/?$/);
+    if (m) {
+      return {
+        href: buildGoUrl(`/go/npm/${m[1]}`, url, articleSlug),
+        stored: null,
+      };
     }
-    return rawUrl; // profile / search / other npm pages — leave as-is
   }
-
-  // 3b. Our GitHub repos (repo ROOT only) → /go/gh/ofri-peretz/<repo>.
-  // Deep links keep their exact destination (a /go/gh hop would land on the
-  // repo page and lose the path); other orgs' links are never touched.
+  // DERIVABLE: our GitHub repo ROOT → /go/gh/ofri-peretz/<repo>
+  // (deep paths / other orgs → STORED below, so their exact URL is preserved).
   if (host === "github.com" || host === "www.github.com") {
-    const repoMatch = url.pathname.match(/^\/ofri-peretz\/([^/]+)\/?$/);
-    if (repoMatch) {
-      return buildGoUrl(`/go/gh/ofri-peretz/${repoMatch[1]}`, url, articleSlug);
+    const m = url.pathname.match(/^\/ofri-peretz\/([^/]+)\/?$/);
+    if (m) {
+      return {
+        href: buildGoUrl(`/go/gh/ofri-peretz/${m[1]}`, url, articleSlug),
+        stored: null,
+      };
     }
-    return rawUrl;
   }
 
-  // 4. Remaining owned-domain links (blog home, /foundations, docs on
-  //    *.interlace.tools) → /go/l?to=<owned-url>, so every owned link is a
-  //    tracked, repointable /go/ hop too — not just articles/npm/gh. The
-  //    resolver guards `to` to owned hosts, so this can't become an open
-  //    redirector. dev.to and third-party links never reach here (rule falls
-  //    through to `return rawUrl`), so they stay native/direct.
-  if (isSiteHost(host) || isInterlaceHost(host)) {
-    const go = new URL(`${SITE_URL}/go/l`);
-    go.searchParams.set("to", url.href);
-    go.searchParams.set("utm_source", "devto");
-    go.searchParams.set("from", articleSlug);
-    return go.href;
-  }
-
-  return rawUrl;
+  // STORED: everything else — owned non-article pages, *.interlace.tools,
+  // dev.to, and every academic / commercial reference — → /go/r/<hash>. The
+  // destination is saved server-side; the client link only carries the slug.
+  const key = slugForExternal(url.href);
+  const go = new URL(`${SITE_URL}/go/${key}`);
+  go.searchParams.set("utm_source", "devto");
+  go.searchParams.set("from", articleSlug);
+  return {
+    href: go.href,
+    stored: { key, destination: url.href, kind: "external" },
+  };
 }
 
 /**
- * Transform a dev.to body: drop the blog-only heading anchors and jump-nav
- * dev.to can't render, then route every inline link. Pure and idempotent;
- * fenced code blocks pass through byte-identical.
+ * Rewrite a single link destination for the dev.to render.
+ * @returns {string} the rewritten destination (or rawUrl unchanged).
+ */
+export function rewriteUrlForDevto(rawUrl, articleSlug) {
+  return classifyDevtoLink(rawUrl, articleSlug).href;
+}
+
+/**
+ * Collect the stored-redirect rows (slug → external URL) a body needs, so the
+ * publisher can upsert them BEFORE it publishes (the destination never rides in
+ * the client link). Deduped by slug; fenced code blocks and derivable links are
+ * skipped.
+ *
+ * @returns {Array<{key:string,destination:string,kind:string}>}
+ */
+export function collectDevtoLinks(body, articleSlug) {
+  const rows = new Map();
+  let inFence = false;
+  for (const line of body.split("\n")) {
+    if (FENCE_REGEX.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    for (const m of line.matchAll(INLINE_LINK_REGEX)) {
+      const { stored } = classifyDevtoLink(m[1], articleSlug);
+      if (stored) rows.set(stored.key, stored);
+    }
+  }
+  return [...rows.values()];
+}
+
+/**
+ * Transform a dev.to body: drop the blog-only heading anchors + jump-nav
+ * dev.to can't render, then route every inline link through /go/. Pure and
+ * idempotent; fenced code blocks pass through byte-identical.
  *
  * dev.to gives rendered headings no `id`, so `## H {#anchor}` would print the
  * `{#anchor}` verbatim and `[x](#anchor)` jump links would have no target. We
- * strip the `{#anchor}` suffix and drop the "**Skip to:**" line — dev.to has no
- * native table of contents to replace it with. The blog render keeps both.
+ * strip the `{#anchor}` suffix and drop the "**Skip to:**" line.
  *
- * @param {string} body - The article body markdown (post component-transforms)
- * @param {string} articleSlug - Slug of the article being rendered
- * @returns {string} The transformed body
+ * @param {string} body - the article body markdown (post component-transforms)
+ * @param {string} articleSlug - slug of the article being rendered
+ * @returns {string} the transformed body
  */
 export function transformBodyForDevto(body, articleSlug) {
   let inFence = false;
@@ -187,7 +239,7 @@ export function transformBodyForDevto(body, articleSlug) {
       out.push(heading[1]);
       continue;
     }
-    // Route every inline link through the dev.to rewrite rules.
+    // Route every inline link through /go/.
     out.push(
       line.replace(INLINE_LINK_REGEX, (match, linkUrl, title) => {
         const rewritten = rewriteUrlForDevto(linkUrl, articleSlug);

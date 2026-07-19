@@ -78,8 +78,11 @@ describe("classifyKey", () => {
     expect(classifyKey(["gh"])).toEqual({ key: "gh", kind: "article" });
   });
 
-  it("l → external (the /go/l passthrough; destination rides in ?to=)", () => {
-    expect(classifyKey(["l"])).toEqual({ key: "l", kind: "external" });
+  it("r/<hash> → external (a stored redirect; destination lives in the row)", () => {
+    expect(classifyKey(["r", "abc123"])).toEqual({
+      key: "r/abc123",
+      kind: "external",
+    });
   });
 });
 
@@ -113,56 +116,12 @@ describe("deriveDefault", () => {
     expect(deriveDefault("external", "", params())).toBe(`${BLOG}/`);
   });
 
-  it("external + owned ?to= → forwards to the owned page (utm_* carried)", () => {
-    expect(
-      deriveDefault(
-        "external",
-        "l",
-        params("to=https://ofriperetz.dev/foundations&utm_source=devto"),
-      ),
-    ).toBe("https://ofriperetz.dev/foundations?utm_source=devto");
-  });
-
-  it("external + owned *.interlace.tools ?to= → forwards through", () => {
-    expect(
-      deriveDefault(
-        "external",
-        "l",
-        params("to=https://eslint.interlace.tools/docs"),
-      ),
-    ).toBe("https://eslint.interlace.tools/docs");
-  });
-
-  it("external + FOREIGN ?to= → blog home (open redirect blocked)", () => {
-    expect(
-      deriveDefault(
-        "external",
-        "l",
-        params("to=https://evil.example.com/phish"),
-      ),
-    ).toBe(`${BLOG}/`);
-  });
-
-  it("external + look-alike host (ofriperetz.dev.evil.com) → blog home", () => {
-    expect(
-      deriveDefault(
-        "external",
-        "l",
-        params("to=https://ofriperetz.dev.evil.com/x"),
-      ),
-    ).toBe(`${BLOG}/`);
-  });
-
-  it("external + malformed ?to= → blog home", () => {
-    expect(deriveDefault("external", "l", params("to=notaurl"))).toBe(
-      `${BLOG}/`,
-    );
-  });
-
-  it("external + non-http ?to= (javascript:) → blog home", () => {
-    expect(
-      deriveDefault("external", "l", params("to=javascript:alert(1)")),
-    ).toBe(`${BLOG}/`);
+  it("external stored redirect with no row also lands on the blog home", () => {
+    // /go/r/<hash> whose row is missing (or guarded out) has no derivable
+    // destination — deriveDefault sends it home, never a 404 or an
+    // /articles/<hash> path. (The client never passes a URL, so there is
+    // nothing else to fall back to.)
+    expect(deriveDefault("external", "r/deadbeef", params())).toBe(`${BLOG}/`);
   });
 });
 
