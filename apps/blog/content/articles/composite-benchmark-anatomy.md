@@ -2,7 +2,7 @@
 title: "25% of My Benchmark Verdict Is an Opinion. Here's the Anatomy."
 description: "My serverless benchmark prints 0.88 vs 0.3025 — real measurements running on editorial weights. Every index has a committee; the only real question is whether it publishes its votes. Mine are here: seven dimensions, the null policy, and a ±50% attack on the weights."
 slug: "composite-benchmark-anatomy"
-published: false
+published: true
 date: 2026-07-19
 tags:
   - "serverless"

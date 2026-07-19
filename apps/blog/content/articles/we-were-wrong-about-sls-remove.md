@@ -2,7 +2,7 @@
 title: "We Were Wrong About sls remove"
 description: "Our loudest serverless claim — 'ghost billing after sls remove' — failed our own E2E run. The trap is real, but it lives on a different path entirely. The full story of re-scoping a claim in public, and why the narrower version came out stronger."
 slug: "we-were-wrong-about-sls-remove"
-published: false
+published: true
 date: 2026-07-19
 tags:
   - "serverless"
