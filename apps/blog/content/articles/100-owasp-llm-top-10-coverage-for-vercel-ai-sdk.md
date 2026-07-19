@@ -70,7 +70,7 @@ This is what the matrix doesn't tell you, and what makes the difference between 
 
 **LLM01 — Prompt Injection** survives because `prompt: userMessage` is a string assigned to a typed field. TypeScript is satisfied. Reviewers check error handling, response shape, and status codes — they don't ask "is this string trusted?" because the field signature doesn't require trust, only a string. The validation boundary is negative space: its absence is invisible in the diff.
 
-The rule (`require-validated-prompt`) checks whether the value passed to the `prompt` property on a `generateText` / `streamText` call is wrapped in a validation call. It doesn't do [taint analysis](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) across the entire call graph — it enforces that a boundary function exists at the call site. If your validator is `(x) => x`, the rule stays silent; if your input goes straight from `req.body` to the model, it fires. That's the trade-off stated explicitly in the [rule docs](https://eslint.interlace.tools/rules/vercel-ai-security).
+The rule (`require-validated-prompt`) checks whether the value passed to the `prompt` property on a `generateText` / `streamText` call is wrapped in a validation call. It doesn't do [taint analysis](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) across the entire call graph — it enforces that a boundary function exists at the call site. If your validator is `(x) => x`, the rule stays silent; if your input goes straight from `req.body` to the model, it fires. That's the trade-off stated explicitly in the [rule docs](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security/rules/require-validated-prompt).
 
 See the [full Vercel AI SDK prompt injection breakdown](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) for why "just sanitize it" doesn't close the vector.
 
@@ -226,7 +226,7 @@ The plugin ships CommonJS and is consumed via ESM or CJS config depending on you
 ## Links
 
 - 📦 [npm: eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security)
-- 📖 [Full rule docs](https://eslint.interlace.tools/rules/vercel-ai-security)
+- 📖 [Full rule docs](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security)
 - 🔐 [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-vercel-ai-security)
 

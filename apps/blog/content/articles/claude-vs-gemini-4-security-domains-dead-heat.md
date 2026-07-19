@@ -153,7 +153,7 @@ Which hardening step does _your_ AI-generated code skip most — the algorithm a
 
 ---
 
-_Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/ai-security-benchmark-series):_
+_Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/35564):_
 _← [Same NestJS Prompt. Claude Got 6 Security Errors. Gemini Got 2.](https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-and-gemini-one-got-6-security-errors-heres-what-both-1fnf) · **Frontier Dead Heat (you are here)** · next → (coming soon)_
 
 ---

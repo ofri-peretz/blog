@@ -439,7 +439,7 @@ _Which of these six shipped in your codebase — and how long was it live before
 
 ---
 
-_Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/ai-security-benchmark-series):_
+_Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/35564):_
 _← [I Let Claude Write 60 Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) | **Claude Wrote a NestJS Service (you are here)** | [Same Prompt, Gemini →](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) | [Aggregate Benchmarks Lie →](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)_
 
 ---

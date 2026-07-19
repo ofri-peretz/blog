@@ -252,17 +252,17 @@ Madge tells you what you have. ESLint prevents new ones from forming.
 
 ---
 
-For the full data — cycle counts across Payload, Next.js, Medusa, Strapi, and Twenty, with per-project breakdowns of which pattern creates the most cycles — see the [companion piece](https://dev.to/ofri-peretz/series/circular-dependencies).
+For the full data — cycle counts across Payload, Next.js, Medusa, Strapi, and Twenty, with per-project breakdowns of which pattern creates the most cycles — see the [companion piece](https://ofriperetz.dev/articles/payload-508-circular-dependency-cycles).
 
 *Where do circular dependencies hide in your codebase — data layer, domain layer, or somewhere you didn't expect? The `console.log` trick is usually the tell.*
 
 ---
 
-_Part of the [Circular Dependencies](https://dev.to/ofri-peretz/series/circular-dependencies) series. Next: [We Scanned Payload, Next.js, and 3 More OSS Projects for Circular Dependencies →](https://dev.to/ofri-peretz/series/circular-dependencies)_
+_Next: [We Scanned Payload, Next.js, and 3 More OSS Projects for Circular Dependencies →](https://ofriperetz.dev/articles/payload-508-circular-dependency-cycles)_
 
 ---
 
-📦 [`eslint-plugin-import-next`](https://www.npmjs.com/package/eslint-plugin-import-next) · [Rule docs](https://eslint.interlace.tools/docs/imports/plugin-import-next)
+📦 [`eslint-plugin-import-next`](https://www.npmjs.com/package/eslint-plugin-import-next) · [Rule docs](https://eslint.interlace.tools/docs/quality/plugin-import-next)
 
 <!-- markdownlint-disable MD034 -->
 {% cta https://github.com/ofri-peretz/eslint %}

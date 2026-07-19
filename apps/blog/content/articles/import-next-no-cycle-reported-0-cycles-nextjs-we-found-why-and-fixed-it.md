@@ -244,7 +244,7 @@ A suspiciously clean zero is a measurement result like any other — and instrum
 
 ---
 
-*Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/inside-our-linter-benchmarks) series:*
+*Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/39642) series:*
 *← [Our cycle detector reported 0. The real number was 245 files.](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale) | [What Ground Truth Caught That Unit Tests Missed →](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed)*
 
 ---

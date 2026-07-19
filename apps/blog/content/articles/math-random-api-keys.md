@@ -195,7 +195,7 @@ _Have you run this against your codebase yet? I'm specifically curious where it 
 
 ---
 
-_Part of the [Exploit Analysis](https://dev.to/ofri-peretz/series/exploit-analysis) series. See also:_
+_See also:_
 _[Exploit Analysis: The JWT Algorithm 'none' Attack (And the Guard)](https://dev.to/ofri-peretz/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g)_
 
 ---
