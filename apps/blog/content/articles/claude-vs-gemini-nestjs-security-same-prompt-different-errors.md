@@ -314,7 +314,7 @@ This run lints AI-generated code the moment it lands. The trilogy hub — [I Inh
 
 ---
 
-*Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/ai-security-benchmark-series)*
+*Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/35564)*
 
 ---
 

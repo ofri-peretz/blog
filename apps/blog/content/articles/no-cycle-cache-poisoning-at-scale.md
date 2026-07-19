@@ -192,7 +192,7 @@ export default [
 ];
 ```
 
-Rule reference and full option list: [`import-next/no-cycle` on eslint.interlace.tools](https://eslint.interlace.tools/rules/import-next/no-cycle).
+Rule reference and full option list: [`import-next/no-cycle` on eslint.interlace.tools](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle).
 
 ### The 30-second test — run this on your own repo
 

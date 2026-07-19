@@ -141,7 +141,7 @@ The honest difference: the incumbent's 5 are **genuine [false positives](https:/
 
 ## How Interlace rules run identically on ESLint and Oxlint
 
-The Interlace flagship rules emit the **identical CWE-tagged finding** on both engines. [`pg/no-unsafe-query`](https://eslint.interlace.tools/rules/pg/no-unsafe-query) on the same line, under ESLint and under Oxlint:
+The Interlace flagship rules emit the **identical CWE-tagged finding** on both engines. [`pg/no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-query) on the same line, under ESLint and under Oxlint:
 
 ```text
 🔒 CWE-89 OWASP:A03-Injection CVSS:9.8 | Unsafe SQL query detected. Variable interpolation found. | CRITICAL [SOC2,PCI-DSS,NIST-CSF]
