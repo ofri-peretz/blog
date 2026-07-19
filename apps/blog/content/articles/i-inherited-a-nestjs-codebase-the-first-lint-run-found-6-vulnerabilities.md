@@ -3,6 +3,7 @@ title: "I Inherited a NestJS Codebase. One 12-Second ESLint Run Found 47 Violati
 description: "The codebase had 2 years of feature PRs and zero security audits. A 12-second ESLint run surfaced 47 violations across 6 distinct vulnerability classes — auth bypass, sensitive field leaks, brute-force exposure, and three more. Here's what each one looks like, why experienced developers didn't catch it, and why your AI assistant writes the same six today."
 slug: "i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities"
 canonical_url: "https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma"
 devto_id: 3769186
 published_at: "2026-05-28"
@@ -45,7 +46,7 @@ Here's how the 47 broke down across 6 rule classes, on a 40K-line codebase with 
 | `no-exposed-debug-endpoints` | CWE-489 | 5 |
 | **Total** | | **47** |
 
-> **Reproducibility (this run).** Plugin `eslint-plugin-nestjs-security@1.2.3` (current published version is 1.2.4 — a `no-missing-null-checks` fix unrelated to the six rules here), all six rules at `error` ([config below](#the-config)). Scanned with `npx eslint "src/**/*.ts"` on the inherited service (~40K lines, 2 years of feature PRs, zero prior security passes). The 12-second figure is wall-clock on a single cold run, M2 / Node 20. Counts are from this one codebase — yours will differ, but the _class distribution_ (guards and validation dominate, debug routes are rare-but-fatal) is the part that holds across the NestJS services I've audited.
+> **[Reproducibility](https://ofriperetz.dev/articles/reproducibility-vs-replicability) (this run).** Plugin `eslint-plugin-nestjs-security@1.2.3` (current published version is 1.2.4 — a `no-missing-null-checks` fix unrelated to the six rules here), all six rules at `error` ([config below](#the-config)). Scanned with `npx eslint "src/**/*.ts"` on the inherited service (~40K lines, 2 years of feature PRs, zero prior security passes). The 12-second figure is wall-clock on a single cold run, M2 / Node 20. Counts are from this one codebase — yours will differ, but the _class distribution_ (guards and validation dominate, debug routes are rare-but-fatal) is the part that holds across the NestJS services I've audited.
 
 > **MTTR estimate:** Finding all 47 of these manually — reading every controller for missing guards, every entity for unexcluded fields, every DTO for missing validators — would have taken an experienced engineer 3–5 hours of focused audit work, assuming they knew exactly what to look for. ESLint found them in 12 seconds on a cold run. That gap is why lint — not a manual read — is the only realistic first pass on day one, before you've read the business logic.
 
@@ -146,7 +147,7 @@ async getUser(@Param('id') id: string): Promise<User> {
 
 **Why it survived review:** The entity was originally consumed exclusively by an internal gRPC service that deserialized it into a typed struct — stripping unknown fields silently on the client side. No API log, no Datadog response capture, no staging `curl` that would surface `password` in the body. The data left the server but never appeared anywhere the team looked. Then a REST endpoint was added three months later and never audited. TypeScript's type system was 100% correct: the types were accurate, the shape matched, the compiler was satisfied. The field name `password` didn't trigger anything — TypeScript doesn't know or care what data is sensitive. A penetration tester found it by running a raw HTTP client against the REST endpoint.
 
-**Why TypeScript types can't catch this:** TypeScript operates on shape and type compatibility. `password: string` is a perfectly valid property. The bug isn't a type error — it's a policy error. Static analysis that understands the _semantics_ of field names is the only automated tool that catches it.
+**Why TypeScript types can't catch this:** TypeScript operates on shape and type compatibility. `password: string` is a perfectly valid property. The bug isn't a type error — it's a policy error. [Static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) that understands the _semantics_ of field names is the only automated tool that catches it.
 
 **What the lint rule catches:** `no-exposed-private-fields` scans classes it recognizes as entities or DTOs — via `@Entity`/`@Schema`/`@ObjectType`/`@ApiProperty`-style decorators, or a `Dto`/`Entity`/`Model`/`Schema` name suffix — for sensitive field name patterns (`password`, `secret`, `token`, `apiKey`, `refreshToken`, `ssn`, `creditCard`, ...) and flags any that aren't decorated with `@Exclude()` from `class-transformer`. A plain class outside that gate isn't scanned, so the entity/DTO naming convention matters.
 
@@ -245,7 +246,7 @@ export class AuthController {
 }
 ```
 
-> The rule emits **CWE-770** — Allocation of Resources Without Limits or Throttling. On an auth route the downstream consequence is brute-force / credential stuffing (**CWE-307**); that's the human-facing risk, but you'll see 770 in the tool output.
+> The rule emits **[CWE-770](https://ofriperetz.dev/articles/cwe-taxonomy-explained)** — Allocation of Resources Without Limits or Throttling. On an auth route the downstream consequence is brute-force / credential stuffing (**CWE-307**); that's the human-facing risk, but you'll see 770 in the tool output.
 
 ---
 
@@ -447,7 +448,7 @@ The missing global `ValidationPipe` (bug #4) and the undecorated `role` field (b
 
 Here's why I stopped treating this as a one-time incident report: these six patterns are not artifacts of 2018 NestJS or a junior who didn't know better. They are the _default output of a competent developer moving fast_ — which is exactly what a coding assistant emulates.
 
-I gave Claude Sonnet 4.6 a single prompt — "Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel." — and ran the same plugin on the result. It produced 200 lines of clean, TypeScript-passing NestJS, and **6 errors in 3 seconds**: the same unguarded admin controller, the same `password` in the response body, the same unthrottled login route, the same debug endpoint returning `DATABASE_URL`. Not similar bugs — the same six classes. I wrote that up in [Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Security Holes](https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj). Running the same prompt through Gemini 2.5 Flash got the count down to 2 — but it _still shipped auth endpoints with no rate limiting_ ([Claude vs Gemini, same prompt, different errors](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)).
+I gave Claude Sonnet 4.6 a single prompt — "Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel." — and ran the same plugin on the result. It produced 200 lines of clean, TypeScript-passing NestJS, and **6 errors in 3 seconds**: the same unguarded admin controller, the same `password` in the response body, the same unthrottled login route, the same debug endpoint returning `DATABASE_URL`. Not similar bugs — the same six classes. I wrote that up in [Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Security Holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). Running the same prompt through Gemini 2.5 Flash got the count down to 2 — but it _still shipped auth endpoints with no rate limiting_ ([Claude vs Gemini, same prompt, different errors](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)).
 
 Read that last bit again, because it's the most uncomfortable number in this whole post: **the one finding that survived the model swap is #3 — the unthrottled login route.** Claude failed `require-throttler`. Gemini, which got guards, validators, and serialization _right_, failed `require-throttler` too. Switching your AI vendor changed five of the six findings and left the brute-force hole untouched. And don't assume a smarter model saves you: across [80 Claude-written functions, 65–75% carried at least one vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — and the _newest_ model in that run (Opus 4.6) scored identically to the older Sonnet 4.5.
 
@@ -463,7 +464,13 @@ Look back at the six "why it survived review" explanations and the failure mode 
 
 Code review verifies the lines that changed. None of these bugs were in the lines that changed. That's the asymmetry static analysis closes.
 
-For the full onboarding protocol — the three plugins, the `jq` one-liner that ranks findings by rule, and how to read the heatmap — see [The 30-Minute Security Audit: I ran it on 140 Gemini-written functions, 102 shipped vulnerable](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91).
+For the full onboarding protocol — the three plugins, the `jq` one-liner that ranks findings by rule, and how to read the heatmap — see [The 30-Minute Security Audit: I ran it on 140 Gemini-written functions, 102 shipped vulnerable](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
+
+---
+
+## Foundations
+
+Every finding in this post carries a CWE label — the CWE-284 / CWE-200 / CWE-770 tags in the table up top. [CWE Taxonomy Explained](https://ofriperetz.dev/articles/cwe-taxonomy-explained) is the map behind those labels: how the taxonomy works and why lint rules key their findings to it. And for turning "which class" into "how bad" — the severity scoring those labels feed into — see [CVSS Scores Explained](https://ofriperetz.dev/articles/cvss-scores-explained).
 
 ---
 

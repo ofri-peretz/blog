@@ -12,6 +12,8 @@ tags:
 canonical_url: https://ofriperetz.dev/articles/statistical-significance-p-value
 reading_time_minutes: 7
 tier: "T0"
+series: "Foundations"
+arc: 8
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627

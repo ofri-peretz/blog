@@ -3,6 +3,7 @@ title: "Claude Wrote a NestJS Service. TypeScript Was Happy. ESLint Found 6 Secu
 description: "I gave Claude one prompt and got 200 lines of correct NestJS. TypeScript compiled clean. Then I ran eslint-plugin-nestjs-security. 6 errors, 3 seconds. Here is what it found and why each one is an AI failure mode."
 slug: "claude-wrote-nestjs-service-eslint-found-6-security-holes"
 canonical_url: "https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj"
 devto_id: 3775020
 published_at: "2026-05-29"
@@ -25,7 +26,7 @@ TypeScript said this NestJS service was clean. ESLint found 6 security holes in 
 
 I gave Claude Sonnet 4.6 one prompt — _"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."_ — and 90 seconds later I had 200 lines of NestJS. Decorators in the right places, DTOs typed correctly, dependency injection wired. It looked like code written by a developer who knew NestJS.
 
-Then static analysis flagged six findings the compiler could not: an admin endpoint with no access-control guard (CWE-284), a login route with no rate limit (CWE-770), an entity shipping `password` in every response (CWE-200), a `@Body()` parameter with no runtime validation (CWE-20), a privilege-bearing DTO field with no constraint (CWE-915), and a debug route returning `DATABASE_URL` (CWE-489).
+Then static analysis flagged six findings the compiler could not: an admin endpoint with no access-control guard ([CWE-284](https://ofriperetz.dev/articles/cwe-taxonomy-explained)), a login route with no rate limit (CWE-770), an entity shipping `password` in every response (CWE-200), a `@Body()` parameter with no runtime validation (CWE-20), a privilege-bearing DTO field with no constraint (CWE-915), and a debug route returning `DATABASE_URL` (CWE-489).
 
 TypeScript: ✅ Clean. Runtime: ✅ Would work. One of the six was a debug route silently serializing the database connection string in plaintext — the kind of finding that looks like a toy example until Finding 6, below, where I've seen the exact same pattern outside a demo.
 
@@ -101,11 +102,11 @@ Each finding follows the same structure: what ESLint caught, why AI generates th
 
 **Why it survives review:** Reviewers know the team has `JwtAuthGuard` registered — or think they do. The guard is off the mental stack when reading route logic. Nobody scans a controller and asks "is there a guard here?" They ask "does the logic look right?" So would anyone on your team reviewing typed DTOs returning from a named service.
 
-**On the CVSS 9.8:** that's `require-guards`'s fixed class severity, not a per-handler score — a missing guard could front a read, a write, or an admin action, and the rule can't tell which from the AST alone. This example is realistically closer to a 7.5 read-only exposure; don't cite the 9.8 to a security team as if it were per-handler.
+**On the [CVSS 9.8](https://ofriperetz.dev/articles/cvss-scores-explained):** that's `require-guards`'s fixed class severity, not a per-handler score — a missing guard could front a read, a write, or an admin action, and the rule can't tell which from the AST alone. This example is realistically closer to a 7.5 read-only exposure; don't cite the 9.8 to a security team as if it were per-handler.
 
 **A note on scope:** the rule flags every handler lacking `@UseGuards` (or a `@Public()`/`@SkipAuth()`-style opt-out), with no built-in exception for auth entry points — `login` and `register` above are correctly unguarded (no prior session to check yet), so their fix is `@Public()`, not `@UseGuards()`. If your app relies on `app.useGlobalGuards()` in `main.ts` instead of per-route decorators, set `assumeGlobalGuards: true`.
 
-> Blind spot: guards registered via `APP_GUARD` providers or inherited from a base controller aren't visible to the rule either — it can stay silent on a route that's actually protected, the mirror image of the false positives above.
+> Blind spot: guards registered via `APP_GUARD` providers or inherited from a base controller aren't visible to the rule either — it can stay silent on a route that's actually protected, the mirror image of the [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) above.
 
 ```typescript
 // The rule reports the offending route handler, but is satisfied by @UseGuards at
@@ -125,7 +126,7 @@ export class UsersController {
 }
 ```
 
-See also: [the same missing-guard pattern in a 2-year-old production codebase, and why every PR approved it](https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma).
+See also: [the same missing-guard pattern in a 2-year-old production codebase, and why every PR approved it](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities).
 
 ---
 
@@ -342,7 +343,7 @@ The rule reports this as CWE-489 (Active Debug Code) — the endpoint itself sho
 
 > **Guarding is not a fix.** A guarded endpoint returning `DATABASE_URL` is still a credential leak waiting for a token to be compromised. Remove the sensitive values from the response entirely.
 
-A `DATABASE_URL` leaked through a live route is one path to the same outcome as a `sk_live_` key committed straight into source — the secret ends up somewhere a scanner or a curious visitor can find it. If hardcoded credentials are more your team's failure mode than exposed routes, [the language-level version of this same problem — 28 CWE-mapped rules for hardcoded secrets, unsafe deserialization, and injection classes](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure-coding-1eda) — is the sibling plugin for it.
+A `DATABASE_URL` leaked through a live route is one path to the same outcome as a `sk_live_` key committed straight into source — the secret ends up somewhere a scanner or a curious visitor can find it. If hardcoded credentials are more your team's failure mode than exposed routes, [the language-level version of this same problem — 28 CWE-mapped rules for hardcoded secrets, unsafe deserialization, and injection classes](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding) — is the sibling plugin for it.
 
 ```typescript
 // Fix: environment-gated module — never conditionally guard a live endpoint
@@ -381,13 +382,13 @@ The question that surfaces all six: _"What happens when someone who isn't suppos
 
 One caveat on the number itself: "6 findings" spans the controller, the entity, and a DTO — not 6 findings across 5 endpoints. Findings 3 and 5 are scoped to the `User` entity and `CreateUserDto`, not to a single route, so the honest framing is 6 findings across the service, not a per-endpoint rate. It's also one generation pass, not a sampled average — run the same prompt again and the count will move. What won't move is the failure _class_: the missing-guard pattern reappears on a retry, just attached to a different endpoint.
 
-Static analysis asks the negative-space question on every file, every run — and a domain-specific plugin asks a sharper version of it than a general one does: [the general-purpose ESLint security floor caught 0 of 40 vulnerabilities](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) that a NestJS-aware ruleset like this one is built to see. [The Hydra Problem](https://dev.to/ofri-peretz/the-ai-hydra-problem-fix-one-ai-bug-get-two-more-5g1l) shows what happens when you try to fix AI omissions one at a time in review: fixing one surfaces others. This run's count isn't what matters — what matters is that the same missing-guard pattern shows up [across every security domain we've benchmarked](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj). NestJS is no exception.
+Static analysis asks the negative-space question on every file, every run — and a domain-specific plugin asks a sharper version of it than a general one does: [the general-purpose ESLint security floor caught 0 of 40 vulnerabilities](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) that a NestJS-aware ruleset like this one is built to see. [The Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) shows what happens when you try to fix AI omissions one at a time in review: fixing one surfaces others. This run's count isn't what matters — what matters is that the same missing-guard pattern shows up [across every security domain we've benchmarked](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). NestJS is no exception.
 
 ### The count moves by toolchain. The failure class doesn't.
 
-The natural objection: maybe six is a Claude-specific weakness, and another toolchain gets it right. The count *does* move with the toolchain — but the root cause doesn't. These aren't bugs the model got wrong; they're constraints the prompt never stated. Change assistants and the count changes; the negative-space class survives. That's also the finding of [a broader leaderboard comparing 5 AI models on security](https://dev.to/ofri-peretz/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong-5a4o): rank one model above another and you're still measuring which constraints it happened to infer, not which ones it was told.
+The natural objection: maybe six is a Claude-specific weakness, and another toolchain gets it right. The count *does* move with the toolchain — but the root cause doesn't. These aren't bugs the model got wrong; they're constraints the prompt never stated. Change assistants and the count changes; the negative-space class survives. That's also the finding of [a broader leaderboard comparing 5 AI models on security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong): rank one model above another and you're still measuring which constraints it happened to infer, not which ones it was told.
 
-I ran the identical prompt through Gemini 2.5 Flash via the Gemini CLI and scanned the output with the same plugin: [Same NestJS Prompt. Claude Got 6 Errors. Gemini Got 2.](https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-and-gemini-one-got-6-security-errors-heres-what-both-1fnf) Gemini's default scaffolding was structurally tighter — it got guards, validators, and serialization right where Claude didn't. But both toolchains shipped the same Finding 2: **no rate limiting on the login endpoint.** The one class that survived the model swap is the one neither prompt thought to constrain. Zoomed out across four security domains — not just NestJS — [the pattern holds at a larger sample too](https://dev.to/ofri-peretz/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips-mpp): the two models trade wins domain by domain, but converge on skipping the same hardening step.
+I ran the identical prompt through Gemini 2.5 Flash via the Gemini CLI and scanned the output with the same plugin: [Same NestJS Prompt. Claude Got 6 Errors. Gemini Got 2.](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) Gemini's default scaffolding was structurally tighter — it got guards, validators, and serialization right where Claude didn't. But both toolchains shipped the same Finding 2: **no rate limiting on the login endpoint.** The one class that survived the model swap is the one neither prompt thought to constrain. Zoomed out across four security domains — not just NestJS — [the pattern holds at a larger sample too](https://dev.to/ofri-peretz/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips-mpp): the two models trade wins domain by domain, but converge on skipping the same hardening step.
 
 You can verify the whole thing yourself in three steps:
 
@@ -439,7 +440,7 @@ _Which of these six shipped in your codebase — and how long was it live before
 ---
 
 _Part of the [AI Security Benchmark Series](https://dev.to/ofri-peretz/series/ai-security-benchmark-series):_
-_← [I Let Claude Write 60 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) | **Claude Wrote a NestJS Service (you are here)** | [Same Prompt, Gemini →](https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-and-gemini-one-got-6-security-errors-heres-what-both-1fnf) | [Aggregate Benchmarks Lie →](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj)_
+_← [I Let Claude Write 60 Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) | **Claude Wrote a NestJS Service (you are here)** | [Same Prompt, Gemini →](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) | [Aggregate Benchmarks Lie →](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)_
 
 ---
 

@@ -3,6 +3,7 @@ title: "One INSERT Loop Made Our CSV Import 500x Slower. One ESLint Rule Catches
 description: "A for-loop with an INSERT inside turned a 100ms bulk write into 50 seconds — 500x slower at 1,000 rows. pg/no-batch-insert-loop (CWE-1049) catches the N+1 pattern in CI, before it ships."
 slug: "n-plus-1-insert-loop-api-performance"
 canonical_url: "https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/the-n1-insert-loop-that-slowed-our-api-to-a-crawl-4534"
 devto_id: 3144119
 published_at: "2026-01-02T20:06:27Z"
@@ -167,7 +168,7 @@ This pattern isn't fading — it's accelerating. Ask any coding assistant (Claud
 
 The rule doesn't care who typed it. It's purely AST-structural: it sees a write query inside a loop and flags the shape, whether a human, a model, or a copy-paste from an old gist put it there. That's the whole case for running structural rules on generated code — the layer that catches what the model can't see about its own output.
 
-This same pattern surfaces across the database access layer. A [connection leak in production](https://dev.to/ofri-peretz/the-connection-leak-that-took-down-our-production-database-3bal) causes the same kind of 3 AM page — a different symptom, the same root: the pool behavior is invisible until it isn't. And if you're new to a codebase, the [30-minute static analysis onboarding protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) surfaces these patterns before you touch a line.
+This same pattern surfaces across the database access layer. A [connection leak in production](https://ofriperetz.dev/articles/database-connection-leak-production-outage) causes the same kind of 3 AM page — a different symptom, the same root: the pool behavior is invisible until it isn't. And if you're new to a codebase, the [30-minute static analysis onboarding protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) surfaces these patterns before you touch a line.
 
 (I've written more on [what happens when you point ESLint at AI-generated code](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) and [the six holes one lint run found in a Claude-written service](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes).)
 
@@ -207,7 +208,7 @@ await pool.query("DELETE FROM users WHERE id = ANY($1)", [userIds]);
 
 ## What It Does — and Doesn't — See
 
-`no-batch-insert-loop` flags a `query()` for a literal `INSERT`/`UPDATE` — or an interpolated query of any verb — inside a loop or array-iterator callback. It's a heuristic for the N+1 _shape_, not a runtime profiler — it can't measure your actual latency, and a loop that genuinely runs once isn't a real N+1. It catches the pattern that becomes one at scale, before it ships. (It's one of 13 rules in `eslint-plugin-pg`; the [pg getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) covers the rest — SQL injection, `search_path` hijacking, connection leaks.)
+`no-batch-insert-loop` flags a `query()` for a literal `INSERT`/`UPDATE` — or an interpolated query of any verb — inside a loop or array-iterator callback. It's a [heuristic](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) for the N+1 _shape_, not a runtime profiler — it can't measure your actual latency, and a loop that genuinely runs once isn't a real N+1. It catches the pattern that becomes one at scale, before it ships. (It's one of 13 rules in `eslint-plugin-pg`; the [pg getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) covers the rest — SQL injection, `search_path` hijacking, connection leaks.)
 
 > **Part of the [Postgres Security Protocol](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) series.**
 > The N+1 insert loop is one member of a family: code that passes review because it's _correct_, then fails at production scale because of how it uses the pool. Its siblings:

@@ -3,6 +3,7 @@ title: "Same NestJS Prompt. Claude Got 6 Security Errors. Gemini Got 2. Here's W
 description: "Same prompt. Claude Sonnet 4.6 got 6 security errors from eslint-plugin-nestjs-security. Gemini 2.5 Flash got 2. Both missed rate limiting on auth endpoints — and Gemini got guards, validators, and serialization right where Claude didn't."
 slug: "claude-vs-gemini-nestjs-security-same-prompt-different-errors"
 canonical_url: "https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-and-gemini-one-got-6-security-errors-heres-what-both-1fnf"
 devto_id: 3781266
 published_at: "2026-05-30"
@@ -25,7 +26,7 @@ Same prompt. Same NestJS task. Claude produced code with 6 security errors. Gemi
 
 The code compiled. TypeScript was happy. A reviewer scanning the diff would see nothing wrong. Then I ran `eslint-plugin-nestjs-security` over both outputs, and the gap opened up: Claude's default developer toolchain (Anthropic API, no system prompt) scaffolded 6 gaps. Google's default developer toolchain (Gemini CLI) scaffolded 2 — but Gemini also hardcoded a JWT secret that would have scored a critical third finding from a different plugin. Same prompt, different failure modes, no vendor came out clean.
 
-This is the part most AI-vs-AI takes skip: a model that compiles clean and a model that's *secure* are different claims. The gap is invisible until something runs static analysis over the output. So I did. I gave [Claude Sonnet 4.6](https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj) and Gemini 2.5 Flash via Gemini CLI the identical prompt: *"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."* Then I ran both outputs through `eslint-plugin-nestjs-security`. (I've run this methodology across [80 Claude-written functions](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o), where 65–75% carried at least one vulnerability — this run narrows that to one framework, two vendor toolchains.)
+This is the part most AI-vs-AI takes skip: a model that compiles clean and a model that's *secure* are different claims. The gap is invisible until something runs [static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) over the output. So I did. I gave [Claude Sonnet 4.6](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes) and Gemini 2.5 Flash via Gemini CLI the identical prompt: *"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."* Then I ran both outputs through `eslint-plugin-nestjs-security`. (I've run this methodology across [80 Claude-written functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), where 65–75% carried at least one vulnerability — this run narrows that to one framework, two vendor toolchains.)
 
 **This run:**
 - Claude Sonnet 4.6 via Anthropic API: **6 errors**
@@ -33,7 +34,7 @@ This is the part most AI-vs-AI takes skip: a model that compiles clean and a mod
 
 The two toolchains shared **1 vulnerability pattern** — missing rate limiting on the auth endpoints. The remaining 5 Claude findings and 1 critical Gemini finding were toolchain-specific. Here's what each got right, what each got wrong, and why the shared finding is the one that matters most.
 
-**Methodology note (read once, then skip to the findings):** This compares each vendor's standard developer tooling, not isolated model APIs. The Gemini CLI ships its own default system prompt; the raw Gemini API may produce different output. This is correctly framed as a toolchain comparison, not a model capability claim. n=1 per toolchain — the structural finding (both failed `require-throttler`) follows from how the prompt is shaped, not from sample size. Full pinned values in the [methodology appendix](#methodology-pinned-values).
+**Methodology note (read once, then skip to the findings):** This compares each vendor's standard developer tooling, not isolated model APIs. The Gemini CLI ships its own default system prompt; the raw Gemini API may produce different output. This is correctly framed as a toolchain comparison, not a model capability claim. n=1 per toolchain — the structural finding (both failed `require-throttler`) follows from how the prompt is shaped, not from [sample size](https://ofriperetz.dev/articles/sample-size-and-statistical-power). Full pinned values in the [methodology appendix](#methodology-pinned-values).
 
 ---
 
@@ -144,7 +145,7 @@ export const jwtConstants = {
 };
 ```
 
-**CWE-798: hardcoded credentials.** An attacker with the JWT secret owns every session token in the system permanently. This is strictly worse than missing throttling in most threat models — throttling stops one brute-force path, but a leaked JWT secret makes every token forgeable forever. The comment acknowledges the risk and ships it anyway.
+**[CWE-798](https://ofriperetz.dev/articles/cwe-taxonomy-explained): hardcoded credentials.** An attacker with the JWT secret owns every session token in the system permanently. This is strictly worse than missing throttling in most threat models — throttling stops one brute-force path, but a leaked JWT secret makes every token forgeable forever. The comment acknowledges the risk and ships it anyway.
 
 `eslint-plugin-secure-coding/no-hardcoded-credentials` catches this. It's a different plugin from the one driving the main comparison — but that's the lesson: Gemini's *more structured* output surfaced a class of finding Claude's output avoided only by omission. Claude wrote inline configuration without an explicit secrets file, so there was nothing to flag. Gemini's better architecture created a new attack surface.
 
@@ -297,9 +298,15 @@ Full rule documentation at [eslint.interlace.tools](https://eslint.interlace.too
 | Command | `npx eslint src/` |
 | Runs | n=1 per toolchain |
 
-**What this run proves and what it doesn't:** The `require-throttler` miss is structural — it follows from the prompt shape, not the sample size. Any feature-only NestJS prompt that doesn't mention rate limiting will fail this rule regardless of which toolchain wrote it. The 6-vs-2 split in `nestjs-security` findings is a directional observation, consistent with the [80-function Claude run](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o), but n=1. Run it yourself, report back.
+**What this run proves and what it doesn't:** The `require-throttler` miss is structural — it follows from the prompt shape, not the sample size. Any feature-only NestJS prompt that doesn't mention rate limiting will fail this rule regardless of which toolchain wrote it. The 6-vs-2 split in `nestjs-security` findings is a directional observation, consistent with the [80-function Claude run](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), but n=1. Run it yourself, report back.
 
 **What I have not pinned:** the exact Gemini CLI build string and dated model snapshots. Those may move the absolute counts on a rerun — they do not move the structural finding.
+
+---
+
+## Foundations
+
+This run lints AI-generated code the moment it lands. The trilogy hub — [I Inherited a NestJS Codebase. The First Lint Run Found 6 Vulnerabilities](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities) — points the same plugin at an existing codebase instead: code you inherit, not code you just generated.
 
 ---
 

@@ -3,6 +3,7 @@ title: "I Linted 12 AI-Shaped Agent Tools. All 12 Were Missing an Input Schema."
 description: "I ran eslint-plugin-vercel-ai-security over 12 tool definitions written the way AI assistants wire them: 12/12 had no inputSchema and 6 destructive tools (deleteUser, transferFunds, executeCommand…) had no confirmation gate. Five CWE-tagged ESLint rules bound an AI agent's agency at write-time — and one ungated tool still slipped past."
 slug: "securing-ai-agents-in-the-vercel-ai-sdk"
 canonical_url: "https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/securing-ai-agents-in-the-vercel-ai-sdk-485n"
 devto_id: 3116469
 published_at: "2025-12-20T00:03:08Z"
@@ -63,7 +64,7 @@ Traditional API security assumes your code chooses what runs. You validate the i
 
 **An agent's tool calls are model-chosen, not code-chosen.** The same user input that would fail a traditional injection check can succeed as an agent instruction. When a user sends `"delete the test accounts"` to a chat interface, your code doesn't parse that string — the model does, and it maps it to a `deleteUser` tool call with arguments it inferred. You never had a chance to validate, because you never saw the intermediate decision.
 
-This creates a class of vulnerability that code path analysis can't find: the path from user message to tool call to side effect is non-deterministic. There is no line of code to audit, no branch to trace, no SAST rule to write — because the path is assembled at runtime by the model, differently each conversation.
+This creates a class of vulnerability that code path analysis can't find: the path from user message to tool call to side effect is non-deterministic. There is no line of code to audit, no branch to trace, no [SAST](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) rule to write — because the path is assembled at runtime by the model, differently each conversation.
 
 In a typical 3-step agent conversation with access to 5 tools, the model might make up to 15 tool calls, any combination of which could be destructive. Without `inputSchema` constraints, each of those calls can be made with arbitrary arguments. Without `maxSteps`, the loop is unbounded. Without confirmation gates on destructive tools, there is nothing between a well-crafted user message and a deleted production row.
 
@@ -105,7 +106,7 @@ src/agent.ts
              Fix: Add maxSteps option: generateText({ ..., maxSteps: 5 })
 ```
 
-(A fourth rule, `require-error-handling` (CWE-755), flags the un-`try/catch`'d
+(A fourth rule, `require-error-handling` ([CWE-755](https://ofriperetz.dev/articles/cwe-taxonomy-explained)), flags the un-`try/catch`'d
 call — an agent step that throws shouldn't cascade. It's `off` in `recommended`
 and `error` in `configs.strict`, so it stays silent above until you opt in.)
 
@@ -128,14 +129,14 @@ finding is the one that bites in production.
 
 These are the operational half of agent safety. The _input_ half — prompt
 injection, system-prompt leakage — is the
-[prompt-injection deep-dive](https://dev.to/ofri-peretz/your-vercel-ai-sdk-app-has-a-prompt-injection-vulnerability-4g7p);
+[prompt-injection deep-dive](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability);
 the full OWASP LLM map (8 of 10, honestly) is
 [here](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk).
 
 > **One honest limitation.** `require-tool-confirmation` inspects tool **object
 > literals** declared inline in `tools: { … }`. If you wrap a tool in the
 > `tool()` helper or extract it to a variable, the rule currently treats it as
-> "may be handled elsewhere" and skips it — a documented false-negative. Gate
+> "may be handled elsewhere" and skips it — a documented [false-negative](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn). Gate
 > those manually. (`require-tool-schema` _does_ read inside `tool({ … })`.) The
 > hardened pattern below uses the inline form so every rule fires.
 
@@ -204,7 +205,7 @@ So the linter isn't only catching the human reviewer's blind spot. It's the
 thing standing between your `tools: { … }` block and the next paste from an
 assistant — Claude, Gemini, or otherwise — that has never heard of LLM06.
 
-> **Related:** [Vercel AI SDK prompt injection vulnerability](https://dev.to/ofri-peretz/your-vercel-ai-sdk-app-has-a-prompt-injection-vulnerability-4g7p) — the input surface before the model ever reaches your tools. And [3 lines of code to hack your Vercel AI app](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) — the shortest exploit path, and the one-line fix.
+> **Related:** [Vercel AI SDK prompt injection vulnerability](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability) — the input surface before the model ever reaches your tools. And [3 lines of code to hack your Vercel AI app](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) — the shortest exploit path, and the one-line fix.
 
 ---
 

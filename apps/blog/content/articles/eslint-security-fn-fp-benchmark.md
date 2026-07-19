@@ -14,6 +14,7 @@ tags:
   - "javascript"
 series: "ESLint Security Benchmark Series"
 canonical_url: https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark
+tier: "T3"
 reading_time_minutes: 15
 author:
 ---
@@ -32,13 +33,13 @@ I didn't expect the noise to be as bad as the signal. I expected low recall (it 
 
 ## A note on this benchmark
 
-**Before the numbers: I got one of them wrong in the first draft.** My initial sample output in the Interlace section labeled the `eval()` CWE-95 finding as **HIGH** severity. Re-deriving it against CVSS v3.1 during the same review pass that caught the OWASP category errors below showed it's actually **CRITICAL** (9.8) — full arbitrary code execution, not a lesser finding. Had that gone uncaught, the article would have understated the one vulnerability class it makes the strongest claim about. That's the instinct this entire benchmark asks you to apply to plugin vendors' own claims — including mine — so here it is applied to my own draft first.
+**Before the numbers: I got one of them wrong in the first draft.** My initial sample output in the Interlace section labeled the `eval()` CWE-95 finding as **HIGH** severity. Re-deriving it against [CVSS v3.1](https://ofriperetz.dev/articles/cvss-scores-explained) during the same review pass that caught the OWASP category errors below showed it's actually **CRITICAL** (9.8) — full arbitrary code execution, not a lesser finding. Had that gone uncaught, the article would have understated the one vulnerability class it makes the strongest claim about. That's the instinct this entire benchmark asks you to apply to plugin vendors' own claims — including mine — so here it is applied to my own draft first.
 
 **Full disclosure before the numbers:** I'm the author of the Interlace ESLint ecosystem, and Interlace scores 100%/0 FP in this benchmark. The skeptic read — "he built the test to fit his tool" — is the right instinct, so I'll give you the means to disprove it.
 
-**How a false positive is counted, stated explicitly because it's load-bearing:** a firing is an FP if the flagged pattern is not exploitable *as written* — regardless of whether the underlying rule concept is sound. That's a real methodological choice, not a neutral default: the SonarJS `no-os-command-from-path` firings later in this piece are rules working *correctly* (the command genuinely resolves through PATH) on code that isn't exploitable here (the argument is a hardcoded literal, not attacker-controlled). Counting "correct rule, wrong scope for this fixture" as an FP is a stricter bar than "rule made a logical error," and it's the bar every plugin in this benchmark is held to, including Interlace's own rules.
+**How a [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) is counted, stated explicitly because it's load-bearing:** a firing is an FP if the flagged pattern is not exploitable *as written* — regardless of whether the underlying rule concept is sound. That's a real methodological choice, not a neutral default: the SonarJS `no-os-command-from-path` firings later in this piece are rules working *correctly* (the command genuinely resolves through PATH) on code that isn't exploitable here (the argument is a hardcoded literal, not attacker-controlled). Counting "correct rule, wrong scope for this fixture" as an FP is a stricter bar than "rule made a logical error," and it's the bar every plugin in this benchmark is held to, including Interlace's own rules.
 
-The fixture suite was built first, against published OWASP Top 10 categories and CWE mappings, before I wrote a single Interlace rule to cover it. Every fixture, every vulnerable pattern, every safe pattern is in the [public GitHub repo](https://github.com/ofri-peretz/eslint-benchmark-suite). If you run the benchmark against only the five non-Interlace plugins, the recall numbers don't change. The methodology is in the [Reproducibility section](#reproducibility) — one command, public repo, verifiable output. I built this to quantify what I made, not to sell it. The numbers either hold up when you run them yourself, or they don't.
+The fixture suite was built first, against published [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) categories and [CWE mappings](https://ofriperetz.dev/articles/cwe-taxonomy-explained), before I wrote a single Interlace rule to cover it. Every fixture, every vulnerable pattern, every safe pattern is in the [public GitHub repo](https://github.com/ofri-peretz/eslint-benchmark-suite). If you run the benchmark against only the five non-Interlace plugins, the recall numbers don't change. The methodology is in the [Reproducibility section](#reproducibility) — one command, public repo, verifiable output. I built this to quantify what I made, not to sell it. The numbers either hold up when you run them yourself, or they don't.
 
 ---
 
@@ -73,9 +74,9 @@ I built a benchmark with **40 vulnerable code patterns** across 14 security cate
 
 ## Why This Benchmark Matters
 
-Two failure modes undermine a security linter: false negatives ship an illusion of clean code, false positives train developers to ignore the tool entirely. Most teams optimize for recall and forget that precision is what keeps recall usable.
+Two failure modes undermine a security linter: false negatives ship an illusion of clean code, false positives train developers to ignore the tool entirely. Most teams optimize for recall and forget that [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) is what keeps recall usable.
 
-Here's why this is a 2026 problem and not a 2020 one: when a human wrote every line, low recall felt survivable because humans don't introduce `jwt.verify` without an algorithm allowlist *that often*. That base rate is gone. AI assistants reproduce the insecure patterns in their training data at a much higher rate — which means a linter's recall number is no longer a rounding error, it's your actual catch rate on a much larger volume of code. More on that in [The AI Multiplier](#the-ai-multiplier-why-recall-stopped-being-optional) below.
+Here's why this is a 2026 problem and not a 2020 one: when a human wrote every line, low recall felt survivable because humans don't introduce `jwt.verify` without an algorithm allowlist *that often*. That [base rate](https://ofriperetz.dev/articles/base-rate-problem-explained) is gone. AI assistants reproduce the insecure patterns in their training data at a much higher rate — which means a linter's recall number is no longer a rounding error, it's your actual catch rate on a much larger volume of code. More on that in [The AI Multiplier](#the-ai-multiplier-why-recall-stopped-being-optional) below.
 
 ---
 
@@ -219,7 +220,7 @@ The silencing is the problem. It almost never happens with a targeted `// eslint
 
 **The human failure here is reasonable frustration.** A developer who has correctly added three allowlist guards this sprint, watched the linter flag all three as violations, and seen a senior engineer confirm "yes those are fine, suppress it" — that developer isn't being careless when they move the rule to `off`. They're pattern-matching off their last ten interactions with the tool. A precise rule earns the benefit of the doubt; a 50%-precision rule spends it, and a senior signs off on the disable because the alternative is a wall of noise nobody reads.
 
-If you want to see how security gaps widen after a rule gets moved to `off`, a [30-minute static analysis audit during onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) is the fastest way to find what shipped through the gap.
+If you want to see how security gaps widen after a rule gets moved to `off`, a [30-minute static analysis audit during onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) is the fastest way to find what shipped through the gap.
 
 #### ESLint 9 Compatibility: ❌ BROKEN — but only on the version benchmarked here
 
@@ -244,7 +245,7 @@ Before reading the numbers: SonarJS ships two distinct rule categories — `sona
 
 Despite having the most rules of any plugin tested, SonarJS missed 65% of vulnerabilities. The majority of its 269 rules target **code quality** (complexity, duplication, cognitive load), not security.
 
-> Full teardown: [SonarJS Has 269 Rules. On 40 Vulnerabilities It Caught 14 — It Misses 65% of the Security Surface.](https://dev.to/ofri-peretz/sonarjs-has-269-rules-it-still-misses-65-of-security-vulnerabilities-3jh)
+> Full teardown: [SonarJS Has 269 Rules. On 40 Vulnerabilities It Caught 14 — It Misses 65% of the Security Surface.](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)
 
 Where it does fire, it stops at the simple case: 2/4 on SQL injection, command injection, XSS, and hardcoded credentials — missing template-literal queries, `execSync`/`spawn` with a shell, `document.write`/`new Function`, and AWS-key/JWT-secret shapes respectively. It scores 0 on an entire band of server-side categories: path traversal, JWT, timing attacks, NoSQL injection, SSRF, and open redirect (see the [master matrix](#category-by-category-breakdown) for the per-cell grid).
 
@@ -316,7 +317,7 @@ Microsoft's Security Development Lifecycle plugin has the **highest precision** 
 
 All four detections land in the same category — all 4 of the XSS/Code-Execution cases: `innerHTML`, `document.write`, `eval`, and `new Function`. The other 36 patterns across the remaining 13 categories: 0 (see the [master matrix](#category-by-category-breakdown)).
 
-> Deep dive: [Microsoft's SDL ESLint Plugin Caught 5 Node Vulns. The Domain Plugins Caught 46 — Same File, Wrong Layer](https://dev.to/ofri-peretz/microsofts-eslint-security-plugin-catches-10-of-vulnerabilities-heres-what-it-misses-5gii)
+> Deep dive: [Microsoft's SDL ESLint Plugin Caught 5 Node Vulns. The Domain Plugins Caught 46 — Same File, Wrong Layer](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)
 
 #### False Positives: 1 — And Why It Passed
 
@@ -427,7 +428,7 @@ A recall gap scales linearly with the size of your codebase — the smaller a pl
 
 ### The Math of Missing Vulnerabilities
 
-If your codebase has 100 potentially vulnerable patterns, distributed the same way this benchmark's 40 are (if you're onboarding a new codebase, [a 30-minute OWASP-mapped audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) can show you which of the available ESLint rules map to each Top 10 category before you even run a single lint check):
+If your codebase has 100 potentially vulnerable patterns, distributed the same way this benchmark's 40 are (if you're onboarding a new codebase, [a 30-minute OWASP-mapped audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) can show you which of the available ESLint rules map to each Top 10 category before you even run a single lint check):
 
 | Plugin                       | Detected | Missed | In Production         |
 | :--------------------------- | :------- | :----- | :-------------------- |
@@ -461,11 +462,11 @@ There's a reason I ran a precision/recall benchmark in 2026 instead of just citi
 
 When a human wrote every line, a 27.5%-recall linter missed a lot — but humans don't introduce SQL string concatenation or `jwt.verify` without an `algorithms` allowlist _that often_. The base rate was low enough that low recall felt survivable.
 
-That assumption is now false. In a separate experiment I [let Claude write 80 functions and found 65–75% shipped with a real security vulnerability](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — the exact categories this benchmark tests: hardcoded credentials, missing JWT algorithm restriction, unparameterized queries, `child_process` with interpolated input. AI assistants reproduce the patterns in their training data, and their training data is full of the insecure 2018-era snippets these very rules were written to catch.
+That assumption is now false. In a separate experiment I [let Claude write 80 functions and found 65–75% shipped with a real security vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — the exact categories this benchmark tests: hardcoded credentials, missing JWT algorithm restriction, unparameterized queries, `child_process` with interpolated input. AI assistants reproduce the patterns in their training data, and their training data is full of the insecure 2018-era snippets these very rules were written to catch.
 
 Point the six plugins from this benchmark at AI-generated code and the recall column _is_ your catch rate. A linter that misses 72.5% of patterns now misses 72.5% of a much larger, faster-growing input. This is also why precision stopped being a nice-to-have. The volume of AI-authored code means more total warnings; if half of them are wrong, the disable-and-move-on reflex arrives faster and lands harder. High recall gets you the catch; high precision is what keeps the team from turning the catcher off.
 
-For a broader view of how different plugins compare across more tools — including how this benchmark fits into the [17-plugin recall ranking](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) — reading both pieces together gives you the full picture: who catches what (recall), and whether they cry wolf (precision).
+For a broader view of how different plugins compare across more tools — including how this benchmark fits into the [17-plugin recall ranking](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) — reading both pieces together gives you the full picture: who catches what (recall), and whether they cry wolf (precision).
 
 ---
 
@@ -506,7 +507,7 @@ The fixture suite is public. Run it yourself — the command is below.
 
 ### Reproducibility
 
-Full bench setup (fixtures, scripts, methodology) is documented in the companion article: [I Benchmarked 17 ESLint Security Plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83#methodology). The FP samples in this article come from the same suite:
+Full bench setup (fixtures, scripts, methodology) is documented in the companion article: [I Benchmarked 17 ESLint Security Plugins](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared#methodology). The FP samples in this article come from the same suite:
 
 ```bash
 git clone https://github.com/ofri-peretz/eslint-benchmark-suite
@@ -547,9 +548,9 @@ npm install -D eslint-plugin-secure-coding eslint-plugin-node-security \
 
 Two packages in that install list go beyond what this specific 40-pattern benchmark tested: `eslint-plugin-secure-coding` covers general secure-coding hygiene rules outside the 14 CWE categories here, and `eslint-plugin-mongodb-security` covers NoSQL-specific patterns (query-operator injection, `$where` abuse) broader than the two NoSQL cases in this suite. Both are real, published Interlace packages — install them if your stack touches MongoDB or you want the wider hygiene net; skip them if you only need 1:1 coverage for what this benchmark measured.
 
-> Per-plugin setup: [secure-coding](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure-coding-1eda) · [node-security](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-crypto-4a8g) · [browser-security](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-browser-security-3iop) · [pg](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj) · [jwt](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-jwt-4l4p) · [mongodb-security](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-mongodb-security-ol6)
+> Per-plugin setup: [secure-coding](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding) · [node-security](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-crypto-4a8g) · [browser-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-browser-security) · [pg](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) · [jwt](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) · [mongodb-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-mongodb-security)
 
-Full flat-config + migration steps are in the [17-plugin benchmark's migration block](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83#migrate-in-60-seconds).
+Full flat-config + migration steps are in the [17-plugin benchmark's migration block](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared#migrate-in-60-seconds).
 
 ---
 
@@ -565,9 +566,9 @@ That's the real cost of the false-positive tax: not the annoying warnings, but t
 
 ## Related deep dives
 
-> **ESLint Security Benchmark Series:** [Recall ranking (17 plugins)](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) → **False-positive tax (you are here)** → [What ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed). Start with recall to see who catches what; this piece is why the precision column decides whether anyone keeps the tool on.
+> **ESLint Security Benchmark Series:** [Recall ranking (17 plugins)](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) → **False-positive tax (you are here)** → [What ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed). Start with recall to see who catches what; this piece is why the precision column decides whether anyone keeps the tool on.
 
-- [I Benchmarked 17 ESLint Security Plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) — the recall-ranked companion to this FP deep dive
+- [I Benchmarked 17 ESLint Security Plugins](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) — the recall-ranked companion to this FP deep dive
 - Why quality, accessibility, and serverless packages get a different scorecard than this one, on purpose — a separate write-up, coming soon
 - [Same File: eslint-plugin-security Caught 21, the Domain Plugins Caught 46](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h) — the floor-not-ceiling argument on real code
 - [What Ground Truth Caught That Unit Tests Missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) — how I validate a rule's true/false positives before trusting the F1 score

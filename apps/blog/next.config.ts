@@ -112,6 +112,22 @@ const nextConfig: NextConfig = {
           "/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities",
         permanent: true,
       },
+      // Orphan migrations (2026-07-19): the live dev.to copies of these two
+      // articles already carry canonical_urls / body links pointing at slugs
+      // that never existed on the blog. The migrated files use the graph's
+      // shorter slugs; these redirects make every published link resolve
+      // without editing any dev.to body.
+      {
+        source: "/articles/circular-dependencies-javascript",
+        destination: "/articles/circular-dependencies-in-javascript-explained",
+        permanent: true,
+      },
+      {
+        source:
+          "/articles/payload-cms-has-508-circular-dependencies-nextjs-has-17-heres-why-they-form-in-every-large-js",
+        destination: "/articles/payload-508-circular-dependency-cycles",
+        permanent: true,
+      },
     ];
   },
 };

@@ -3,6 +3,7 @@ title: "5 Cycles Invisible in 14,556 Files. The Cache Bug That Hid Them."
 description: "Our import cycle detector reported 0 cycles in a Next.js app with 7 actual cycles. Here's the 3-line cache bug that hid them all — and how to test if your own detector has the same class of failure."
 slug: "import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it"
 canonical_url: "https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/import-nextno-cycle-reported-0-cycles-on-nextjs-we-found-why-and-fixed-it-ln2"
 devto_id: 3779911
 published_at: "2026-05-29"
@@ -35,7 +36,7 @@ Here is the 30-second test that exposed it, and it works on any cycle detector: 
 
 The cause: a 10-hop depth limit that wrote false "non-cyclic" entries into a shared cache, poisoning later traversals. Large scope → more files processed before the subset → more false cache entries → more cycles hidden. Small scope → clean cache → same cycles visible. Next.js, 131K stars, and the headline number on its dependency graph was a lie the cache told us.
 
-The cache bug is confirmed in source; the fix shipped in `eslint-plugin-import-next@2.3.6`. This is the run-it-yourself half of a two-part story — the [full root-cause walkthrough is here](https://dev.to/ofri-peretz/no-cycle-finds-0-cycles-in-nextjs-and-other-lies-caches-tell-you-3ld8). If you only read one section, read [the diagnostic test](#what-this-means-for-your-own-cycle-detector): it works on any cycle detector, not just ours.
+The cache bug is confirmed in source; the fix shipped in `eslint-plugin-import-next@2.3.6`. This is the run-it-yourself half of a two-part story — the [full root-cause walkthrough is here](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale). If you only read one section, read [the diagnostic test](#what-this-means-for-your-own-cycle-detector): it works on any cycle detector, not just ours.
 
 One thing this is **not**: a type-import disagreement. Our rule and `eslint-plugin-import/no-cycle` use the *same* edge policy — both exclude `import type` edges, because type-only imports are erased at compile time and can't form a runtime cycle. The two tools agreed on Next.js: **0 cycles each**. The gap that mattered was ours-vs-ours — the full run returned 0, the 33-file subset returned 5 — and that gap is the cache bug, end to end.
 
@@ -51,7 +52,7 @@ One thing this is **not**: a type-import disagreement. Our rule and `eslint-plug
 
 **Root cause found.** The DFS traversal had a `maxDepth: 10` default. When the full-repo run processed files outside the 33-file subset, some paths hit the depth cap at hop 10 and stopped. The closing node — the one that would have completed the cycle — was never reached. But those boundary nodes were written into `cache.nonCyclicFiles` as if the DFS had been *complete*. When the traversal later reached those same files from inside the subset, it hit the cache, returned early, and the cycle vanished.
 
-**Fix applied.** The fix was 3 lines: gate the `cache.nonCyclicFiles.add(targetFile)` call on a `!depthLimitHit` flag. If the DFS was cut short, the result is not final and cannot be cached as acyclic. That single guard eliminated the scope-dependent false negative.
+**Fix applied.** The fix was 3 lines: gate the `cache.nonCyclicFiles.add(targetFile)` call on a `!depthLimitHit` flag. If the DFS was cut short, the result is not final and cannot be cached as acyclic. That single guard eliminated the scope-dependent [false negative](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn).
 
 ---
 
@@ -95,7 +96,7 @@ This means: if you use a finite `maxDepth` after the fix, cycles deeper than you
 
 **Why `eslint-plugin-import` reported 0 too — and why that's a different story.** `eslint-plugin-import/no-cycle` already defaults to `maxDepth: Infinity`, so it isn't subject to our depth bug. Its 0 on Next.js is, as far as we can tell, a *correct-for-its-design* result given the same compile-time-edge policy we use — both tools drop `import type` edges before traversal. The number that exposed our bug wasn't theirs; it was oxlint's native Rust port reporting 17, which gave us an independent reference to measure against.
 
-For a head-to-head performance comparison of `import-next` vs `eslint-plugin-import`, the [full benchmark is here](https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster-1afa) — up to 100x faster on large repos. Speed is only useful if the results are correct, which is exactly what this fix addresses.
+For a head-to-head performance comparison of `import-next` vs `eslint-plugin-import`, the [full benchmark is here](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster) — up to 100x faster on large repos. Speed is only useful if the results are correct, which is exactly what this fix addresses.
 
 **Why it shipped with the wrong default:** Unit tests use small, controlled graphs — never 12 hops deep. CI stayed green. The benchmark against Next.js was what surfaced it, and only because we had oxlint's count as a reference. Without an independent comparison, the silence would have looked like a clean result.
 
@@ -237,8 +238,14 @@ Has a tool in your CI ever reported a clean result that you later discovered was
 
 ---
 
+## Foundations
+
+A suspiciously clean zero is a measurement result like any other — and instruments can be systematically wrong in one direction. That's the pattern this bug is a worked example of: the detector's own design (a depth cap feeding a shared cache) skewed every result toward "no cycles." The general failure mode, and how to spot it before an independent reference tool does, is covered in [bias in measurement](https://ofriperetz.dev/articles/bias-in-measurement).
+
+---
+
 *Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/inside-our-linter-benchmarks) series:*
-*← [Our cycle detector reported 0. The real number was 245 files.](https://dev.to/ofri-peretz/no-cycle-finds-0-cycles-in-nextjs-and-other-lies-caches-tell-you-3ld8) | [What Ground Truth Caught That Unit Tests Missed →](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed)*
+*← [Our cycle detector reported 0. The real number was 245 files.](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale) | [What Ground Truth Caught That Unit Tests Missed →](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed)*
 
 ---
 

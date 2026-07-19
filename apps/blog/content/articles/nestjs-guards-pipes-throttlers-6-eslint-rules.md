@@ -3,6 +3,7 @@ title: "NestJS Security Bugs Your Decorators Hide From Code Review — 6 Rules T
 description: "Missing @UseGuards, unvalidated @Body(), entities leaking passwordHash — NestJS's decorator pattern makes these invisible in review. 6 CWE-mapped ESLint rules that catch every one of them in CI, with vulnerable code, why it survived review, and the fix."
 slug: "nestjs-guards-pipes-throttlers-6-eslint-rules"
 canonical_url: "https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-nestjs-security-32ic"
 devto_id: 3144090
 published_at: "2026-01-02T19:28:48Z"
@@ -233,7 +234,7 @@ src/users.controller.ts
 ✖ 14 problems (4 errors, 10 warnings)
 ```
 
-14 findings, 4 of them CWE-284 errors. Five of the six rules fired on code that passed `tsc`. The sixth (`no-exposed-debug-endpoints`, CWE-489) stays quiet unless the controller has a debug or health-check route that leaks internals in production — fire one up and it fires too.
+14 findings, 4 of them [CWE-284](https://ofriperetz.dev/articles/cwe-taxonomy-explained) errors. Five of the six rules fired on code that passed `tsc`. The sixth (`no-exposed-debug-endpoints`, CWE-489) stays quiet unless the controller has a debug or health-check route that leaks internals in production — fire one up and it fires too.
 
 ---
 
@@ -261,8 +262,8 @@ src/users.controller.ts
 
 These same six rules applied to real codebases, with full output:
 
-- [Claude wrote a NestJS service. ESLint found 6 security holes.](https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj) — the AI-generated controller case, verbatim
-- [The 30-minute security audit: a static-analysis protocol for onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) — applying the same scan-first approach to a whole codebase
+- [Claude wrote a NestJS service. ESLint found 6 security holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes) — the AI-generated controller case, verbatim
+- [The 30-minute security audit: a static-analysis protocol for onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) — applying the same scan-first approach to a whole codebase
 
 ---
 

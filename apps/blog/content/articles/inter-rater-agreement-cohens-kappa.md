@@ -9,9 +9,12 @@ tags:
   - "devsecops"
   - "node"
   - "javascript"
+devto_id: 4176294
 canonical_url: https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa
 reading_time_minutes: 6
 tier: "T0"
+series: "Foundations"
+arc: 10
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627

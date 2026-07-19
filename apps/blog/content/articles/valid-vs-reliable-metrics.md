@@ -5,6 +5,8 @@ slug: "valid-vs-reliable-metrics"
 published: true
 date: 2026-07-17
 tier: "T0"
+series: "Foundations"
+arc: 11
 tags:
   - "security"
   - "devsecops"

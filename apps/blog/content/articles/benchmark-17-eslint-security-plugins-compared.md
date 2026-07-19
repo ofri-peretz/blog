@@ -3,6 +3,7 @@ title: "The #1 ESLint Security Plugin Just Got Fixed. It Still Catches 0 of 6 SQ
 description: "I ran 40 real-world vulnerable patterns through 17 ESLint plugins — eslint-plugin-security, SonarJS, Microsoft SDL. The old pinned version crashes on ESLint 9; the current one doesn't crash but still misses SQL injection entirely. Most others miss 60–100%. Here's the reproducible benchmark, re-verified against the current version of every plugin."
 slug: "benchmark-17-eslint-security-plugins-compared"
 canonical_url: "https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83"
 devto_id: 3241881
 published_at: "2026-05-25T14:27:23Z"
@@ -28,7 +29,7 @@ author:
 
 1.5 million weekly downloads go to `eslint-plugin-security`. The version most teams have pinned (2.1.1, from 2024) crashes outright on ESLint 9's flat config and catches **0 of 40** real vulnerabilities. I re-verified against the current version (4.0.1, released three weeks ago) before publishing this: it no longer crashes, but it still only catches **11 of 40** — and 0 of 6 SQL injection cases, the category most teams assume "a security linter" exists to cover. I benchmarked it, and 16 other plugins, against 40 real vulnerabilities to find out who actually fires. Only one plugin set caught all 40.
 
-**Full disclosure:** that plugin set is mine. I built the Interlace ESLint Ecosystem. I also built the benchmark suite and ran every test. That's the conflict of interest — I'm naming it here, in paragraph two, because a senior engineer will spot it by row 1 of the leaderboard anyway, and finding it late feels like bad faith. The methodology is open-source, the failing runs are in the same repo as the passing ones, and every number is reproducible. Judge it on that, not on who wrote it. The full process behind that last sentence — including the runtime bug it caught in this exact benchmark before publication — is in [I Built What I Benchmark. Here's How I Try Not to Cheat.](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat)
+**Full disclosure:** that plugin set is mine. I built the Interlace ESLint Ecosystem. I also built the benchmark suite and ran every test. That's the conflict of interest — I'm naming it here, in paragraph two, because a senior engineer will spot it by row 1 of the leaderboard anyway, and finding it late feels like bad faith. The methodology is open-source, the failing runs are in the same repo as the passing ones, and every number is [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability). Judge it on that, not on who wrote it. The full process behind that last sentence — including the runtime bug it caught in this exact benchmark before publication — is in [I Built What I Benchmark. Here's How I Try Not to Cheat.](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat)
 
 **The most alarming finding:** The median plugin in this benchmark detected under 10% of vulnerability patterns. SonarJS — the best-performing competitor with 3M+ weekly downloads and 269 rules — caught **0 of 6 SQL injection cases**. Zero. The category most teams assume a "security" linter covers is a complete blind spot for every single plugin except Interlace.
 
@@ -36,7 +37,7 @@ author:
 
 ## TL;DR
 
-I built a benchmark suite with **40 vulnerable code patterns** across 13 CWE categories and **38 verified-safe patterns**. Then I ran **17 ESLint plugins** against them — every major security, quality, and framework plugin in the ecosystem.
+I built a benchmark suite with **40 vulnerable code patterns** across 13 [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained) categories and **38 verified-safe patterns**. Then I ran **17 ESLint plugins** against them — every major security, quality, and framework plugin in the ecosystem.
 
 **One plugin set achieved a perfect score. Most others detected under 50% of patterns.**
 
@@ -74,7 +75,7 @@ The crash made a good villain. The truth is less dramatic and more useful: a mai
 
 I checked the other competitors the same way before publishing, not just the one with the dramatic crash story:
 
-- **`eslint-plugin-sonarjs`** — 3.0.6 tested, 4.1.0 current. Re-benchmarked at 4.1.0: **10/40, F1 36.4%**, down from the older version's 14/40. This is a regression, not an improvement — the specific loss is **Command Injection, 4/4 → 0/4**. Everything else scored identically (SQL 0/6, Path Traversal 0/4, Hardcoded Credentials 2/4, JWT 1/3, XSS 2/4, Prototype Pollution 0/3, Insecure Randomness 2/2, Weak Crypto 2/3, Timing 0/2, SSRF 0/2, Open Redirect 0/1, ReDoS 1/2). I don't know why the newer release lost command-injection detection — that's a question for SonarJS's changelog, not something I can explain from the outside, and it's exactly the kind of finding a "current version" claim needs to be prepared to report even when it's not the story I expected to publish.
+- **`eslint-plugin-sonarjs`** — 3.0.6 tested, 4.1.0 current. Re-benchmarked at 4.1.0: **10/40, F1 36.4%**, down from v3.0.6's 14/40 (35.0% recall). This is a regression, not an improvement — the specific loss is **Command Injection, 4/4 → 0/4**. Everything else scored identically (SQL 0/6, Path Traversal 0/4, Hardcoded Credentials 2/4, JWT 1/3, XSS 2/4, Prototype Pollution 0/3, Insecure Randomness 2/2, Weak Crypto 2/3, Timing 0/2, SSRF 0/2, Open Redirect 0/1, ReDoS 1/2). I don't know why the newer release lost command-injection detection — that's a question for SonarJS's changelog, not something I can explain from the outside, and it's exactly the kind of finding a "current version" claim needs to be prepared to report even when it's not the story I expected to publish.
 - **`eslint-plugin-unicorn`** — 62.0.0 tested. The real current version depends on how you define "current": 66.0.0+ requires ESLint ≥10.4, which this benchmark's ESLint 9.39.2 environment can't run at all. The highest version still compatible with ESLint 9 is 65.0.0. Re-benchmarked at 65.0.0: **22/40, F1 51.8%** — identical to the 62.0.0 numbers already in this article. No correction needed here; the version gap turned out not to matter for this one.
 - **`@microsoft/eslint-plugin-sdl`** — 1.1.0 tested, and 1.1.0 is still current (last published 2025-02-18). Nothing to re-verify.
 
@@ -94,7 +95,7 @@ The data shows a **massive detection gap** across the entire ecosystem. Plugins 
 
 SonarJS is still a credible competitor, but the current release (4.1.0) has a narrower case than the version most benchmarks would cite: **Insecure Randomness (2/2)** is its one clean category, with partial credit on Hardcoded Credentials (2/4), Weak Cryptography (2/3), XSS (2/4), and JWT (1/3). It also has 269 rules covering a wider range of code quality issues beyond security — if you need a single plugin for code quality *and* some security coverage, SonarJS is still a reasonable pragmatic choice, just not for command injection specifically anymore.
 
-Where SonarJS falls short: SQL injection (0/6), path traversal (0/4), prototype pollution (0/3), timing attacks (0/2), SSRF (0/2), open redirect (0/1), and — new in this version — **command injection (0/4, down from 4/4 in 3.0.6)**. If your stack touches a database, a filesystem, user-controlled URLs, or shell commands, SonarJS's 25% recall on the current release leaves you blind in the categories that matter most.
+Where SonarJS falls short: SQL injection (0/6), path traversal (0/4), prototype pollution (0/3), timing attacks (0/2), SSRF (0/2), open redirect (0/1), and — new in this version — **command injection (0/4, down from 4/4 in 3.0.6)**. If your stack touches a database, a filesystem, user-controlled URLs, or shell commands, SonarJS's 25% [recall](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) on the current release (v4.1.0 — down from 14/40 = 35.0% on v3.0.6) leaves you blind in the categories that matter most.
 
 ### Why this survives code review
 
@@ -102,7 +103,7 @@ Here's the part that should make you uncomfortable: the _name_ of a security plu
 
 I've watched this exact failure on real teams, and I watched it happen to my own tooling before I fixed it — that's not a hedge, it's the Feb-2026 baseline two sections below. Interlace's own config said "100% coverage" while actually scoring 77.5%, with a 1:1 false-positive ratio on top of that. I didn't catch it from a dashboard; I caught it because I re-ran the fixture suite and the number that came back wasn't the number I expected. That's the entire failure mode this section describes, and I was on the wrong side of it first. The linter isn't lying on purpose — it's a tool that got pinned and never re-benchmarked across a change. The config still _says_ covered. The coverage left months ago. The _appearance_ of a security gate became a false sense of security, which is worse than no linter at all, because no linter at least keeps a human paranoid.
 
-Here's the precise moment it goes dark, and why nobody notices: someone bumps ESLint 8 → 9 in a Renovate PR. From that version on, the plugin's rules hit `context.getScope is not a function` and stop producing findings — the security checks that used to flag a tainted query now report nothing. The PR title says "chore(deps): bump eslint." It gets one approval and merges on a Friday. From that commit forward, every SQL-concatenation and `child_process` call your security linter used to catch sails through, and the only evidence is a plugin name in a config file that no longer does anything. I have never once seen that PR get a security review — it's a dependency bump, who reviews those for coverage regressions? **A security rule that silently stops firing isn't a weaker control than no rule; it's a worse one, because it's also a lie your reviewers believe.**
+Here's the precise moment it goes dark, and why nobody notices: someone bumps ESLint 8 → 9 in a Renovate PR. From that version on, the plugin's rules hit `context.getScope is not a function` and stop producing findings — the security checks that used to flag a [tainted](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) query now report nothing. The PR title says "chore(deps): bump eslint." It gets one approval and merges on a Friday. From that commit forward, every SQL-concatenation and `child_process` call your security linter used to catch sails through, and the only evidence is a plugin name in a config file that no longer does anything. I have never once seen that PR get a security review — it's a dependency bump, who reviews those for coverage regressions? **A security rule that silently stops firing isn't a weaker control than no rule; it's a worse one, because it's also a lie your reviewers believe.**
 
 The same cognitive failure applies to SonarJS users, just more subtly. SonarJS fires on real things — weak randomness, some hardcoded credentials — so developers see real alerts. That activity creates an implicit sense of coverage. Nobody checks whether SQL injection is in the detected set because the linter is clearly doing *something*. The gap stays invisible until something ships. It got quieter still on the current release: teams that upgraded SonarJS expecting their command-injection coverage to carry forward lost it silently — no error, no changelog headline, just a rule that used to fire and doesn't anymore.
 
@@ -201,7 +202,7 @@ These are **correctly-implemented secure patterns** that should NOT trigger warn
 - `crypto.timingSafeEqual` for comparisons
 - URL allowlists for SSRF prevention
 
-Any warnings on these patterns are **false positives** — noise that creates alert fatigue and trains developers to ignore real issues.
+Any warnings on these patterns are **[false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn)** — noise that creates alert fatigue and trains developers to ignore real issues.
 
 ### How scoring works
 
@@ -351,13 +352,13 @@ Upgrade to the current release (4.0.1) and the crash goes away. Coverage doesn't
 
 Eleven of 40, with 8 false positives alongside them. The category it's most associated with by name — SQL injection — is a complete miss, current version or not.
 
-📖 _Deep dive: [eslint-plugin-security Is Unmaintained — Here's What Nobody Tells You](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)_
+📖 _Deep dive: [eslint-plugin-security Is Unmaintained — Here's What Nobody Tells You](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)_
 
 ### eslint-plugin-sonarjs (3M+ weekly downloads) — 25% Recall, current release
 
 **F1 Score: 36.4%** (v4.1.0, current) | 10 detected, 30 missed, 5 false positives
 
-Re-benchmarked against the current release before publishing — the version most comparisons would cite (3.0.6) actually scores higher (14/40) than what's on npm today:
+Re-benchmarked against the current release before publishing — the version most comparisons would cite (3.0.6) actually scores higher (14/40, 35.0% recall) than what's on npm today:
 
 | Category              | SonarJS (4.1.0) | What It Missed                              |
 | :-------------------- | :-------------- | :------------------------------------------ |
@@ -375,7 +376,7 @@ Re-benchmarked against the current release before publishing — the version mos
 | SSRF                  | 0/2             | ❌ All                                       |
 | Open Redirect         | 0/1             | ❌ All                                       |
 
-The one category SonarJS still carries cleanly is Insecure Randomness. Despite having **269 rules** (the most of any plugin tested), the current release catches **10/40** — down from 14/40 on the version originally tested — and misses 75% of vulnerabilities, including **0 of 6 SQL/NoSQL injection cases** (unchanged) and, new in this release, **0 of 4 command injection cases** it used to catch completely. Many of its rules target code quality, not security.
+The one category SonarJS still carries cleanly is Insecure Randomness. Despite having **269 rules** (the most of any plugin tested), the current release (v4.1.0) catches **10/40** (25.0% recall) — down from 14/40 (35.0%) on v3.0.6, the version originally tested — and misses 75% of vulnerabilities, including **0 of 6 SQL/NoSQL injection cases** (unchanged) and, new in this release, **0 of 4 command injection cases** it used to catch completely. Many of its rules target code quality, not security.
 
 **When a developer would believe they're covered:** SonarJS fires on real findings. You see command injection alerts, you fix them, you feel the tool is working. The SQL injection cases that SonarJS silently misses never appear in your lint output — so you never know they're there. The linter looks active; the gap is invisible.
 
@@ -464,7 +465,7 @@ The reason Interlace achieves 100% coverage is **specialization**. Instead of on
 | `eslint-plugin-jwt`                | Algorithm confusion, token safety              | 13    |
 | `eslint-plugin-mongodb-security`   | NoSQL injection, operator injection            | 16    |
 | `eslint-plugin-vercel-ai-security` | Prompt injection, output validation            | 19    |
-| [`eslint-plugin-lambda-security`](/articles/getting-started-with-eslint-plugin-lambda-security) | IAM, cold starts, secrets | 14 |
+| [`eslint-plugin-lambda-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-lambda-security) | IAM, cold starts, secrets | 14 |
 | `eslint-plugin-express-security`   | Helmet, CORS, sessions                         | 10    |
 | `eslint-plugin-nestjs-security`    | Guards, pipes, decorators                      | 6     |
 
@@ -484,7 +485,7 @@ And before you assume this is one vendor's problem, it isn't. I ran the same sec
 
 The model output is the new attack surface, and it walks straight past the human review that used to be the last line of defense — because it _looks_ senior. I gave Claude one prompt for a NestJS users service and got 200 lines that TypeScript compiled clean; a specialized linter found **6 security holes in 3 seconds** ([the full breakdown](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)). And asking the model to _fix_ its own findings without deterministic feedback made it worse: it introduced brand-new vulnerability categories at **4× the rate** — what I call [the AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more): cut one head, two grow back.
 
-The takeaway for this benchmark: a plugin that detects 0% or 35% of these patterns was already a liability. Pointed at AI-generated code that reintroduces the same patterns by the hundred, it's a rubber stamp on a vulnerability factory. The deterministic 100%-recall, 0%-FP layer is what gives the model an objective signal to converge against — and it's the same `npm run benchmark:fn-fp` command below, which you can rerun against your own AI's output, not just mine.
+The takeaway for this benchmark: a plugin that detects 0% or 35% (SonarJS v3.0.6; 25.0% on the current v4.1.0) of these patterns was already a liability. Pointed at AI-generated code that reintroduces the same patterns by the hundred, it's a rubber stamp on a vulnerability factory. The deterministic 100%-recall, 0%-FP layer is what gives the model an objective signal to converge against — and it's the same `npm run benchmark:fn-fp` command below, which you can rerun against your own AI's output, not just mine.
 
 If you've read this far, close the gap in your own repo before you forget — two commands:
 
@@ -573,13 +574,18 @@ This article is the ecosystem overview. For the head-to-head per-plugin comparis
 
 - [SonarJS vs Interlace: 269 Rules Still Miss 65% of Vulnerabilities](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)
 - [Microsoft SDL vs Interlace: Enterprise Security Benchmark](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)
-- [eslint-plugin-security Is Unmaintained — Here's What Nobody Tells You](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)
+- [eslint-plugin-security Is Unmaintained — Here's What Nobody Tells You](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)
 
 And for why this benchmark matters more every quarter — the AI angle:
 
 - [I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 - [Claude Inherited a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 - [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
+
+And the measurement foundations under the numbers — what a leaderboard rank does and doesn't tell you, and how a benchmark's own design can bias what it finds:
+
+- [Ranking vs. measuring](https://ofriperetz.dev/articles/ranking-vs-measuring)
+- [Bias in measurement](https://ofriperetz.dev/articles/bias-in-measurement)
 
 Full plugin docs: [eslint.interlace.tools](https://eslint.interlace.tools)
 

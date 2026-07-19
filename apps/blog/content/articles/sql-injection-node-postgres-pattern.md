@@ -3,6 +3,7 @@ title: "Your node-postgres Data Layer Fails 4 Ways in Production. SQL Injection 
 description: "SQL injection is the famous node-postgres failure — but identifier hijacking, connection-pool exhaustion, and insecure transport page you at 3 AM just as hard. The four data-layer threat classes, the pg-specific ESLint rule for each, the one config that turns them all on — and why AI assistants get the database layer wrong (Gemini 2.5 Pro: up to 96% flagged in the database domain)."
 slug: "sql-injection-node-postgres-pattern"
 canonical_url: "https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-pattern-everyone-gets-wrong-54mn"
 devto_id: 3137480
 published_at: "2025-12-31T05:50:50Z"
@@ -23,10 +24,10 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-The single most common Node.js security vulnerability in our corpus: string concatenation in a PostgreSQL query. It's been in the OWASP Top 10 for 15 years. Your linter can catch it today. Most don't.
+The single most common Node.js security vulnerability in our corpus: string concatenation in a PostgreSQL query. It's been in the [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) for 15 years. Your linter can catch it today. Most don't.
 
 Ask a backend engineer how the database layer fails and you'll hear "SQL
-injection." It's real, it's CWE-89, and it's _one of four_ structural ways a
+injection." It's real, it's [CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained), and it's _one of four_ structural ways a
 node-postgres data layer breaks in production. The other three — identifier
 hijacking, connection-pool exhaustion, insecure transport — don't make the OWASP
 headlines, but they page you at 3 AM all the same.
@@ -141,9 +142,9 @@ src/users.js
 
 (The ESLint CLI also appends the rule's doc URL to the `Fix:` line; it's trimmed
 here for width.) The rule fires on `+`-concatenation, `${…}` template
-expressions, and cross-line tainted variables in `.query()` calls — the full
+expressions, and cross-line [tainted](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) variables in `.query()` calls — the full
 taxonomy is in
-[Three SQL Injection Patterns That Still Ship](https://dev.to/ofri-peretz/three-sql-injection-patterns-that-still-ship-in-nodejs-and-the-linter-that-catches-them-onb).
+[Three SQL Injection Patterns That Still Ship](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).
 
 ## 2. Identifier hijacking — `no-unsafe-search-path` (CWE-426)
 
@@ -217,7 +218,8 @@ Note this one fires under the **⚡ reliability** icon, not the 🔒 security on
 `no-missing-client-release` is CWE-404 (resource exhaustion), a denial-of-service
 shape, not an injection. The CWE is the signal to read here, not the OWASP label:
 CWE-404 has no clean home in the OWASP Top 10, so the formatter slots it under
-the plugin's catch-all bucket — a good reminder to gate on the precise CWE/CVSS,
+the plugin's catch-all bucket — a good reminder to gate on the precise
+CWE/[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained),
 not the broad OWASP category.
 
 I have shipped this exact line. Early in my career I wrote a reporting endpoint
@@ -305,8 +307,9 @@ different blind spots: [Claude got 6 NestJS findings where Gemini got
 
 This is the part I want you to actually try, because it's reproducible on your
 machine in five minutes: generate a data-access function, paste it into a file
-the config below lints, and read the findings. The rule output is the ground
-truth the model's confidence isn't. I've run this experiment at scale on
+the config below lints, and read the findings. The rule output is the
+[ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing)
+the model's confidence isn't. I've run this experiment at scale on
 AI-generated code — [I let Claude write 80 functions and 65–75% had a security
 vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 — and the data layer is where the quiet ones cluster. The same lint gate that
@@ -371,8 +374,8 @@ Security Protocol_ series — start here, then drop into whichever failure mode 
 live in your codebase. Each has a dedicated deep-dive, and the full plugin tour
 covers the rest of the 13 rules:
 
-- [Three SQL Injection Patterns](https://dev.to/ofri-peretz/three-sql-injection-patterns-that-still-ship-in-nodejs-and-the-linter-that-catches-them-onb) — the `no-unsafe-query` detection in depth
-- [COPY FROM Filesystem Access](https://dev.to/ofri-peretz/copy-from-exploits-when-postgresql-reads-your-filesystem-127a) — when user-controlled paths turn your DB into a file reader
+- [Three SQL Injection Patterns](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) — the `no-unsafe-query` detection in depth
+- [COPY FROM Filesystem Access](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — when user-controlled paths turn your DB into a file reader
 - [search_path Hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the identifier attack most teams have never heard of
 - [The Connection Leak Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage) — the 3 AM pool-exhaustion post-mortem
 - [Transaction Race Conditions](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — what happens when `BEGIN` runs on the pool instead of a client

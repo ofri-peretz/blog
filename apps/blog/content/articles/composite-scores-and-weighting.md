@@ -5,6 +5,8 @@ slug: "composite-scores-and-weighting"
 published: true
 date: 2026-07-17
 tier: "T0"
+series: "Foundations"
+arc: 13
 tags:
   - "security"
   - "devsecops"

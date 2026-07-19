@@ -3,6 +3,7 @@ title: "I Linted Every OWASP LLM Category Against a Real Vercel AI SDK App. 8 Fi
 description: "A real mapping of the OWASP LLM Top 10 (2025) to eslint-plugin-vercel-ai-security: which categories a CWE-tagged rule genuinely catches in source — and why each one survives normal code review."
 slug: "100-owasp-llm-top-10-coverage-for-vercel-ai-sdk"
 canonical_url: "https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk-1bom"
 devto_id: 3114794
 published_at: "2025-12-19T06:00:22Z"
@@ -35,9 +36,9 @@ I took a standard Vercel AI SDK chat endpoint — the exact shape a coding assis
 
 That sentence is load-bearing. Type safety tells you the prompt field accepts a string. It does not tell you whether that string is trusted input. The OWASP LLM gaps live in the negative space — the guards that aren't there — and negative space doesn't show up in a diff.
 
-Every "100% OWASP LLM coverage" claim I've audited maps a timeout rule to "model poisoning" and hopes the buyer doesn't open the category list. The real number, for any source linter, is **8 of 10**. Here's the honest matrix — each category with the specific rule, the CWE, and, critically, _why the vulnerability survives a normal code review without it_.
+Every "100% OWASP LLM coverage" claim I've audited maps a timeout rule to "model poisoning" and hopes the buyer doesn't open the category list. The real number, for any source linter, is **8 of 10**. Here's the honest matrix — each category with the specific rule, the [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained), and, critically, _why the vulnerability survives a normal code review without it_.
 
-> **The web OWASP Top 10 for the same stack:** [I Mapped the OWASP Top 10 to ESLint Rules. 8 Hold Up. 2 Are Vendor Theater.](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
+> **The web [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) for the same stack:** [I Mapped the OWASP Top 10 to ESLint Rules. 8 Hold Up. 2 Are Vendor Theater.](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
 > If the questionnaire asks for both, these two pieces are the paired answer.
 
 ---
@@ -69,9 +70,9 @@ This is what the matrix doesn't tell you, and what makes the difference between 
 
 **LLM01 — Prompt Injection** survives because `prompt: userMessage` is a string assigned to a typed field. TypeScript is satisfied. Reviewers check error handling, response shape, and status codes — they don't ask "is this string trusted?" because the field signature doesn't require trust, only a string. The validation boundary is negative space: its absence is invisible in the diff.
 
-The rule (`require-validated-prompt`) checks whether the value passed to the `prompt` property on a `generateText` / `streamText` call is wrapped in a validation call. It doesn't do taint analysis across the entire call graph — it enforces that a boundary function exists at the call site. If your validator is `(x) => x`, the rule stays silent; if your input goes straight from `req.body` to the model, it fires. That's the trade-off stated explicitly in the [rule docs](https://eslint.interlace.tools/rules/vercel-ai-security).
+The rule (`require-validated-prompt`) checks whether the value passed to the `prompt` property on a `generateText` / `streamText` call is wrapped in a validation call. It doesn't do [taint analysis](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) across the entire call graph — it enforces that a boundary function exists at the call site. If your validator is `(x) => x`, the rule stays silent; if your input goes straight from `req.body` to the model, it fires. That's the trade-off stated explicitly in the [rule docs](https://eslint.interlace.tools/rules/vercel-ai-security).
 
-See the [full Vercel AI SDK prompt injection breakdown](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) for why "just sanitize it" doesn't close the vector.
+See the [full Vercel AI SDK prompt injection breakdown](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) for why "just sanitize it" doesn't close the vector.
 
 **LLM02 — Sensitive Information Disclosure** survives because secrets and PII passed to an LLM aren't written to a log file or returned in a response — they go into a prompt string. Reviewers scan for `console.log(apiKey)` and `res.json({ token })`. Nobody scans for `prompt: \`${systemConfig.dbPassword}\`` because the output is the model's text response, not the secret itself. The secret leaves the perimeter silently through the model API call.
 
@@ -166,7 +167,7 @@ Anyone selling you "automated 100% OWASP LLM coverage" is mapping a timeout rule
 
 ## Why CI beats code review for this class of vulnerability
 
-[I measured AI-generated security gaps across 80 functions](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — 65–75% had security vulnerabilities. The pattern wasn't random: coding assistants answer the question asked. "Add a chat endpoint" doesn't ask for injection boundaries or step caps. The happy path is the spec given. The missing guard is negative space.
+[I measured AI-generated security gaps across 80 functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — 65–75% had security vulnerabilities. The pattern wasn't random: coding assistants answer the question asked. "Add a chat endpoint" doesn't ask for injection boundaries or step caps. The happy path is the spec given. The missing guard is negative space.
 
 The same assistant that helped you ship the fix will, in the next session with no memory of this one, regenerate the unguarded version. Code review catches it the first time if someone thinks to ask. CI catches it every time, regardless of which model wrote the code or which engineer reviewed it.
 
