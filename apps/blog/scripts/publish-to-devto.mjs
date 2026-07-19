@@ -305,6 +305,7 @@ async function upsertShortLink(slug, devtoUrl) {
         body: JSON.stringify({
           key: slug,
           kind: "article",
+          destination: `${SITE_URL}/articles/${slug}`,
           platforms: { devto: devtoUrl },
         }),
       },

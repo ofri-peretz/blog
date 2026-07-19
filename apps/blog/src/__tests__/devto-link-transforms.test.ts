@@ -218,18 +218,48 @@ describe("collectDevtoLinks", () => {
     expect(collectDevtoLinks(body, SLUG)).toHaveLength(1);
   });
 
-  it("does NOT collect derivable article/npm/gh links (no row needed)", () => {
+  it("collects article/npm/gh links too — EVERY link is stored", () => {
     const body = [
       "[x](/articles/y)",
       "[n](https://www.npmjs.com/package/p)",
       "[g](https://github.com/ofri-peretz/eslint)",
     ].join("\n");
-    expect(collectDevtoLinks(body, SLUG)).toEqual([]);
+    expect(collectDevtoLinks(body, SLUG)).toEqual([
+      {
+        key: "y",
+        destination: "https://ofriperetz.dev/articles/y",
+        kind: "article",
+      },
+      {
+        key: "npm/p",
+        destination: "https://www.npmjs.com/package/p",
+        kind: "npm",
+      },
+      {
+        key: "gh/ofri-peretz/eslint",
+        destination: "https://github.com/ofri-peretz/eslint",
+        kind: "gh",
+      },
+    ]);
   });
 
   it("ignores links inside fenced code blocks", () => {
     const body = ["```", "[owasp](https://owasp.org/Top10/)", "```"].join("\n");
     expect(collectDevtoLinks(body, SLUG)).toEqual([]);
+  });
+
+  it("skips pass-through links (mailto, anchors, already-/go/) — no row for them", () => {
+    const owasp = "https://owasp.org/Top10/";
+    const body = [
+      "Mail [me](mailto:x@y.z).",
+      "Jump [up](#top).",
+      "Existing [go](https://ofriperetz.dev/go/foo).",
+      `Ref [owasp](${owasp}).`,
+    ].join("\n");
+    // Only the external ref yields a row; the three pass-throughs are skipped.
+    expect(collectDevtoLinks(body, SLUG)).toEqual([
+      { key: slugForExternal(owasp), destination: owasp, kind: "external" },
+    ]);
   });
 });
 

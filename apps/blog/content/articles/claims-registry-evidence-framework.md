@@ -2,7 +2,7 @@
 title: "Marketing Pages Rot Silently. Mine Print an Expiry Date on Every Claim."
 description: "The claims registry: one file where every public claim has a row, every row points at a versioned result file, and a 90-day staleness rule decides when a claim must re-earn its place. The contract, the lifecycle, and how any product adopts it in an afternoon."
 slug: "claims-registry-evidence-framework"
-published: false
+published: true
 date: 2026-07-19
 tags:
   - "security"

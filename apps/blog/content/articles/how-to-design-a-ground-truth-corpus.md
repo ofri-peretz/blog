@@ -2,7 +2,7 @@
 title: "Fixtures First, Rules Second: How to Design a Ground-Truth Corpus"
 description: "Building the 40-fixture corpus behind the Interlace security benchmarks meant making 40 judgment calls. The full design discipline: category selection, edge-case labeling, version pinning, corpus lifecycle, robustness checks — and Fixture Cards, a per-fixture documentation standard."
 slug: "how-to-design-a-ground-truth-corpus"
-published: false
+published: true
 date: 2026-07-19
 tags:
   - "security"
