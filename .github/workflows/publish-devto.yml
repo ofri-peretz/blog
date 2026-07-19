@@ -1,14 +1,13 @@
 name: Publish to Dev.to
 
-# Publishes/updates dev.to articles when article markdown changes on main.
-# Replaces the (disabled) publish-to-devto workflow that used to run in the
-# private agents monorepo and burn the 2,000-min Actions cap.
+# Publishes/updates dev.to articles — MANUAL DISPATCH ONLY.
+# The push trigger was removed 2026-07-19 after the Capsule-0 incident: merging
+# PR #62 auto-fired a live bulk publish of the whole corpus (cancelled at 6
+# articles; see agents/footprint/incident-ledger.md). Dev.to publishing follows
+# the controlled-capsule model (covers, arc order, /go/ routing) — fire this
+# workflow by hand per capsule. dry_run defaults to true.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/blog/content/articles/**.md"
   workflow_dispatch:
     inputs:
       dry_run:
