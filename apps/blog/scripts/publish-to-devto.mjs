@@ -484,8 +484,12 @@ async function publishArticle(article, existingArticles, dryRun = false) {
     // live run that repoints them to the real URL.
     const isLive = payload.article.published !== false;
 
-    // Update local file with dev.to metadata if it's a new article
-    if (!existingArticle && result.id) {
+    // Record dev.to metadata. updateLocalArticle only fills MISSING frontmatter
+    // fields, and it runs for updates too — so a draft's deferred devto_url is
+    // backfilled on the later live run (matched by devto_id). Without running on
+    // updates, an existing article would never get its devto_url, breaking the
+    // draft→live contract.
+    if (result.id) {
       updateLocalArticle(article, result, isLive);
     }
 
