@@ -9,6 +9,7 @@ tags:
   - "eslint"
   - "devsecops"
   - "javascript"
+devto_id: 4161077
 canonical_url: https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat
 tier: "T2"
 reading_time_minutes: 9

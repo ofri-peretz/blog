@@ -3,6 +3,7 @@ title: "Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Secu
 description: "The 'most dangerous' AI model fixes 93% of the database vulnerabilities it writes; the 'safest' fixes 45%. Same 700 functions, opposite conclusion. When I broke a 5-model security benchmark down by domain — database, auth, file I/O, command execution — the rankings inverted. Aggregate numbers hide domain expertise. Here's the per-domain data and how to gate it in CI."
 slug: "aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain"
 canonical_url: "https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj"
 devto_id: 3688611
 published_at: "2026-05-17T15:40:50Z"
@@ -29,7 +30,7 @@ Opus 4.6 generates vulnerable authentication code 50% of the time. Then it remed
 
 That's the lie in aggregate benchmarks. The number itself is accurate. The lie is that it flattens a two-dimensional problem (generate + remediate, across multiple domains) into a single dimension that answers the wrong question.
 
-I ran [65-75% of AI-generated functions having security vulnerabilities](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) past five models across 700 functions, scored every output with ESLint security rules, then fed violations back to the same model for remediation. In [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), I ranked them by aggregate vulnerability rate and declared Haiku the safest (49%) and Gemini Pro the most dangerous (73%).
+I ran [65-75% of AI-generated functions having security vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) past five models across 700 functions, scored every output with ESLint security rules, then fed violations back to the same model for remediation. In [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), I ranked them by aggregate vulnerability rate and declared Haiku the safest (49%) and Gemini Pro the most dangerous (73%).
 
 That ranking is real. It's also misleading. When I broke the same data down by security domain, the ranking didn't just shift — it inverted.
 
@@ -219,7 +220,7 @@ Generation is only half the pipeline. When vulnerabilities are found, I feed the
 
 **The model with the highest database vulnerability rate (96%) also has the highest database fix rate (93%)**. Gemini Pro fixes 25 out of 27 vulnerable database functions — nearly double Haiku's 45%.
 
-Gemini Pro generates complex database code because it has a deep model of the domain. That same depth of understanding means it can parse a specific ESLint violation like `pg/no-select-all`'s message — "Avoid using `SELECT *` which fetches all columns" (tagged CWE-1049, Excessive Data Query Operations — a data-efficiency weakness class, not an injection CWE, which fits the hardening framing above) — and restructure the query to enumerate explicit columns correctly. Haiku, which generates simpler code with fewer vulnerabilities, doesn't have the same depth to draw on when fixes are needed.
+Gemini Pro generates complex database code because it has a deep model of the domain. That same depth of understanding means it can parse a specific ESLint violation like `pg/no-select-all`'s message — "Avoid using `SELECT *` which fetches all columns" (tagged [CWE-1049](https://ofriperetz.dev/articles/cwe-taxonomy-explained), Excessive Data Query Operations — a data-efficiency weakness class, not an injection CWE, which fits the hardening framing above) — and restructure the query to enumerate explicit columns correctly. Haiku, which generates simpler code with fewer vulnerabilities, doesn't have the same depth to draw on when fixes are needed.
 
 **The slack-quotable number from this entire benchmark: Haiku is the "safest" model overall, but if you run it on database code with an ESLint gate, 55% of the vulnerabilities it generates will survive remediation.** The model the community recommends for security is the worst database remediator in the study.
 
@@ -283,7 +284,7 @@ export default [
 
 Note `secure-coding/no-unsafe-deserialization` isn't in that plugin's `recommended` preset (it's `strict`-only) — add it explicitly if your config surface needs it, since it's cited in the Configuration domain table above.
 
-The full rule list and per-rule docs are at [eslint.interlace.tools](https://eslint.interlace.tools) — see [`pg/no-select-all`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-select-all) and [`jwt/no-sensitive-payload`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-sensitive-payload) directly for the two headline rules above. If you want to understand the broader landscape of ESLint security plugins and how they compare, I ran a [head-to-head benchmark of 17 ESLint security plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) that covers detection rates, false positives, and which rules to pick. The point for command execution and file I/O specifically: the lint rule is the last line of defense, because neither the model nor the reviewer reliably is.
+The full rule list and per-rule docs are at [eslint.interlace.tools](https://eslint.interlace.tools) — see [`pg/no-select-all`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-select-all) and [`jwt/no-sensitive-payload`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-sensitive-payload) directly for the two headline rules above. If you want to understand the broader landscape of ESLint security plugins and how they compare, I ran a [head-to-head benchmark of 17 ESLint security plugins](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) that covers detection rates, false positives, and which rules to pick. The point for command execution and file I/O specifically: the lint rule is the last line of defense, because neither the model nor the reviewer reliably is.
 
 ### Configuration Remediation — Gemini Flash and Opus Both Hit 100%
 
@@ -295,7 +296,7 @@ The full rule list and per-rule docs are at [eslint.interlace.tools](https://esl
 | Gemini 2.5 Pro       | 13                   | 5           | 38%      |
 | Haiku 4.5            | 9                    | 2           | **22%**  |
 
-Both Gemini Flash and Opus achieve perfect configuration remediation — on small denominators (n=6 and n=7 respectively), so treat these as "never missed in this run" rather than a statistical guarantee. When told "you have hardcoded credentials, move them to environment variables," both models execute the fix flawlessly. The mechanism is plausible — moving a literal to `process.env` is the single most templated fix in the corpus — which is why I trust the direction even at this sample size.
+Both Gemini Flash and Opus achieve perfect configuration remediation — on small denominators (n=6 and n=7 respectively), so treat these as "never missed in this run" rather than a statistical guarantee. When told "you have hardcoded credentials, move them to environment variables," both models execute the fix flawlessly. The mechanism is plausible — moving a literal to `process.env` is the single most templated fix in the corpus — which is why I trust the direction even at this [sample size](https://ofriperetz.dev/articles/sample-size-and-statistical-power).
 
 ---
 
@@ -317,7 +318,7 @@ The table below uses a flat average across all five domains, weighted equally. T
 | **Gemini 2.5 Pro** | 72.9%             | 46.1%    | **39.3%**          | ⬆️ 5th → tied 3rd–4th |
 | Gemini 2.5 Flash   | 63.6%             | 33.7%    | 42.1%              | ⬇️ 3rd → 5th          |
 
-_(Gemini Pro's fix rate pools the five domain remediation rows above: 25/27 + 7/12 + 10/24 + 0/26 + 5/13 = 47/102 = 46.1%. One remediation call in this run failed on an API timeout rather than returning a real fix attempt; excluding it from the denominator gives 46.5%, which is what a couple of earlier drafts of this table showed. The domain rows above are the ground truth — 46.1% is the number that reconciles against them, so that's what's used here.)_
+_(Gemini Pro's fix rate pools the five domain remediation rows above: 25/27 + 7/12 + 10/24 + 0/26 + 5/13 = 47/102 = 46.1%. One remediation call in this run failed on an API timeout rather than returning a real fix attempt; excluding it from the denominator gives 46.5%, which is what a couple of earlier drafts of this table showed. The domain rows above are the [ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing) — 46.1% is the number that reconciles against them, so that's what's used here.)_
 
 Fix Rate here is pooled across all vulnerable functions for that model — fixed-functions ÷ vulnerable-functions, summed across all five domains — not an average of the five domain fix-rate percentages. Averaging the percentages directly (93+58+42+0+38)/5 ≈ 46.2% happens to land close for Gemini Pro but won't generally match the pooled number for models with more uneven domain sample sizes; use the pooled method if you're recomputing from the per-domain tables above.
 
@@ -437,7 +438,7 @@ Everything from [Part 3's limitations](https://ofriperetz.dev/articles/we-ranked
 
 1. **Small category samples.** Each category has 4 prompts × 7 iterations = 28 data points per model. Category-level confidence intervals are wider than the aggregate. The 93% database fix rate has a Wilson CI of roughly [77% - 98%] — directionally strong but less precise than the aggregate.
 
-2. **False-positive surface area.** Some ESLint rules like `node-security/detect-child-process` flag _all_ `child_process` usage — including sanitized, controlled execs — and `node-security/detect-non-literal-fs-filename` fires on validated dynamic paths. The article partially accounts for this (the File I/O architectural constraint discussion), but every flagged function is counted as vulnerable. Models that generate simpler code have less rule surface area to hit, which gives Haiku a structural advantage in raw numbers that may not reflect real-world security quality difference. The benchmark measures _linter exposure_ alongside security quality, and the two are correlated but not identical.
+2. **[False-positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) surface area.** Some ESLint rules like `node-security/detect-child-process` flag _all_ `child_process` usage — including sanitized, controlled execs — and `node-security/detect-non-literal-fs-filename` fires on validated dynamic paths. The article partially accounts for this (the File I/O architectural constraint discussion), but every flagged function is counted as vulnerable. Models that generate simpler code have less rule surface area to hit, which gives Haiku a structural advantage in raw numbers that may not reflect real-world security quality difference. The benchmark measures _linter exposure_ alongside security quality, and the two are correlated but not identical.
 
 3. **No cross-model remediation.** I tested each model remediating its own code. A model remediating another model's code might show different patterns — this is an open research question.
 
@@ -465,7 +466,7 @@ node benchmarks/ai-security/run-antigravity.js \
   --iterations=7
 ```
 
-A live rerun won't reproduce these exact rates — model outputs drift week to week — so treat the [committed JSON](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/results/ai-security) as the frozen dataset every number in this article is checked against, and a fresh run as a directional sanity check, not a byte-for-byte match. Models tested: Opus 4.6, Sonnet 4.5, Haiku 4.5, Gemini 2.5 Flash, Gemini 2.5 Pro — snapshot dated 2026-02-09.
+A live rerun won't [reproduce](https://ofriperetz.dev/articles/reproducibility-vs-replicability) these exact rates — model outputs drift week to week — so treat the [committed JSON](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/results/ai-security) as the frozen dataset every number in this article is checked against, and a fresh run as a directional sanity check, not a byte-for-byte match. Models tested: Opus 4.6, Sonnet 4.5, Haiku 4.5, Gemini 2.5 Flash, Gemini 2.5 Pro — snapshot dated 2026-02-09.
 
 ---
 
@@ -489,6 +490,12 @@ Which security domain is most represented in your AI-generated code — and have
 
 ---
 
+## Foundations
+
+Two measurement concepts do quiet work throughout this analysis. The equal-weight net-position table is a [composite score](https://ofriperetz.dev/articles/composite-scores-and-weighting) — change the domain weights and the ranking changes with it. And every per-domain rate reads differently against its domain's [base rate](https://ofriperetz.dev/articles/base-rate-problem-explained): a flagged function means something different in a domain where 96% of functions trigger rules than in one where 21% do.
+
+---
+
 📦 [Full Benchmark Results (JSON)](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/results/ai-security)
 🔬 [Benchmark Runner Source](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/benchmarks/ai-security)
 📊 [Overnight Runner Script](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/benchmarks/ai-security/run-overnight.sh)
@@ -506,8 +513,8 @@ Which security domain is most represented in your AI-generated code — and have
 
 **In the AI Security Benchmark Series:**
 
-- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — Establishes the baseline vulnerability rate
-- **Part 2:** [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem) — Tests whether remediation converges
+- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — Establishes the baseline vulnerability rate
+- **Part 2:** [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) — Tests whether remediation converges
 - **Part 3:** [We Ranked 5 AI Models by Security. The Leaderboard Is Wrong.](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) — Validates at scale across providers
 - **Part 4:** Aggregate Benchmarks Lie ← _You are here_ — Domain-specific deep-dive
 

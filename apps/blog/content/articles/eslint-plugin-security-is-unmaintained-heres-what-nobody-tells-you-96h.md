@@ -3,6 +3,7 @@ title: "eslint-plugin-security Caught 21 Issues. The Domain Plugins Caught 46. H
 description: "eslint-plugin-security is the foundational, actively-maintained Node security linter — 14 rules, 2.4M+ weekly downloads. On one fixture of 12 vulnerability classes it caught 21 issues and the domain plugins caught 46. Here's the 25-finding gap, why AI-generated code lives in it, and how to layer both."
 slug: "eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h"
 canonical_url: "https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h"
 devto_id: 3237157
 published_at: "2026-02-06T06:40:05Z"
@@ -35,7 +36,7 @@ The 25 missing findings weren't exotic. A SQL injection built by concatenating `
 
 This is not a teardown. `eslint-plugin-security` is actively maintained — 4.0.0 shipped February 2026, adding `detect-bidi-characters` for Trojan-Source attacks — and its **14 rules** are the right baseline for every Node project. The honest framing is narrower and more useful: 14 _generic_ rules are a **floor, not a ceiling**. They catch the cross-cutting classics. They have no rule for the depth of SQL, JWT, crypto, or AI-agent security — and, as I'll show, that gap is exactly where AI-generated code now lands. Here's what the floor covers, the 25-finding hole, and how to run both.
 
-> **ESLint Security Benchmark Series** · [← Prev: I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **You are here: The 21-vs-46 Floor** · [Next: The AI Hydra Problem — Fix One AI Bug, Get Two More →](https://ofriperetz.dev/articles/the-ai-hydra-problem)
+> **ESLint Security Benchmark Series** · [← Prev: I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **You are here: The 21-vs-46 Floor** · [Next: The AI Hydra Problem — Fix One AI Bug, Get Two More →](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
 
 ## What the 14 rules cover (the generic floor)
 
@@ -50,7 +51,7 @@ These are real, valuable, language-level checks — command injection, eval, uns
 
 ## What a generic floor can't reach — with code
 
-The 21-vs-46 gap is **domain depth a generic ruleset has no rule for**. The fixture and both runs are in [the 4-way benchmark](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof) — team-authored `vulnerable.js`, 12 classes, reproducible — so you can re-run it rather than take the number on faith.
+The 21-vs-46 gap is **domain depth a generic ruleset has no rule for**. The fixture and both runs are in [the 4-way benchmark](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof) — team-authored `vulnerable.js`, 12 classes, [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) — so you can re-run it rather than take the number on faith.
 
 Here's what each gap archetype looks like as actual code.
 
@@ -65,7 +66,7 @@ app.get('/users/:id', async (req, res) => {
 });
 ```
 
-`eslint-plugin-security` has no rule for SQL injection — it pattern-matches dangerous Node.js APIs (eval, child_process, non-literal require) but SQL is ORM/driver-specific. `eslint-plugin-pg` catches this with `no-string-concatenation` and flags the line with a `CWE-89` annotation.
+`eslint-plugin-security` has no rule for SQL injection — it pattern-matches dangerous Node.js APIs (eval, child_process, non-literal require) but SQL is ORM/driver-specific. `eslint-plugin-pg` catches this with `no-string-concatenation` and flags the line with a [`CWE-89`](https://ofriperetz.dev/articles/cwe-taxonomy-explained) annotation.
 
 The fix:
 
@@ -124,7 +125,7 @@ function generateSessionToken() {
 | **Browser / DOM**   | ~2               | CSP, CORS, `innerHTML`, JWT-in-storage            | [`eslint-plugin-browser-security`](https://eslint.interlace.tools/docs/security/plugin-browser-security) (45 rules)     |
 | **AI / LLM**        | ~0 in fixture    | prompt injection, tool-call agency                | [`eslint-plugin-vercel-ai-security`](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security) (19 rules) |
 
-There's also a **precision** difference: on validated-safe code, `eslint-plugin-security` produced 5 false positives in that benchmark (`detect-object-injection` on allowlist-validated keys, `detect-non-literal-fs-filename` on path-validated reads) — it pattern-matches the sink without seeing the guard.
+There's also a [**precision**](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) difference: on validated-safe code, `eslint-plugin-security` produced 5 [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) in that benchmark (`detect-object-injection` on allowlist-validated keys, `detect-non-literal-fs-filename` on path-validated reads) — it pattern-matches the sink without seeing the guard.
 
 ### Why the real injection survives code review
 
@@ -144,7 +145,7 @@ The noisy generic rule didn't just miss the bug; it _trained the team_ to suppre
 
 ---
 
-If you want the 25-finding gap measured on _your_ repo, not a fixture, [the 30-minute security audit protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) walks through exactly this layering process as a first-day onboarding step.
+If you want the 25-finding gap measured on _your_ repo, not a fixture, [the 30-minute security audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) walks through exactly this layering process as a first-day onboarding step.
 
 ## What to do TODAY if you're using eslint-plugin-security
 
@@ -199,7 +200,7 @@ export default [
 
 The first run on an existing codebase will produce findings. Don't bulk-suppress. Triage them with CWE metadata: the domain rules carry `CWE-89`, `CWE-327`, `CWE-338` annotations on every finding, which tells you the exploitability class before you decide whether to fix or accept-risk.
 
-A full comparison of how these plugins rank against each other is in the [benchmark of 17 ESLint security plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83).
+A full comparison of how these plugins rank against each other is in the [benchmark of 17 ESLint security plugins](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
 
 ## Where AI-generated code lands
 
@@ -211,15 +212,15 @@ I gave Claude a single prompt — "build a NestJS users service" — and got 200
 
 Across a [700-function benchmark on 5 models](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain), Claude's vulnerability rate ran **65–75%** — and the failure _classes_ (missing authorization, missing validation, leaked secrets) are consistent across models. Gemini 2.5 Flash generated vulnerable PostgreSQL code 75% of the time in that run, yet wrote JWT creation code perfectly (`0/7` on `generateJWT`). Aggregate "which model is safest" misses this entirely: every model has a domain where it's a coin-flip, and a generic floor has no rule for any of them.
 
-It gets worse when you ask the model to fix what you found. Re-prompting an LLM to remediate a vulnerability — without a deterministic linter in the loop — introduces _new_ vulnerability categories at [4× the rate](https://ofriperetz.dev/articles/the-ai-hydra-problem): cut one head, two grow back. A domain ruleset that knows JWT, SQL, and serialization contracts is the deterministic gate that stops the regenerate-and-pray cycle.
+It gets worse when you ask the model to fix what you found. Re-prompting an LLM to remediate a vulnerability — without a deterministic linter in the loop — introduces _new_ vulnerability categories at [4× the rate](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more): cut one head, two grow back. A domain ruleset that knows JWT, SQL, and serialization contracts is the deterministic gate that stops the regenerate-and-pray cycle.
 
 ## Where OWASP fits
 
-For the full picture of which OWASP Top 10 categories static analysis genuinely covers — and the two it honestly can't — see [the OWASP Top 10 mapping](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) (it's 8 of 10, not "100%"). The point isn't a coverage scoreboard; it's matching rule depth to your stack's real attack surface.
+For the full picture of which [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) categories static analysis genuinely covers — and the two it honestly can't — see [the OWASP Top 10 mapping](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) (it's 8 of 10, not "100%"). The point isn't a coverage scoreboard; it's matching rule depth to your stack's real attack surface.
 
 ## A note on the incumbent
 
-`eslint-plugin-security` pioneered JavaScript security linting and is still the right baseline — 2.4M downloads, an `eslint-community`-maintained project that shipped a major version in 2026. This isn't a teardown; it's the case for **layering domain depth on a solid floor**. Keep the floor. Add the rules for the attack surface your stack actually has.
+`eslint-plugin-security` pioneered JavaScript [security linting](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) and is still the right baseline — 2.4M downloads, an `eslint-community`-maintained project that shipped a major version in 2026. This isn't a teardown; it's the case for **layering domain depth on a solid floor**. Keep the floor. Add the rules for the attack surface your stack actually has.
 
 This is part of my [ESLint Security Benchmark Series](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof), where I run the same fixtures and AI prompts across the whole landscape of security linters and publish the numbers. The full rule docs for all domain plugins are at [eslint.interlace.tools](https://eslint.interlace.tools).
 

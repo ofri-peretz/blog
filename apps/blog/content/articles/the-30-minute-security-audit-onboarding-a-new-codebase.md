@@ -3,6 +3,7 @@ title: "The 30-Minute Security Audit: I Ran It on 140 Gemini-Written Functions. 
 description: "A 30-minute static-analysis protocol for any inherited Node.js codebase — human- or AI-written: the three ESLint plugins to install, the jq one-liner that ranks findings by rule, and how to read the heatmap. Then the same scan on a real Gemini-2.5-Pro corpus: 102 of 140 functions vulnerable, avg CVSS 8.3, and the rules that fired first."
 slug: "the-30-minute-security-audit-onboarding-a-new-codebase"
 canonical_url: "https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91"
 devto_id: 3137550
 published_at: "2025-12-31T06:31:46Z"
@@ -23,7 +24,7 @@ author:
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-series: null
+series: "The Hardened Stack"
 ---
 
 You just inherited a Node.js codebase. You have **30 minutes before the standup
@@ -42,7 +43,7 @@ I ran exactly this protocol on a real inherited corpus last month — except the
 functions** (database, auth, file, command, config tasks; 7 iterations each, no
 security guidance) and pointed the same scan at the output. The heatmap:
 **102 of the 140 functions shipped with at least one vulnerability — 168 findings,
-average CVSS 8.3.** Top of the `uniq -c` ranking was `detect-non-literal-fs-filename`
+average [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) 8.3.** Top of the `uniq -c` ranking was `detect-non-literal-fs-filename`
 (50 hits), then hardcoded credentials and `SELECT *` straight out of `pg`. If a
 human had handed me that repo on day one, I'd have called it the worst codebase
 I'd inherited in a year. A model wrote it in 36 seconds a function. (Run + numbers
@@ -96,8 +97,8 @@ export default [
 
 `strict` turns the whole secure-coding rule set on as errors — including the
 experimental and opinionated rules — which is exactly what you want for a first
-pass, where false positives are cheaper than missed risk. **But know your noise
-floor before you trust the count.** On our own 149-rule precision audit across a
+pass, where [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) are cheaper than missed risk. **But know your noise
+floor before you trust the count.** On our own 149-rule [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) audit across a
 multi-repo Wild corpus, almost all of `strict`'s noise concentrates in two rules:
 `secure-coding/no-unlimited-resource-allocation` (474 hits, ~91% landing on edge
 constructs) and `node-security/no-buffer-overread` (~95% edge ratio). The
@@ -105,7 +106,10 @@ injection / secrets / crypto rules this article ranks first are tight by
 comparison. So the triage rule is simple: on the first run, **read the heatmap
 top-down and mentally discount those two rows** — or start from `recommended-strict`
 (same rules, no experimental ones) if you want a quieter first pass and a higher
-trust floor on every line.
+trust floor on every line. Why a couple of noisy rules can dominate a raw count
+even when most rules are tight is
+[the base-rate problem](https://ofriperetz.dev/articles/base-rate-problem-explained)
+— worth knowing before the count goes on a slide.
 
 ## Step 3 — run it to JSON (5 min)
 
@@ -113,7 +117,7 @@ trust floor on every line.
 npx eslint . --format=json > security-audit.json
 ```
 
-A finding carries the CWE, the OWASP category, a CVSS, the severity, and the
+A finding carries the [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained), the OWASP category, a CVSS, the severity, and the
 compliance tags — the audit evidence, in the message:
 
 ```text
@@ -145,7 +149,7 @@ the real finding.
 
 **Why none of this got caught in code review.** It survived for the most ordinary
 reason there is: the first `client.query("SELECT ... " + id)` shipped on a Friday,
-passed review because the reviewer was reading for _logic_, not for taint, and
+passed review because the reviewer was reading for _logic_, not for [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection), and
 became the copy-paste template for every query after it. The MD5 call was in
 `utils/legacy_auth.js` from before anyone on the current team joined — nobody owns
 it, so nobody touches it. Hardcoded credentials read as "config we'll move to env
@@ -174,7 +178,7 @@ And before you start fixing those 15 SQL findings, read
 real lesson.
 
 If you want to know which plugins actually earn their keep, the
-[benchmark across 17 ESLint security plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83)
+[benchmark across 17 ESLint security plugins](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared)
 measures detection rate, false-positive rate, and overlap on a shared corpus — so
 you're choosing the three plugins for this protocol based on data, not intuition.
 
@@ -268,8 +272,8 @@ All three plugins ship the same contract:
 - 📦 [eslint-plugin-node-security](https://www.npmjs.com/package/eslint-plugin-node-security) — crypto & system
 - 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint)
-- 📊 [Benchmark: 17 ESLint security plugins compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83)
-- 🔍 [I inherited a NestJS codebase — the first lint run found 6 vulnerabilities](https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma)
+- 📊 [Benchmark: 17 ESLint security plugins compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared)
+- 🔍 [I inherited a NestJS codebase — the first lint run found 6 vulnerabilities](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you've ever inherited a codebase and had no idea how bad it was.

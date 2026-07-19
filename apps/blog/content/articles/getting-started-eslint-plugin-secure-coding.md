@@ -3,6 +3,7 @@ title: "Secure Coding Violations Your Team Ships Every Sprint — 28 ESLint Rule
 description: "Hardcoded secrets, insecure randomness, missing input sanitization, unhandled rejections leaking stack traces — violations that pass review and ship every sprint. Here are 4 specific examples and the 28 ESLint rules that make each one impossible to merge."
 slug: "getting-started-eslint-plugin-secure-coding"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure-coding-1eda"
 devto_id: 3138988
 published_at: "2025-12-31T21:31:41Z"
@@ -57,7 +58,7 @@ src/payments.ts
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 ```
 
-The rule detects this in two modes: structural match on vendor-owned prefixes (`sk_live_`, `AKIA…`) that fire anywhere — no context needed — and a credential-name gate for generic secrets that keeps false positives low enough to run as a CI error. The full two-mode design is in [When entropy isn't enough](https://dev.to/ofri-peretz/no-hardcoded-credentials-entropy-isnt-enough).
+The rule detects this in two modes: structural match on vendor-owned prefixes (`sk_live_`, `AKIA…`) that fire anywhere — no context needed — and a credential-name gate for generic secrets that keeps [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) low enough to run as a CI error. The full two-mode design is in [When entropy isn't enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough).
 
 ---
 
@@ -71,7 +72,7 @@ const resetToken = Math.random().toString(36).slice(2);
 await db.update({ where: { token: resetToken } });
 ```
 
-**Why it survived review:** `Math.random()` generates something that looks random. It works correctly in tests. Nobody checks whether the PRNG is cryptographically secure unless they already know to look for it — and most reviewers don't have CWE-338 loaded at review time.
+**Why it survived review:** `Math.random()` generates something that looks random. It works correctly in tests. Nobody checks whether the PRNG is cryptographically secure unless they already know to look for it — and most reviewers don't have [CWE-338](https://ofriperetz.dev/articles/cwe-taxonomy-explained) loaded at review time.
 
 The problem: `Math.random()` is not cryptographically secure. An attacker who can influence the seed (or observe enough outputs) can predict your password-reset tokens.
 
@@ -121,7 +122,7 @@ src/resolvers/user.ts
 const result = await graphqlClient.query(USER_QUERY, { id: req.body.userId });
 ```
 
-The rule catches string concatenation and template-literal interpolation into GraphQL, LDAP, XPath, and SQL query strings — all of OWASP A03 in one preset.
+The rule catches string concatenation and template-literal interpolation into GraphQL, LDAP, XPath, and SQL query strings — all of [OWASP A03](https://ofriperetz.dev/articles/owasp-top-10-explained) in one preset.
 
 ---
 
@@ -184,7 +185,7 @@ Run it:
 npx eslint .
 ```
 
-Every finding comes out audit-ready — CWE id, OWASP category, CVSS score, compliance tags (SOC2/PCI-DSS/HIPAA/GDPR), and the fix. Not a bare "bad" — a line your compliance reviewer can map directly.
+Every finding comes out audit-ready — CWE id, OWASP category, [CVSS score](https://ofriperetz.dev/articles/cvss-scores-explained), compliance tags (SOC2/PCI-DSS/HIPAA/GDPR), and the fix. Not a bare "bad" — a line your compliance reviewer can map directly.
 
 Tune it for your repo — the preset registers the `secure-coding` namespace so overrides are one config object away:
 
@@ -221,7 +222,7 @@ The reviewer approving the four-second diff is increasingly approving a diff a m
 
 A rule that fires deterministically on the _shape_ in the source — every commit, human- or machine-authored — is the only part of this loop that doesn't get tired and doesn't care which model wrote the line.
 
-Related: [No Hardcoded Credentials — Entropy Isn't Enough](https://dev.to/ofri-peretz/no-hardcoded-credentials-entropy-isnt-enough) · [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91)
+Related: [No Hardcoded Credentials — Entropy Isn't Enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough) · [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase)
 
 ---
 

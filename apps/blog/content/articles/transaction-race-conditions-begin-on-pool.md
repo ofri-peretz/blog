@@ -3,6 +3,7 @@ title: "BEGIN on a Postgres Pool Scatters Your Transaction Across Connections. O
 description: "pool.query('BEGIN') runs on a different pooled client than the UPDATE that follows it — so your 'transaction' isn't atomic and corrupts data under load. The race condition (CWE-362), the dedicated-client fix, and the pg ESLint rule that catches every BEGIN/COMMIT on a pool."
 slug: "transaction-race-conditions-begin-on-pool"
 canonical_url: "https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/transaction-race-conditions-why-begin-on-pool-breaks-everything-117h"
 devto_id: 3138993
 published_at: "2025-12-31T21:38:13Z"
@@ -23,7 +24,7 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-We benchmarked 700 AI-generated database functions. **96% contained at least one vulnerability** — and the modal pattern looked exactly like this: `pool.query('BEGIN')`.
+We benchmarked [700 AI-generated functions across five security domains](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). In the database domain, the worst model — Gemini 2.5 Pro — hit a **96% vulnerability rate** (even the best, Haiku 4.5, hit 39%) — and the modal pattern looked exactly like this: `pool.query('BEGIN')`.
 
 This is the single most common Postgres transaction bug I find in Node.js codebases — and the one an AI assistant will hand you the fastest. I found this exact shape on a balance-transfer endpoint six months post-launch, traced back from a Sentry alert about totals that didn't reconcile — pool size 5, so it took exactly one unlucky overlap to surface in production. It passes every test, works perfectly in development, and under real concurrency it silently corrupts account balances:
 
@@ -58,7 +59,7 @@ pool.query('COMMIT')     → Client A   (commits an empty transaction)
 
 The `BEGIN` and `COMMIT` land on a client that never saw the `UPDATE`s. The
 updates run as autocommitted statements on other clients — no atomicity, no
-rollback, no isolation. This is a textbook **race condition (CWE-362)**.
+rollback, no isolation. This is a textbook **race condition ([CWE-362](https://ofriperetz.dev/articles/cwe-taxonomy-explained))**.
 
 ### The exact interleaving that breaks your balance
 
@@ -226,7 +227,7 @@ Gemini got
 When an assistant hides the transaction inside a
 `withTransaction` helper or builds the SQL from a template literal, the rule goes
 quiet for the same structural reason a human reviewer would: the pool-name and
-string-literal signals are gone. Static analysis catches the careless form, not
+string-literal signals are gone. [Static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) catches the careless form, not
 the disguised one — which is why the loop above pairs the rule with the model, not
 the rule alone.
 
@@ -301,7 +302,7 @@ of the data-layer threat model:
 - [The connection leak that exhausted our pool](https://ofriperetz.dev/articles/database-connection-leak-production-outage) — the `finally`-release companion to this fix
 - [search_path Hijacking: the PostgreSQL attack that turns `SELECT * FROM users` into the attacker's table](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — identifier-resolution hijacking, the same threat model from a different angle
 - [PostgreSQL's COPY FROM can read /etc/passwd into your database](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — the filesystem-access member of the same plugin
-- [N+1 insert loops and API performance](https://dev.to/ofri-peretz/the-n1-insert-loop-that-slowed-our-api-to-a-crawl-4534) — the throughput failure pattern that pairs with this race condition fix
+- [N+1 insert loops and API performance](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance) — the throughput failure pattern that pairs with this race condition fix
 - [All 13 rules of `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg)
 
 ---
@@ -315,8 +316,8 @@ Have you caught a balance mismatch that traced back to `pool.query('BEGIN')`? Dr
 - 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
 - 📖 [Rule docs: no-transaction-on-pool](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-transaction-on-pool)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
-- 🔗 [Database connection leak — production outage](https://dev.to/ofri-peretz/the-connection-leak-that-took-down-our-production-database-3bal)
-- 🔗 [N+1 insert loop — API performance](https://dev.to/ofri-peretz/the-n1-insert-loop-that-slowed-our-api-to-a-crawl-4534)
+- 🔗 [Database connection leak — production outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage)
+- 🔗 [N+1 insert loop — API performance](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance)
 - 🔗 [All Interlace ESLint rules](https://eslint.interlace.tools)
 - 𝕏 [@ofriperetzdev](https://x.com/ofriperetzdev)
 

@@ -3,6 +3,8 @@ title: "The Base Rate Problem: Why 95% Precision Means Nothing Without Context"
 description: "A test that scores 95% precision on a balanced sample can be right under 2% of the time when the thing it hunts is rare. That's not a bug in the arithmetic — it's the base rate problem, and it's why benchmark conditions rarely predict field behavior."
 slug: "base-rate-problem-explained"
 tier: "T0"
+series: "Foundations"
+arc: 3
 published: true
 date: 2026-07-17
 tags:
@@ -10,6 +12,7 @@ tags:
   - "devsecops"
   - "node"
   - "javascript"
+devto_id: 4176288
 canonical_url: https://ofriperetz.dev/articles/base-rate-problem-explained
 reading_time_minutes: 6
 author:

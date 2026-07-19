@@ -3,6 +3,7 @@ title: "65-75% of Claude's Code Shipped a Vuln. Hardcoded Secrets Are the One AI
 description: "AI assistants leave demo keys, placeholder passwords, and bare config literals in source — CWE-798 at scale. One ESLint rule catches the hardcoded literal, and its CWE/CVSS/fix message is structured so the same AI can read the error and hoist it to process.env."
 slug: "hardcoded-secrets-ai-agents-autofix"
 canonical_url: "https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg"
 devto_id: 3137474
 published_at: "2025-12-31T05:39:36Z"
@@ -26,7 +27,7 @@ series: "Hardening AI Agents"
 AI agents autofixed 3 hardcoded secrets in our codebase — and introduced 2 new ones in the same PR. Here's why that happens and how to stop it.
 
 When I had Claude generate 80 common Node.js functions with no security context,
-[65–75% shipped with a vulnerability](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o)
+[65–75% shipped with a vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 — and a hardcoded credential was the single most repeated pattern. Ask an AI
 assistant to "wire up Stripe" or "connect to the database" and watch what it
 produces:
@@ -51,13 +52,13 @@ usually was.
 Coding assistants optimize for "runs on the first try," and the fastest path to
 runnable code is a literal in place. So they hardcode **demo keys**,
 **placeholder credentials**, and **bare config literals** — at the speed they
-generate everything else. That's **CWE-798** (Use of Hard-coded Credentials),
+generate everything else. That's **[CWE-798](https://ofriperetz.dev/articles/cwe-taxonomy-explained)** (Use of Hard-coded Credentials),
 and it now enters codebases faster than any human ever added it.
 
 Here's the twist that makes this fixable rather than just alarming: the same
 property that makes AI a prolific _source_ of these bugs — it reads and writes
 structured text — makes it a capable _fixer_. `eslint-plugin-secure-coding`'s
-`no-hardcoded-credentials` rule emits a finding that carries the CWE, CVSS,
+`no-hardcoded-credentials` rule emits a finding that carries the CWE, [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained),
 compliance tags, and the exact fix. Feed that back to the assistant and it
 remediates its own output. This is the agentic-CI loop: **AI writes → linter
 flags in machine-readable form → AI fixes.**
@@ -71,7 +72,7 @@ single deterministic rewrite — hoist the literal to `process.env` — with no
 behavioral branches for the model to get creative in. That's why this is the
 **one** AI-introduced vulnerability worth wiring into an autonomous loop first.
 
-> **Series — Hardening AI Agents:** [I Let Claude Write 80 Functions (65–75% had a vuln)](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) → **Hardcoded secrets: the one AI can auto-fix** (you are here) → [Claude wrote a NestJS service — ESLint found 6 holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). The thread: AI writes the bug, a machine-readable lint finding closes the loop.
+> **Series — Hardening AI Agents:** [I Let Claude Write 80 Functions (65–75% had a vuln)](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) → **Hardcoded secrets: the one AI can auto-fix** (you are here) → [Claude wrote a NestJS service — ESLint found 6 holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). The thread: AI writes the bug, a machine-readable lint finding closes the loop.
 
 ---
 
@@ -123,7 +124,7 @@ vulnerability class. Read left to right:
 
 - **`CWE-798`** — a stable, machine-readable vulnerability class the model has
   seen thousands of times in training; it knows the remediation pattern.
-- **`OWASP:A04-Cryptographic`** — the OWASP Top 10 (2025) bucket CWE-798 maps
+- **`OWASP:A04-Cryptographic`** — the [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) (2025) bucket CWE-798 maps
   to (A04 is _Cryptographic Failures_ in the 2025 list — secrets in source are
   a key-management failure), so the finding slots straight into an OWASP report.
 - **`CVSS:9.8` + `CRITICAL`** — the severity the agent uses to prioritize this
@@ -192,7 +193,7 @@ three of these wave a `sk_live_…` straight through:
   velocity is higher, and the literal _looks exactly_ like the thousands of
   legitimate placeholders the model emits — because it learned that pattern from
   places where the key was intentionally dummy. See also: [why entropy checks
-  alone aren't enough to catch these](https://dev.to/ofri-peretz/no-hardcoded-credentials-entropy-isnt-enough).
+  alone aren't enough to catch these](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough).
 
 A blocking lint rule fixes the one thing humans are structurally bad at here:
 applying the same boring check to **every** literal, on every PR, without
@@ -204,7 +205,7 @@ the only job a linter does.**
 
 ## How it stays quiet enough to be an error
 
-A naive secret scanner drowns you in false positives, which trains everyone
+A naive secret scanner drowns you in [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn), which trains everyone
 (human and agent) to ignore it. `no-hardcoded-credentials` makes **two
 different decisions**: registered vendor key prefixes (`sk_live_`, `AKIA…`)
 fire anywhere because they're unambiguous, while a generic high-entropy string
@@ -242,7 +243,7 @@ and when I
 the "best coder" wasn't the safest one. The throughline: which model you pick
 changes _how many_ of these literals land, but not _whether_ they land — every
 model leaves some. The two-mode rule is the constant that catches them
-regardless of which assistant wrote the diff. (Want to reproduce the precision
+regardless of which assistant wrote the diff. (Want to reproduce the [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis)
 claim on your own model? Generate the corpus with Gemini, run the
 structural-only pass against the context-tiered pass, and report the delta —
 same rule, swap the corpus.)
@@ -326,7 +327,7 @@ domain-specific static analysis whose findings are deliberately structured for
 both humans and the agents now writing most of the code.
 
 This piece is part of my **Hardening AI Agents** series. The
-[65–75% experiment](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o)
+[65–75% experiment](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 is where the headline number comes from; if you want the same
 machine-readable-finding loop applied to a whole AI-written service, see
 [Claude wrote a NestJS service — ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes),

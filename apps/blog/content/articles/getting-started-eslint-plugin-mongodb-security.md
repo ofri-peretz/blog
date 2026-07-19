@@ -3,6 +3,7 @@ title: "MongoDB Injection Bugs Your Code Review Misses — 16 ESLint Rules Catch
 description: "{ \"$ne\": null } as a password bypasses MongoDB auth — no SQL string, no injection your generic linter understands. Flagship Gemini ships this database bug in 96% of runs. NoSQL operator injection, the $where RCE behind CVE-2025-23061, and the 16 CWE-mapped ESLint rules built specifically for MongoDB/Mongoose — catching 3 of the 4 bugs below in CI, with the honest gap named."
 slug: "getting-started-eslint-plugin-mongodb-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-mongodb-security"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-mongodb-security-ol6"
 devto_id: 3790107
 published_at: "2026-05-31"
@@ -14,7 +15,7 @@ tags:
   - "node"
   - "devsecops"
   - "eslint"
-series: "ESLint Security Plugins"
+series: "The Hardened Stack"
 reactions: 0
 comments: 0
 views: 0
@@ -31,7 +32,7 @@ Here are four specific bugs your team has almost certainly shipped — three the
 
 ## Bug 1: Authentication Bypass via Operator Injection
 
-`{ "$ne": null }` in a password field bypasses MongoDB authentication via operator injection (CWE-943, CVSS 9.8) — no SQL string, no error, full auth bypass with a known username and zero correct credentials.
+`{ "$ne": null }` in a password field bypasses MongoDB authentication via operator injection ([CWE-943](https://ofriperetz.dev/articles/cwe-taxonomy-explained), [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) 9.8) — no SQL string, no error, full auth bypass with a known username and zero correct credentials.
 
 **Vulnerable:**
 
@@ -45,7 +46,7 @@ await db.collection("users").findOne({
 
 **Why it survived review:** `password: req.body.password` is the obvious, correct-looking thing to write. You wrote this, your tests posted a string, everything passed, and you had no reason to look twice. It only becomes a vulnerability when `req.body.password` stops being a string and becomes an operator object — and nothing in the diff signals that. The type is `any`, and the bug ships green. The attacker sends `{ "username": "admin", "password": { "$ne": null } }`; Express parses the body into a real JavaScript object; `findOne` matches the named user whose password field is not null — which is true for every real account, so any known username logs in with zero correct credentials. Full authentication bypass in valid JSON, no brute force required.
 
-**ESLint rule:** [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-query), catching a CWE-943 injection (CVSS 9.8) on both `username` and `password` — one finding per tainted property. [`no-operator-injection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-operator-injection) is the sibling rule for the *inverse* shape: code that writes the dangerous operator explicitly in source, like `password: { $ne: req.body.exclude }`. Here the operator only exists in the attacker's JSON, not in your source, so `no-unsafe-query`'s broader "tainted value reaches a query sink" check is the one that fires — confirmed by running both rules against this exact snippet. One scope caveat: the check is direct-expression, not full inter-procedural taint tracking — `const pwd = req.body.password; findOne({ password: pwd })` one hop removed can still slip past today.
+**ESLint rule:** [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-query), catching a CWE-943 injection (CVSS 9.8) on both `username` and `password` — one finding per tainted property. [`no-operator-injection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-operator-injection) is the sibling rule for the *inverse* shape: code that writes the dangerous operator explicitly in source, like `password: { $ne: req.body.exclude }`. Here the operator only exists in the attacker's JSON, not in your source, so `no-unsafe-query`'s broader "tainted value reaches a query sink" check is the one that fires — confirmed by running both rules against this exact snippet. One scope caveat: the check is direct-expression, not full inter-procedural [taint tracking](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) — `const pwd = req.body.password; findOne({ password: pwd })` one hop removed can still slip past today.
 
 **Fix:**
 
@@ -246,7 +247,7 @@ One honest caveat on that last error: in this snippet `user._id` came back from 
 
 ## All 16 eslint-plugin-mongodb-security rules
 
-The 8 injection and credential rules below are near-zero false-positive in practice, though not all for the same reason: `no-unsafe-query` and `no-operator-injection` trace the flagged value back to a `req.*`-shaped source before firing (direct-expression only — see the scope caveat in Bug 1), while `no-unsafe-where` and the credential rules fire on the sink pattern itself (any `$where` key, any literal connection string) regardless of where the interpolated value came from — because there's no safe use of either pattern to begin with, tainted or not.
+The 8 injection and credential rules below are near-zero [false-positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) in practice, though not all for the same reason: `no-unsafe-query` and `no-operator-injection` trace the flagged value back to a `req.*`-shaped source before firing (direct-expression only — see the scope caveat in Bug 1), while `no-unsafe-where` and the credential rules fire on the sink pattern itself (any `$where` key, any literal connection string) regardless of where the interpolated value came from — because there's no safe use of either pattern to begin with, tainted or not.
 
 | Rule | Severity | CWE |
 |---|---|---|
@@ -312,7 +313,7 @@ For the onboarding workflow that pairs this with a broader static analysis proto
 Also relevant:
 - [I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 - [We Ranked 5 AI Models by Security. The Leaderboard Is Wrong.](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
-- [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem)
+- [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
 
 ---
 

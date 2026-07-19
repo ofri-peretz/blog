@@ -12,6 +12,8 @@ tags:
 canonical_url: https://ofriperetz.dev/articles/cwe-taxonomy-explained
 reading_time_minutes: 7
 tier: "T1"
+series: "Foundations"
+arc: 16
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627

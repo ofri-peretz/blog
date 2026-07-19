@@ -3,6 +3,7 @@ title: "search_path Hijacking: the PostgreSQL Attack That Turns SELECT * FROM us
 description: "Control a connection's search_path and every unqualified query silently resolves to your schema. The obscure-but-lethal PostgreSQL attack, why SET can't be parameterized, the real fixes, and the CWE-426 ESLint rule that catches it."
 slug: "searchpath-hijacking-postgresql-attack"
 canonical_url: "https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/searchpath-hijacking-the-postgresql-attack-youve-never-heard-of-10co"
 devto_id: 3144104
 published_at: "2026-01-02T19:49:31Z"
@@ -197,7 +198,7 @@ Here is the honest reason it gets waved through, even by people who would block 
 - **The dangerous line and the exploited line are different lines.** The
   reviewer's injection radar fires on `client.query("SELECT ... " + x)`. It
   does **not** fire on `client.query("SELECT * FROM users")` — that line is
-  unimpeachable. The taint lives in a `SET` statement that often sits in
+  unimpeachable. The [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) lives in a `SET` statement that often sits in
   different middleware, a connection hook, or a `BEFORE` block the reviewer
   scrolled past.
 - **`SET` doesn't _look_ like a query.** Mentally, "running a query" is where
@@ -291,7 +292,7 @@ import { configs } from "eslint-plugin-pg";
 export default [configs.recommended];
 ```
 
-> **On the CWE.** CWE-426 ("Untrusted Search Path") is canonically an _OS_-path
+> **On the CWE.** [CWE-426](https://ofriperetz.dev/articles/cwe-taxonomy-explained) ("Untrusted Search Path") is canonically an _OS_-path
 > weakness — a program resolving an executable or library via an attacker-influenced
 > `PATH`/`LD_LIBRARY_PATH`. I map it here deliberately: PostgreSQL's `search_path`
 > is the database's exact analog — an ordered resolution list where the first match
@@ -309,7 +310,7 @@ export default [configs.recommended];
 > genuinely required, apply `%I` or an allow-list and add a documented
 > `// eslint-disable-next-line pg/no-unsafe-search-path` with the reason.
 >
-> **On the severity label.** CVSS 7.5 falls in the v3.1 **High** band (7.0–8.9);
+> **On the severity label.** [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) 7.5 falls in the v3.1 **High** band (7.0–8.9);
 > `Critical` starts at 9.0. The rule's fixed label runs ahead of the number —
 > if you score the *cross-tenant confidentiality break* specifically (C:H over
 > a plausible network vector), it can land closer to 9.1 and earn `Critical`

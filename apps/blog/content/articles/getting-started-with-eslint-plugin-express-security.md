@@ -3,6 +3,7 @@ title: "Express.js Security Bugs Your Middleware Doesn't Stop — 14 ESLint Rule
 description: "Missing helmet headers, CORS misconfiguration, unvalidated req.body, path traversal — each survived review because the dangerous thing was the code that wasn't there. 14 CWE-mapped ESLint rules that catch what your middleware and your reviewers miss, in CI."
 slug: "getting-started-with-eslint-plugin-express-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-express-security-2fb8"
 devto_id: 3144099
 published_at: "2026-01-02T19:40:18Z"
@@ -20,12 +21,12 @@ author:
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-series: "Server-Side Hardening"
+series: "The Hardened Stack"
 ---
 
 > **Most Express.js security vulnerabilities in production aren't bugs in your code — they're the middleware you forgot to add. And a diff review will never catch an absence.**
 
-Four vulnerabilities will illustrate exactly why. Each one survived code review, shipped to production, and is sitting in your codebase right now if you haven't run static analysis that knows Express.
+Four vulnerabilities will illustrate exactly why. Each one survived code review, shipped to production, and is sitting in your codebase right now if you haven't run [static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) that knows Express.
 
 ---
 
@@ -42,7 +43,7 @@ app.listen(3000);
 
 **Why it survived review:** A reviewer reads four clean lines, sees a working POST endpoint, and approves. Nothing on screen is wrong. The dangerous part is the lines that aren't there — no `helmet()` means the response ships without `X-Frame-Options` (clickjacking), `X-Content-Type-Options` (MIME-sniffing), `Strict-Transport-Security` (HTTPS enforcement), or a CSP. You can't review code that was never written, and a test for "did we forget Helmet?" is one nobody writes.
 
-**The rule:** `require-helmet` (CWE-693)
+**The rule:** `require-helmet` ([CWE-693](https://ofriperetz.dev/articles/cwe-taxonomy-explained))
 
 **The fix:**
 
@@ -174,7 +175,7 @@ export default [
 ];
 ```
 
-Run it — findings carry the CWE, OWASP category, CVSS, and fix:
+Run it — findings carry the CWE, [OWASP](https://ofriperetz.dev/articles/owasp-top-10-explained) category, [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained), and fix:
 
 ```text
 src/routes/transfer.ts
@@ -230,9 +231,9 @@ src/routes/transfer.ts
 
 ## Context: where this fits the bigger picture
 
-If you want the static-analysis protocol that runs this plugin as part of a full onboarding audit, see: [The 30-Minute Security Audit — A Static Analysis Protocol for Onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91).
+If you want the static-analysis protocol that runs this plugin as part of a full onboarding audit, see: [The 30-Minute Security Audit — A Static Analysis Protocol for Onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
-For a head-to-head comparison of every plugin competing for the Express-security slot: [Benchmark: 17 ESLint Security Plugins Compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83).
+For a head-to-head comparison of every plugin competing for the Express-security slot: [Benchmark: 17 ESLint Security Plugins Compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
 
 The same "framework hands you the guard, you ship without it" failure shows up at every layer of a Node stack:
 

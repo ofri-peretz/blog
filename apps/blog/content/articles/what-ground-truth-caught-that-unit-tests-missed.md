@@ -10,11 +10,12 @@ tags:
   - "devsecops"
   - "eslint"
 canonical_url: "https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed"
+tier: "T3"
 cover_image: "https://media2.dev.to/dynamic/image/width=1200,height=627,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Farticles%2F49iz3bb9eg4zte81hhqn.png"
 series: "Inside our linter benchmarks"
 ---
 
-Our test suite was green. Our CI was green. Ground truth analysis found 3 vulnerabilities that had been in production for months. Here's the specific difference between unit test coverage and ground truth security coverage.
+Our test suite was green. Our CI was green. [Ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing) analysis found 3 vulnerabilities that had been in production for months. Here's the specific difference between unit test coverage and ground truth security coverage.
 
 Three of our flagship ESLint security rules had passing unit tests for months and had been benchmarked against peer plugins on real OSS for weeks. Then a 5KB corpus — 12 fixtures, runs in 3 seconds — failed all three the first time we ran it. None of the prior signals had flinched.
 
@@ -35,7 +36,7 @@ The crisp version:
 
 Both signals are green. One is wrong in exactly the way that matters.
 
-Here's how that gate works. We added a `npm run ilb:flagship:smoke` step to the `quality` script. It's small: for each flagship rule with a labeled corpus, run the rule against `vulnerable/*` (must fire) and `safe/*` (must stay silent). Compute precision, recall, F1. Fail the build below F1=1.00.
+Here's how that gate works. We added a `npm run ilb:flagship:smoke` step to the `quality` script. It's small: for each flagship rule with a labeled corpus, run the rule against `vulnerable/*` (must fire) and `safe/*` (must stay silent). Compute [precision, recall, F1](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis). Fail the build below F1=1.00.
 
 The first run hit nine rules. Six passed. Three failed.
 
@@ -77,7 +78,7 @@ React Hook useEffect has missing dependencies: r
 
 Tracing into the source, `extractLocallyDeclaredIdentifiers` walked the effect body, collected `VariableDeclaration` and `FunctionDeclaration` names, but **didn't collect `params` of nested `ArrowFunctionExpression` / `FunctionExpression`**. Every callback parameter inside the effect was treated as a closure-from-outside.
 
-**Why unit test #31 passed while the real pattern failed:** the test fixture used a closure-only effect — `useEffect(() => { setData(userId); }, [userId])` — and validated that `userId` must be in deps. Test #31 passed with green. But test #31's mock never had `.then((r) => r.json())`. The author's mental model didn't include nested callback parameters. The rule and the test shared the same blind spot — so both stayed green while the false-positive shipped.
+**Why unit test #31 passed while the real pattern failed:** the test fixture used a closure-only effect — `useEffect(() => { setData(userId); }, [userId])` — and validated that `userId` must be in deps. Test #31 passed with green. But test #31's mock never had `.then((r) => r.json())`. The author's mental model didn't include nested callback parameters. The rule and the test shared the same blind spot — so both stayed green while the [false-positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) shipped.
 
 Fix: when visiting a nested function node, add its `params` to the `declared` set:
 
@@ -155,7 +156,7 @@ function containsUserInput(node: TSESTree.Node): boolean {
 }
 ```
 
-`TemplateLiteral`, `BinaryExpression` (string concat), and `CallExpression` (e.g. `.toString()` chains, `String(req.x)`, `JSON.stringify(req.body)`) are all routes for tainted data into a query. Each gets recursed into now.
+`TemplateLiteral`, `BinaryExpression` (string concat), and `CallExpression` (e.g. `.toString()` chains, `String(req.x)`, `JSON.stringify(req.body)`) are all routes for [tainted data](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) into a query. Each gets recursed into now.
 
 ## Bug #3: AI-output detection missed the standard SDK pattern
 
@@ -254,7 +255,7 @@ That's not a coincidence. AI assistants are trained on the canonical documentati
 
 This is the same thread I keep pulling on from the other direction — [I let Claude write 80 functions and 65–75% had security vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), and [Claude wrote a NestJS service; ESLint found 6 security holes](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes). There the AI shipped the vulnerability. Here the AI ships a vulnerability the linter _silently waves through_. Both failure modes only surface when your fixtures are written from the patterns code actually takes — not the ones you imagined.
 
-Before you adopt a security plugin to audit your AI-generated code, run the [30-minute onboarding audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) and check the plugin against real AI output shapes. And if you want to compare which plugin actually catches which patterns, the [benchmark of 17 ESLint security plugins](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) is the starting point.
+Before you adopt a security plugin to audit your AI-generated code, run the [30-minute onboarding audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) and check the plugin against real AI output shapes. And if you want to compare which plugin actually catches which patterns, the [benchmark of 17 ESLint security plugins](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) is the starting point.
 
 And the shape of the AI output is not uniform across models, which makes this worse, not better. When I ran [700 AI-generated functions through 5 models and ranked them by security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), the rankings inverted the moment I [broke them down by domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain): the "most dangerous" model fixes 93% of the database vulnerabilities it writes, the "safest" fixes 45%. Different models favor different canonical shapes — so the same rule that's blind to Claude's preferred `const { text } = await generateText(...)` may sail through a different model's `result.text` and trip on a third's. A linter validated against one model's output distribution is not validated against the next model you swap in. The corpus is the only thing that holds the line, because its fixtures come from documentation — the source _every_ model is trained on — not from whichever assistant you happened to test with.
 

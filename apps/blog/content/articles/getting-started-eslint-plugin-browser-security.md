@@ -3,6 +3,7 @@ title: "Browser Security Bugs Your Frontend Passes to Code Review — 45 ESLint 
 description: "JWT-in-localStorage, innerHTML XSS, postMessage('*'), mixed content, permissive CORS — browser-side bugs a backend pentest and a type-checker never see. A findings report on the patterns that survive review, with 45 CWE-mapped ESLint rules that catch them automatically."
 slug: "getting-started-eslint-plugin-browser-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-browser-security"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-browser-security-3iop"
 devto_id: 3143592
 published_at: "2026-01-02T15:20:36Z"
@@ -51,19 +52,19 @@ None of those throw. None fail a unit test. Your type-checker is satisfied — `
 
 This is the shape of browser security debt: **it looks identical to correct code.** The dangerous version and the safe version are visually almost indistinguishable, and nothing in the standard toolchain draws the line. That's exactly the line a linter can draw.
 
-**`eslint-plugin-browser-security` is 45 rules for that surface** — every one pinned to a CWE, firing in CI before the code ships. The rest of this article is what those findings actually look like, how they survive review, and how to add the guard.
+**`eslint-plugin-browser-security` is 45 rules for that surface** — every one pinned to a [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained), firing in CI before the code ships. The rest of this article is what those findings actually look like, how they survive review, and how to add the guard.
 
 > *A static linter catches the dangerous pattern the moment it enters the codebase — not after the pentest, not after the postmortem.*
 
 ---
 
-If you are starting from scratch on static analysis security tooling, the [30-minute security audit protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) covers how to sequence plugins across a new codebase. For a cross-plugin benchmark, [17 ESLint security plugins compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) covers where `browser-security` sits relative to the field.
+If you are starting from scratch on static analysis security tooling, the [30-minute security audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) covers how to sequence plugins across a new codebase. For a cross-plugin benchmark, [17 ESLint security plugins compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) covers where `browser-security` sits relative to the field.
 
 ---
 
 ## TL;DR
 
-- **45 rules**, every one carrying a `CWE` id and a CVSS score.
+- **45 rules**, every one carrying a `CWE` id and a [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) score.
 - **8 presets**: `flagship`, `recommended` (31 rules), `strict` (all 45), plus
   five **focused starter presets** that enable a high-signal starter rule (or
   two) per surface for gradual adoption — `xss` (`no-innerhtml` + `no-eval`),
@@ -291,7 +292,7 @@ Run it:
 npx eslint .
 ```
 
-Each finding carries the CWE, OWASP category, CVSS, and the fix. This is the
+Each finding carries the CWE, [OWASP category](https://ofriperetz.dev/articles/owasp-top-10-explained), CVSS, and the fix. This is the
 real output from linting a `postMessage(payload, "*")` call (the send-side bug
 from earlier), not a mock-up:
 

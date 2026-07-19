@@ -3,6 +3,7 @@ title: "I Mapped the OWASP Top 10 to ESLint Rules. 8 Hold Up. 2 Are Vendor Theat
 description: "A real, auditable mapping of the OWASP Top 10 (2021) to ten domain-security ESLint plugins: which categories a CWE-tagged rule genuinely catches in CI, the two (Insecure Design, Vulnerable Components) that need controls beyond source analysis, and what happens when you point these rules at AI-generated code."
 slug: "mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules"
 canonical_url: "https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules-25f0"
 devto_id: 3138808
 published_at: "2025-12-31T18:15:25Z"
@@ -26,7 +27,7 @@ author:
 series: null
 ---
 
-247 ESLint rules mapped to OWASP Top 10 — but most teams automate coverage for only 7 of the 10 categories. Here's which 3 categories have zero or near-zero static analysis coverage in most Node.js projects.
+247 ESLint rules mapped to the [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) — but most teams automate coverage for only 7 of the 10 categories. Here's which 3 categories have zero or near-zero static analysis coverage in most Node.js projects.
 
 Every "100% OWASP coverage by static analysis" slide is off by two — and the
 vendor selling it is counting on you not opening the OWASP page to check. I've
@@ -47,7 +48,7 @@ No single plugin gets you the 8, either. SQL injection needs database-aware
 rules; JWT attacks need token-aware rules; DOM XSS needs browser-aware rules. So
 the map below spans **ten domain-security plugins** (part of the
 [Interlace](https://eslint.interlace.tools) ecosystem). Every rule carries a
-CWE, and most findings carry the classic OWASP category the CWE rolls up to, so
+[CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained), and most findings carry the classic OWASP category the CWE rolls up to, so
 the evidence is greppable, not hand-waved — and the count is whatever your
 installed version actually ships, which you can read for yourself (one-liner at
 the end), not a frozen number on a slide. (Yes, the URL says a number. It was
@@ -200,7 +201,7 @@ typed the line. The rules below are the same whether the author has a pulse.
 ## What a finding looks like
 
 Findings are deterministic strings — each carries the CWE, the OWASP category
-the CWE rolls up to, a CVSS, the severity, and the compliance tags, then the
+the CWE rolls up to, a [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained), the severity, and the compliance tags, then the
 fix:
 
 ```text
@@ -321,8 +322,8 @@ This is the ecosystem-level OWASP view — the index page of a larger series. Ea
 category above has a deep-dive that walks the full rule set, the attack behind
 it, and the code that survived review:
 
-- [The 30-minute security audit: a static analysis protocol for onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) — how to run this map as a structured audit from day one
-- [Benchmark: 17 ESLint security plugins compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) — how the Interlace plugins compare to every alternative
+- [The 30-minute security audit: a static analysis protocol for onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) — how to run this map as a structured audit from day one
+- [Benchmark: 17 ESLint security plugins compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) — how the Interlace plugins compare to every alternative
 - [`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) — the `alg:none` bypass (A07) and 12 more auth rules
 - [`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — SQL injection (A03), connection leaks, the N+1 insert loop
 - [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the A05 attack (CWE-426) most teams have never heard of

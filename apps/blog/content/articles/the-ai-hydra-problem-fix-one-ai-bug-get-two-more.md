@@ -3,6 +3,7 @@ title: "I Asked Claude to Fix Its Own Security Bugs. 1 in 3 Fixes Added a NEW Vu
 description: "When AI fixes a security bug, the original finding disappears — but 1 in 3 'fixes' quietly introduced a brand-new vulnerability in a different category. I tested this across 3 remediation rounds with Claude (opus alias, Feb 2026 run) using two approaches — ESLint-guided feedback vs. prompt engineering alone. I call it the Hydra Problem, and it exposes a fundamental limit of 'fix it again' workflows."
 slug: "the-ai-hydra-problem-fix-one-ai-bug-get-two-more"
 canonical_url: "https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/the-ai-hydra-problem-fix-one-ai-bug-get-two-more-5g1l"
 devto_id: 3241678
 published_at: "2026-02-08T17:05:28Z"
@@ -87,7 +88,7 @@ In Greek mythology, the Hydra was a serpent with many heads. Cut one off, and tw
 The same pattern emerges in AI-assisted code remediation:
 
 1. **Generation 0**: AI writes a `runUserCommand` function using `child_process`
-2. **Generation 1**: You point out the arbitrary command execution. AI adds an allowlist — but introduces a **path-traversal check** (CWE-22) whose `..`-substring heuristic is itself flagged by the `no-zip-slip` rule
+2. **Generation 1**: You point out the arbitrary command execution. AI adds an allowlist — but introduces a **path-traversal check** ([CWE-22](https://ofriperetz.dev/articles/cwe-taxonomy-explained)) whose `..`-substring heuristic is itself flagged by the `no-zip-slip` rule
 3. **Generation 2**: You point out the new issue. AI adds `path.resolve()` validation — and this time it's finally clean
 
 The model didn't just fix the original bug. It **traded one vulnerability class for another** before converging.
@@ -118,7 +119,7 @@ What the reviewer doesn't pattern-match on is that the `..` substring check is _
 
 Both groups use Claude Opus (the `opus` CLI alias on my Claude Pro subscription, which resolved to Opus 4.6 during the **2026-02-08** run), the same 20 prompts, and the same [Interlace ESLint Ecosystem](https://eslint.interlace.tools) (332+ security rules) for analysis. Each generation is a fresh, non-interactive process — the runner shells out with `claude --print --no-session-persistence --model opus -` ([see `run-hydra.js`](https://github.com/ofri-peretz/eslint-benchmark-suite/blob/main/benchmarks/ai-security/run-hydra.js)), so no conversation state leaks between prompts or rounds.
 
-> **Reproducibility note on the model id.** The runner shells out to `claude --model opus`, so the [result JSON](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/results/ai-security) records `"model": "opus"` and `"timestamp": "2026-02-08T04:35:13Z"` — the CLI alias and run time, not a pinned minor version. The `opus` alias mapped to Opus 4.6 on that date; if you re-run later, the alias may resolve to a newer Opus, so compare against your own `timestamp` rather than assuming the exact 4.6 weights.
+> **[Reproducibility](https://ofriperetz.dev/articles/reproducibility-vs-replicability) note on the model id.** The runner shells out to `claude --model opus`, so the [result JSON](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/results/ai-security) records `"model": "opus"` and `"timestamp": "2026-02-08T04:35:13Z"` — the CLI alias and run time, not a pinned minor version. The `opus` alias mapped to Opus 4.6 on that date; if you re-run later, the alias may resolve to a newer Opus, so compare against your own `timestamp` rather than assuming the exact 4.6 weights.
 
 **Group A — Guardian Layer (ESLint feedback loop):**
 
@@ -271,7 +272,7 @@ Does the Guardian Layer produce significantly more prompt-level full fixes?
 
 Fisher's Exact Test (two-tailed): **p = 0.026**
 
-This is **statistically significant** at α = 0.05. The Guardian Layer's advantage in reaching vulnerability-free code is unlikely to be explained by chance alone.
+This is [**statistically significant**](https://ofriperetz.dev/articles/statistical-significance-p-value) at α = 0.05. The Guardian Layer's advantage in reaching vulnerability-free code is unlikely to be explained by chance alone.
 
 **Test 2: Hydra Rate**
 
@@ -288,7 +289,7 @@ This **does not reach** conventional significance (α = 0.05) — treat it as **
 
 ### Limitations
 
-- **Sample size:** 20 prompts is sufficient for directional findings but not for narrow confidence intervals. We report exact p-values rather than confidence ranges.
+- **[Sample size](https://ofriperetz.dev/articles/sample-size-and-statistical-power):** 20 prompts is sufficient for directional findings but not for narrow confidence intervals. We report exact p-values rather than confidence ranges.
 - **Correlated rounds:** The Hydra-rate Fisher test counts 25 vs 19 remediation _rounds_ as observations, but rounds 1→2→3 on the same prompt are a correlated sequence over the same code, not independent draws. The truly independent unit is the prompt, not the round, so the effective _n_ is smaller and the p-value is optimistic. Treat the round-level p = 0.060 as directional; a prompt-clustered test on a larger corpus is the right confirmation.
 - **Confounded arms (not a clean ablation):** As noted in the design, Groups A and B differ on prompt, feedback, and patch-vs-regenerate simultaneously. The 8%-vs-32% result compares two _workflows_; isolating "feedback" specifically needs a plain-prompt + no-feedback + patch-mode arm, which this run doesn't include.
 - **Single model:** Results are for Claude Opus 4.6. Other models may show different patterns.
@@ -359,7 +360,7 @@ This is why the timeline reads `1 → 1 → 0` rather than `1 → 0`: the count 
 **Two honest caveats before you treat this as a smoking gun**, because a skeptical reader will raise both:
 
 1. **A rule firing is a _signal_, not a proof of exploitability.** `no-zip-slip` keys on the `..`-substring heuristic; in this Gen-1 code there's no archive extraction, so the finding flags a _weak, incomplete_ control (a blocklist that string-matches `..`) rather than a definitely-exploitable hole. I'm counting "a new rule category fired" as a Hydra event, not "a new RCE shipped." The reason that's still the point: the human reviewer can't distinguish "weak new control" from "real new hole" any better than the linter can — both see only that the diff added something that _looks_ defensive. The Hydra Rate measures **how often the fix quietly changes the security category under review**, which is exactly the thing diff-review is blind to.
-2. **Not all head-swaps are equal in severity.** Trading a command-injection (critical, RCE) for a weak `..` path check (low) is, on a severity-weighted view, arguably a _net risk reduction_ — and my equal-weight Hydra Rate scores it as "got worse." That's the most attackable choice in the methodology, so I'll name it plainly: the metric counts _category churn_, not CVSS deltas. The workflow finding survives the objection anyway, because the failure mode isn't "the code got more dangerous" — it's "the diff silently swapped one security property for another and review couldn't see it." Severity-weighting the Hydra Rate is the obvious refinement and it's on the list for the next run.
+2. **Not all head-swaps are equal in severity.** Trading a command-injection (critical, RCE) for a weak `..` path check (low) is, on a severity-weighted view, arguably a _net risk reduction_ — and my equal-weight Hydra Rate scores it as "got worse." That's the most attackable choice in the methodology, so I'll name it plainly: the metric counts _category churn_, not [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) deltas. The workflow finding survives the objection anyway, because the failure mode isn't "the code got more dangerous" — it's "the diff silently swapped one security property for another and review couldn't see it." Severity-weighting the Hydra Rate is the obvious refinement and it's on the list for the next run.
 
 That whole loop — generate, scan, feed the _specific_ rule back, re-scan — is the entire Guardian Layer, and the four plugins behind it install in one line (`npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt`); the [copy-paste config is at the end](#eslint-configuration-used). I walk through what this looks like catching real Claude-generated bugs in a single pass in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
 
@@ -549,7 +550,7 @@ export default [
 
 **Related reading:**
 - [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — The baseline experiment that set up this remediation study
-- [Hardcoded Secrets in AI Agent Code: The Autofix Problem](https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg) — How AI handles another class of security fixes
+- [Hardcoded Secrets in AI Agent Code: The Autofix Problem](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix) — How AI handles another class of security fixes
 - [ESLint Interlace Plugin Docs](https://eslint.interlace.tools) — All 332+ rules with fix examples
 
 ---

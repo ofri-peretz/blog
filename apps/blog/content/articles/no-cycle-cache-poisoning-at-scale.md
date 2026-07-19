@@ -10,6 +10,7 @@ tags:
   - "performance"
   - "eslint"
 canonical_url: "https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale"
+tier: "T3"
 cover_image: ""
 series: "Inside our linter benchmarks"
 ---
@@ -133,7 +134,7 @@ $ eslint --no-cache --config flagship.config.mjs 'packages/next/src/client/compo
 
 The narrow run finds cycles. The wide run starts from a fresh process with a fresh cache too — but it lints the 2,363 files in some order, and as it goes it fills `nonCyclicFiles` with exactly the kind of sourceFile-blind entry described above: a router-reducer file gets searched *forward* on behalf of some distant importer, the search runs past depth 10 through the cluster's barrels without closing *that* loop, and the file is cached acyclic. By the time the pass gets around to detecting the cluster's own short cycles, those nodes are already marked clean and the short-circuit skips them. The narrow run never builds those entries: with only 33 files in scope, no forward search has a 10-hop barrel chain to get lost in before the local cycle closes, so every cache write is honest. Scope isn't the cause; it's how many deep, sourceFile-blind searches get to run and poison nodes before the cluster's own short cycles are evaluated — which is why a small subtree stays clean and the 14K-file pass goes dark.
 
-oxlint, being a different process with its own implementation, doesn't share our cache. It uses oxlint's own `ModuleGraphVisitorBuilder` and finds 17 cycles. (Why oxlint's 17 differs from `eslint-plugin-import`'s 0 is a separate story about `import type` edge-counting policy — I trace that in the [companion root-cause writeup](https://dev.to/ofri-peretz/import-nextno-cycle-reported-0-cycles-on-nextjs-we-found-why-and-fixed-it-ln2).)
+oxlint, being a different process with its own implementation, doesn't share our cache. It uses oxlint's own `ModuleGraphVisitorBuilder` and finds 17 cycles. (Why oxlint's 17 differs from `eslint-plugin-import`'s 0 is a separate story about `import type` edge-counting policy — I trace that in the [companion root-cause writeup](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it).)
 
 ## The fix
 
@@ -163,7 +164,7 @@ if (allCycles.length === 0 && !depthLimitHit) {
 }
 ```
 
-Five lines — but be precise about what they buy. The guard stops a truncated DFS from *poisoning its neighbors*: no more false-acyclic cache entries cascading through a cluster. It does **not**, on its own, make a depth-truncated run find a cycle that sits past the limit — a file whose only cycle is at depth 12 still reports 0 *for itself* under `maxDepth: 10`. That second false negative is closed by the other half of the fix: raising the default to unbounded, so the DFS actually reaches the deep loop. The guard makes unbounded *safe* to default to (a truncated run on a dense graph no longer corrupts the cache); the unbounded default is what surfaces the deep cycles. Together: re-running on next.js goes **0 → 245 unique files in cycles, 914 unique (file, line) pairs**, and the wide-scope correctness now matches the narrow-scope correctness.
+Five lines — but be precise about what they buy. The guard stops a truncated DFS from *poisoning its neighbors*: no more false-acyclic cache entries cascading through a cluster. It does **not**, on its own, make a depth-truncated run find a cycle that sits past the limit — a file whose only cycle is at depth 12 still reports 0 *for itself* under `maxDepth: 10`. That second [false negative](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) is closed by the other half of the fix: raising the default to unbounded, so the DFS actually reaches the deep loop. The guard makes unbounded *safe* to default to (a truncated run on a dense graph no longer corrupts the cache); the unbounded default is what surfaces the deep cycles. Together: re-running on next.js goes **0 → 245 unique files in cycles, 914 unique (file, line) pairs**, and the wide-scope correctness now matches the narrow-scope correctness.
 
 The obvious objection: *unbounded recursive DFS on a 14K-file graph — doesn't that blow the call stack?* No, and the reason is the same `visited` set that scopes one search. Recursion descends a node only once per search tree (`if (visited.has(file)) return;`), so the real recursion depth is bounded by the longest *acyclic* import chain — the graph's diameter, not the file count — and never by the cycle itself (a back-edge hits `visited` and returns instead of recursing forever). That's also the answer to the question every reviewer eventually asks: if per-call `visited` already bounds the search, why did the cascade happen? Because `visited` is created fresh **per target file** — it only protects one search — while `nonCyclicFiles` is the module-scoped cache shared across *every* file in the run. `visited` stops infinite recursion within a search; the cross-file cache is the state that leaks a wrong answer from one search into all the later ones. Two different sets, two different jobs — and only one of them was lying. (`maxDepth` existed originally as a blunt stack-and-latency guard; the real fix was making the cache honest, which let the cap go.)
 
@@ -241,7 +242,7 @@ oxlint goes further: it builds an explicit module graph during parsing, then the
 
 Both approaches share a property our DFS-with-cache approach lacks: **the algorithm is exact, not approximate**. The cache trades some compute for correctness — exactly what we accidentally did the wrong way.
 
-For a full performance comparison between `eslint-plugin-import` and `eslint-plugin-import-next` (up to 100x faster on large repos), see [the benchmark writeup](https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster-1afa).
+For a full performance comparison between `eslint-plugin-import` and `eslint-plugin-import-next` (up to 100x faster on large repos), see [the benchmark writeup](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster).
 
 ## Why AI-generated code makes this worse
 
@@ -255,7 +256,7 @@ The uncomfortable part: the detector doesn't error. It returns **0**, the build 
 
 ### Reproduce it on a Gemini-scaffolded repo (challenge protocol)
 
-Want to turn the structural claim into original data on a specific model? Here's the exact, reproducible protocol — I'm publishing the recipe rather than a number I haven't measured, because I want the count to come from *your* model and *your* scaffold, not a fabricated one:
+Want to turn the structural claim into original data on a specific model? Here's the exact, [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) protocol — I'm publishing the recipe rather than a number I haven't measured, because I want the count to come from *your* model and *your* scaffold, not a fabricated one:
 
 ```bash
 # 1. Have Gemini scaffold a small feature across modules. A prompt that
@@ -297,7 +298,7 @@ The fix is in [packages/eslint-devkit/src/resolver/dependency-analysis.ts](https
 
 **Series — _Inside our linter benchmarks_.** This is one of three rule bugs the same bench sweep caught, and the second angle on this specific one:
 
-- [import-next/no-cycle reported 0 cycles on next.js — we found why and fixed it](https://dev.to/ofri-peretz/import-nextno-cycle-reported-0-cycles-on-nextjs-we-found-why-and-fixed-it-ln2) — the same bug from the depth-limit side, including why oxlint's 17 and `eslint-plugin-import`'s 0 are both correct under different `import type` edge policies.
+- [import-next/no-cycle reported 0 cycles on next.js — we found why and fixed it](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it) — the same bug from the depth-limit side, including why oxlint's 17 and `eslint-plugin-import`'s 0 are both correct under different `import type` edge policies.
 - [What ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) — the smoke-gate that exposed all three bugs at F1=1.00.
 - [When entropy isn't enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough) — 807 false credential findings on vercel/ai, the third bug in the sweep.
 
