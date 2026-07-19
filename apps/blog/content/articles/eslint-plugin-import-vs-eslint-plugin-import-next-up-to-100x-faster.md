@@ -3,6 +3,7 @@ title: "eslint-plugin-import Spends 148s Finding Circular Deps in 5,000 Files. i
 description: "A reproducible performance benchmark: eslint-plugin-import vs eslint-plugin-import-next across 1K/5K/10K files. The no-cycle rule goes from 148.59s to 2.71s at 5,000 files (54.8x measured, n=3). Both plugins compute strongly-connected components and both re-run per-edge BFS path-finding — I measured that disabling the old plugin's SCC check changes nothing, so the gap isn't 'no SCC at all'; the exact remaining cause is honestly unresolved, and the numbers are reproducible from the linked result JSON."
 slug: "eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
 canonical_url: "https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster-1afa"
 devto_id: 3143536
 published_at: "2026-01-02T14:46:40Z"
@@ -23,7 +24,7 @@ author:
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-series: null
+series: "Inside our linter benchmarks"
 ---
 
 > **import-next series** · [← What it still gets wrong (correctness)](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong) · **You are here: the performance rewrite** · [The cache bug that hides cycles →](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale)
@@ -100,7 +101,7 @@ const cyclePath = findShortestCyclePath(normalizedFilename, resolved, opts);
 
 On this fixture, nearly every file lands in the same giant SCC, so the `srcSCC !== tgtSCC` early-return above rarely fires — most edges fall through to `findShortestCyclePath`, which is **not** memoized per pair; it runs a fresh, real BFS every time. That should make it more expensive on a dense graph, not less. And yet the measured result is 2.71s with a 0.01s stdDev.
 
-Here's what I can and can't claim about why. I can prove, because I measured it directly, that the old plugin's SCC pre-check is not what's costing it time: running it with `disableScc: true` produces no measurable difference (~40s either way, repeatedly). Both plugins genuinely re-run BFS path-finding per same-SCC edge — that part of the algorithm is identical in shape between them. What I *cannot* prove without adding profiling hooks to two third-party packages — past what a benchmark article should require of its author — is exactly which remaining factor accounts for the 54.8x: a cheaper resolver, a smaller effective SCC after import-next's barrel-aware resolution, less GC pressure from a leaner data structure, or some combination. I'd rather say that plainly than dress up a guess as an explanation. What isn't in question is the measured result itself, reproducible from the linked result JSON.
+Here's what I can and can't claim about why. I can prove, because I measured it directly, that the old plugin's SCC pre-check is not what's costing it time: running it with `disableScc: true` produces no measurable difference (~40s either way, repeatedly). Both plugins genuinely re-run BFS path-finding per same-SCC edge — that part of the algorithm is identical in shape between them. What I *cannot* prove without adding profiling hooks to two third-party packages — past what a benchmark article should require of its author — is exactly which remaining factor accounts for the 54.8x: a cheaper resolver, a smaller effective SCC after import-next's barrel-aware resolution, less GC pressure from a leaner data structure, or some combination. I'd rather say that plainly than dress up a guess as an explanation. What isn't in question is the measured result itself, [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) from the linked result JSON.
 
 Result: **2.71s** for the same 5,000 files, with a stdDev of 0.01s — tight and repeatable, even though the per-edge BFS is real work happening on every run.
 
@@ -172,7 +173,7 @@ _\*10K Projection Note: the measured 1K→5K growth (5x more files) is ~5.5x slo
 
 A circular import doesn't announce itself as a bug — it announces itself as a production incident. The mechanism is module initialization order, not bundling: when `a.js` and `b.js` import each other, one of them finishes evaluating first, so it gets a **partial** view of the other's exports. In CommonJS this is silent — the half-loaded module's `exports` object is just missing the binding, so an auth check that reads it gets `undefined` instead of the function it expected, and it takes six hours on-call to trace a "users can access other accounts" report back to two files that import each other. (Native ESM is stricter and throws a `ReferenceError` on the same access instead of returning `undefined` — better for you, worse for the person whose build just broke in CI.) The rule that would have caught it in 2.7 seconds was commented out eleven months earlier for an unrelated CI timeout.
 
-Most teams **disable** [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) because it's too slow. But [even when the original plugin is enabled, it has correctness problems](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong) — false negatives and false positives that give you a false sense of security. With `eslint-plugin-import-next`, you can finally enable it and trust it.
+Most teams **disable** [`no-cycle`](https://eslint.interlace.tools/docs/quality/plugin-import-next/rules/no-cycle) because it's too slow. But [even when the original plugin is enabled, it has correctness problems](https://ofriperetz.dev/articles/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong) — [false negatives and false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) that give you a false sense of security. With `eslint-plugin-import-next`, you can finally enable it and trust it.
 
 If your `no-cycle` is one of the disabled ones, this is the two-line swap that lets you turn it back on (full migration notes [below](#migration-takes-2-minutes)):
 
@@ -183,7 +184,7 @@ npm install --save-dev eslint-plugin-import-next
 
 And once the rule is off, the cycles it *would* have caught don't stay invisible — they just surface later, as the bugs described above. (Caches make this worse: a stale resolver cache can report **0 cycles** on a graph that has several. I dug into one such case on a 14,556-file Next.js monorepo in [no-cycle finds 0 cycles in Next.js (and other lies caches tell you)](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale).)
 
-Need a framework for evaluating which rules to enable first? The [30-minute security audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) protocol walks through exactly this triage.
+Need a framework for evaluating which rules to enable first? The [30-minute security audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) protocol walks through exactly this triage.
 
 ---
 

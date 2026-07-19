@@ -5,6 +5,7 @@ title: "We Ranked 5 AI Models by Security. The Leaderboard Is Wrong."
 description: "700 AI-generated functions. 5 models. The cheapest model leads the aggregate leaderboard — but one model writes perfect JWT code where the flagship fails every time, and the 'worst' model fixes 93% of database bugs. The rankings don't tell you any of this."
 slug: "we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong"
 canonical_url: "https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong"
+tier: "T3"
 published_at: "2026-02-11T08:14:59Z"
 edited_at: "2026-07-05T08:00:00Z"
 cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2cazqf3s2d1rj53sheya.png"
@@ -68,7 +69,7 @@ The conventional ranking would lead you to use Haiku everywhere and avoid Gemini
 | Claude Opus 4.6      | 65%       | [56.8% - 72.4%] | **60%**              |
 | **Gemini 2.5 Pro**   | **73%**   | [65.0% - 79.5%] | **47%** 🥈           |
 
-**χ² = 18.43, p < 0.05 — the differences are statistically significant.**
+**χ² = 18.43, p < 0.05 — the differences are [statistically significant](https://ofriperetz.dev/articles/statistical-significance-p-value).**
 
 ### The Bottom Line
 
@@ -175,7 +176,7 @@ But Gemini Pro's most significant strength shows up in **remediation** — speci
 | Opus 4.6           | 17            | 10       | 59%             |
 | Haiku 4.5          | 11            | 5        | **45%**         |
 
-**The model with the highest database vulnerability rate (96%) also has the highest database fix rate (93%)**. When told exactly what's wrong — "CWE-1049: Avoid `SELECT *`, enumerate explicit columns" — Gemini Pro restructures the query correctly 25 out of 27 times.
+**The model with the highest database vulnerability rate (96%) also has the highest database fix rate (93%)**. When told exactly what's wrong — "[CWE-1049](https://ofriperetz.dev/articles/cwe-taxonomy-explained): Avoid `SELECT *`, enumerate explicit columns" — Gemini Pro restructures the query correctly 25 out of 27 times.
 
 **Honest loss for Gemini Pro:** Pro actually generates *more total vulnerabilities* than every Claude model — 102 vs 91 for Opus. If you care only about raw generation quality and don't have a remediation pipeline, Pro is genuinely the worst choice. The 93% database fix rate only matters if you run ESLint feedback loops. Without tooling, Pro's output is the least safe.
 
@@ -242,7 +243,7 @@ If you generate code once with Opus and get a clean result, you can trust it'll 
 
 ## If You've Already Read the Prior Articles
 
-[Part 1](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) established that Claude models alone generate vulnerabilities 65-75% of the time. [Part 4](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj) breaks the same 700 functions down by security domain and shows even more dramatic inversions — individual rule categories where the "worst" model leads by 40+ percentage points.
+[Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) established that Claude models alone generate vulnerabilities 65-75% of the time. [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) breaks the same 700 functions down by security domain and shows even more dramatic inversions — individual rule categories where the "worst" model leads by 40+ percentage points.
 
 The benchmark methodology is fully open — the runner, prompts, and raw results are in the [eslint-benchmark-suite repo](https://github.com/ofri-peretz/eslint-benchmark-suite). If you want to reproduce this against a different model (Gemini 3 is now available; we'll include it in the next run), the scripts support arbitrary CLI-accessible models.
 
@@ -275,6 +276,12 @@ The benchmark methodology is fully open — the runner, prompts, and raw results
 
 ---
 
+## Foundations
+
+Three measurement concepts underpin this article's argument. [Ranking vs. measuring](https://ofriperetz.dev/articles/ranking-vs-measuring) explains why an ordered leaderboard hides more than it reveals. [Composite scores and weighting](https://ofriperetz.dev/articles/composite-scores-and-weighting) covers how single-number aggregates get built — and where they break. [Sample size and statistical power](https://ofriperetz.dev/articles/sample-size-and-statistical-power) covers what 140 functions per model can and can't prove.
+
+---
+
 ## Reproduce This
 
 ```bash
@@ -299,7 +306,7 @@ screen -S benchmark benchmarks/ai-security/run-overnight.sh
 ---
 
 **The Interlace ESLint Ecosystem**
-332+ security rules. 18 specialized plugins. 100% OWASP Top 10 coverage.
+332+ security rules. 18 specialized plugins. 100% [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) coverage.
 
 ## [Explore the Documentation](https://eslint.interlace.tools)
 
@@ -307,10 +314,10 @@ screen -S benchmark benchmarks/ai-security/run-overnight.sh
 
 **In the AI Security Benchmark Series:**
 
-- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o) — Establishes the baseline vulnerability rate
+- **Part 1:** [I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — Establishes the baseline vulnerability rate
 - **Part 2:** [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) — Tests whether remediation converges
 - **Part 3:** We Ranked 5 AI Models by Security. The Leaderboard Is Wrong. ← _You are here_ — Validates at scale across providers
-- **Part 4:** [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj) — Domain-specific deep-dive
+- **Part 4:** [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) — Domain-specific deep-dive
 
 **Follow [@ofri-peretz](https://dev.to/ofri-peretz) to get notified when the next chapter drops.**
 

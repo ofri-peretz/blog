@@ -12,6 +12,8 @@ tags:
 canonical_url: https://ofriperetz.dev/articles/owasp-top-10-explained
 reading_time_minutes: 6
 tier: "T1"
+series: "Foundations"
+arc: 17
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627

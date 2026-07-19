@@ -3,6 +3,7 @@ title: "Gemini 2.5 Pro Wrote Unsafe SQL 96% of the Time: 3 Node.js Injection Pat
 description: "Direct concatenation, template literal injection, and dynamic identifier injection: three structurally distinct SQL injection surfaces in node-postgres codebases. Why each survives code review, why AI assistants regenerate all three — across a 700-function benchmark, database queries were the worst domain for every Claude and Gemini model — and which ESLint rules catch them statically, no matter who or what wrote the line."
 slug: "three-sql-injection-patterns-node-postgres-eslint"
 canonical_url: "https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/three-sql-injection-patterns-that-still-ship-in-nodejs-and-the-linter-that-catches-them-onb"
 devto_id: 3787090
 published_at: null
@@ -22,12 +23,12 @@ author:
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-series: "AI Security Benchmark Series"
+series: "Postgres Security Protocol"
 ---
 
 Three SQL injection patterns in node-postgres that code reviews consistently miss — and the ESLint rules that don't.
 
-> **AI Security Benchmark Series** — [Part 1: 80 functions, 65–75% vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · [Part 2: the Hydra problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) · [Part 3: 5 models ranked](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4: the domain breakdown](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) · **Applied (you are here): the database domain, weaponized → guarded** → next up, the [full node-postgres failure surface](https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-pattern-everyone-gets-wrong-54mn).
+> **AI Security Benchmark Series** — [Part 1: 80 functions, 65–75% vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · [Part 2: the Hydra problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) · [Part 3: 5 models ranked](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4: the domain breakdown](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) · **Applied (you are here): the database domain, weaponized → guarded** → next up, the [full node-postgres failure surface](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern).
 
 TypeScript passed it clean. The code reviewer approved it. It shipped to production. Three months later, a penetration tester sent a report.
 
@@ -39,7 +40,7 @@ const result = await pool.query(
 );
 ```
 
-SQL injection has been a known problem for decades. OWASP A03:2021. Parameterized queries are widely understood. And it still ships — not because developers don't know, but because the three structural forms that actually appear in node-postgres codebases look harmless in code review, one line at a time. ([CWE-89](https://cwe.mitre.org/data/definitions/89.html))
+SQL injection has been a known problem for decades. [OWASP A03:2021](https://ofriperetz.dev/articles/owasp-top-10-explained). Parameterized queries are widely understood. And it still ships — not because developers don't know, but because the three structural forms that actually appear in node-postgres codebases look harmless in code review, one line at a time. ([CWE-89](https://cwe.mitre.org/data/definitions/89.html))
 
 In our audit of Node.js postgres codebases, **73% had at least one of these three patterns in production code.** Only 2 of the 3 patterns are caught by standard security linters. The third one — dynamic column and table name injection — almost never is. That gap is exactly why it keeps shipping.
 
@@ -51,7 +52,7 @@ Here are the three patterns, why each survives review for a *different* reason, 
 
 ## Why a pg-specific rule — not a generic SQL injection linter
 
-Most SQL injection detectors work on one signal: string concatenation near a SQL keyword. If they see `"SELECT" + variable`, they flag it. This produces false positives on non-query string building, and misses injection via template literals — which is syntactically distinct from `+` but equally dangerous. And it completely misses dynamic identifier injection, which doesn't look like string-building at all.
+Most SQL injection detectors work on one signal: string concatenation near a SQL keyword. If they see `"SELECT" + variable`, they flag it. This produces [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) on non-query string building, and misses injection via template literals — which is syntactically distinct from `+` but equally dangerous. And it completely misses dynamic identifier injection, which doesn't look like string-building at all.
 
 A pg-specific rule knows three things a generic tool doesn't:
 
@@ -59,7 +60,7 @@ A pg-specific rule knows three things a generic tool doesn't:
 
 2. **The parameterization contract.** pg uses `$1, $2` positional placeholders, with values passed as the second argument array. The rule decides on the *shape of the first argument*: a plain string literal (`"SELECT ... WHERE id = $1"`) is structurally safe, while a `+` concatenation or a `${...}` template literal in that first slot is the injection surface. A corollary: `client.query("SELECT..." + x, [])` is still flagged — not because the array is empty, but because the `+` in the first argument is unsafe no matter what follows it.
 
-3. **Cross-line assignment taint.** When a SQL string is built via concatenation and stored in a variable before `.query()`, the variable is marked tainted. The rule tracks that taint across the assignment and fires at the `.query()` call.
+3. **Cross-line assignment taint.** When a SQL string is built via concatenation and stored in a variable before `.query()`, the variable is marked tainted. The rule tracks that [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) across the assignment and fires at the `.query()` call.
 
 This is why the rule's spec classifies Patterns 1 and 2 correctly. Its [behavioral test suite](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-pg/src/rules/no-unsafe-query/index.spec.ts) holds 8 valid cases that stay silent (parameterized `$1` + values array, `pg-format`, safe-init variables) and 7 invalid cases that fire (direct concatenation, template literals, and cross-line taint — including `+=` augmented assignment).
 
@@ -201,7 +202,7 @@ export default [
 ];
 ```
 
-And the part that turns the linter from a gate into a fixer: in the 700-function benchmark, the worst database generator (Gemini Pro, 96%) was also the *best* database remediator. Across the whole database domain, Gemini Pro [fixed 25 of 27 vulnerable database functions (93%) once it was handed the specific structural violation](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-by-security-domain). The model doesn't reach for `$1` from a behavior prompt, but a rule that names the exact defect at the exact line is the feedback it acts on. The cycle: assistant generates, rule names the defect, assistant remediates.
+And the part that turns the linter from a gate into a fixer: in the 700-function benchmark, the worst database generator (Gemini Pro, 96%) was also the *best* database remediator. Across the whole database domain, Gemini Pro [fixed 25 of 27 vulnerable database functions (93%) once it was handed the specific structural violation](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). The model doesn't reach for `$1` from a behavior prompt, but a rule that names the exact defect at the exact line is the feedback it acts on. The cycle: assistant generates, rule names the defect, assistant remediates.
 
 ---
 
@@ -217,7 +218,7 @@ For teams using pg directly — internal APIs, data pipelines, microservices —
 
 The install and config are above — `pg/no-unsafe-query` set to `error` is the whole setup. Two things worth knowing before you turn it on in CI:
 
-**vs. Semgrep/CodeQL:** Interprocedural SAST tools can trace taint across function boundaries. ESLint can't — it's intraprocedural. The trade-off: ESLint runs in your editor on every keystroke and in pre-commit hooks with no CI pipeline required. For a pg team that wants SQL injection feedback where they see TypeScript errors — including on the SQL an AI assistant just generated — that speed matters more than the wider taint scope.
+**vs. Semgrep/CodeQL:** Interprocedural [SAST](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) tools can trace taint across function boundaries. ESLint can't — it's intraprocedural. The trade-off: ESLint runs in your editor on every keystroke and in pre-commit hooks with no CI pipeline required. For a pg team that wants SQL injection feedback where they see TypeScript errors — including on the SQL an AI assistant just generated — that speed matters more than the wider taint scope.
 
 Known false positive: `client.query("SELECT * FROM " + SCHEMA_NAME)` where `SCHEMA_NAME` is a hardcoded constant. The rule fires because it can't distinguish constants from dynamic inputs. Workaround: use `pg-format` for identifier quoting, or restructure to a parameterized form.
 
@@ -230,8 +231,8 @@ _Which SQL injection pattern have you found most in the wild — and was it ever
 ---
 
 **Related reading:**
-- [Your node-postgres Data Layer Fails 4 Ways in Production](https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-pattern-everyone-gets-wrong-54mn)
-- [PostgreSQL COPY FROM exploit: filesystem access via SQL](https://dev.to/ofri-peretz/copy-from-exploits-when-postgresql-reads-your-filesystem-127a)
+- [Your node-postgres Data Layer Fails 4 Ways in Production](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern)
+- [PostgreSQL COPY FROM exploit: filesystem access via SQL](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access)
 - [Plugin docs: eslint.interlace.tools](https://eslint.interlace.tools)
 
 **→ Related (the AI angle):** [We Ranked 5 AI Models by Security — the database domain, in detail](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Same NestJS prompt: Claude got 6 security errors, Gemini got 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) · [Aggregate benchmarks lie — 700 AI functions by security domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)

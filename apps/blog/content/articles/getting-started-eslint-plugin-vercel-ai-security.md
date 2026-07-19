@@ -3,6 +3,7 @@ title: "Vercel AI SDK Security Holes That TypeScript Won't Catch — 19 Rules Th
 description: "Prompt injection via unvalidated user input, system prompt exfiltration, missing output validation, tool call injection — TypeScript types look correct in every case. Here are the 19 ESLint rules that catch them in CI."
 slug: "getting-started-eslint-plugin-vercel-ai-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-vercel-ai-security-5e9g"
 devto_id: 3139002
 published_at: "2025-12-31T21:49:06Z"
@@ -49,7 +50,7 @@ const { text } = await generateText({
 
 **Why it survived review.** `prompt: userMessage` is the canonical line in every AI SDK tutorial, every Stack Overflow answer, every README. The reviewer's pattern-matcher reads it as "correct." TypeScript confirms `userMessage` is a `string` — which is exactly what `prompt` expects. There is no `+` concatenation to flag, no `eval`, no obvious sink. The injection is in what's _absent_ (a validation boundary), and absence is the hardest thing to spot in a diff. A tired reviewer at 5pm notices it approximately never.
 
-**The rule:** `require-validated-prompt` (CWE-74, CVSS 9.0)
+**The rule:** `require-validated-prompt` ([CWE-74](https://ofriperetz.dev/articles/cwe-taxonomy-explained), [CVSS 9.0](https://ofriperetz.dev/articles/cvss-scores-explained))
 
 ESLint output:
 ```text
@@ -208,7 +209,7 @@ export default [
 ];
 ```
 
-The four vulnerabilities above are caught by `recommended`. The output carries CWE, OWASP mapping, CVSS score, and the fix inline — no documentation lookup required:
+The four vulnerabilities above are caught by `recommended`. The output carries CWE, [OWASP mapping](https://ofriperetz.dev/articles/owasp-top-10-explained), CVSS score, and the fix inline — no documentation lookup required:
 
 ```text
 src/app/chat/route.ts
@@ -324,7 +325,7 @@ One honest caveat: `require-tool-confirmation` only inspects inline tool object 
 - **It sees call sites, not runtime.** A confirmation flag satisfies the rule; whether your UI actually blocks on it is a runtime concern.
 - **Naming-based heuristics have edges.** Destructive-verb detection uses configurable pattern lists. Tune with `{ destructivePatterns: [...] }` rather than assuming the defaults are exhaustive.
 
-Static analysis is the cheapest, earliest, most consistent layer — it runs on every commit and never gets tired. It is a floor, not the whole building.
+[Static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) is the cheapest, earliest, most consistent layer — it runs on every commit and never gets tired. It is a floor, not the whole building.
 
 ---
 
@@ -340,8 +341,8 @@ That's the actual argument for a deterministic gate: the thing writing your AI c
 
 Related reading from the _Hardening AI Agents_ series:
 
-- [3 lines of code to hack your Vercel AI app — and 1 line to fix it](https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) — why the boundary is structural, not a string filter
-- [Vercel AI SDK prompt injection vulnerability](https://dev.to/ofri-peretz/your-vercel-ai-sdk-app-has-a-prompt-injection-vulnerability-4g7p) — the LLM01 rules in depth
+- [3 lines of code to hack your Vercel AI app — and 1 line to fix it](https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo) — why the boundary is structural, not a string filter
+- [Vercel AI SDK prompt injection vulnerability](https://ofriperetz.dev/articles/vercel-ai-sdk-prompt-injection-vulnerability) — the LLM01 rules in depth
 - [Your AI SDK app vs the OWASP LLM Top 10](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the 8 categories these rules cover, and the 2 they honestly can't
 
 ## Links

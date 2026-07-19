@@ -3,6 +3,7 @@ title: "13 Security Questions Every JS Interview Asks — and Why Reciting Them 
 description: "The 13 security concepts that come up in senior JavaScript/Node interviews — SQLi, XSS, CSRF, JWT, prototype pollution, ReDoS, timing attacks — each with the bad-vs-good code, the CWE, and the exact ESLint rule that stops your AI assistant (and you) from shipping the bad version anyway."
 slug: "the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn"
 canonical_url: "https://ofriperetz.dev/articles/the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn"
 devto_id: 3137519
 published_at: "2025-12-31T06:10:16Z"
@@ -42,7 +43,7 @@ model wrote it and the diff looked clean. Reciting the answer and *not shipping
 the bug* are two different skills, and interviews only test the first one.
 
 It's gotten worse with AI in the loop, and the failure mode is usually an omission, not a wrong line. Most of what I flag in AI-generated PRs isn't bad code — it's a missing guard: the absent `httpOnly` flag, the rate limiter nobody added, the CSP header that was never sent. You can't spot an omission by reading a diff; there's nothing red to react to. Ask Copilot or Claude to "query the user
-by id" and you'll often get string-interpolated SQL — the same CWE-89 the
+by id" and you'll often get string-interpolated SQL — the same [CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained) the
 candidate aced an hour earlier. The model has read every Stack Overflow answer,
 including the wrong ones, and it has no opinion about which it pastes.
 
@@ -75,7 +76,7 @@ db.query("SELECT * FROM users WHERE id = $1", [userId]); // ✅
 
 I've watched this exact diff get waved through: a candidate explains parameterized queries perfectly in the loop, then a week later asks an assistant to "add a search filter" on the same table, gets a template literal back, and merges it because the diff looked small and the surrounding code already used string templates for logging. Green CI, no lint gate, nobody looked twice.
 
-**ESLint automation:** `pg/no-unsafe-query` flags all three shapes of this bug — string concatenation, template literals, and `.format()` patterns — regardless of who typed it. There's a whole breakdown in [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint), and the plugin itself is covered in [node-postgres Will Happily Build a CVSS 9.8 SQL Injection For You](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj).
+**ESLint automation:** `pg/no-unsafe-query` flags all three shapes of this bug — string concatenation, template literals, and `.format()` patterns — regardless of who typed it. There's a whole breakdown in [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint), and the plugin itself is covered in [node-postgres Will Happily Build a CVSS 9.8 SQL Injection For You](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg).
 
 ### 2. XSS (and its three types)
 
@@ -91,7 +92,7 @@ element.textContent = userInput; // ✅
 
 The `innerHTML` line almost always started life rendering a *trusted* string — a hard-coded template, an icon, a bit of formatted markup. It passed review because at the time the input genuinely was safe. Then a feature landed that routed user content through the same helper, and the assignment itself never changed. The diff that introduces the vulnerability touches the *caller*, not the `innerHTML` line — so a reviewer staring at the dangerous line sees code that's been stable for a year and has no reason to flag it.
 
-**ESLint automation:** `browser-security/no-innerhtml` flags the sink regardless of when the taint arrived. It doesn't matter if the string was trusted last year. The full rule set for this surface is in [Your Frontend Stores JWTs in localStorage and Posts to '*'](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-browser-security-3iop).
+**ESLint automation:** `browser-security/no-innerhtml` flags the sink regardless of when the [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) arrived. It doesn't matter if the string was trusted last year. The full rule set for this surface is in [Your Frontend Stores JWTs in localStorage and Posts to '*'](https://ofriperetz.dev/articles/getting-started-eslint-plugin-browser-security).
 
 ### 3. Password storage
 
@@ -124,7 +125,7 @@ cookies, origin checks. **CWE-352.** Enforced by
 
 The app that gets bitten by this usually started as a JSON API where CSRF "doesn't apply" — no cookies, bearer tokens only. Then one team added a cookie session for the admin panel, and every state-changing route inherited the cookie auth without anyone re-opening the CSRF question. Nobody reviews "did this still-stateless-looking endpoint just become CSRF-able?" because the route handler itself didn't change — the auth middleware wrapped around it did, in a completely different PR, reviewed by a different person.
 
-**ESLint automation:** `express-security/require-csrf-protection` flags unprotected mutating routes — that's the enforceable slice. The decision to introduce cookie auth in the first place, and what it does to every existing route's threat model, is architecture no rule catches; see [Your Express App Has No Helmet, No Rate Limit, and a ReDoS in Its Routes](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-express-security-2fb8) for the rest of that surface.
+**ESLint automation:** `express-security/require-csrf-protection` flags unprotected mutating routes — that's the enforceable slice. The decision to introduce cookie auth in the first place, and what it does to every existing route's threat model, is architecture no rule catches; see [Your Express App Has No Helmet, No Rate Limit, and a ReDoS in Its Routes](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) for the rest of that surface.
 
 ### 5. The Same-Origin Policy
 
@@ -165,7 +166,7 @@ The `algorithm: none` bypass is a one-line change to the JWT header that most ve
 
 Fixing `algorithm: none` doesn't close the adjacent bug that surprises engineers who think they're done: the **HS256/RS256 confusion attack**. If your verifier accepts either algorithm and you sign with RS256 (asymmetric — public key is, well, public), an attacker can forge a token by signing it with HS256 *using your public key as the HMAC secret*. The verifier checks the signature with the same public key, sees a valid HMAC, and trusts a token you never issued. The fix is the same allowlist discipline as `algorithm: none` — pin one algorithm per verifier — but it's a different bug, and "I fixed the none bypass" is not the same sentence as "I fixed the algorithm confusion."
 
-**ESLint automation:** Two rules cover the storage and none-bypass failure modes — `jwt/no-algorithm-none` for the bypass and `browser-security/no-jwt-in-storage` for the storage mistake. The full rule set, including algorithm-pinning checks, is in [jsonwebtoken Will Verify a Token Signed With algorithm: none](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-jwt-4l4p).
+**ESLint automation:** Two rules cover the storage and none-bypass failure modes — `jwt/no-algorithm-none` for the bypass and `browser-security/no-jwt-in-storage` for the storage mistake. The full rule set, including algorithm-pinning checks, is in [jsonwebtoken Will Verify a Token Signed With algorithm: none](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt).
 
 ---
 
@@ -281,7 +282,7 @@ wide margin. The model has no internal security reviewer; it generates the most 
 Across a [benchmark of 700 AI-generated functions across 5 models](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain),
 every model reproduced at least one of the 13 bug classes on this list. And [choosing a different plugin alone shifts your detection rate significantly](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared). The rule is the correction signal the model never got during training.
 
-Before you start an onboarding audit on an unfamiliar codebase, [the 30-minute security audit protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) runs exactly these rules as a structured triage — it tells you where to look first.
+Before you start an onboarding audit on an unfamiliar codebase, [the 30-minute security audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) runs exactly these rules as a structured triage — it tells you where to look first.
 
 Here's the experiment that reframed this whole list for me. Take the 13 bad-vs-good
 snippets above, throw away the good halves, and ask a coding assistant to "fix" or
@@ -363,20 +364,20 @@ export default [
 | **Module system**    | ESM — `eslint.config.mjs`, or `eslint.config.js` with `"type": "module"` |
 | **Oxlint**           | flagship rules wired via the `interlace-*` ports, CI-gated |
 
-For the full OWASP picture (and the two categories static analysis honestly
+For the full OWASP picture (and the two categories [static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) honestly
 can't reach), see
 [the OWASP Top 10 mapping](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules).
 
-**← previous in this security-on-the-Node-stack series:** [The 30-Minute Security Audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) · **next →** [I Inherited a NestJS Codebase](https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma)
+**← previous in this security-on-the-Node-stack series:** [The 30-Minute Security Audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) · **next →** [I Inherited a NestJS Codebase](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 
 **Related reading in this security-on-the-Node-stack series:**
 
-- [The 30-Minute Security Audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) — run these rules against a codebase you've just inherited and triage the findings.
+- [The 30-Minute Security Audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) — run these rules against a codebase you've just inherited and triage the findings.
 - [Benchmark: 17 ESLint Security Plugins Compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) — which plugin actually catches the most of these 13 bug classes, with data.
 - [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) — the three shapes `pg/no-unsafe-query` has to catch (question #1 in depth).
 - [The JWT `algorithm: none` Attack](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) — question #7 as a one-line, paste-into-your-codebase exploit.
 - [I Let Claude Write 80 Functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — the data behind "your AI re-introduces these."
-- [I Inherited a NestJS Codebase](https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma) — the 6 vulnerability classes it found map directly onto this list, in a real inherited codebase.
+- [I Inherited a NestJS Codebase](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities) — the 6 vulnerability classes it found map directly onto this list, in a real inherited codebase.
 - [Full rule docs](https://eslint.interlace.tools) — per-rule CWE mapping and configuration options for all 20 plugins.
 
 ---

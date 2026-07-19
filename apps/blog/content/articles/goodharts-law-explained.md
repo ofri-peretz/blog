@@ -5,11 +5,14 @@ slug: "goodharts-law-explained"
 published: true
 date: 2026-07-17
 tier: "T0"
+series: "Foundations"
+arc: 5
 tags:
   - "security"
   - "devsecops"
   - "node"
   - "javascript"
+devto_id: 4176293
 canonical_url: https://ofriperetz.dev/articles/goodharts-law-explained
 reading_time_minutes: 6
 author:

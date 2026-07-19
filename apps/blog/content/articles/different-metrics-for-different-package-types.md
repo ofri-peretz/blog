@@ -9,6 +9,7 @@ tags:
   - "devsecops"
   - "eslint"
   - "node"
+devto_id: 4161076
 canonical_url: https://ofriperetz.dev/articles/different-metrics-for-different-package-types
 reading_time_minutes: 7
 tier: "T2"

@@ -3,6 +3,7 @@ title: "AWS Lambda Security Bugs Your Serverless Functions Are Shipping — 14 R
 description: "Unvalidated event input, hardcoded credentials, Action:'*' IAM, sensitive data in logs — four Lambda vulnerabilities that survive code review and become account takeovers. 14 CWE-mapped ESLint rules that catch them in CI."
 slug: "getting-started-with-eslint-plugin-lambda-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-lambda-security"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-lambda-security-44h8"
 devto_id: 3144087
 published_at: "2026-01-02T19:26:45Z"
@@ -70,9 +71,9 @@ export const handler = async (event) => {
 };
 ```
 
-**Why it survived review.** Secrets in code look like configuration. A reviewer scanning a PR diff sees a string literal — not a privilege that, if leaked, gives an attacker durable access. The Lambda-specific danger is compounded: even secrets you put in Lambda environment variables (not hardcoded, "properly" externalized) are readable by anyone with `lambda:GetFunctionConfiguration` and are visible in the AWS console. One `console.log(process.env)` dumps them to CloudWatch forever. Entropy scanners often miss the assignment that matters because they scan for pattern rather than structure — why a structural AST rule beats a secret scanner here is the argument in [Hardcoded Secrets in AI-Generated Code, and the Autofix That Removes Them](https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg).
+**Why it survived review.** Secrets in code look like configuration. A reviewer scanning a PR diff sees a string literal — not a privilege that, if leaked, gives an attacker durable access. The Lambda-specific danger is compounded: even secrets you put in Lambda environment variables (not hardcoded, "properly" externalized) are readable by anyone with `lambda:GetFunctionConfiguration` and are visible in the AWS console. One `console.log(process.env)` dumps them to CloudWatch forever. Entropy scanners often miss the assignment that matters because they scan for pattern rather than structure — why a structural AST rule beats a secret scanner here is the argument in [Hardcoded Secrets in AI-Generated Code, and the Autofix That Removes Them](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
 
-**The rules:** `no-hardcoded-credentials-sdk` (CWE-798) catches AWS credentials hardcoded in SDK config. `no-secrets-in-env` (CWE-798) flags secrets assigned to environment variables.
+**The rules:** `no-hardcoded-credentials-sdk` ([CWE-798](https://ofriperetz.dev/articles/cwe-taxonomy-explained)) catches AWS credentials hardcoded in SDK config. `no-secrets-in-env` (CWE-798) flags secrets assigned to environment variables.
 
 ```ts
 // ✅ fetch secrets at runtime from Secrets Manager / SSM
@@ -163,7 +164,7 @@ import { configs } from "eslint-plugin-lambda-security";
 export default [configs.recommended]; // all 14 rules, CWE-tagged
 ```
 
-Findings carry the CWE, OWASP category, CVSS score, and a concrete fix instruction:
+Findings carry the CWE, OWASP category, [CVSS score](https://ofriperetz.dev/articles/cvss-scores-explained), and a concrete fix instruction:
 
 ```text
 src/handlers/proxy.ts
@@ -172,7 +173,7 @@ src/handlers/proxy.ts
 ```
 
 You can wire a cross-codebase protocol for what to do when this fires in
-[The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91).
+[The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
 ---
 
@@ -216,7 +217,7 @@ node benchmarks/lambda-ai-corpus/scripts/scan.mjs [generated|generated-terse]   
 
 **Run 2 — the same tasks, but phrased the way assistants are actually used under deadline**: "Quick one — fetch the `callbackUrl` and return the body, just make it work," "simple proxy, read `target` from the body, GET it, don't overthink it." The guard evaporated. Three of ten handlers carried a textbook user-controlled-fetch with no allow-list. Same model, same day; the only variable was the word "quick."
 
-Here's the part I didn't expect: **the rule flagged zero of those three.** Each terse handler parked the tainted value in a local first — `const callbackUrl = event.queryStringParameters?.callbackUrl; await fetch(callbackUrl)` — and `no-user-controlled-requests` only tracks the value when it reaches `fetch` _directly_ off the event (the docs cop to this under "Multi-Step Taint Flow"). It nails `fetch(event.queryStringParameters.callbackUrl)` and slips on the one-variable detour. That single-assignment hop is the most common shape AI-generated handlers actually take — [I filed it](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-lambda-security). The honest scorecard: the vulnerable pattern came back the moment the prompt got terse, and today's taint tracking catches the obvious form but not the one-variable detour.
+Here's the part I didn't expect: **the rule flagged zero of those three.** Each terse handler parked the tainted value in a local first — `const callbackUrl = event.queryStringParameters?.callbackUrl; await fetch(callbackUrl)` — and `no-user-controlled-requests` only tracks the value when it reaches `fetch` _directly_ off the event (the docs cop to this under "Multi-Step Taint Flow"). It nails `fetch(event.queryStringParameters.callbackUrl)` and slips on the one-variable detour. That single-assignment hop is the most common shape AI-generated handlers actually take — [I filed it](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-lambda-security). The honest scorecard: the vulnerable pattern came back the moment the prompt got terse, and today's [taint tracking](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) catches the obvious form but not the one-variable detour.
 
 The broader picture: 80 common Node.js functions written with zero security context came back 65–75% vulnerable across every model I tried in [I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), and across 700 functions from five frontier models in [We Ranked 5 AI Models by Security. The Leaderboard Is Wrong.](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) every model landed at a 49–75% vulnerability rate. A CI guard doesn't care which way the model leaned today: it re-asserts the invariant on every commit.
 

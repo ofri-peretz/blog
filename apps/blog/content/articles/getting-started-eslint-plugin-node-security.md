@@ -3,6 +3,7 @@ title: "Node.js Security Bugs That Pass Code Review Every Day — 34 Static Anal
 description: "Path traversal via fs, child_process injection, eval usage, prototype pollution — Node.js built-in footguns that survive code review and ship as CVEs. Here's the guard that catches all of them in CI."
 slug: "getting-started-eslint-plugin-node-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-crypto-4a8g"
 devto_id: 3143570
 published_at: "2026-01-02T15:15:04Z"
@@ -220,7 +221,7 @@ export default [
 
 > **One install, four vulnerabilities blocked.** Every Node.js CI pipeline that runs ESLint and doesn't include this is betting on code review catching the `md5` string, the shell interpolation, the `../` in a path, and the `eval`. That bet has a known loss rate — [65–75% of AI-generated Node.js functions carry at least one of these](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), and human review misses them at the same sites, for the same structural reasons.
 
-Run it — every finding carries CWE, OWASP category, CVSS, compliance tags, and the fix:
+Run it — every finding carries [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained), [OWASP category](https://ofriperetz.dev/articles/owasp-top-10-explained), [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained), compliance tags, and the fix:
 
 ```text
 src/auth/hash.ts
@@ -229,7 +230,7 @@ src/auth/hash.ts
              [PCI-DSS, HIPAA, ISO27001, NIST-CSF]
 ```
 
-For the full picture of what the Node.js security plugin field looks like, see [Benchmark: 17 ESLint Security Plugins Compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83). And if you're using this as part of an onboarding protocol, [The 30-Minute Security Audit](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) maps exactly where this plugin fits.
+For the full picture of what the Node.js security plugin field looks like, see [Benchmark: 17 ESLint Security Plugins Compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared). And if you're using this as part of an onboarding protocol, [The 30-Minute Security Audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) maps exactly where this plugin fits.
 
 ---
 
@@ -352,7 +353,7 @@ export default [
 ## What it does — and doesn't — see
 
 - **Source patterns, not runtime.** It flags `createHash("md5")`, `exec(\`…${x}\`)`, and an unguarded `extract()`. It can't confirm the key in your KMS is rotated or that your archive source is trusted — it removes the "we shipped MD5 / a shell string" failure mode at the call site.
-- **Taint detection has edges.** The injection and fs rules track user input toward a sink with configurable patterns; tune them rather than assuming the defaults are exhaustive, and pair with runtime input validation.
+- **[Taint detection](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) has edges.** The injection and fs rules track user input toward a sink with configurable patterns; tune them rather than assuming the defaults are exhaustive, and pair with runtime input validation.
 
 ---
 
@@ -364,7 +365,7 @@ Run `configs.recommended` against your largest Node service and look at the firs
 
 ## Where this sits in the ecosystem
 
-The generic security linters flag a few of these (`eval`, obvious `child_process`), but they don't carry the CWE/CVSS/compliance metadata a security or audit reviewer needs, and they don't cover the crypto surface at this depth. If you want the full picture of what the field looks like, I benchmarked 17 ESLint security plugins head-to-head in [Benchmark: 17 ESLint Security Plugins Compared](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83), and the story for the incumbent (`eslint-plugin-security`) is bleak — it's unmaintained and nobody's saying so. `eslint-plugin-node-security` is the dedicated Node.js-stdlib layer — crypto, injection, filesystem, SSRF, supply-chain, secrets — and the consolidation home for the retired crypto plugin.
+The generic security linters flag a few of these (`eval`, obvious `child_process`), but they don't carry the CWE/CVSS/compliance metadata a security or audit reviewer needs, and they don't cover the crypto surface at this depth. If you want the full picture of what the field looks like, I benchmarked 17 ESLint security plugins head-to-head in [Benchmark: 17 ESLint Security Plugins Compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared), and the story for the incumbent (`eslint-plugin-security`) is bleak — it's unmaintained and nobody's saying so. `eslint-plugin-node-security` is the dedicated Node.js-stdlib layer — crypto, injection, filesystem, SSRF, supply-chain, secrets — and the consolidation home for the retired crypto plugin.
 
 > **The Hardened Stack** · **`eslint-plugin-node-security` (current)** | [`eslint-plugin-express-security` →](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) | [`eslint-plugin-jwt` →](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt). Writing code with an assistant? See how often it ships these exact bugs in [I Let Claude Write 80 Functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
 

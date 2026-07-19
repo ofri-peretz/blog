@@ -3,6 +3,7 @@ title: "A Missing client.release() Exhausted Our Postgres Pool at 3 AM. The ESLi
 description: "A missing client.release() drained our node-postgres pool and every request started timing out. A 60-second reproduction (the 11th checkout hangs forever), the finally/pool.query fix, and the structural ESLint rule that flags a checked-out client that's never released — before it merges."
 slug: "database-connection-leak-production-outage"
 canonical_url: "https://ofriperetz.dev/articles/database-connection-leak-production-outage"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/the-connection-leak-that-took-down-our-production-database-3bal"
 devto_id: 3138991
 published_at: "2025-12-31T21:35:53Z"
@@ -27,7 +28,7 @@ series: "Postgres Security Protocol"
 ---
 
 > **Postgres Security Protocol** — a series on the bugs that pass review and melt
-> in production. **← Prev:** [Getting started with `eslint-plugin-pg`](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj) · **You are here:** the connection leak · **Next →** [Transaction race conditions: `BEGIN` on the pool](https://dev.to/ofri-peretz/transaction-race-conditions-why-begin-on-pool-breaks-everything-117h)
+> in production. **← Prev:** [Getting started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) · **You are here:** the connection leak · **Next →** [Transaction race conditions: `BEGIN` on the pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool)
 
 At 3:02 AM, PagerDuty fired. API response time had climbed to 18 seconds. Then the 500s started — every endpoint, every user. The database was healthy: CPU at 12%, memory nominal, disk fine. But every query returned the same error:
 
@@ -89,7 +90,7 @@ happens in a dev environment running one request at a time. The cost is paid
 only under sustained production concurrency, which is exactly where you can't
 afford it.
 
-Before you pair this with a [security audit protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91), make sure static analysis has already closed this class of bug. One line, before any of this pages you:
+Before you pair this with a [security audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase), make sure [static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) has already closed this class of bug. One line, before any of this pages you:
 
 ```bash
 npm install --save-dev eslint-plugin-pg
@@ -154,7 +155,7 @@ That hang _is_ the production symptom in miniature: not an exception you can gre
 for, just requests that stop completing. Swap `getUserOrders` for the `finally`
 version below and the same loop runs **50 calls clean and `pool.end()` returns
 immediately** — same pool ceiling, zero leaked. One number, two outcomes,
-reproducible on your machine before you trust a word of the post-mortem.
+[reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) on your machine before you trust a word of the post-mortem.
 
 ## The fix: release in `finally`, or don't check out at all
 
@@ -219,8 +220,8 @@ leak.js
 ```
 
 > **A note on the OWASP tag.** A connection leak is fundamentally an
-> _availability/resource_ bug (CWE-404), not injection. The finding stamps
-> `OWASP:A05` — which in the only published OWASP Top 10 (2021) maps to
+> _availability/resource_ bug ([CWE-404](https://ofriperetz.dev/articles/cwe-taxonomy-explained)), not injection. The finding stamps
+> `OWASP:A05` — which in the only published [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) (2021) maps to
 > **Security Misconfiguration**, not Injection (that's A03). The `A05` label is
 > faithfully reproduced from the plugin's own metadata; it's arguably defensible
 > for an unclosed resource under Security Misconfiguration, but the plugin's
@@ -273,7 +274,7 @@ exactly the surface where a forgotten `release()` hides. The more "production-
 shaped" the generated code looks, the more likely it is to check a client out of
 the pool, and the more places that checkout has to leak.
 
-If you haven't yet benchmarked your own ESLint security plugin stack against competitors, the [17-plugin comparison](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83) gives you a framework to do it honestly — including where `eslint-plugin-pg` ranks on database-specific rules.
+If you haven't yet benchmarked your own ESLint security plugin stack against competitors, the [17-plugin comparison](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) gives you a framework to do it honestly — including where `eslint-plugin-pg` ranks on database-specific rules.
 
 Don't take my word for any of it — here's the whole loop as four commands you
 can run right now against Gemini, the model with the 96% database rate. This is
@@ -377,9 +378,9 @@ the same plugin that catches SQL injection and the N+1 insert loop. It's part of
 the **Postgres Security Protocol** series; its closest sibling is the other way
 a borrowed connection bites you in production:
 
-- [Transaction race conditions: `BEGIN` on the pool](https://dev.to/ofri-peretz/transaction-race-conditions-why-begin-on-pool-breaks-everything-117h) — the same checkout lifecycle, the inverse failure: a transaction split across pooled connections
-- [The SQL-injection pattern in node-postgres](https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-pattern-everyone-gets-wrong-54mn) — the confidentiality member of the same plugin, when the string you concatenated is the attack
-- [Getting started with `eslint-plugin-pg`](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj) — all 13 rules
+- [Transaction race conditions: `BEGIN` on the pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — the same checkout lifecycle, the inverse failure: a transaction split across pooled connections
+- [The SQL-injection pattern in node-postgres](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) — the confidentiality member of the same plugin, when the string you concatenated is the attack
+- [Getting started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — all 13 rules
 
 ---
 

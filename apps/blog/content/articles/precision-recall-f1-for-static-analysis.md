@@ -12,6 +12,8 @@ tags:
 canonical_url: https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis
 reading_time_minutes: 7
 tier: "T1"
+series: "Foundations"
+arc: 2
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627

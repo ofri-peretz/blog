@@ -12,6 +12,8 @@ tags:
 canonical_url: https://ofriperetz.dev/articles/taint-vs-heuristic-detection
 reading_time_minutes: 6
 tier: "T1"
+series: "Foundations"
+arc: 18
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627

@@ -3,6 +3,7 @@ title: '3 Lines of Vercel AI SDK Code Are a Prompt-Injection Hole — and "Just 
 description: "The 3-line prompt-injection bug in almost every Vercel AI SDK app, the exploit that proves it, why string sanitization is a trap, and the CWE-74 ESLint rule that enforces a real validation boundary at write-time."
 slug: "3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo"
 canonical_url: "https://ofriperetz.dev/articles/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo"
+tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo"
 devto_id: 3137481
 published_at: "2025-12-31T05:51:08Z"
@@ -103,7 +104,7 @@ the end of each finding line (`... vercel-ai-security/require-validated-prompt`)
 and that trailing segment is cut here for width; the full untrimmed lines are
 in [the receipt gist](https://gist.github.com/ofri-peretz/b88fd5bb1f9df7cc0f8b566673cd1bf6).
 
-Every number in this article is pinned and reproducible — raw `eslint` output,
+Every number in this article is pinned and [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) — raw `eslint` output,
 the commit SHAs, the file tallies, and the Gemini run below are all in
 [**this receipt gist**](https://gist.github.com/ofri-peretz/b88fd5bb1f9df7cc0f8b566673cd1bf6).
 Don't trust my numbers; clone the SHA and run the rule.
@@ -112,10 +113,10 @@ Then the surprise that taught me more than the hit did: across the **2,174
 files** in the `vercel/ai` `examples/` tree, the rule found **zero**. Not because
 the examples are hardened — because they hardcode their prompts
 (`prompt: 'What is the weather in Tokyo?'`). No user input, no taint, no finding,
-and no false positive on a static demo.
+and no [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) on a static demo.
 
 That's the real shape of this bug. It is **not** "most files are vulnerable" — a
-conservative taint rule that only fires on input flowing _directly_ into the
+conservative [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) rule that only fires on input flowing _directly_ into the
 model will read low, because most call sites launder the input through a helper
 or a literal. It's that the bug hides in the _one_ route where someone wired the
 request in fast, under deadline — and it survived into a template with Vercel's
@@ -231,7 +232,7 @@ gemini-route.ts
   11:13  error  🔒 CWE-74 OWASP:A03-Injection CVSS:9 | User input "userInput" passed directly to generateText prompt without validation | CRITICAL [SOC2,GDPR]  require-validated-prompt
 ```
 
-Identical CWE-74, identical CVSS:9, identical finding — because the rule is
+Identical [CWE-74](https://ofriperetz.dev/articles/cwe-taxonomy-explained), identical [CVSS:9](https://ofriperetz.dev/articles/cvss-scores-explained), identical finding — because the rule is
 AST-based and never reads the provider string. ([Same receipt
 gist](https://gist.github.com/ofri-peretz/b88fd5bb1f9df7cc0f8b566673cd1bf6); the
 swap is reproducible.) Two providers, one missing boundary, one rule that fires
@@ -316,7 +317,7 @@ does — it's what produced every finding above. Add it in one step:
 There _is_ a dedicated CWE —
 [CWE-1427, _Improper Neutralization of Input Used for LLM Prompting_](https://cwe.mitre.org/data/definitions/1427.html),
 added in CWE 4.16, Nov 2024. The rule deliberately tags the stable classic
-parent **CWE-74 — _Injection_** because most SAST dashboards, SOC2/GDPR mappings,
+parent **CWE-74 — _Injection_** because most [SAST](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) dashboards, SOC2/GDPR mappings,
 and triage tooling key off the long-lived parent rather than the newest child;
 CWE-1427 is the precise LLM-specific label, and [OWASP LLM01](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
 is the canonical framing. Treat 74 ⊃ 1427 ⊃ LLM01 as the same finding at three

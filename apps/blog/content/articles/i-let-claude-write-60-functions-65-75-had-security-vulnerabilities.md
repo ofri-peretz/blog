@@ -7,6 +7,7 @@ description: "AI coding assistants are incredible—until they introduce securit
 # The slug is frozen for URL stability and inbound-link integrity — do not "reconcile" it.
 slug: "i-let-claude-write-60-functions-65-75-had-security-vulnerabilities"
 canonical_url: "https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities-414o"
 devto_id: 3236684
 published_at: "2026-02-06T02:51:25Z"
@@ -34,7 +35,7 @@ series: "AI Security Benchmark Series"
 
 ## TL;DR
 
-📚 Part 1 of the **AI Security Benchmark Series** → next up: [Part 2, The AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem), which tests whether remediation actually converges or just moves the bug.
+📚 Part 1 of the **AI Security Benchmark Series** → next up: [Part 2, The AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more), which tests whether remediation actually converges or just moves the bug.
 
 **Two out of every three functions Claude wrote for me shipped a security vulnerability** — and paying for the smartest model didn't help. I gave **Claude Pro** (Haiku 3.5, Sonnet 4.5, Opus 4.5, then Opus 4.6 in a follow-up run — 80 functions total) the same 20 real-world prompts, with zero security instructions, and measured what came back.
 
@@ -60,6 +61,8 @@ _\*χ² = 0.640, df = 3, p > 0.05 — a small, non-significant sample-level resu
 ## The Experiment
 
 I built an open-source benchmark suite to rigorously test AI-generated code security. Here's the setup. **Update (Feb 8, 2026):** Added Opus 4.6 results — the newest Claude model shows the same vulnerability patterns, reinforcing that this is a systemic property of AI code generation.
+
+This question has a founding citation: [Pearce et al. (2022), "Asleep at the Keyboard?"](https://arxiv.org/abs/2108.09293) found roughly 40% of GitHub Copilot's completions in security-relevant scenarios were vulnerable — back in the Codex era. This benchmark asks the same question of the 2026 Claude lineup, then goes a step further: it tests whether the model can fix what a linter catches.
 
 ### Infrastructure
 
@@ -117,7 +120,7 @@ I built an open-source benchmark suite to rigorously test AI-generated code secu
 | Opus 4.5   | 15/20      | **75.0%** | [53.1% - 88.8%] |
 | Opus 4.6   | 13/20      | **65.0%** | [43.3% - 81.9%] |
 
-> **Statistical Note:** Confidence intervals calculated using Wilson score method (appropriate for proportions with n=20). Severity is a distribution, not a mean — averaging a 5.3 over-fetch finding with a 9.8 injection finding produces a number nobody should act on. The honest read of `results/ai-security/2026-02-06.json`: **41 of 83 findings carry the maximum CVSS of 9.8** (31 SQL/query injection + 6 command injection + 2 hardcoded-credential + 2 JWT-algorithm findings), and the injection classes that dominate the count — SQL (CWE-89) and command (CWE-78) — are the ones to prioritize first.
+> **Statistical Note:** Confidence intervals calculated using Wilson score method (appropriate for proportions with n=20). Severity is a distribution, not a mean — averaging a 5.3 over-fetch finding with a 9.8 injection finding produces a number nobody should act on. The honest read of `results/ai-security/2026-02-06.json`: **41 of 83 findings carry the maximum [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) of 9.8** (31 SQL/query injection + 6 command injection + 2 hardcoded-credential + 2 JWT-algorithm findings), and the injection classes that dominate the count — SQL ([CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained)) and command (CWE-78) — are the ones to prioritize first.
 
 ### Per-Category Breakdown
 
@@ -139,7 +142,7 @@ Not all security domains fail equally. Each of the 5 domains has 12 functions in
 
 **χ² = 0.640, df = 3, p > 0.05**
 
-This statistic is _computed from the four per-model counts above_ (14/13/15/13 vulnerable of 20) — it's a derived value, not a field stored in the JSON, so you can recompute it yourself from a 2×4 contingency table. The differences between models are **not statistically significant**. All four models perform similarly poorly on security—the 65-75% range is within sampling variance. Notably, **Opus 4.6 (the newest model) scores identically to Sonnet 4.5** at 65%. This is an important finding: newer, more capable models don't automatically produce more secure code. The vulnerability rate is a _property of AI code generation_, not a specific model flaw.
+This statistic is _computed from the four per-model counts above_ (14/13/15/13 vulnerable of 20) — it's a derived value, not a field stored in the JSON, so you can recompute it yourself from a 2×4 contingency table. The differences between models are **not [statistically significant](https://ofriperetz.dev/articles/statistical-significance-p-value)**. All four models perform similarly poorly on security—the 65-75% range is within sampling variance. Notably, **Opus 4.6 (the newest model) scores identically to Sonnet 4.5** at 65%. This is an important finding: newer, more capable models don't automatically produce more secure code. The vulnerability rate is a _property of AI code generation_, not a specific model flaw.
 
 And it isn't a Claude problem. When I re-ran the same methodology across **5 models from different providers on 700 functions**, the aggregate insecure rate held at **63%** — the band barely moves whether you're paying for Claude, GPT, or Gemini. If you only remember one number from this article, make it that one: [the leaderboard you'd build to pick the "most secure" model is statistically noise](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), and [the aggregate hides which _domains_ are actually on fire](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). The lever was never which model you pick.
 
@@ -223,7 +226,7 @@ Please fix ALL the security issues.`;
 | Opus 4.5   | 8/15           | **53.3%** | [30.1% - 75.2%] |
 | Opus 4.6   | 7/13           | **53.8%** | [29.1% - 76.8%] |
 
-**Key Insight:** Sonnet 4.5 and both Opus models remediated roughly half their own findings (53.3-53.8%) versus Haiku's 14.3% — a large gap in the point estimates, though the wide CIs at this sample size (Haiku [4.0%-39.9%], Sonnet [29.1%-76.8%]) actually overlap, so this isn't a statistically airtight claim of a real model-tier effect on remediation specifically. Treat it as a suggestive pattern worth a larger follow-up, not a proven result. Static analysis feedback does help larger models fix roughly half of their own mistakes. Opus 4.6 performs identically to Sonnet 4.5 in remediation at 53.8%.
+**Key Insight:** Sonnet 4.5 and both Opus models remediated roughly half their own findings (53.3-53.8%) versus Haiku's 14.3% — a large gap in the point estimates, though the wide CIs at this [sample size](https://ofriperetz.dev/articles/sample-size-and-statistical-power) (Haiku [4.0%-39.9%], Sonnet [29.1%-76.8%]) actually overlap, so this isn't a statistically airtight claim of a real model-tier effect on remediation specifically. Treat it as a suggestive pattern worth a larger follow-up, not a proven result. Static analysis feedback does help larger models fix roughly half of their own mistakes. Opus 4.6 performs identically to Sonnet 4.5 in remediation at 53.8%.
 
 The reason static analysis works as the feedback signal — and not, say, a unit-test suite — is that these vulnerabilities live in the _shape_ of the code, not its observable behavior. A path-traversal function returns the right bytes for every happy-path filename your tests throw at it; it only misbehaves for an input no test author thinks to write. That's the same gap I measured directly in [what ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed): a green test run is not evidence of a secure function.
 
@@ -434,7 +437,7 @@ function backupDatabase(databaseName) {
 }
 ```
 
-**Why this survives code review:** this is the "it's just an internal value" trap. `databaseName` doesn't _feel_ like user input — it reads like a config constant an ops engineer passes in, so the interpolation into `pg_dump ${databaseName} > ${backupFile}` never registers as an injection sink. Reviewers apply taint-tracking in their head, and an argument that "comes from us" gets marked trusted on sight. But "internal" is a deployment assumption, not a code property: the day this function gets wired to a multi-tenant backup endpoint or a CLI flag, the trusted value becomes attacker-controlled and the `>` shell redirect turns into arbitrary file write. A linter flags the `child_process` sink regardless of where the value "comes from," precisely because it can't be talked into trusting your deployment assumptions.
+**Why this survives code review:** this is the "it's just an internal value" trap. `databaseName` doesn't _feel_ like user input — it reads like a config constant an ops engineer passes in, so the interpolation into `pg_dump ${databaseName} > ${backupFile}` never registers as an injection sink. Reviewers apply [taint-tracking](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) in their head, and an argument that "comes from us" gets marked trusted on sight. But "internal" is a deployment assumption, not a code property: the day this function gets wired to a multi-tenant backup endpoint or a CLI flag, the trusted value becomes attacker-controlled and the `>` shell redirect turns into arbitrary file write. A linter flags the `child_process` sink regardless of where the value "comes from," precisely because it can't be talked into trusting your deployment assumptions.
 
 Two things keep this specific fix at 25% rather than 100%: the model's own "fixed" code calls `reject(...)` with no enclosing `Promise` executor in scope — a `ReferenceError` waiting to happen, caught only by a human reading the diff, not by the linter. And where a remediation attempt kept the shell string entirely (rather than switching to `pg_dump`'s native `-f` flag the way this one did), the `>` redirect has no equivalent in an `execFile` args array — a faithful fix has to restructure the call, not just re-wrap it, and most attempts didn't go that far.
 
@@ -598,7 +601,7 @@ This benchmark treats each prompt as an independent Bernoulli trial (n=20 per mo
 
 Security exposure is a matter of probability, not absolutes. There is no bulletproof solution—only risk reduction. The question isn't _if_ vulnerabilities exist in your codebase, but _how many_ and _how quickly_ they're caught.
 
-> **Read this section as an illustrative model, not a measurement.** The only numbers I _measured_ are the per-model rates (n=20 per model, 80 functions total) and the ~50% remediation rate. Everything below — lines-per-dev, functions-per-line, team sizes, the dollar figure — is a back-of-envelope extrapolation built on stated assumptions, and small changes in any input swing the totals a lot. The point isn't "your 100-dev org will ship exactly 48,000 vulnerabilities"; it's that a 65-75% per-function base rate, compounded over any realistic AI-assisted output volume, is a number you cannot afford to leave un-checked. Plug in your own org's real throughput before quoting any figure here.
+> **Read this section as an illustrative model, not a measurement.** The only numbers I _measured_ are the per-model rates (n=20 per model, 80 functions total) and the ~50% remediation rate. Everything below — lines-per-dev, functions-per-line, team sizes, the dollar figure — is a back-of-envelope extrapolation built on stated assumptions, and small changes in any input swing the totals a lot. The point isn't "your 100-dev org will ship exactly 48,000 vulnerabilities"; it's that a 65-75% per-function [base rate](https://ofriperetz.dev/articles/base-rate-problem-explained), compounded over any realistic AI-assisted output volume, is a number you cannot afford to leave un-checked. Plug in your own org's real throughput before quoting any figure here.
 
 Let's model the impact based on our benchmark data.
 
@@ -715,7 +718,7 @@ The "vibe coding" era is here. But vibe coding without static analysis is a secu
 **In the AI Security Benchmark Series:**
 
 - **Part 1:** I Let Claude Write 80 Functions. 65-75% Had Security Vulnerabilities. ← _You are here_
-- **Part 2:** [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem) — Tests whether remediation converges
+- **Part 2:** [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) — Tests whether remediation converges
 - **Part 3:** [We Ranked 5 AI Models by Security. The Leaderboard Is Wrong.](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) — Validates at scale across providers
 - **Part 4:** [Aggregate Benchmarks Lie. Here's What 700 AI Functions Look Like by Security Domain.](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) — Domain-specific deep-dive
 

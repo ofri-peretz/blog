@@ -3,6 +3,7 @@ title: "PostgreSQL Injection in Node.js: 4 Patterns That Pass Code Review (and t
 description: "SQL injection (CVSS 9.8), search_path schema hijacking (CVSS 9.5), COPY FROM filesystem access (CWE-73), and pool connection leaks — four node-postgres vulnerabilities that survive review every time, and the 13 ESLint rules that catch them before CI goes green."
 slug: "getting-started-eslint-plugin-pg"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg"
+tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj"
 devto_id: 3138840
 published_at: "2025-12-31T18:45:40Z"
@@ -84,7 +85,7 @@ const schema = TENANT_SCHEMAS[tenantId]; // throws if unknown
 await client.query(format("SET search_path TO %I", schema));
 ```
 
-`no-unsafe-search-path` (CWE-426) makes the dynamic form a CI error. The durable fix is to remove the dynamic value: a static `search_path`, an allow-listed schema, or fully qualified names like `schema.accounts`.
+`no-unsafe-search-path` ([CWE-426](https://ofriperetz.dev/articles/cwe-taxonomy-explained)) makes the dynamic form a CI error. The durable fix is to remove the dynamic value: a static `search_path`, an allow-listed schema, or fully qualified names like `schema.accounts`.
 
 ---
 
@@ -180,7 +181,7 @@ Run it:
 npx eslint .
 ```
 
-Findings carry the CWE, OWASP category, CVSS, and fix:
+Findings carry the CWE, OWASP category, [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained), and fix:
 
 ```text
 src/users.ts
@@ -232,7 +233,7 @@ src/users.ts
 
 ## Where this fits in the broader picture
 
-For the deeper injection taxonomy — concat, identifiers, and the `IN (...)` trap — see [Three SQL Injection Patterns in node-postgres](https://dev.to/ofri-peretz/three-sql-injection-patterns-that-still-ship-in-nodejs-and-the-linter-that-catches-them-onb). For where static analysis fits into the broader security workflow across an onboarding sprint, see [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91).
+For the deeper injection taxonomy — concat, identifiers, and the `IN (...)` trap — see [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint). For where static analysis fits into the broader security workflow across an onboarding sprint, see [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
 Generic security linters flag `eval` and obvious string-built SQL, but they don't know what a `Pool`, a `client.release()`, or `SET search_path` _is_. `eslint-plugin-pg` is the dedicated node-postgres layer — injection, the `search_path` resolution attack, the `COPY FROM` filesystem path, and the connection-lifecycle bugs that cause outages — each finding tagged with a CWE and CVSS.
 

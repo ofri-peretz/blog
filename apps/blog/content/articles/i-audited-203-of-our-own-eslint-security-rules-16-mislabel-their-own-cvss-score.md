@@ -3,6 +3,7 @@ title: "I Audited 203 of Our Own ESLint Security Rules. 16% Mislabel Their Own C
 description: "A CVSS 9.1 SSRF rule ships labeled LOW. A CVSS 9.8 JWT rule ships labeled MEDIUM. The root cause was one unvalidated string field."
 slug: "i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score"
 canonical_url: "https://ofriperetz.dev/articles/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score"
+tier: "T3"
 # devto_url: (fill after publishing)
 # devto_id: (fill after publishing)
 published: true
@@ -56,14 +57,14 @@ where lint output stops being trustworthy and starts being decoration.
 A single line of our lint output packs in three unrelated standards. Quick
 definitions — there's a full reference for each if you need it:
 
-- **[CWE](/articles/cwe-taxonomy-explained)** names *what kind* of bug it is.
+- **[CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained)** names *what kind* of bug it is.
   `CWE-918` is SSRF; `CWE-287` is Improper Authentication. A category, not a
   verdict.
-- **[CVSS](/articles/cvss-scores-explained)** is a *computed* 0.0–10.0 score
+- **[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained)** is a *computed* 0.0–10.0 score
   from a fixed formula. It maps to four official bands: 0.1–3.9 Low, 4.0–6.9
   Medium, 7.0–8.9 High, 9.0–10.0 Critical. The number is the primary source;
   the band name is derived from it.
-- **[OWASP Top 10](/articles/owasp-top-10-explained)** is a *category* bucket
+- **[OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained)** is a *category* bucket
   (A01–A10) — an address, not a severity measurement.
 
 Only CVSS is actually a severity measurement. So when a lint rule prints a
@@ -93,8 +94,10 @@ calls itself out as **"a naming heuristic, not data-flow analysis."** It
 matches on identifier names, not on whether the value actually reaches an
 attacker-influenced source. That's a real limitation — plenty of
 `userUrl`-named parameters are perfectly safe, admin-configured constants.
-A low-confidence match that could be a false positive *does* deserve a
-lower-urgency label than a rule that traced the actual taint.
+A low-confidence match that could be a
+[false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn)
+*does* deserve a lower-urgency label than a rule that traced the actual
+[taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection).
 
 The part that isn't defensible: **confidence and impact are two different
 axes, and `severity` is only supposed to encode one of them.** "How sure are

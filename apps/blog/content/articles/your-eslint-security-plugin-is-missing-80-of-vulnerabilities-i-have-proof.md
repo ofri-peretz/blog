@@ -3,6 +3,7 @@ title: "Your ESLint security plugin is missing 80% of vulnerabilities. Here's th
 description: "A 4-way benchmark on one fixture (12 vulnerability classes): Oxlint's built-in rules, eslint-plugin-security, the Interlace plugins on ESLint, and the same Interlace rules on Oxlint. eslint-plugin-security covers 5 of 12 vulnerability classes. We covered all 12 — here's the exact number."
 slug: "your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
 canonical_url: "https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
+tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof-2lpm"
 devto_id: 3117602
 published_at: "2025-12-20T16:25:32Z"
@@ -20,7 +21,7 @@ author:
   username: "ofri-peretz"
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
-series: "The Security Engineering Protocol"
+series: "ESLint Security Benchmark Series"
 ---
 
 Last year, a senior engineer told me their ESLint security setup was clean. It was — for the 5 vulnerability classes their linter had rules for. Nobody on that team had checked the other 7.
@@ -44,9 +45,9 @@ You have an ESLint security plugin. You have 58% of vulnerability classes undete
 
 If you're shipping AI-generated code, this gap matters more than the number above suggests: the 7 missing classes are precisely the patterns Claude and Gemini emit by default — more on that below.
 
-> Part of **The Security Engineering Protocol**. For the full 17-plugin landscape, see [I benchmarked 17 ESLint security plugins — only one found every vulnerability](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83). For the deep-dive on why `eslint-plugin-security` specifically is the wrong foundation, see [eslint-plugin-security is unmaintained — here's what nobody tells you](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h).
+> Part of **The Security Engineering Protocol**. For the full 17-plugin landscape, see [I benchmarked 17 ESLint security plugins — only one found every vulnerability](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared). For the deep-dive on why `eslint-plugin-security` specifically is the wrong foundation, see [eslint-plugin-security is unmaintained — here's what nobody tells you](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h).
 
-← [eslint-plugin-security is unmaintained](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h) | [I benchmarked 17 ESLint security plugins →](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83)
+← [eslint-plugin-security is unmaintained](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h) | [I benchmarked 17 ESLint security plugins →](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared)
 
 ## Why teams don't know their coverage gap
 
@@ -54,13 +55,13 @@ I watched this exact sequence happen on the Node API team below: someone install
 
 The gap stays invisible because the mental model is wrong: "security plugin installed" reads as "security linting is done," not "security linting covers some subset of known vulnerability classes." The green CI check doesn't tell you. The `recommended` preset doesn't tell you. Nothing in the standard setup surfaces the coverage boundary.
 
-I found this the hard way on a Node API service in a security review last October: `eslint-plugin-security` recommended, CI green, and a token generator built on `Math.random().toString(36)` had been shipping for four months. Nobody had written a bad line — the API call looks identical to a real UUID helper unless you already know `Math.random()` isn't CSPRNG-grade. The linter didn't know either; it has no rule for CWE-338. The green check wasn't lying. It was answering a narrower question than anyone realized they were asking.
+I found this the hard way on a Node API service in a security review last October: `eslint-plugin-security` recommended, CI green, and a token generator built on `Math.random().toString(36)` had been shipping for four months. Nobody had written a bad line — the API call looks identical to a real UUID helper unless you already know `Math.random()` isn't CSPRNG-grade. The linter didn't know either; it has no rule for [CWE-338](https://ofriperetz.dev/articles/cwe-taxonomy-explained). The green check wasn't lying. It was answering a narrower question than anyone realized they were asking.
 
 ## The 58% gap is precisely defined
 
 `eslint-plugin-security`'s recommended preset leaves 58% of vulnerability classes — 7 of 12 — without any rule coverage. **58% of vulnerability classes in the benchmark fixture have zero coverage from that preset.** This is a class-coverage claim, not a frequency or CVE-count claim — and it's the honest number, not a rounded-up one. 7 of 12 uncovered classes is 58.3%, and that's damning enough on its own without inflating it. It's also exactly the shape of gap the October incident came from: the preset defines "covered" narrower than anyone on that team assumed.
 
-The 12 classes in the fixture correspond to [OWASP Top 10](https://dev.to/ofri-peretz/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules-25f0) categories (A01–A10) plus CWE-mapped patterns from real Node.js CVEs. They were chosen to represent the surface area a Node.js backend actually exposes — not exotic edge cases. SSRF and XXE didn't make the cut because they're server-config and XML-parser concerns respectively, not patterns a JS/TS linter can reliably catch at the AST level; the 12 here are the ones a static analysis rule can actually reach. If your threat model covers SQL injection, weak crypto, and injection patterns (and it should), the gap is real.
+The 12 classes in the fixture correspond to [OWASP Top 10](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) categories (A01–A10) plus CWE-mapped patterns from real Node.js CVEs. They were chosen to represent the surface area a Node.js backend actually exposes — not exotic edge cases. SSRF and XXE didn't make the cut because they're server-config and XML-parser concerns respectively, not patterns a JS/TS linter can reliably catch at the AST level; the 12 here are the ones a static analysis rule can actually reach. If your threat model covers SQL injection, weak crypto, and injection patterns (and it should), the gap is real.
 
 Coverage numbers:
 
@@ -127,7 +128,7 @@ The flat-config block that wires all four (`recommended` presets) is in the [Met
 
 ## False positives — the precision side
 
-Detection only counts if precision holds. Run against a file of deliberately safe patterns:
+Detection only counts if [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) holds. Run against a file of deliberately safe patterns:
 
 | Config                 | False positives | On what                                                                                                               |
 | ---------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -136,7 +137,7 @@ Detection only counts if precision holds. Run against a file of deliberately saf
 | Interlace @ ESLint     | 3               | `pg/no-select-all` (a perf/clarity rule) ×2, conservative `browser-security/no-innerhtml` ×1                          |
 | eslint-plugin-security | **5**           | `security/detect-object-injection` on allowlist-validated keys ×3, `security/detect-non-literal-fs-filename` on path-validated reads ×2 |
 
-The honest difference: the incumbent's 5 are **genuine false positives** — `security/detect-object-injection` flags `obj[key]` even after `VALID_KEYS.includes(key)`, and `security/detect-non-literal-fs-filename` flags `fs.readFileSync(p)` even after `path.basename` + `startsWith` validation, because it pattern-matches the sink without seeing the guard. The Interlace "3" aren't security false positives: `no-select-all` is a performance/clarity rule firing on `SELECT *`, and `no-innerhtml` is conservative by design (it flags `innerHTML` even when the value is DOMPurify-sanitized — a deliberate choice you can disable with a documented comment).
+The honest difference: the incumbent's 5 are **genuine [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn)** — `security/detect-object-injection` flags `obj[key]` even after `VALID_KEYS.includes(key)`, and `security/detect-non-literal-fs-filename` flags `fs.readFileSync(p)` even after `path.basename` + `startsWith` validation, because it pattern-matches the sink without seeing the guard. The Interlace "3" aren't security false positives: `no-select-all` is a performance/clarity rule firing on `SELECT *`, and `no-innerhtml` is conservative by design (it flags `innerHTML` even when the value is DOMPurify-sanitized — a deliberate choice you can disable with a documented comment).
 
 ## How Interlace rules run identically on ESLint and Oxlint
 
@@ -147,7 +148,7 @@ The Interlace flagship rules emit the **identical CWE-tagged finding** on both e
    Fix: Use parameterized queries ($1, $2) instead of string concatenation. | https://node-postgres.com/features/queries#parameterized-queries
 ```
 
-Same CWE, same OWASP category, same CVSS, same compliance tags — character for character. You are **not locked to an engine**: run the full domain set on ESLint today, run the flagship rules on Oxlint for editor-speed feedback, and get the same security signal either way.
+Same CWE, same OWASP category, same [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained), same compliance tags — character for character. You are **not locked to an engine**: run the full domain set on ESLint today, run the flagship rules on Oxlint for editor-speed feedback, and get the same security signal either way.
 
 ## How to read this (it's a landscape, not a leaderboard)
 
@@ -160,7 +161,7 @@ Oxlint is the right engine for speed but not for coverage; `eslint-plugin-securi
 
 ## Why this gap is widening: AI-generated code hits exactly these patterns
 
-Coding assistants emit `md5` for hashing, `Math.random()` for tokens, interpolated SQL, and unsanitized `innerHTML` by default — review-passing code that lands squarely on a CWE the incumbent linter has no rule for. When I ran this same fixture-style test on a generated NestJS service, [Claude's output alone carried 6 distinct security holes ESLint caught and TypeScript didn't](https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj), and [running the identical prompt through Gemini instead of Claude changed the count from 6 to 2](https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-and-gemini-one-got-6-security-errors-heres-what-both-1fnf) — same task, different model, different vulnerability surface. That's not a one-off: across 700 generated functions and 5 models, [65–75% of AI-written functions carried a vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), [the model that "wins" the aggregate score writes the most vulnerable database code](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain), and [one in three AI "fixes" introduces a new vulnerability class](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) rather than closing the original one. A domain rule that knows `crypto.createHash('md5')` carries CWE-327 regardless of who typed it is the guardrail that holds when the volume of generated code goes up — a generic linter that "passes" the PR is the worst possible signal precisely because it can't see what it has no rule for.
+Coding assistants emit `md5` for hashing, `Math.random()` for tokens, interpolated SQL, and unsanitized `innerHTML` by default — review-passing code that lands squarely on a CWE the incumbent linter has no rule for. When I ran this same fixture-style test on a generated NestJS service, [Claude's output alone carried 6 distinct security holes ESLint caught and TypeScript didn't](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes), and [running the identical prompt through Gemini instead of Claude changed the count from 6 to 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) — same task, different model, different vulnerability surface. That's not a one-off: across 700 generated functions and 5 models, [65–75% of AI-written functions carried a vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), [the model that "wins" the aggregate score writes the most vulnerable database code](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain), and [one in three AI "fixes" introduces a new vulnerability class](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) rather than closing the original one. A domain rule that knows `crypto.createHash('md5')` carries CWE-327 regardless of who typed it is the guardrail that holds when the volume of generated code goes up — a generic linter that "passes" the PR is the worst possible signal precisely because it can't see what it has no rule for.
 
 ## Methodology — reproduce it
 
@@ -242,8 +243,8 @@ npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security e
 
 - [SonarJS has 269 rules — it found 13 security issues on this file](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace)
 - [Microsoft's SDL plugin caught 3 — same file, wrong layer](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)
-- [I benchmarked 17 ESLint security plugins — only one found every vulnerability](https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-only-one-found-every-vulnerability-c83)
-- [eslint-plugin-security is unmaintained — here's what nobody tells you](https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)
+- [I benchmarked 17 ESLint security plugins — only one found every vulnerability](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared)
+- [eslint-plugin-security is unmaintained — here's what nobody tells you](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h)
 
 **Going wider than one file:** once the config is in, point it at a codebase you didn't write — [the 30-minute security audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) walks the exact protocol I use to triage an unfamiliar repo with these rules on day one.
 

@@ -8,6 +8,8 @@ tags:
   - "devsecops"
   - "javascript"
 canonical_url: "https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough"
+devto_id: 3954428
+tier: "T3"
 cover_image: ""
 series: "Inside our linter benchmarks"
 ---
@@ -28,7 +30,7 @@ The flagship rule `secure-coding/no-hardcoded-credentials` runs alongside `eslin
 | Ours-only                                       |        **807**        |
 | Peer-only                                       |          344          |
 
-A 2.2× gap is the kind of number you'd want to publish — except every credential-detection rule has a precision problem, and the _direction_ of the gap matters. We sampled the 807 ours-only findings.
+A 2.2× gap is the kind of number you'd want to publish — except every credential-detection rule has a [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) problem, and the _direction_ of the gap matters. We sampled the 807 ours-only findings.
 
 The top hits looked like this:
 
@@ -43,7 +45,7 @@ const name = 'AI_ToolCallNotFoundForApprovalError';   // ← error class name
 prompt: 'test'                            // ← test prompt argument
 ```
 
-None of those are credentials. Our rule was firing on type names, error class names, and the literal string `"test"`. The 807-finding gap was 807 false positives.
+None of those are credentials. Our rule was firing on type names, error class names, and the literal string `"test"`. The 807-finding gap was 807 [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn).
 
 ## Why teams trust entropy — and where it breaks
 
@@ -234,7 +236,7 @@ Defaults that matter: `minLength: 8` (shorter strings are skipped), `allowInTest
 
 ## The corpus result
 
-We have a labeled CWE-798 fixture set: 2 vulnerable files, 2 safe files. Pre-fix:
+We have a labeled [CWE-798](https://ofriperetz.dev/articles/cwe-taxonomy-explained) fixture set: 2 vulnerable files, 2 safe files. Pre-fix:
 
 | Stack                      | Precision | Recall |  F1  |
 | :------------------------- | :-------: | :----: | :--: |
@@ -265,9 +267,9 @@ So the real recall change on vercel/ai was zero — there were no real hardcoded
 
 vercel/ai is a hand-written human library, and it still buried my rule under 807 false positives. The reason was identifier density: a TypeScript codebase that names things `experimental_onToolExecutionStart` and `AI_ToolCallNotFoundForApprovalError` produces long, alphanumeric, underscore-laced strings by the hundred. That's precisely the texture of code an LLM emits — verbose, descriptively-named, type-literal-heavy. Run a context-blind credential regex over a folder of Claude- or Gemini-generated TypeScript and you don't get a security report; you get noise proportional to how thoroughly the model named its symbols. Precision collapses on exactly the code people are now generating fastest.
 
-The other half is worse, and it's the half the context-positive path was built for. AI assistants don't just generate identifiers that _look_ like secrets — they cheerfully generate the real thing. Ask a model to "wire up the API client" and it will happily write `const apiKey = "sk-..."` inline, because the training data is full of quickstarts that do exactly that. I've watched it happen often enough to write a separate piece on autofixing it: [hardcoded secrets in AI-agent code](https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-agents-can-auto-fix-47cg). A purely entropy-based rule has a coin-flip shot at those — high-entropy keys it catches, a 15-char project password it won't. The `isCredentialContext` check catches them by the variable name (`apiKey`, `password`, `clientSecret`) regardless of the value's entropy or shape. Both halves of the AI-codegen problem — the identifier flood and the inline-secret habit — trace to the same gap: the rule has to know what a string is _for_, not just what it looks like.
+The other half is worse, and it's the half the context-positive path was built for. AI assistants don't just generate identifiers that _look_ like secrets — they cheerfully generate the real thing. Ask a model to "wire up the API client" and it will happily write `const apiKey = "sk-..."` inline, because the training data is full of quickstarts that do exactly that. I've watched it happen often enough to write a separate piece on autofixing it: [hardcoded secrets in AI-agent code](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix). A purely entropy-based rule has a coin-flip shot at those — high-entropy keys it catches, a 15-char project password it won't. The `isCredentialContext` check catches them by the variable name (`apiKey`, `password`, `clientSecret`) regardless of the value's entropy or shape. Both halves of the AI-codegen problem — the identifier flood and the inline-secret habit — trace to the same gap: the rule has to know what a string is _for_, not just what it looks like.
 
-If you've ever onboarded a new codebase and wanted a fast read on its credential hygiene without pulling every file manually, the [30-minute static analysis protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) pairs well with this rule — it's how I run the bench sweep on unfamiliar repos.
+If you've ever onboarded a new codebase and wanted a fast read on its credential hygiene without pulling every file manually, the [30-minute static analysis protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) pairs well with this rule — it's how I run the bench sweep on unfamiliar repos.
 
 ## Three lessons for credential-detection rules
 
@@ -282,6 +284,8 @@ The fix is in [packages/eslint-plugin-secure-coding/src/rules/no-hardcoded-crede
 What's the most surprising credential type your team has found hardcoded — and would your current secret scanner have caught it? Drop it in the comments. I'd be particularly curious whether anyone's found low-entropy credentials their entropy-based scanner missed entirely.
 
 Two more rule bugs from the same bench sweep, written up separately: [What ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) (the smoke-gate piece on three more rules) and [no-cycle finds 0 cycles in next.js](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale) (DFS cache poisoning).
+
+**Foundations:** 842 findings against 0 real secrets isn't just a bad regex — it's what happens when a detector meets a codebase where the thing it hunts is rare. That statistical trap, and the full telling of this 842-FP case, live in [the base-rate problem, explained](https://ofriperetz.dev/articles/base-rate-problem-explained).
 
 ---
 

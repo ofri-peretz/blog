@@ -9,9 +9,12 @@ tags:
   - "devsecops"
   - "node"
   - "javascript"
+devto_id: 4176290
 canonical_url: https://ofriperetz.dev/articles/bias-in-measurement
 reading_time_minutes: 6
 tier: "T0"
+series: "Foundations"
+arc: 4
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627

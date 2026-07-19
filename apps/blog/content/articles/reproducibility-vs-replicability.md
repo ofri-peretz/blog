@@ -12,6 +12,8 @@ tags:
 canonical_url: https://ofriperetz.dev/articles/reproducibility-vs-replicability
 reading_time_minutes: 6
 tier: "T0"
+series: "Foundations"
+arc: 6
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627
