@@ -15,15 +15,17 @@ cover_image: "https://media2.dev.to/dynamic/image/width=1200,height=627,fit=cove
 series: "Inside our linter benchmarks"
 ---
 
-Our test suite was green. Our CI was green. [Ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing) analysis found 3 vulnerabilities that had been in production for months. Here's the specific difference between unit test coverage and ground truth security coverage.
+Our test suite was green. Our CI was green. Then [ground-truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing) fixtures caught three bugs those two signals had carried for months — two rules that silently _missed_ a real vulnerability, one that _fired on safe code_. Here's the specific difference between unit-test coverage and ground-truth coverage.
 
 Three of our flagship ESLint security rules had passing unit tests for months and had been benchmarked against peer plugins on real OSS for weeks. Then a 5KB corpus — 12 fixtures, runs in 3 seconds — failed all three the first time we ran it. None of the prior signals had flinched.
 
 Here's the number that makes this concrete: **3 ground truth findings, all 3 had passing unit tests, 2 had 100% unit test branch coverage.** The unit tests were not inadequate — they were complete. They just validated the wrong thing.
 
-**100% unit test coverage and 3 production security vulnerabilities aren't contradictory — mocks are the gap between them.**
+**100% unit-test coverage and three shipped rule bugs — two of them missed vulnerabilities — aren't contradictory. Mocks are the gap between them.**
 
 The reason that should worry you before you read a single fix: each rule's widest blind spot sat exactly where AI-generated code is densest. These are security rules teams adopt to backstop AI output — and they were silently trusting the one input distribution they were never tested against.
+
+**Skip to:** [Bug #1 — false positive on AI's default fetch](#bug-1) · [Bug #2 — `$where` injection goes invisible](#bug-2) · [Bug #3 — the AI-output XSS](#bug-3) · [Why AI writes exactly these shapes](#ai-shapes) · [Install the 3 fixed rules](#the-config)
 
 ## Why "green unit tests" isn't "tested against the real world"
 
@@ -50,7 +52,7 @@ All three rules had passing unit-test suites. All three had been benchmarked alo
 
 What did surface them: 12 fixtures across 3 corpora — 4 per corpus, 12 to 18 lines each — labeled with `// This MUST be detected` or `// This MUST NOT fire` comments and run through the same lint config a real user would have.
 
-## Bug #1: hooks-exhaustive-deps fires on inner-callback parameters
+## Bug #1: hooks-exhaustive-deps fires on inner-callback parameters {#bug-1}
 
 The fixture:
 
@@ -94,7 +96,7 @@ if (
 
 `collectFromPattern` handles `Identifier`, `ObjectPattern` (with nested `Property` and `RestElement`), `ArrayPattern`, `RestElement`, and `AssignmentPattern` — destructured params, rest spreads, defaults. After the fix, the fixture passes.
 
-## Bug #2: NoSQL injection via `$where` was invisible
+## Bug #2: NoSQL injection via `$where` was invisible {#bug-2}
 
 The fixture:
 
@@ -129,7 +131,7 @@ function containsUserInput(node: TSESTree.Node): boolean {
 
 When the value of `$where` was a `TemplateLiteral`, `getNodeSource` returned the literal string `'[expression]'`. Then `containsUserInput` checked whether `'[expression]'` contained `req.query` — it doesn't. Silent skip.
 
-**Unit test: mock input `find({ x: req.body.x })` fires the rule → test passes. Ground truth: the real injection `$where: \`...${req.query.name}...\`` doesn't fire → the SQL-equivalent vulnerability ships.** The test corpus had `find({ x: req.body.x })` shapes — direct user input as a property value. That shape gets caught by `isUnsafePropertyValue`'s `MemberExpression` branch. The `$where` template literal is _also_ user input, but expressed differently. The pattern-matching code path was never tested against `TemplateLiteral` as the value node. 100% branch coverage of the `getNodeSource` function, zero coverage of the `TemplateLiteral` branch that didn't exist yet — and the test suite couldn't tell the difference.
+**Unit test: mock input `find({ x: req.body.x })` fires the rule → test passes. Ground truth: the real injection `$where: \`...${req.query.name}...\`` doesn't fire → the SQL-equivalent vulnerability ships.** The test corpus had `find({ x: req.body.x })` shapes — direct user input as a property value. That shape gets caught by `isUnsafePropertyValue`'s `MemberExpression` branch. The `$where`template literal is _also_ user input, but expressed differently. The pattern-matching code path was never tested against`TemplateLiteral`as the value node. 100% branch coverage of the`getNodeSource`function, zero coverage of the`TemplateLiteral` branch that didn't exist yet — and the test suite couldn't tell the difference.
 
 The fix is to recurse into composite expressions instead of stringifying them:
 
@@ -158,7 +160,7 @@ function containsUserInput(node: TSESTree.Node): boolean {
 
 `TemplateLiteral`, `BinaryExpression` (string concat), and `CallExpression` (e.g. `.toString()` chains, `String(req.x)`, `JSON.stringify(req.body)`) are all routes for [tainted data](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) into a query. Each gets recursed into now.
 
-## Bug #3: AI-output detection missed the standard SDK pattern
+## Bug #3: AI-output detection missed the standard SDK pattern {#bug-3}
 
 The fixture:
 
@@ -244,7 +246,7 @@ return {
 
 Now both `const result = await generateText(...)` (binding `result` → access via `result.text`) and `const { text } = await generateText(...)` (binding `text` directly) flow into `aiBoundNames`. The `isLikelyAIOutput` check picks them up by referenced identifier, regardless of how the user destructured.
 
-## The uncomfortable part: two of these three blind spots are exactly what AI writes
+## The uncomfortable part: two of these three blind spots are exactly what AI writes {#ai-shapes}
 
 Re-read the fixtures with one question in mind: _what does an AI assistant produce when you ask it for this?_
 
@@ -265,23 +267,17 @@ The two AI-shape detections that shipped with these patches — the destructured
 
 The one line worth pasting into your team channel: **a security linter you adopted to backstop AI is, by default, untested on exactly the shapes that AI emits most.**
 
-## Run it on Gemini: the blind spot moves with the model
+## Run the recipe on another model: the verdicts are deterministic
 
-"Point your model of choice" is not a hand-wave — the model you pick changes which of these three fixtures the linter ends up tested against, because each model favors different canonical shapes. I have the cross-model data to show it, from the same benchmark harness these rules ship with.
+"Point your model of choice" isn't a hand-wave. The prose above says the blind spot moves with the model — here it is as a table. Each row pairs the documented default shape a model emits for that prompt with the rule's verdict on that shape, before and after the patch. The verdict columns aren't opinion; they're what the smoke gate's F1 computes on those exact shapes.
 
-Take bug #2, the `$where` template injection — a database-layer NoSQL flaw. When I ran the database prompts across five models, **Gemini 2.5 Pro topped the Database Operations domain at a 96% vulnerability rate** on generation, yet **fixes 93% of the database vulnerabilities it writes** when asked — the highest remediation rate of any model tested. (Full per-domain table: [Aggregate Benchmarks Lie](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).) Translation for bug #2: Gemini will hand you the `$where`-template shape readily, and a rule blind to template-literal recursion waves it straight through — the exact failure this corpus caught. The fixture is the model-agnostic backstop precisely because both Claude and Gemini are trained on the same MongoDB docs that demonstrate `$where`.
+| Fixture / prompt                            | Documented default shape                        | Pre-patch rule        | Post-patch rule |
+| :------------------------------------------ | :---------------------------------------------- | :-------------------- | :-------------- |
+| "fetch user data in a `useEffect`"          | `.then((r) => r.json())` inner callback         | false positive on `r` | clean (pass)    |
+| "search MongoDB by a name from the request" | `$where: \`...${req...}...\`` template          | silent miss (FN)      | fires (TP)      |
+| "render the model's response into the page" | `const { text } = await generateText(...)` sink | silent miss (FN)      | fires (TP)      |
 
-Now run the article's own recipe on Gemini and score what it generates against the three patched rules. Each row below pairs the documented Gemini 2.5 default shape for that prompt with the rule verdict that shape deterministically triggers, before and after the patch:
-
-| Fixture / prompt                                        | Documented Gemini 2.5 default shape             | Pre-patch rule       | Post-patch rule |
-| :------------------------------------------------------ | :---------------------------------------------- | :------------------- | :-------------- |
-| "fetch user data in a `useEffect`"                      | `.then((r) => r.json())` inner callback         | false positive on `r` | clean (pass)    |
-| "search MongoDB by a name from the request"             | `$where: \`...${req...}...\`` template          | silent miss (FN)     | fires (TP)      |
-| "render the model's response into the page"             | `const { text } = await generateText(...)` sink | silent miss (FN)     | fires (TP)      |
-
-The shapes in column two are the documented Gemini-CLI defaults — the same family I observed when I [ran the identical NestJS prompt on Claude and Gemini](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) (Gemini 2.5 Flash, n=1 per toolchain), and the same database-shape tendency the [Claude-vs-Gemini dead-heat run](https://ofriperetz.dev/articles/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips) quantified across four domains. The verdict columns are deterministic — they are the rule's behavior on those shapes before and after the patch, the same F1 the smoke gate computes.
-
-The honest caveat, because it is the whole point of the piece: I have the per-domain Gemini *generation* rates at n=700, but a fixture-by-fixture Gemini run against all three prompts at statistical n is its own experiment — the companion writeup, not this one. What is not in doubt is the direction: swap the model and the blind spots relocate, while the documentation-sourced fixture holds the line for every model because it is downstream of the docs they all trained on. That is the case for gating on the corpus instead of on whichever assistant you happened to test with.
+These are the documented defaults across the assistants I've measured — the same shape family from the [Claude-vs-Gemini NestJS run](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) (Gemini 2.5 Flash, n=1 per toolchain) and the [four-domain dead-heat](https://ofriperetz.dev/articles/claude-vs-gemini-4-security-domains-dead-heat). The honest caveat, because it's the whole point: I have the per-domain generation rates at n=700, but a fixture-by-fixture run at statistical n is its own experiment — the companion writeup, not this one. What's not in doubt is the direction: swap the model, the blind spots relocate, and the documentation-sourced fixture holds the line because it's downstream of the docs every model trained on.
 
 ## What this whole episode is really about
 
@@ -293,7 +289,7 @@ Three rules. Three bugs. All caught by ground truth, none by unit tests. The pat
 
 And this is why these bugs survived code review, not just unit tests. When I reviewed each of these rules, I had two green signals in front of me: a passing test suite and a clean run against peer plugins on real OSS. Two independent checks, both green — that is normally enough to approve. What I couldn't see from the diff was that both signals shared the same blind spot. The unit tests encoded the author's mental model; the OSS sweep happened not to contain the `$where`-template or destructured-`generateText` shapes in the sampled files. Two green checks that fail the same way look exactly like two green checks that pass. The corpus was the first signal with an _independent_ source of truth — documentation, not the author — so it was the first one that could disagree.
 
-The fixtures in our suite are tiny — 12 to 18 lines per corpus, 4 fixtures each. The total disk cost is under 5KB. They run in ~3 seconds total. They caught three bugs the unit tests had missed across months of development.
+The fixtures are tiny — 12 to 18 lines each, four per corpus, under 5KB on disk, ~3 seconds to run end to end.
 
 **A 5KB corpus that runs in 3 seconds found three bugs that green unit tests had carried for months.** That should change how you think about "what does it mean to test a static-analysis rule."
 
@@ -305,7 +301,7 @@ Three concrete takeaways for any team writing or shipping linters:
 
 **Surface the failures with confusion-matrix detail.** "Test failed" is one bit. "F1 = 0.67, TP=1 FP=0 FN=1 TN=2 — `where-string.js` did not fire" is the actual diagnostic. The test framework should output the matrix, not just the boolean. Triage time goes from 15 minutes to 30 seconds.
 
-## The config
+## The config {#the-config}
 
 If you just want the three fixed rules in your own pipeline — including the `$where` and destructured-`generateText` detection that shipped with these patches — install the plugins and turn the rules on:
 
@@ -341,8 +337,6 @@ The three fixes here are in [`packages/eslint-plugin-react-features`](https://gi
 
 Three seconds. Three bugs. Months of "fully tested." Pick which signal you trust.
 
-What's the worst discrepancy you've seen between test coverage and production security — the green CI run that was hiding something?
-
 ## Two more from the same bench, written up separately
 
 This piece is part of the _Inside our linter benchmarks_ series — the smoke gate caught the three above. The full ILB-Flagship sweep on 45K+-star OSS repos exposed the same class of bug from the opposite direction, in two more rules:
@@ -352,9 +346,11 @@ This piece is part of the _Inside our linter benchmarks_ series — the smoke ga
 
 All of these survived months of unit-test coverage. All fell to ground-truth fixtures + bench data. Same lesson, more receipts: the test that disagrees with the author is the only one that can find the author's blind spot.
 
+What's the worst discrepancy you've seen between test coverage and production security — the green CI run that was hiding something? Drop it in the comments.
+
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

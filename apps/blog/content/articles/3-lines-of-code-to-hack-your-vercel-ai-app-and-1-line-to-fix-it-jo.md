@@ -43,7 +43,7 @@ for "a Vercel AI SDK chat route" writes it back for you automatically.
 > the vulnerability is in the API's default behavior, not a bug in your code.**
 
 The dangerous part isn't the LLM call. It's what happens downstream: reviewers
-read the AI response as a string. They don't trace where that string was *built*
+read the AI response as a string. They don't trace where that string was _built_
 — and they don't notice the missing validation on the input side. The bug survives
 review not because reviewers are careless, but because the code does exactly what
 it says.
@@ -170,7 +170,7 @@ regenerating.
 ## Why this survives code review
 
 I would have approved this in review. So would your team. Not because anyone is
-careless — because the diff is *correct*. `generateText` is called with the right
+careless — because the diff is _correct_. `generateText` is called with the right
 arguments, the types check, the endpoint returns a string, the happy-path test
 is green.
 
@@ -206,7 +206,7 @@ This is the part that turns a one-off bug into a standing liability. Ask any
 coding assistant — Claude, GPT, Gemini — for "a Vercel AI SDK chat route," and it
 hands you `prompt: userInput`. Not because the model is wrong: it's reproducing
 the most common shape in its training data, and that shape is the insecure one.
-The vulnerability is **model-independent** because the *cause* is — none of these
+The vulnerability is **model-independent** because the _cause_ is — none of these
 assistants got a fact wrong; the prompt never stated the constraint "validate
 untrusted input before it reaches the model," so none of them enforced it. Swap
 Claude for Gemini and the gap survives. This isn't a hunch: I benchmarked
@@ -375,7 +375,7 @@ computed vector; the scope note just below covers severity vs. blast radius.)
 > safe." (2) **severity is on the boundary, not the blast radius** — every hit is
 > stamped `CVSS:9` because that's the rule's static rating for the _class_; the
 > actual impact of the `natural-language-postgres` hit is real but bounded — the
-> generated string *is* executed against Postgres (`runGenerateSQLQuery`), just
+> generated string _is_ executed against Postgres (`runGenerateSQLQuery`), just
 > constrained to a `SELECT` by a runtime keyword check, not by the model call
 > itself. That's still smaller than a tool-calling agent that can act on the
 > injected instruction directly. The rule flags the missing boundary; you triage
@@ -447,7 +447,7 @@ taught your team to draw the boundary.
 
 ---
 
-*[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

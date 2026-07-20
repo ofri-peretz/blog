@@ -22,7 +22,7 @@ author:
 The top Stack Overflow answer for "generate a unique token in JavaScript" returns this:
 
 ```javascript
-Math.random().toString(36).substring(2)
+Math.random().toString(36).substring(2);
 ```
 
 It appears in password reset tokens, session IDs, invite codes, and API keys across the JavaScript ecosystem. I found it verbatim in [calcom/cal.diy](https://github.com/calcom/cal.diy) (~44K stars) — the MIT open-source edition of Cal.com:
@@ -87,7 +87,8 @@ _Server-side (the more general case):_ If `Math.random()` generates tokens in a 
 const token = Math.random().toString(36).substring(2, 15);
 
 // Session ID (with Date.now() — adds a predictable timestamp, not additional unpredictability):
-const sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2);
+const sessionId =
+  Date.now().toString(36) + Math.random().toString(36).substring(2);
 
 // Invite code:
 const inviteToken = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -135,10 +136,10 @@ This fires on the calcom/cal.diy line.
 **Server-side (Node.js API route, Express, NestJS):**
 
 ```javascript
-import crypto from 'node:crypto';
+import crypto from "node:crypto";
 
 // Opaque token — hex string, 48 characters:
-const apiKey = `cal_live_${crypto.randomBytes(24).toString('hex')}`;
+const apiKey = `cal_live_${crypto.randomBytes(24).toString("hex")}`;
 
 // UUID format:
 const id = crypto.randomUUID();
@@ -152,7 +153,9 @@ Generating secret API keys client-side is itself the architectural problem — t
 // Web Crypto — available in all modern browsers and Node.js 19+:
 const array = new Uint8Array(24);
 globalThis.crypto.getRandomValues(array);
-const token = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+const token = Array.from(array)
+  .map((b) => b.toString(16).padStart(2, "0"))
+  .join("");
 ```
 
 `globalThis.crypto.getRandomValues()` uses the OS CSPRNG and is safe in both browser and Node.js environments.
@@ -163,16 +166,16 @@ const token = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('
 
 ```javascript
 // eslint.config.mjs
-import nodeSecurity from 'eslint-plugin-node-security';
-import tsParser from '@typescript-eslint/parser';
+import nodeSecurity from "eslint-plugin-node-security";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
     languageOptions: { parser: tsParser },
-    plugins: { 'node-security': nodeSecurity },
+    plugins: { "node-security": nodeSecurity },
     rules: {
-      'node-security/no-math-random-crypto': 'error',
+      "node-security/no-math-random-crypto": "error",
     },
   },
 ];
@@ -203,6 +206,7 @@ _[Exploit Analysis: The JWT Algorithm 'none' Attack (And the Guard)](https://dev
 📦 [`eslint-plugin-node-security`](https://www.npmjs.com/package/eslint-plugin-node-security) · [Rule docs](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-math-random-crypto)
 
 <!-- markdownlint-disable MD034 -->
+
 {% cta https://github.com/ofri-peretz/eslint %}
 ⭐ Star on GitHub
 {% endcta %}

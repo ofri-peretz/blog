@@ -108,8 +108,8 @@ CREATE TABLE evil.users AS SELECT 'pwned' AS who, 'attacker@evil.com' AS email;
 
 ```js
 // ❌ connection pool initializer — the 2 vulnerable lines
-const schema = req.query.tenant;           // line 1: attacker controls this
-await client.query(`SET search_path TO ${schema}`);  // line 2: raw interpolation
+const schema = req.query.tenant; // line 1: attacker controls this
+await client.query(`SET search_path TO ${schema}`); // line 2: raw interpolation
 ```
 
 **Step 3: Your app's perfectly normal query now reads the wrong table**
@@ -173,7 +173,7 @@ name is an **identifier**, and identifiers need identifier-escaping, not value
 binding.
 
 There is one genuinely parameterizable form — `set_config('search_path', $1,
-false)` is a regular function call, so the value *can* go through a bind
+false)` is a regular function call, so the value _can_ go through a bind
 parameter:
 
 ```js
@@ -181,8 +181,8 @@ await client.query("SELECT set_config('search_path', $1, false)", [schema]);
 ```
 
 Don't mistake this for a fix, though. Bind parameters stop SQL from being
-injected into the *statement* — they say nothing about which schema the
-*value* is allowed to name. `set_config` will happily bind-parameterize a
+injected into the _statement_ — they say nothing about which schema the
+_value_ is allowed to name. `set_config` will happily bind-parameterize a
 value of `evil, public` exactly as willingly as `tenant_2, public`; you've
 solved the syntax-error problem, not the trust problem. It's a genuine
 answer to "isn't there a parameterizable form?" — and a non-answer to
@@ -256,7 +256,7 @@ await client.query(format("SET search_path TO %I", schema));
 ```
 
 The disable comment below is only safe because `Number.isInteger` guarantees
-the interpolated value can't be anything *but* digits — a validated integer
+the interpolated value can't be anything _but_ digits — a validated integer
 literally cannot carry SQL syntax. That guarantee is what earns the
 exception; swap the guard for a string check and the same line becomes the
 vulnerability again:
@@ -269,7 +269,7 @@ await client.query(`SET search_path TO ${"tenant_" + tenantId}`);
 ```
 
 What is **never** safe — no matter how "trusted" the source feels — is raw
-interpolation of a *string* identifier: `SET search_path TO ${schema}` is the
+interpolation of a _string_ identifier: `SET search_path TO ${schema}` is the
 vulnerability, not the fix. The only reason the integer case above is
 different is that a validated integer isn't a string in the way that matters —
 it can't contain a quote, a semicolon, or a schema name that isn't yours.
@@ -312,7 +312,7 @@ export default [configs.recommended];
 >
 > **On the severity label.** [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) 7.5 falls in the v3.1 **High** band (7.0–8.9);
 > `Critical` starts at 9.0. The rule's fixed label runs ahead of the number —
-> if you score the *cross-tenant confidentiality break* specifically (C:H over
+> if you score the _cross-tenant confidentiality break_ specifically (C:H over
 > a plausible network vector), it can land closer to 9.1 and earn `Critical`
 > honestly, but as shipped the label and the score disagree, and a
 > security-literate reader is right to notice. Treat the finding as **High**
@@ -354,7 +354,7 @@ identifier safe by construction, regardless of provenance.
 matters most for exactly the no-privilege case from Step 1. `%I` guarantees
 `tenant.schema` can't smuggle extra SQL (`evil, public` can't break out of
 the identifier). It does **nothing** to stop `%I` from safely, correctly
-setting `search_path` to a schema the *caller* isn't authorized to see. If
+setting `search_path` to a schema the _caller_ isn't authorized to see. If
 `tenantId` is read from a request field instead of the authenticated
 session, `queryTenant(attackerSuppliedTenantId, ...)` runs cleanly —
 no injection, perfectly escaped, wrong tenant's data. That's not a
@@ -477,6 +477,7 @@ and the [N+1 insert loop](https://ofriperetz.dev/articles/n-plus-1-insert-loop-a
 that quietly turns one request into thousands of round-trips.
 
 Related attacks in this series:
+
 - [PostgreSQL COPY FROM: Filesystem Access via SQL](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — another vector that lives in a "trusted" server command
 - [Three SQL Injection Patterns That Still Ship in Node.js](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) — the patterns search_path hijacking deliberately evades
 
@@ -501,7 +502,7 @@ trusted source" line talked out of catching it?**
 
 ---
 
-*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

@@ -21,7 +21,7 @@ author:
   title: Security Engineering Leader
 ---
 
-In 1943, the U.S. Navy studied the bombers returning from raids over Europe and mapped the bullet holes — clustered on the wings, fuselage, and tail — to decide where to add armor. The mathematician Abraham Wald told them to armor the opposite: the engines and the cockpit, the places with almost no holes. The planes hit *there* were not in the data. They were the ones that never came back.
+In 1943, the U.S. Navy studied the bombers returning from raids over Europe and mapped the bullet holes — clustered on the wings, fuselage, and tail — to decide where to add armor. The mathematician Abraham Wald told them to armor the opposite: the engines and the cockpit, the places with almost no holes. The planes hit _there_ were not in the data. They were the ones that never came back.
 
 That is measurement bias: the number you measure is not the number you think you are measuring. It has sunk clinical trials, trading backtests, and A/B tests the same way it nearly fooled the Navy — a plausible-looking result rarely gets a second look, and "the planes that come back have few engine hits" looked exactly plausible enough.
 
@@ -41,7 +41,7 @@ The test set is built with knowledge of what you are testing. A trading strategy
 
 ### 3. Selection Bias
 
-Which comparisons you include. A new drug that beats a sugar pill has proven it beats nothing — not that it beats the standard treatment patients already take. Weak comparators flatter any result by proximity; the honest question is always *who did you leave out?*
+Which comparisons you include. A new drug that beats a sugar pill has proven it beats nothing — not that it beats the standard treatment patients already take. Weak comparators flatter any result by proximity; the honest question is always _who did you leave out?_
 
 ### 4. Version Bias
 
@@ -67,7 +67,7 @@ A result of zero is a question, not an answer. Zero can be correct; it can also 
 
 Five checks, in the order I run them, before any number goes into a draft.
 
-**1. Re-run suspicious clean results in a different environment first.** All-zeros, perfect recall, or a flawless score means the test *completed* — not that the result is valid. Change the instrument, the machine, or the conditions before you attribute the output to the thing you meant to measure. If the number moves, it was the environment.
+**1. Re-run suspicious clean results in a different environment first.** All-zeros, perfect recall, or a flawless score means the test _completed_ — not that the result is valid. Change the instrument, the machine, or the conditions before you attribute the output to the thing you meant to measure. If the number moves, it was the environment.
 
 **2. Record and publish the exact conditions of every measurement.** Version, instrument, settings, date. A number you cannot reproduce from the conditions you wrote down is not evidence; it is an anecdote.
 
@@ -93,25 +93,25 @@ If a suspiciously clean number ever lands in your own draft, bookmark this page 
 
 ## Quick Reference {#quick-reference}
 
-| Bias type | What it is | Detection | Prevention |
-|-----------|------------|-----------|------------|
-| Environmental | The instrument or conditions, not the subject, change the result | Re-run on a different instrument or environment; if the number changes, it was environmental | Calibrate and record the instrument; document conditions in the methodology |
-| Corpus | The test set built (consciously or not) to match what you're measuring | Build the test set before tuning; compare it to an external standard | Anchor the test set to an outside reference, not to what your subject already passes |
-| Selection | Only comparing against favorable alternatives | Ask "who's missing?" — name the strong comparators explicitly | Include the comparators that could beat you |
-| Version | Citing a number from one condition as if it holds under another | Re-measure when conditions change before calling a number "current" | Publish the exact conditions alongside every number |
-| Survivorship | Excluding the cases that failed to finish | Count what dropped out, not just what remains | Record the failures and include them in the comparison |
+| Bias type     | What it is                                                             | Detection                                                                                    | Prevention                                                                           |
+| ------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Environmental | The instrument or conditions, not the subject, change the result       | Re-run on a different instrument or environment; if the number changes, it was environmental | Calibrate and record the instrument; document conditions in the methodology          |
+| Corpus        | The test set built (consciously or not) to match what you're measuring | Build the test set before tuning; compare it to an external standard                         | Anchor the test set to an outside reference, not to what your subject already passes |
+| Selection     | Only comparing against favorable alternatives                          | Ask "who's missing?" — name the strong comparators explicitly                                | Include the comparators that could beat you                                          |
+| Version       | Citing a number from one condition as if it holds under another        | Re-measure when conditions change before calling a number "current"                          | Publish the exact conditions alongside every number                                  |
+| Survivorship  | Excluding the cases that failed to finish                              | Count what dropped out, not just what remains                                                | Record the failures and include them in the comparison                               |
 
 ---
 
 ## References
 
-Campbell, D. T. (1979). [Assessing the impact of planned social change](https://doi.org/10.1016/0149-7189%2879%2990048-X). *Evaluation and Program Planning*, 2(1), 67–90. Introduces Campbell's Law — "the more any quantitative social indicator is used for social decision-making, the more subject it will be to corruption pressures" — the governance version of measurement bias, where the act of measuring a metric changes the behavior being measured.
+Campbell, D. T. (1979). [Assessing the impact of planned social change](https://doi.org/10.1016/0149-7189%2879%2990048-X). _Evaluation and Program Planning_, 2(1), 67–90. Introduces Campbell's Law — "the more any quantitative social indicator is used for social decision-making, the more subject it will be to corruption pressures" — the governance version of measurement bias, where the act of measuring a metric changes the behavior being measured.
 
-Goodhart, C. (1975). Problems of monetary management: the UK experience. *Papers in Monetary Economics*, Reserve Bank of Australia. The original observation behind corpus bias: when a measure becomes a target, the measure ceases to be a good measure. (The familiar "becomes a target" phrasing is Strathern's 1997 gloss on Goodhart, not a direct quote — see [Goodhart's Law, explained](https://ofriperetz.dev/articles/goodharts-law-explained) for the distinction.)
+Goodhart, C. (1975). Problems of monetary management: the UK experience. _Papers in Monetary Economics_, Reserve Bank of Australia. The original observation behind corpus bias: when a measure becomes a target, the measure ceases to be a good measure. (The familiar "becomes a target" phrasing is Strathern's 1997 gloss on Goodhart, not a direct quote — see [Goodhart's Law, explained](https://ofriperetz.dev/articles/goodharts-law-explained) for the distinction.)
 
-Huff, D. (1954). *How to Lie with Statistics*. W. W. Norton & Company. Chapter 1, "The Sample with the Built-in Bias," covers selection bias — and the built-in exclusions behind survivorship — with examples that are still the clearest treatment of the problem in print.
+Huff, D. (1954). _How to Lie with Statistics_. W. W. Norton & Company. Chapter 1, "The Sample with the Built-in Bias," covers selection bias — and the built-in exclusions behind survivorship — with examples that are still the clearest treatment of the problem in print.
 
-Kitchenham, B., & Pfleeger, S. (2002). [Principles of Survey Research Part 4: Questionnaire Evaluation](https://doi.org/10.1145/638574.638580). *ACM SIGSOFT Software Engineering Notes*, 27(3), 20–23. On questionnaire validity and reliability — the framework that distinguishes construct validity (measuring what you claim to measure) from reliability (the instrument producing consistent readings, not introducing error).
+Kitchenham, B., & Pfleeger, S. (2002). [Principles of Survey Research Part 4: Questionnaire Evaluation](https://doi.org/10.1145/638574.638580). _ACM SIGSOFT Software Engineering Notes_, 27(3), 20–23. On questionnaire validity and reliability — the framework that distinguishes construct validity (measuring what you claim to measure) from reliability (the instrument producing consistent readings, not introducing error).
 
 ---
 
@@ -123,6 +123,6 @@ Kitchenham, B., & Pfleeger, S. (2002). [Principles of Survey Research Part 4: Qu
 
 ---
 
-*Foundations series: ← [The Base Rate Problem](https://ofriperetz.dev/articles/base-rate-problem-explained) · [hub](https://ofriperetz.dev/foundations) · [Goodhart's Law](https://ofriperetz.dev/articles/goodharts-law-explained) →*
+_Foundations series: ← [The Base Rate Problem](https://ofriperetz.dev/articles/base-rate-problem-explained) · [hub](https://ofriperetz.dev/foundations) · [Goodhart's Law](https://ofriperetz.dev/articles/goodharts-law-explained) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

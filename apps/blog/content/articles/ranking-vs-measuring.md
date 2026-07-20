@@ -32,12 +32,12 @@ A rank is what's left of a measurement after you throw away the distances, the u
 
 This distinction is older than any leaderboard. In 1946, the psychologist S. S. Stevens sorted every number science records into four scales, each supporting strictly more arithmetic than the last. The table is short enough to memorize and settles most metric arguments before they start:
 
-| Scale | What it carries | Legal operations | Examples |
-|---|---|---|---|
-| **Nominal** | Category membership | Count, mode | A stock ticker; a blood type |
-| **Ordinal** | Order, nothing more | Compare, median — **never average** | A leaderboard rank; a credit rating; star ratings |
-| **Interval** | Order + equal distances | Add, subtract, mean | Temperature in °C; a chess Elo rating |
-| **Ratio** | Interval + a true zero | Everything, including "twice as much" | Height in cm; a runner's time; income in dollars |
+| Scale        | What it carries         | Legal operations                      | Examples                                          |
+| ------------ | ----------------------- | ------------------------------------- | ------------------------------------------------- |
+| **Nominal**  | Category membership     | Count, mode                           | A stock ticker; a blood type                      |
+| **Ordinal**  | Order, nothing more     | Compare, median — **never average**   | A leaderboard rank; a credit rating; star ratings |
+| **Interval** | Order + equal distances | Add, subtract, mean                   | Temperature in °C; a chess Elo rating             |
+| **Ratio**    | Interval + a true zero  | Everything, including "twice as much" | Height in cm; a runner's time; income in dollars  |
 
 Anchor it with three objects from one domain: in finance, a ticker is nominal, a credit rating is ordinal, a share price is ratio. The scale determines the arithmetic, and most dashboard sins are scale violations. "Average credit rating: BBB+" averages ordinal labels as if the distance from B to BB equalled the distance from A to AA; nothing promises that. "Average rank across events" does the same to a set of standings — it treats the #1→#2 gap as equal to the #9→#10 gap, which is precisely the information a rank no longer contains. You can compare ranks. You cannot do arithmetic on them and expect the result to mean anything.
 
@@ -67,7 +67,7 @@ The classical fix, Bonferroni's, is an instinct more than a formula: the more co
 
 ## When is a leaderboard actually valid? {#leaderboard-conditions}
 
-A ranking is legitimate when it is a *presentation* of a measurement, not a replacement for one. Four conditions:
+A ranking is legitimate when it is a _presentation_ of a measurement, not a replacement for one. Four conditions:
 
 **1. The measurements are printed next to the order.** Stevens compliance: give readers the interval- or ratio-scale numbers; keep the rank as a reading aid.
 
@@ -77,7 +77,7 @@ A ranking is legitimate when it is a *presentation* of a measurement, not a repl
 
 **4. The formula is public.** Chess ratings are the model here: the Elo formula is published, so anyone with the game results can recompute a rating and check the list. Contrast that with a "power ranking" that publishes only an ordering — unfalsifiable by design. A ranking of software weaknesses built the same way, on a public scoring formula, is [checkable in exactly this sense](https://ofriperetz.dev/articles/cwe-taxonomy-explained). And most leaderboards sort by a composite score, which means [the weights chose the winner before anything was measured](https://ofriperetz.dev/articles/composite-scores-and-weighting) — that problem gets its own article.
 
-The academic gold standard, Demšar's 2006 protocol for comparing systems across many datasets, uses rank-based tests *on purpose*: when the things you are ranking are not measured on a common scale, ordinal is the honest choice, so it attaches significance machinery to the ranks rather than pretending raw scores can be averaged. Ranks used with discipline, not as decoration.
+The academic gold standard, Demšar's 2006 protocol for comparing systems across many datasets, uses rank-based tests _on purpose_: when the things you are ranking are not measured on a common scale, ordinal is the honest choice, so it attaches significance machinery to the ranks rather than pretending raw scores can be averaged. Ranks used with discipline, not as decoration.
 
 So the order of operations is the entire argument: measure, publish the measurement with its uncertainty, then — if it helps the reader — sort. A leaderboard is a UI element, not a result. Built that way, a ranking stops being something to argue about and becomes something to check: gaps you can query, formulas you can recompute, ties you can see. And when the thing you are measuring is itself a judgment call, ordering is not even the first problem — agreement is. That is [Cohen's κ](https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa), next in this series.
 
@@ -85,14 +85,14 @@ So the order of operations is the entire argument: measure, publish the measurem
 
 ## Quick reference {#quick-reference}
 
-| Question for any leaderboard | Healthy answer | Red flag |
-|---|---|---|
-| Are raw measurements printed next to the ranks? | Interval/ratio numbers on every row | Ordering only — unfalsifiable |
-| Is the #1→#2 gap large vs. re-run noise? | Gap survives correction (Elo 2400 vs 2000; test 95% vs 55%) | Adjacent rows a coin flip (72% vs 70%) |
-| Same subjects, conditions, instrument per row? | Pinned and published | Mixed conditions, ordered anyway |
-| Is the scoring formula public? | Recomputable (a published formula, like Elo) | "Proprietary methodology" |
-| How many comparisons produced the wins? | Counted, corrected, or both | Hundreds of cells, every win reported |
-| What arithmetic was done on the ranks? | Compare, median | Averaged ranks; "mean credit rating: BBB+" |
+| Question for any leaderboard                    | Healthy answer                                              | Red flag                                   |
+| ----------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------ |
+| Are raw measurements printed next to the ranks? | Interval/ratio numbers on every row                         | Ordering only — unfalsifiable              |
+| Is the #1→#2 gap large vs. re-run noise?        | Gap survives correction (Elo 2400 vs 2000; test 95% vs 55%) | Adjacent rows a coin flip (72% vs 70%)     |
+| Same subjects, conditions, instrument per row?  | Pinned and published                                        | Mixed conditions, ordered anyway           |
+| Is the scoring formula public?                  | Recomputable (a published formula, like Elo)                | "Proprietary methodology"                  |
+| How many comparisons produced the wins?         | Counted, corrected, or both                                 | Hundreds of cells, every win reported      |
+| What arithmetic was done on the ranks?          | Compare, median                                             | Averaged ranks; "mean credit rating: BBB+" |
 
 This page is built to be a reference — bookmark it for the next time a leaderboard is used as an argument, and [follow me on Dev.to](https://dev.to/ofri-peretz) for the rest of the measurement series.
 
@@ -104,18 +104,18 @@ This page is built to be a reference — bookmark it for the next time a leaderb
 
 ## References
 
-Stevens, S. S. (1946). [On the Theory of Scales of Measurement](https://doi.org/10.1126/science.103.2684.677). *Science*, 103(2684), 677–680. The origin of nominal/ordinal/interval/ratio and of the legal-operations idea this article's first table compresses.
+Stevens, S. S. (1946). [On the Theory of Scales of Measurement](https://doi.org/10.1126/science.103.2684.677). _Science_, 103(2684), 677–680. The origin of nominal/ordinal/interval/ratio and of the legal-operations idea this article's first table compresses.
 
-Benjamini, Y., & Hochberg, Y. (1995). [Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x). *Journal of the Royal Statistical Society, Series B*, 57(1), 289–300. The modern answer to leaderboards that run hundreds of comparisons: control the fraction of false discoveries, not the chance of any.
+Benjamini, Y., & Hochberg, Y. (1995). [Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x). _Journal of the Royal Statistical Society, Series B_, 57(1), 289–300. The modern answer to leaderboards that run hundreds of comparisons: control the fraction of false discoveries, not the chance of any.
 
-Demšar, J. (2006). [Statistical Comparisons of Classifiers over Multiple Data Sets](https://www.jmlr.org/papers/v7/demsar06a.html). *Journal of Machine Learning Research*, 7, 1–30. The canonical benchmarking protocol — rank-based tests used deliberately, with significance machinery attached.
+Demšar, J. (2006). [Statistical Comparisons of Classifiers over Multiple Data Sets](https://www.jmlr.org/papers/v7/demsar06a.html). _Journal of Machine Learning Research_, 7, 1–30. The canonical benchmarking protocol — rank-based tests used deliberately, with significance machinery attached.
 
-MITRE. *CWE Top 25 Most Dangerous Software Weaknesses — Methodology*. https://cwe.mitre.org/top25/ — a real-world ranking with a published, recomputable formula; the standard other leaderboards should be held to.
+MITRE. _CWE Top 25 Most Dangerous Software Weaknesses — Methodology_. https://cwe.mitre.org/top25/ — a real-world ranking with a published, recomputable formula; the standard other leaderboards should be held to.
 
 ---
 
-*Foundations series: ← [p-values & significance](https://ofriperetz.dev/articles/statistical-significance-p-value) · [hub](https://ofriperetz.dev/foundations) · [Cohen's κ / inter-rater agreement](https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa) →*
+_Foundations series: ← [p-values & significance](https://ofriperetz.dev/articles/statistical-significance-p-value) · [hub](https://ofriperetz.dev/foundations) · [Cohen's κ / inter-rater agreement](https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_
 </content>
 </invoke>

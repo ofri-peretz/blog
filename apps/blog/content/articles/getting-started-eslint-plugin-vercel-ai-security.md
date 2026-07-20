@@ -53,6 +53,7 @@ const { text } = await generateText({
 **The rule:** `require-validated-prompt` ([CWE-74](https://ofriperetz.dev/articles/cwe-taxonomy-explained), [CVSS 9.0](https://ofriperetz.dev/articles/cvss-scores-explained))
 
 ESLint output:
+
 ```text
   9:11  error  🔒 CWE-74 OWASP:A03-Injection CVSS:9 | User input "userMessage" passed
                directly to generateText prompt without validation | CRITICAL [SOC2,GDPR]
@@ -88,7 +89,7 @@ const { text } = await generateText({
 return Response.json({ reply: text, system: SYSTEM_PROMPT }); // leaks instructions to client
 ```
 
-**Why it survived review.** The `system` field looks harmless — it's personalizing the assistant greeting with a company name. TypeScript's type for `system` is `string`, which `\`You are an assistant for ${user.companyName}\`` satisfies perfectly. The `Response.json` line looks like a debugging convenience that never got cleaned up. Neither reviewer flagged either. The first is an agent-confusion vector (instructions and data share one channel); the second hands an attacker your entire system prompt.
+**Why it survived review.** The `system` field looks harmless — it's personalizing the assistant greeting with a company name. TypeScript's type for `system` is `string`, which `\`You are an assistant for ${user.companyName}\``satisfies perfectly. The`Response.json` line looks like a debugging convenience that never got cleaned up. Neither reviewer flagged either. The first is an agent-confusion vector (instructions and data share one channel); the second hands an attacker your entire system prompt.
 
 **The rules:** `no-dynamic-system-prompt` (CWE-74) + `no-system-prompt-leak` (CWE-200)
 
@@ -120,9 +121,9 @@ const { text } = await generateText({
 });
 
 // Three sinks, three CWEs:
-eval(text);                                              // RCE (CWE-94)
-db.query(`SELECT * FROM logs WHERE id = '${text}'`);    // SQL injection (CWE-89)
-el.innerHTML = text;                                     // XSS (CWE-79)
+eval(text); // RCE (CWE-94)
+db.query(`SELECT * FROM logs WHERE id = '${text}'`); // SQL injection (CWE-89)
+el.innerHTML = text; // XSS (CWE-79)
 ```
 
 **Why it survived review.** The PR that ships this almost always looks like a _rendering_ change — `el.innerHTML = response` lands in a diff titled "render assistant markdown," sitting next to thirty lines of CSS. The `text` variable was assigned three lines up from a call that has `validateInput` on its `prompt` — so it reads as "we're already being careful." The blind spot is forgetting that an attacker shaped the _prompt_ that shaped the output. Model output is untrusted input that looks trustworthy because you generated it. The rule fires at the sink regardless of how far away the model call is, which is exactly the trace a human skips.
@@ -132,7 +133,7 @@ el.innerHTML = text;                                     // XSS (CWE-79)
 ```ts
 // ✅ FIXED — output treated as untrusted at every sink
 db.query("SELECT * FROM logs WHERE id = ?", [text]); // parameterized
-el.textContent = text;                                // inert assignment
+el.textContent = text; // inert assignment
 // never pass model output to eval / Function / exec / spawn
 ```
 
@@ -164,6 +165,7 @@ const { text } = await generateText({
 **The rules:** `require-tool-confirmation` (CWE-862, CVSS 7.0) + `require-max-steps` (CWE-834)
 
 ESLint output:
+
 ```text
   24:3  error  ⚠️ CWE-862 OWASP:A01-Broken CVSS:7 | Tool "deleteUser" performs destructive
                operation "delete" without requiring confirmation. | HIGH [SOC2]
@@ -227,7 +229,10 @@ export default [
   configs.recommended,
   {
     rules: {
-      "vercel-ai-security/require-max-steps": ["error", { suggestedMaxSteps: 10 }],
+      "vercel-ai-security/require-max-steps": [
+        "error",
+        { suggestedMaxSteps: 10 },
+      ],
       "vercel-ai-security/require-rag-content-validation": "warn",
     },
   },
@@ -308,14 +313,14 @@ One honest caveat: `require-tool-confirmation` only inspects inline tool object 
 
 ## Compatibility
 
-| Surface              | Support                                                                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Package managers** | npm, yarn, pnpm, bun                                                                                                                                    |
-| **Node**             | `>= 18.0.0`                                                                                                                                             |
-| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                                                                                          |
-| **Module system**    | CommonJS — loads from both `eslint.config.js` and `eslint.config.mjs`                                                                                  |
-| **Vercel AI SDK**    | Optional peer — rules are AST-based. AI SDK v5+ renamed `maxTokens` to `maxOutputTokens`; `require-max-tokens` currently keys on `maxTokens`.          |
-| **Oxlint**           | `no-unsafe-output-handling` is wired into our Oxlint config and parity-checked in CI. Full 19-rule set runs on ESLint.                                  |
+| Surface              | Support                                                                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Package managers** | npm, yarn, pnpm, bun                                                                                                                          |
+| **Node**             | `>= 18.0.0`                                                                                                                                   |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                                                                                |
+| **Module system**    | CommonJS — loads from both `eslint.config.js` and `eslint.config.mjs`                                                                         |
+| **Vercel AI SDK**    | Optional peer — rules are AST-based. AI SDK v5+ renamed `maxTokens` to `maxOutputTokens`; `require-max-tokens` currently keys on `maxTokens`. |
+| **Oxlint**           | `no-unsafe-output-handling` is wired into our Oxlint config and parity-checked in CI. Full 19-rule set runs on ESLint.                        |
 
 ---
 
@@ -360,4 +365,4 @@ Related reading from the _Hardening AI Agents_ series:
 
 ---
 
-*[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

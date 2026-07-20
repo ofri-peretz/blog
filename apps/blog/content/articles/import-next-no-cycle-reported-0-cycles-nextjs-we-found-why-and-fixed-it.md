@@ -26,11 +26,18 @@ author:
   twitter: "ofriperetzdev"
 ---
 
-Our import cycle detector reported 0 cycles in a Next.js app with 7 actual cycles. Here's the 3-line cache bug that hid them all.
+CI showed **0 cycles across 14,556 files**. An independent run on a 33-file subset of those exact files found **5**. Adding files made cycles _disappear_ — the inverse of how a linter is supposed to behave. We traced the root cause in approximately 40 minutes once we had the subset comparison in hand. The fix touched 3 lines.
 
-The numbers: CI showed **0 cycles across 14,556 files**. An independent run on a 33-file subset of those exact files found **5**. Adding files made cycles *disappear* — the inverse of how a linter is supposed to behave. We traced the root cause in approximately 40 minutes once we had the subset comparison in hand. The fix touched 3 lines.
+> **Our cycle detector said 0. A 33-file subset of the same repo said 5. The bug was one cache write — 3 lines of code that turned a performance guard into a blindfold.**
 
-> **Our cycle detector said 0. We had 7 cycles. The bug was in the cache key — 3 lines of code that made the linter blind to Next.js patterns.**
+This article's whole thesis is that miscounting hides bugs, so here is every number in it, reconciled up front (all runs on next.js, 131K stars, May 2026):
+
+| Number        | What it counts                                                                               | Source                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **0**         | cycles, full repo (14,556 source files; 2,363 lintable under the bench's `packages/**` glob) | `import-next/no-cycle` ≤2.3.5 — the false zero this article explains                                     |
+| **5**         | cycles, 33-file `router-reducer` subset of the same repo                                     | same rule, same version — the run that exposed the false zero                                            |
+| **17**        | cycles, full repo                                                                            | oxlint's native Rust port — the independent reference that made us look                                  |
+| **245 / 914** | files in cycles / file-line pairs, full repo                                                 | `import-next/no-cycle` 2.3.6 (post-fix) — the full-scale accounting lives in the companion article below |
 
 Here is the 30-second test that exposed it, and it works on any cycle detector: run `no-cycle` on your full monorepo, then run it again on a known-complex subdirectory. If the subset finds more cycles than the full run, you have the same class of bug we had.
 
@@ -38,7 +45,9 @@ The cause: a 10-hop depth limit that wrote false "non-cyclic" entries into a sha
 
 The cache bug is confirmed in source; the fix shipped in `eslint-plugin-import-next@2.3.6`. This is the run-it-yourself half of a two-part story — the [full root-cause walkthrough is here](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale). If you only read one section, read [the diagnostic test](#what-this-means-for-your-own-cycle-detector): it works on any cycle detector, not just ours.
 
-One thing this is **not**: a type-import disagreement. Our rule and `eslint-plugin-import/no-cycle` use the *same* edge policy — both exclude `import type` edges, because type-only imports are erased at compile time and can't form a runtime cycle. The two tools agreed on Next.js: **0 cycles each**. The gap that mattered was ours-vs-ours — the full run returned 0, the 33-file subset returned 5 — and that gap is the cache bug, end to end.
+**Skip to:** [the trace](#the-mystery-to-solution-arc) · [why review missed it](#why-it-survived-review--the-uncomfortable-part) · [the diagnostic test](#what-this-means-for-your-own-cycle-detector) · [what the cycles are](#what-the-cycles-actually-are) · [the AI-codegen angle](#where-this-bites-hardest-ai-generated-code)
+
+One thing this is **not**: a type-import disagreement. Our rule and `eslint-plugin-import/no-cycle` use the _same_ edge policy — both exclude `import type` edges, because type-only imports are erased at compile time and can't form a runtime cycle. The two tools agreed on Next.js: **0 cycles each**. The gap that mattered was ours-vs-ours — the full run returned 0, the 33-file subset returned 5 — and that gap is the cache bug, end to end.
 
 ---
 
@@ -48,9 +57,9 @@ One thing this is **not**: a type-import disagreement. Our rule and `eslint-plug
 
 **We knew cycles existed.** oxlint's native Rust implementation of `import/no-cycle` reported 17 cycles in the same codebase. That gave us an independent reference number. Two tools, same codebase, wildly different results — 0 vs. 17. That gap needed an explanation.
 
-**We traced the gap.** The first step was the subset test: run `no-cycle` on `packages/next/src/client/` (33 files) in isolation. The result was 5 cycles — cycles the 14,556-file full run had hidden. Now the mystery sharpened: same rule, same config, same 33 files, but the outcome changed based on what *other* files were scanned first.
+**We traced the gap.** The first step was the subset test: run `no-cycle` on `packages/next/src/client/components/router-reducer/` (33 files) in isolation. The result was 5 cycles — cycles the 14,556-file full run had hidden. Now the mystery sharpened: same rule, same config, same 33 files, but the outcome changed based on what _other_ files were scanned first.
 
-**Root cause found.** The DFS traversal had a `maxDepth: 10` default. When the full-repo run processed files outside the 33-file subset, some paths hit the depth cap at hop 10 and stopped. The closing node — the one that would have completed the cycle — was never reached. But those boundary nodes were written into `cache.nonCyclicFiles` as if the DFS had been *complete*. When the traversal later reached those same files from inside the subset, it hit the cache, returned early, and the cycle vanished.
+**Root cause found.** The DFS had a `maxDepth: 10` default. Traversals that hit the cap stopped early — but their boundary files were still written into `cache.nonCyclicFiles` as if the search had been _complete_. When the rule later reached those files from inside the subset, it hit the poisoned cache, returned early, and the cycle vanished.
 
 **Fix applied.** The fix was 3 lines: gate the `cache.nonCyclicFiles.add(targetFile)` call on a `!depthLimitHit` flag. If the DFS was cut short, the result is not final and cannot be cached as acyclic. That single guard eliminated the scope-dependent [false negative](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn).
 
@@ -94,7 +103,7 @@ This means: if you use a finite `maxDepth` after the fix, cycles deeper than you
 
 **What the fix changes in `eslint-plugin-import-next@2.3.6`:** The ~12-hop cycle in `webpack-config.ts` is now caught. The 33-file router-reducer subset returns 5 cycles whether run in isolation or as part of the full 14,556-file repo. The gap that produced 0 on the full run is closed.
 
-**Why `eslint-plugin-import` reported 0 too — and why that's a different story.** `eslint-plugin-import/no-cycle` already defaults to `maxDepth: Infinity`, so it isn't subject to our depth bug. Its 0 on Next.js is, as far as we can tell, a *correct-for-its-design* result given the same compile-time-edge policy we use — both tools drop `import type` edges before traversal. The number that exposed our bug wasn't theirs; it was oxlint's native Rust port reporting 17, which gave us an independent reference to measure against.
+**Why `eslint-plugin-import` reported 0 too — and why that's a different story.** `eslint-plugin-import/no-cycle` already defaults to `maxDepth: Infinity`, so it isn't subject to our depth bug. Its 0 on Next.js is, as far as we can tell, a _correct-for-its-design_ result given the same compile-time-edge policy we use — both tools drop `import type` edges before traversal. The number that exposed our bug wasn't theirs; it was oxlint's native Rust port reporting 17, which gave us an independent reference to measure against.
 
 For a head-to-head performance comparison of `import-next` vs `eslint-plugin-import`, the [full benchmark is here](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster) — up to 100x faster on large repos. Speed is only useful if the results are correct, which is exactly what this fix addresses.
 
@@ -106,11 +115,11 @@ For a head-to-head performance comparison of `import-next` vs `eslint-plugin-imp
 
 The CI reported 0 cycles, so the team trusted it — the same way you trust a passing test suite without questioning the test coverage.
 
-This is the core failure mode. A depth cap of 10 *looks* like the conservative choice. In code review, "bound the DFS so it can't blow the stack on a pathological graph" reads as defensive engineering, and a 10-hop default reads as generous — most real cycles are 2–4 hops. The reviewer's mental model was "the cap only ever skips cycles deeper than 10, and those are rare."
+This is the core failure mode. A depth cap of 10 _looks_ like the conservative choice. In code review, "bound the DFS so it can't blow the stack on a pathological graph" reads as defensive engineering, and a 10-hop default reads as generous — most real cycles are 2–4 hops. The reviewer's mental model was "the cap only ever skips cycles deeper than 10, and those are rare."
 
-What that model missed is the second-order effect: a depth-truncated node was *also* being written to the acyclic cache, so the cap didn't just skip deep cycles — it taught the cache a lie that then suppressed shallow cycles elsewhere. Nobody waves through `cache.nonCyclicFiles.add(file)` as dangerous. It's one line, it's in the happy path, and it's the line that turned a local performance guard into a global correctness bug.
+What that model missed is the second-order effect: a depth-truncated node was _also_ being written to the acyclic cache, so the cap didn't just skip deep cycles — it taught the cache a lie that then suppressed shallow cycles elsewhere. Nobody waves through `cache.nonCyclicFiles.add(file)` as dangerous. It's one line, it's in the happy path, and it's the line that turned a local performance guard into a global correctness bug.
 
-If a senior engineer has ever approved a memoization write without asking "is this result actually *final*?", they've approved this bug. The check that caught it wasn't a code review — it was an external reference (oxlint's 17) and a subset comparison. Without those two inputs, the 0 would have looked correct indefinitely.
+If a senior engineer has ever approved a memoization write without asking "is this result actually _final_?", they've approved this bug. The check that caught it wasn't a code review — it was an external reference (oxlint's 17) and a subset comparison. Without those two inputs, the 0 would have looked correct indefinitely.
 
 ---
 
@@ -169,13 +178,13 @@ npx eslint src/components/ --rule '{"import-next/no-cycle": "error"}'
 
 ```javascript
 // eslint.config.mjs — using 'import-next' namespace to distinguish from eslint-plugin-import
-import importNext from 'eslint-plugin-import-next';
+import importNext from "eslint-plugin-import-next";
 
 export default [
   {
-    plugins: { 'import-next': importNext },
+    plugins: { "import-next": importNext },
     rules: {
-      'import-next/no-cycle': 'error',
+      "import-next/no-cycle": "error",
       // maxDepth defaults to Number.MAX_SAFE_INTEGER — don't lower it
       // unless you understand the cache-poisoning tradeoff
     },
@@ -202,21 +211,21 @@ The only thing that caught it: a large real-world repo measured against an indep
 
 The 5 cycles in the router-reducer subset are **runtime cycles** — every edge is a value import or a re-export (`export { X } from '...'`), the kind that survives compilation. That matters because it's the reason this is a real architectural finding and not a type-graph curiosity: these are modules that genuinely depend on each other at runtime, and the only reason the full-repo run reported them as clean was the poisoned cache.
 
-Re-exports are the easy ones to miss. A cycle that closes through `export { foo } from './bar'` is invisible to a detector that only hooks `import` statements — so the graph builder treats `export … from` as a first-class edge. The Next.js `client/router.ts` ↔ `client/with-router.tsx` cycle propagates *entirely* through re-exports; without that edge the DFS never sees it.
+Re-exports are the easy ones to miss. A cycle that closes through `export { foo } from './bar'` is invisible to a detector that only hooks `import` statements — so the graph builder treats `export … from` as a first-class edge. The Next.js `client/router.ts` ↔ `client/with-router.tsx` cycle propagates _entirely_ through re-exports; without that edge the DFS never sees it.
 
-**Benchmark harness variance.** During post-fix validation, back-to-back runs produced 218→255→301. These are total violation rows (one per file-import pair), not distinct cycles. The variance was a harness bug: `pendingCycleReports` accumulated across runs in our test tooling, not in production ESLint. Fixed by resetting state between runs. The lesson generalizes: when your *measurement* tool has state, "the rule is flaky" and "my harness is flaky" look identical until you reset between runs and watch the number stop moving.
+**Benchmark harness variance.** During post-fix validation, back-to-back runs produced 218→255→301. These are total violation rows (one per file-import pair), not distinct cycles. The variance was a harness bug: `pendingCycleReports` accumulated across runs in our test tooling, not in production ESLint. Fixed by resetting state between runs. The lesson generalizes: when your _measurement_ tool has state, "the rule is flaky" and "my harness is flaky" look identical until you reset between runs and watch the number stop moving.
 
 ---
 
 ## Where this bites hardest: AI-generated code
 
-The depth-and-cache bug needs two ingredients to hurt you: import graphs that are *deep* (so the depth cap fires) and *dense* (so falsely-cached intermediates sit on many paths). Hand-written code trends shallow — humans feel the pain of a 12-hop import chain and refactor it. AI-generated code does not.
+The depth-and-cache bug needs two ingredients to hurt you: import graphs that are _deep_ (so the depth cap fires) and _dense_ (so falsely-cached intermediates sit on many paths). Hand-written code trends shallow — humans feel the pain of a 12-hop import chain and refactor it. AI-generated code does not.
 
-This isn't a hunch. When I benchmarked **700 AI-generated functions across 5 models from Gemini and Claude** — 7 iterations each, 332 ESLint rules — the headline finding was that **65-75% of what these models write ships a vulnerability** ([the full corpus is here](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)). Structure is the same story as security: models optimize for what *looks* clean in the snippet in front of them, not for the global graph they can't see.
+This isn't a hunch. When I benchmarked **700 AI-generated functions across 5 models from Gemini and Claude** — 7 iterations each, 332 ESLint rules — the headline finding was that **65-75% of what these models write ships a vulnerability** ([the full corpus is here](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)). Structure is the same story as security: models optimize for what _looks_ clean in the snippet in front of them, not for the global graph they can't see.
 
 Ask Claude, Gemini, or Copilot to "add a barrel file," "re-export everything from this feature folder," or "wire these modules together," and you get exactly the shape that triggers this class of bug:
 
-- **Barrel-file sprawl.** An `index.ts` that re-exports a folder, imported by another `index.ts` that re-exports *its* folder, is how a 3-hop logical dependency becomes a 12-hop physical one. Assistants reach for barrels by default because they read as "clean public API."
+- **Barrel-file sprawl.** An `index.ts` that re-exports a folder, imported by another `index.ts` that re-exports _its_ folder, is how a 3-hop logical dependency becomes a 12-hop physical one. Assistants reach for barrels by default because they read as "clean public API."
 - **Re-export round-trips.** Generated code frequently has module A re-export a symbol that ultimately re-imports from A — the runtime cycle that closes through `export … from`, the exact edge naive detectors miss.
 - **Confident silence.** When you ask an assistant "are there circular dependencies here?", it will reason over the snippet in front of it — it cannot see the 14K-file graph, and it has no depth cap to warn you about. A green `no-cycle` run becomes the evidence the assistant's "looks clean to me" was right, when both were blind to the same deep cycle.
 
@@ -244,9 +253,9 @@ A suspiciously clean zero is a measurement result like any other — and instrum
 
 ---
 
-*Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/39642) series:*
-*← [Our cycle detector reported 0. The real number was 245 files.](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale) | [What Ground Truth Caught That Unit Tests Missed →](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed)*
+_Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/39642) series:_
+_← [Our cycle detector reported 0. The real number was 245 files.](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale) | [What Ground Truth Caught That Unit Tests Missed →](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed)_
 
 ---
 
-*[eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

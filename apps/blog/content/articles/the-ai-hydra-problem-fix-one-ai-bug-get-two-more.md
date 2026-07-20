@@ -27,7 +27,7 @@ author:
 series: "AI Security Benchmark Series"
 ---
 
-We asked Claude to fix a SQL injection. It fixed it and introduced a stored XSS in the same function. That's not a one-off. That's the Hydra Problem — cut one bug, two grow back. Here's why it keeps happening, and what the data says about containing it.
+We asked Claude to fix a command-execution vulnerability. It added an allowlist — and in the same function reached for an `arg.includes("..")` path check that is itself a broken security pattern, one ESLint flags the moment it re-scans. The original finding vanished; a fresh one appeared on the adjacent line, wearing the same defensive-looking clothes. Cut one head off the Hydra and another grows in its place — that is the failure mode this article measures, and the data says containing it is a workflow problem, not a prompting one.
 
 ## TL;DR
 
@@ -35,16 +35,18 @@ I asked Claude to fix its own security bugs. **One in three "fixes" introduced a
 
 Here's the line I'd send to your team: **a security fix that removes the finding it was asked to remove is not the same as a secure fix — and human review can't tell the two apart.** A deterministic linter re-run on the patched diff can. That gap is the whole article.
 
-**The article-native stat:** Across 44 total remediation rounds in this dataset, we fixed 15 bug instances and introduced 15 new vulnerability instances — a 1:1 ratio. For every 3 AI-fixed security bugs in the prompt-only group, we got 2 new ones introduced. The Guardian Layer (ESLint-guided feedback) drops that to roughly 1 new bug per 7 fixed.
+**The article-native stat:** Across 44 remediation rounds, the two workflows split hard. With ESLint-guided feedback the model fixed 15 vulnerability instances and introduced just 2 — better than seven cleared for every one it created. Without feedback, the prompt-only group also fixed 15 — but introduced 13, nearly one new vulnerability for every one it removed (its count crawled from 32 down to just 30). Same model, same prompts; the feedback channel is the entire difference.
 
-**Every AI security fix is a bet that the model understood the full context. Our data says it gets the context right about 68% of the time in guided mode — and only 25% of the time without deterministic feedback.**
+**Every AI security fix is a bet that the model understood the full context. Our data says it converges to clean code 79% of the time in guided mode (11 of 14 vulnerable prompts) — and only 25% of the time (2 of 8) with prompting alone.**
 
 In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
 
 > **Get the Guardian Layer running in 60 seconds:**
+>
 > ```bash
 > npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt
 > ```
+>
 > ```javascript
 > // eslint.config.js
 > import secure from "eslint-plugin-secure-coding";
@@ -59,6 +61,7 @@ In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-7
 >   jwt.configs.recommended,
 > ];
 > ```
+>
 > Feed the ESLint output back to your AI tool. That feedback loop is what separates the 8% Hydra rate from the 32% Hydra rate. Full config and explanation at the [end of this article](#eslint-configuration-used).
 
 > **AI Security Benchmark Series:** [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **Part 2 (you are here)** · [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
@@ -78,6 +81,8 @@ I ran two parallel experiments with Claude Opus (the `opus` CLI alias, Feb 2026 
 | **Prompts Worsened**                  | 1/20                             | 2/20                  |
 
 When models fix security vulnerabilities without deterministic feedback, they introduce **entirely new vulnerability categories** at **4× the rate** — and converge to secure code far less often. That's the Hydra in numbers.
+
+**Skip to:** [What the Hydra is](#what-is-the-hydra-problem) · [Experimental design](#experimental-design) · [The two timelines](#results-guardian-layer-group-a) · [Head-to-head + significance](#head-to-head-comparison) · [The Hydra in action](#the-hydra-effect-in-action) · [What to do about it](#what-you-can-do-today)
 
 ---
 
@@ -329,7 +334,7 @@ function runUserCommand(command) {
 }
 ```
 
-ESLint flags: `node-security/detect-child-process`. Note this is _arbitrary command execution_ (CWE-78), not classic shell-metacharacter injection — `execFileSync(cmd, args)` doesn't spawn a shell, so the danger is that `cmd` itself is attacker-controlled, letting the caller run any binary on the host.
+ESLint flags: `node-security/detect-child-process`. Note this is _arbitrary command execution_ ([CWE-78](https://ofriperetz.dev/articles/cwe-taxonomy-explained)), not classic shell-metacharacter injection — `execFileSync(cmd, args)` doesn't spawn a shell, so the danger is that `cmd` itself is attacker-controlled, letting the caller run any binary on the host.
 
 **Generation 1: Fixes the command-execution hole, trips the `no-zip-slip` heuristic** 🐍
 
@@ -549,6 +554,7 @@ export default [
 ---
 
 **Related reading:**
+
 - [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — The baseline experiment that set up this remediation study
 - [Hardcoded Secrets in AI Agent Code: The Autofix Problem](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix) — How AI handles another class of security fixes
 - [ESLint Interlace Plugin Docs](https://eslint.interlace.tools) — All 332+ rules with fix examples
@@ -573,7 +579,7 @@ export default [
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

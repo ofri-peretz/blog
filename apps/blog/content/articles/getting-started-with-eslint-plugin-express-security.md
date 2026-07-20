@@ -78,11 +78,16 @@ app.use(cors({ origin: "*", credentials: true }));
 app.use(cors({ origin: "*" }));
 
 // Option 2: Credentialed requests — explicit allowlist
-const ALLOWED_ORIGINS = ["https://app.yourdomain.com", "https://admin.yourdomain.com"];
-app.use(cors({
-  origin: (origin, cb) => cb(null, ALLOWED_ORIGINS.includes(origin ?? "")),
-  credentials: true,
-}));
+const ALLOWED_ORIGINS = [
+  "https://app.yourdomain.com",
+  "https://admin.yourdomain.com",
+];
+app.use(
+  cors({
+    origin: (origin, cb) => cb(null, ALLOWED_ORIGINS.includes(origin ?? "")),
+    credentials: true,
+  }),
+);
 ```
 
 ---
@@ -109,7 +114,7 @@ import csrf from "csurf";
 import rateLimit from "express-rate-limit";
 
 app.use(express.json({ limit: "100kb" })); // bounded body
-app.use(csrf());                           // forged-request guard
+app.use(csrf()); // forged-request guard
 
 app.post("/transfer", async (req, res) => {
   // req.csrfToken() verified by middleware above
@@ -126,7 +131,7 @@ app.post("/transfer", async (req, res) => {
 
 ```ts
 app.get("/files/:name", (req, res) => {
-  res.redirect(req.query.returnUrl);       // open redirect (CWE-601)
+  res.redirect(req.query.returnUrl); // open redirect (CWE-601)
   // or:
   res.sendFile(path.join(__dirname, "uploads", req.params.name)); // path traversal (CWE-22)
 });
@@ -142,7 +147,11 @@ app.get("/files/:name", (req, res) => {
 // Redirect: resolve against an allowlist — never reflect raw input
 const ALLOWED = new Set(["/dashboard", "/settings", "/profile"]);
 app.get("/login", (req, res) =>
-  res.redirect(ALLOWED.has(req.query.returnUrl as string) ? req.query.returnUrl as string : "/dashboard"),
+  res.redirect(
+    ALLOWED.has(req.query.returnUrl as string)
+      ? (req.query.returnUrl as string)
+      : "/dashboard",
+  ),
 );
 
 // File serve: strip traversal before joining
@@ -191,34 +200,34 @@ src/routes/transfer.ts
 
 **4 presets:** `recommended` (all 14; criticals at `error`, easy-to-false-positive rules like rate-limit and CSRF default to `warn`) · `strict` (all 14 at `error`) · `api` (5-rule REST hardening set) · `graphql` (introspection-in-production).
 
-| Rule | Catches | CWE | `recommended` |
-| ---- | ------- | --- | ------------- |
-| `require-helmet` | App missing `helmet()` security headers | CWE-693 | error |
-| `require-rate-limiting` | No rate limiter → brute force / DoS | CWE-770 | warn |
-| `require-csrf-protection` | State-changing route, no CSRF | CWE-352 | warn |
-| `require-express-body-parser-limits` | Body parser with no size `limit` | CWE-400 | warn |
-| `no-express-unsafe-regex-route` | ReDoS in a route pattern | CWE-1333 | error |
-| `no-permissive-cors` | `origin: '*'` / reflected origin | CWE-942 | error |
-| `no-cors-credentials-wildcard` | Wildcard origin + credentials | CWE-942 | error |
-| `no-insecure-cookie-options` | Missing `Secure`/`HttpOnly`/`SameSite` | CWE-614 | error |
-| `no-exposed-debug-endpoints` | Debug routes reachable in prod | CWE-489 | error |
-| `no-graphql-introspection-production` | Introspection enabled in prod | CWE-200 | warn |
-| `no-user-controlled-redirect` | `res.redirect()` of raw user input | CWE-601 | error |
-| `no-missing-cors-check` | Origin trusted without validation | CWE-346 | warn |
-| `no-missing-csrf-protection` | State change with no CSRF guard | CWE-352 | warn |
-| `no-missing-security-headers` | Response missing security headers | CWE-693 | warn |
+| Rule                                  | Catches                                 | CWE      | `recommended` |
+| ------------------------------------- | --------------------------------------- | -------- | ------------- |
+| `require-helmet`                      | App missing `helmet()` security headers | CWE-693  | error         |
+| `require-rate-limiting`               | No rate limiter → brute force / DoS     | CWE-770  | warn          |
+| `require-csrf-protection`             | State-changing route, no CSRF           | CWE-352  | warn          |
+| `require-express-body-parser-limits`  | Body parser with no size `limit`        | CWE-400  | warn          |
+| `no-express-unsafe-regex-route`       | ReDoS in a route pattern                | CWE-1333 | error         |
+| `no-permissive-cors`                  | `origin: '*'` / reflected origin        | CWE-942  | error         |
+| `no-cors-credentials-wildcard`        | Wildcard origin + credentials           | CWE-942  | error         |
+| `no-insecure-cookie-options`          | Missing `Secure`/`HttpOnly`/`SameSite`  | CWE-614  | error         |
+| `no-exposed-debug-endpoints`          | Debug routes reachable in prod          | CWE-489  | error         |
+| `no-graphql-introspection-production` | Introspection enabled in prod           | CWE-200  | warn          |
+| `no-user-controlled-redirect`         | `res.redirect()` of raw user input      | CWE-601  | error         |
+| `no-missing-cors-check`               | Origin trusted without validation       | CWE-346  | warn          |
+| `no-missing-csrf-protection`          | State change with no CSRF guard         | CWE-352  | warn          |
+| `no-missing-security-headers`         | Response missing security headers       | CWE-693  | warn          |
 
 ---
 
 ## Compatibility
 
-| Surface | Support |
-| ------- | ------- |
-| **Node** | `>= 18.0.0` |
-| **ESLint** | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config |
-| **Express** | Detects Express 4/5 `app.use(...)` chains, route definitions, and `cors`/`helmet`/`csrf`/`express-rate-limit` usage |
-| **Module system** | CommonJS — loads from both `eslint.config.js` and `eslint.config.mjs` |
-| **Oxlint** | Loads under Oxlint's JS-plugin runner via the `interlace-express-security` port |
+| Surface           | Support                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Node**          | `>= 18.0.0`                                                                                                         |
+| **ESLint**        | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                                                      |
+| **Express**       | Detects Express 4/5 `app.use(...)` chains, route definitions, and `cors`/`helmet`/`csrf`/`express-rate-limit` usage |
+| **Module system** | CommonJS — loads from both `eslint.config.js` and `eslint.config.mjs`                                               |
+| **Oxlint**        | Loads under Oxlint's JS-plugin runner via the `interlace-express-security` port                                     |
 
 ---
 
@@ -260,4 +269,4 @@ Run `configs.recommended` on two things and reply with both counts: your oldest 
 
 ---
 
-*[eslint-plugin-express-security](https://www.npmjs.com/package/eslint-plugin-express-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-express-security](https://www.npmjs.com/package/eslint-plugin-express-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

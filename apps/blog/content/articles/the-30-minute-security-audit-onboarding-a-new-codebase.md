@@ -255,12 +255,12 @@ The author does.
 
 All three plugins ship the same contract:
 
-| Surface              | Support                                                                |
-| -------------------- | ---------------------------------------------------------------------- |
-| **Package managers** | npm, yarn, pnpm, bun                                                   |
-| **Node**             | `>= 18.0.0`                                                            |
-| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                         |
-| **Module system**    | Plugins ship CommonJS; your config can be `eslint.config.js` or `.mjs` |
+| Surface              | Support                                                                                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Package managers** | npm, yarn, pnpm, bun                                                                                                                                                                                                     |
+| **Node**             | `>= 18.0.0`                                                                                                                                                                                                              |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                                                                                                                                                           |
+| **Module system**    | Plugins ship CommonJS; your config can be `eslint.config.js` or `.mjs`                                                                                                                                                   |
 | **Oxlint**           | flagship rules (incl. `pg/no-unsafe-query`) run today via the oxlint JS-plugin tier — [same code, measured 50–230× faster](https://github.com/ofri-peretz/eslint/blob/main/benchmark-results/oxlint-jstier-vs-eslint.md) |
 
 ---
@@ -286,7 +286,7 @@ story I want in the comments.
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

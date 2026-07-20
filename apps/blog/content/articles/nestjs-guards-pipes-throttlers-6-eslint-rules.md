@@ -47,7 +47,7 @@ export class AdminController {
 ```
 
 **Why it survived review.**
-Nobody scans a controller and asks "is there a guard on this handler?" — they ask "does the logic look right?" The handler body is correct, the service call is named well, TypeScript is green. The team has a `JwtAuthGuard` registered *somewhere*, and reviewers assume it covers this route. It doesn't. `@UseGuards` is opt-in per controller and per handler, which means the decorator you didn't write is the one that left `DELETE /admin/:id` open to the internet.
+Nobody scans a controller and asks "is there a guard on this handler?" — they ask "does the logic look right?" The handler body is correct, the service call is named well, TypeScript is green. The team has a `JwtAuthGuard` registered _somewhere_, and reviewers assume it covers this route. It doesn't. `@UseGuards` is opt-in per controller and per handler, which means the decorator you didn't write is the one that left `DELETE /admin/:id` open to the internet.
 
 **ESLint rule:** `nestjs-security/require-guards`
 
@@ -161,12 +161,8 @@ import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
 
 @Module({
-  imports: [
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 10 }]),
-  ],
-  providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-  ],
+  imports: [ThrottlerModule.forRoot([{ ttl: 60000, limit: 10 }])],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
 ```
@@ -201,7 +197,10 @@ import tsParser from "@typescript-eslint/parser";
 export default [
   {
     files: ["**/*.ts"],
-    languageOptions: { parser: tsParser, parserOptions: { sourceType: "module" } },
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { sourceType: "module" },
+    },
   },
   configs.recommended, // all 6 rules, sensible severities
   // configs.strict,      // all 6 as errors
@@ -275,4 +274,4 @@ Run `configs.recommended` against a NestJS service today — yours, or the last 
 
 ---
 
-*[eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

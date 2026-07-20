@@ -84,7 +84,7 @@ connection. A pool with `max=1` accidentally serializes everything and hides
 the bug. A pool with `max=5` can break on a **single** request if the checked-out
 client returns to idle between the `await pool.query("BEGIN")` and the next line.
 
-> **PostgreSQL defaults to READ COMMITTED — each statement sees only data committed *before that statement began*, so two overlapping transactions can't dirty-read each other's in-flight writes.**
+> **PostgreSQL defaults to READ COMMITTED — each statement sees only data committed _before that statement began_, so two overlapping transactions can't dirty-read each other's in-flight writes.**
 
 That guarantee never gets a chance to matter here: the race in this article is
 structural, not an isolation-level failure. The statements never share a
@@ -327,4 +327,4 @@ Have you caught a balance mismatch that traced back to `pool.query('BEGIN')`? Dr
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

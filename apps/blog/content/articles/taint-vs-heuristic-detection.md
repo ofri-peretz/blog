@@ -26,7 +26,7 @@ author:
 await fetch(userUrl);
 ```
 
-A linter flags this line in about a millisecond. Here is what it did *not* do in that millisecond: it did not trace where `userUrl` came from, and it did not prove that a request-forgery path exists. It flagged the line because a user-ish name reached a network sink. That is the entire analysis.
+A linter flags this line in about a millisecond. Here is what it did _not_ do in that millisecond: it did not trace where `userUrl` came from, and it did not prove that a request-forgery path exists. It flagged the line because a user-ish name reached a network sink. That is the entire analysis.
 
 Whether that is scandalous or sensible depends on a distinction most tool marketing blurs: **impact-if-real** and **confidence-it's-real** are different axes. The impact axis is brutal — server-side request forgery is CWE-918, and a serious vector scores CVSS 9.1, a tenth of a point past the line where the scale turns Critical (push every judgment to its worst and it tops out at a perfect 10.0). The confidence axis, for a single name-match flag, is modest: a variable name is circumstantial evidence. Print one axis in the other's vocabulary and you get `9.1` and `LOW` four characters apart — and that drift is not hypothetical: a [rule-metadata audit](https://ofriperetz.dev/articles/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score) caught exactly that mislabel in the wild. [CVSS scores what a weakness could do](https://ofriperetz.dev/articles/cvss-scores-explained), never how sure a detector is that it found one — so this page explains the two detection families that sit on opposite ends of the confidence axis.
 
@@ -39,18 +39,18 @@ The model has three parts. **Sources** produce attacker-influenced data: `req.qu
 What makes this expensive is that real paths are indirect. A two-hop flow:
 
 ```js
-const target = req.query.url;   // source
-const opts = { url: target };   // taint flows into a property
-await fetch(opts.url);          // sink — three statements, one path
+const target = req.query.url; // source
+const opts = { url: target }; // taint flows into a property
+await fetch(opts.url); // sink — three statements, one path
 ```
 
 Reporting this requires following the value through an assignment, a property write, and a property read — and production paths cross function and file boundaries, which demands a call graph. Aliasing is worse:
 
 ```js
 const a = { url: DEFAULT };
-const b = a;                    // two names, one object
-b.url = req.query.url;          // tainting b.url taints a.url
-await fetch(a.url);             // sink reached through the alias
+const b = a; // two names, one object
+b.url = req.query.url; // tainting b.url taints a.url
+await fetch(a.url); // sink reached through the alias
 ```
 
 Sound alias analysis is where most of the computational cost lives, and in JavaScript — `eval`, dynamic property access, framework glue — the graph is never complete. The payoff for all that machinery: when a taint engine reports, it hands you a **path** you can read as a demonstration.
@@ -69,7 +69,7 @@ The two families fail in opposite directions, and the direction is the useful pa
 
 **Heuristic rules make FP-shaped errors.** They over-flag whenever a name or shape misleads, and they miss the flows that never look dangerous at the sink line. Look back at the two-hop example: a single-file heuristic staring at `fetch(opts.url)` sees a property read with nothing user-ish in the name. The flow is invisible without the graph.
 
-Now put the two axes from the hook back together. A taint finding carries high *confidence* — a demonstrated path. A heuristic finding carries an invitation to look. The *impact* axis is untouched by any of this: SSRF is CWE-918 at CVSS 9.1 whether CodeQL proved it or a name-match suggested it. Severity belongs to the weakness; confidence belongs to the detection method. Print one axis in the other's vocabulary and you get `9.1` and `LOW` four characters apart.
+Now put the two axes from the hook back together. A taint finding carries high _confidence_ — a demonstrated path. A heuristic finding carries an invitation to look. The _impact_ axis is untouched by any of this: SSRF is CWE-918 at CVSS 9.1 whether CodeQL proved it or a name-match suggested it. Severity belongs to the weakness; confidence belongs to the detection method. Print one axis in the other's vocabulary and you get `9.1` and `LOW` four characters apart.
 
 ## Complementary, not competing {#complementary}
 
@@ -79,7 +79,7 @@ The right mental model comes from value investing: a stock screener filtering on
 
 ## What this means for benchmarks {#benchmark-implications}
 
-One honest disclosure follows. A single-file benchmark corpus can only encode *heuristically-detectable* patterns — single-file shapes a lint rule could conceivably match — because [someone had to decide what counts as vulnerable](https://ofriperetz.dev/articles/ground-truth-in-security-testing), and a corpus of one-file fixtures can only hold one-file bugs. So a linter that scores 100% on such a corpus has told you one specific thing: complete coverage of the pattern class the corpus was designed for. It has *not* told you a taint engine is unnecessary, because the multi-file flows a taint engine exists to find are exactly what a single-file corpus cannot encode.
+One honest disclosure follows. A single-file benchmark corpus can only encode _heuristically-detectable_ patterns — single-file shapes a lint rule could conceivably match — because [someone had to decide what counts as vulnerable](https://ofriperetz.dev/articles/ground-truth-in-security-testing), and a corpus of one-file fixtures can only hold one-file bugs. So a linter that scores 100% on such a corpus has told you one specific thing: complete coverage of the pattern class the corpus was designed for. It has _not_ told you a taint engine is unnecessary, because the multi-file flows a taint engine exists to find are exactly what a single-file corpus cannot encode.
 
 A perfect score on a corpus you built yourself is a tautology wearing a medal — you wrote the test, you wrote the tool, and the number just confirms they agree. The honest reading is the scope statement hiding underneath it: complete coverage of the one pattern class you chose to encode, and silence about everything you left out.
 
@@ -87,27 +87,27 @@ So the one question to ask any static analysis tool — before the demo, before 
 
 ## Quick reference {#quick-reference}
 
-| | Taint analysis | Heuristic detection |
-|---|---|---|
-| Core question | Does untrusted data reach a sink unsanitized? | Does this code shape resemble a vulnerable pattern? |
-| Evidence per finding | A demonstrated source→sink path | A pattern match |
-| Scope | Whole program, cross-file | Single file (one AST) |
-| Cost | Minutes; call graph + alias analysis | Milliseconds per file |
+|                      | Taint analysis                                                         | Heuristic detection                                       |
+| -------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------- |
+| Core question        | Does untrusted data reach a sink unsanitized?                          | Does this code shape resemble a vulnerable pattern?       |
+| Evidence per finding | A demonstrated source→sink path                                        | A pattern match                                           |
+| Scope                | Whole program, cross-file                                              | Single file (one AST)                                     |
+| Cost                 | Minutes; call graph + alias analysis                                   | Milliseconds per file                                     |
 | Characteristic error | False negatives (model gaps: `eval`, dynamic dispatch, framework glue) | False positives (premise fails: names and shapes mislead) |
-| Where it belongs | PR gate, nightly runs | Editor, pre-commit, CI |
-| Examples | CodeQL, Semgrep (taint mode) | ESLint security plugins, single-file lint rules |
+| Where it belongs     | PR gate, nightly runs                                                  | Editor, pre-commit, CI                                    |
+| Examples             | CodeQL, Semgrep (taint mode)                                           | ESLint security plugins, single-file lint rules           |
 
 ## References
 
-- Denning, D. E. (1976). [A lattice model of secure information flow](https://doi.org/10.1145/360051.360056). *Communications of the ACM*, 19(5). The founding citation — every source/sink/label system in use today descends from this model.
-- Livshits, V. B., & Lam, M. S. (2005). [Finding security vulnerabilities in Java applications with static analysis](https://www.usenix.org/conference/14th-usenix-security-symposium/finding-security-vulnerabilities-java-applications-static). *USENIX Security Symposium*. The paper that made taint-based static analysis practical against real web-application vulnerability classes.
-- Chess, B., & West, J. (2007). *[Secure Programming with Static Analysis](https://books.google.com/books/about/Secure_Programming_with_Static_Analysis.html?id=DnUbmQEACAAJ)*. Addison-Wesley. The standard industrial treatment of both detection families, including why commercial SAST engines mix them.
+- Denning, D. E. (1976). [A lattice model of secure information flow](https://doi.org/10.1145/360051.360056). _Communications of the ACM_, 19(5). The founding citation — every source/sink/label system in use today descends from this model.
+- Livshits, V. B., & Lam, M. S. (2005). [Finding security vulnerabilities in Java applications with static analysis](https://www.usenix.org/conference/14th-usenix-security-symposium/finding-security-vulnerabilities-java-applications-static). _USENIX Security Symposium_. The paper that made taint-based static analysis practical against real web-application vulnerability classes.
+- Chess, B., & West, J. (2007). _[Secure Programming with Static Analysis](https://books.google.com/books/about/Secure_Programming_with_Static_Analysis.html?id=DnUbmQEACAAJ)_. Addison-Wesley. The standard industrial treatment of both detection families, including why commercial SAST engines mix them.
 - OWASP Community: [Static Code Analysis](https://owasp.org/www-community/controls/Static_Code_Analysis). Practitioner-level survey of the technique, with an unusually honest limitations list.
 
 ---
 
 This is a vocabulary page — bookmark it for the next time a vendor deck says "taint-aware linting," and [follow me on Dev.to](https://dev.to/ofri-peretz) for the rest of the foundations series.
 
-*Foundations series: ← [OWASP Top 10, Explained](https://ofriperetz.dev/articles/owasp-top-10-explained) · [hub](https://ofriperetz.dev/foundations) · [Static Analysis vs. SAST vs. Linting](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) →*
+_Foundations series: ← [OWASP Top 10, Explained](https://ofriperetz.dev/articles/owasp-top-10-explained) · [hub](https://ofriperetz.dev/foundations) · [Static Analysis vs. SAST vs. Linting](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

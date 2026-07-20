@@ -26,7 +26,7 @@ The trap itself is real — I had reproduced it on live AWS the day before, 2026
 
 ## What was the original claim? {#the-original-claim}
 
-The community `serverless-api-gateway-caching` (v1.11.0) manages the API Gateway cache cluster imperatively — it calls the AWS `UpdateStage` API during deploy instead of declaring the cluster in the CloudFormation template. CloudFormation never learns the cluster exists. From there, the inference writes itself: if CloudFormation doesn't know about the cluster, teardown won't remove it, so `sls remove` must leave it behind, billing forever. Our plugin ships a `before:remove:remove` hook that disables the cluster before teardown — so early copy implied, in effect: *the community plugin has a ghost-billing bug on `sls remove`, and we fix it.*
+The community `serverless-api-gateway-caching` (v1.11.0) manages the API Gateway cache cluster imperatively — it calls the AWS `UpdateStage` API during deploy instead of declaring the cluster in the CloudFormation template. CloudFormation never learns the cluster exists. From there, the inference writes itself: if CloudFormation doesn't know about the cluster, teardown won't remove it, so `sls remove` must leave it behind, billing forever. Our plugin ships a `before:remove:remove` hook that disables the cluster before teardown — so early copy implied, in effect: _the community plugin has a ghost-billing bug on `sls remove`, and we fix it._
 
 Notice what that claim actually was: an inference from architecture, shipped as if it were a measurement. And it was consistent — repeated the same way across the README, the docs, the comparison table. Consistency is reliability; whether the claim describes the failure that actually happens is [validity](https://ofriperetz.dev/articles/valid-vs-reliable-metrics) — and nobody had checked.
 
@@ -40,7 +40,7 @@ Two runs on live AWS, one day apart, both against the pinned community release `
 
 The mechanism fits in one sentence: the cache cluster rides on the stage. Delete the stage — which is what `sls remove` does — and the cluster dies with the stack, no matter who created it. Keep the service deployed and remove only the plugin, and the stage stays up while the one tool that remembered the cluster leaves your toolchain.
 
-I ran that second E2E to collect the evidence *for* the claim. It came back with the evidence against it — exit 0, no orphans, and a rewrite of my best line of copy. The same discipline that makes you distrust a [result that flatters you](https://ofriperetz.dev/articles/bias-in-measurement) is the one that makes you run the test that can defeat you, before someone else does.
+I ran that second E2E to collect the evidence _for_ the claim. It came back with the evidence against it — exit 0, no orphans, and a rewrite of my best line of copy. The same discipline that makes you distrust a [result that flatters you](https://ofriperetz.dev/articles/bias-in-measurement) is the one that makes you run the test that can defeat you, before someone else does.
 
 ## What is the re-scoped claim? {#the-re-scoped-claim}
 
@@ -62,14 +62,14 @@ I'll admit the first instinct, reading the clean run, was the other genre: quiet
 
 ## Quick reference {#quick-reference}
 
-| Question | Answer (measured 2026-05-03/04, community plugin v1.11.0) |
-| --- | --- |
-| Does `sls remove` orphan the community plugin's cache cluster? | No — CloudFormation deletes the stage and the cluster with it (31s, exit 0, no orphans) |
-| Where is the actual trap? | Remove the plugin from `plugins` and redeploy the still-running service — no plugin code runs; cluster persists `enabled: true, AVAILABLE` |
-| Is there a plugin-mediated escape (community v1.11.0)? | No — `sls caching disable` / `sls caching status` return "command not found"; manual `aws apigateway update-stage` required |
-| What does an orphaned cluster cost? | $175.20/yr at 0.5 GB up to $33,288/yr at 237 GB — per stage, per region, unflagged by AWS |
-| The safe offboarding path (`@interlace/serverless-api-gateway-caching`)? | `sls caching disable` before uninstalling; `before:remove:remove` covers `sls remove` (verified live: stack deleted in 28s, zero residuals) |
-| Reproduce it yourself | ~10 minutes, ~$0.005 — [ghost-billing-reproduction.md](https://github.com/ofri-peretz/serverless/blob/main/docs/ghost-billing-reproduction.md) |
+| Question                                                                 | Answer (measured 2026-05-03/04, community plugin v1.11.0)                                                                                      |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Does `sls remove` orphan the community plugin's cache cluster?           | No — CloudFormation deletes the stage and the cluster with it (31s, exit 0, no orphans)                                                        |
+| Where is the actual trap?                                                | Remove the plugin from `plugins` and redeploy the still-running service — no plugin code runs; cluster persists `enabled: true, AVAILABLE`     |
+| Is there a plugin-mediated escape (community v1.11.0)?                   | No — `sls caching disable` / `sls caching status` return "command not found"; manual `aws apigateway update-stage` required                    |
+| What does an orphaned cluster cost?                                      | $175.20/yr at 0.5 GB up to $33,288/yr at 237 GB — per stage, per region, unflagged by AWS                                                      |
+| The safe offboarding path (`@interlace/serverless-api-gateway-caching`)? | `sls caching disable` before uninstalling; `before:remove:remove` covers `sls remove` (verified live: stack deleted in 28s, zero residuals)    |
+| Reproduce it yourself                                                    | ~10 minutes, ~$0.005 — [ghost-billing-reproduction.md](https://github.com/ofri-peretz/serverless/blob/main/docs/ghost-billing-reproduction.md) |
 
 ---
 
@@ -96,4 +96,4 @@ Next in this arc: one step earlier in the story. Before you can re-scope a claim
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

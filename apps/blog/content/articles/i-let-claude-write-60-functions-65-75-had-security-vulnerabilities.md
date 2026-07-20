@@ -41,12 +41,12 @@ series: "AI Security Benchmark Series"
 
 ### Key Findings
 
-| Metric                  | Result                                              |
-| ----------------------- | --------------------------------------------------- |
-| **Vulnerability Rate**  | 65-75% (statistically consistent across all models) |
-| **Highest-Risk Category** | Command injection: 100% vulnerable (6/6 functions that used `exec`/`execSync`) |
-| **Worst Severity**      | 41 of 83 findings score the maximum CVSS of 9.8 (SQL/command injection, hardcoded creds, JWT algorithm) |
-| **Model Differences**   | Consistent with no model difference, but n=20/model is underpowered to prove it\* |
+| Metric                    | Result                                                                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vulnerability Rate**    | 65-75% (statistically consistent across all models)                                                                                                  |
+| **Highest-Risk Category** | Command injection: 100% vulnerable (6/6 functions that used `exec`/`execSync`)                                                                       |
+| **Worst Severity**        | The classes that reproduce today — command injection (6/6), hardcoded credentials, missing JWT algorithm pinning — all score the maximum CVSS of 9.8 |
+| **Model Differences**     | Consistent with no model difference, but n=20/model is underpowered to prove it\*                                                                    |
 
 _\*χ² = 0.640, df = 3, p > 0.05 — a small, non-significant sample-level result, not proof all models are equally insecure. The stronger evidence for "model choice doesn't matter" is the 700-function, 5-provider follow-up below, which held at 63%._
 
@@ -120,7 +120,7 @@ This question has a founding citation: [Pearce et al. (2022), "Asleep at the Key
 | Opus 4.5   | 15/20      | **75.0%** | [53.1% - 88.8%] |
 | Opus 4.6   | 13/20      | **65.0%** | [43.3% - 81.9%] |
 
-> **Statistical Note:** Confidence intervals calculated using Wilson score method (appropriate for proportions with n=20). Severity is a distribution, not a mean — averaging a 5.3 over-fetch finding with a 9.8 injection finding produces a number nobody should act on. The honest read of `results/ai-security/2026-02-06.json`: **41 of 83 findings carry the maximum [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) of 9.8** (31 SQL/query injection + 6 command injection + 2 hardcoded-credential + 2 JWT-algorithm findings), and the injection classes that dominate the count — SQL ([CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained)) and command (CWE-78) — are the ones to prioritize first.
+> **Statistical Note:** Confidence intervals calculated using Wilson score method (appropriate for proportions with n=20). Severity is a distribution, not a mean — averaging a 5.3 over-fetch finding with a 9.8 injection finding produces a number nobody should act on. The honest read of `results/ai-security/2026-02-06.json`: the findings to act on first are the ones that both reproduce against today's plugins and are worked as examples below — **command injection (6, every one of them), hardcoded credentials (2), and missing JWT algorithm pinning (2), all at the maximum [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) of 9.8**. The run's raw count says 41 of 83 findings hit 9.8, but 31 of those are SQL/query-injection hits ([CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained)) from a rule whose current release no longer fires on these patterns (see [Limitations](#limitations--future-work)) — so I lead with the ten that stand today, not the forty-one that made my first draft's headline.
 
 ### Per-Category Breakdown
 
@@ -128,23 +128,21 @@ _(60-fn subset — core tables in this section are the frozen 3-model, 20-prompt
 
 Not all security domains fail equally. Each of the 5 domains has 12 functions in the 60-function run (4 prompts × 3 models) — but the denominators below are narrower than 12 where a "vulnerable" verdict only applies to the subset of functions that actually exercised the risky API (e.g., only some Command-domain prompts call `exec`/`execSync` at all; the rest are safe by construction):
 
-| Domain   | Vulnerable (of functions using the risky pattern) | Rate | Notes |
-| -------- | -------------------- | ---- | ----- |
-| **Command** | 6/6 | **100%** | Every `exec`/`execSync` call came back vulnerable |
-| **File I/O** | ~10/12 | **~83%** | Path traversal survived remediation more than any other class |
-| **Database** | ~8/12 | **~67%** | SQL injection + `SELECT *` + hardcoded credentials |
-| **Auth** | ~5/8 | **~63%** | Missing JWT algorithm whitelist was the dominant finding |
-| **Config** | ~2/8 | **~25%** | Lowest rate; encryption and hashing prompts were mostly clean, though the "secure" encryption example still had a static-salt weakness no plugin in this stack catches (see [Example 7](#-example-7-suite-prompt-20-data-encryption)) |
+| Domain       | Vulnerable (of functions using the risky pattern) | Rate     | Notes                                                                                                                                                                                                                                 |
+| ------------ | ------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Command**  | 6/6                                               | **100%** | Every `exec`/`execSync` call came back vulnerable                                                                                                                                                                                     |
+| **File I/O** | ~10/12                                            | **~83%** | Path traversal survived remediation more than any other class                                                                                                                                                                         |
+| **Database** | ~8/12                                             | **~67%** | SQL injection + `SELECT *` + hardcoded credentials                                                                                                                                                                                    |
+| **Auth**     | ~5/8                                              | **~63%** | Missing JWT algorithm whitelist was the dominant finding                                                                                                                                                                              |
+| **Config**   | ~2/8                                              | **~25%** | Lowest rate; encryption and hashing prompts were mostly clean, though the "secure" encryption example still had a static-salt weakness no plugin in this stack catches (see [Example 7](#-example-7-suite-prompt-20-data-encryption)) |
 
 **The highest rate: command injection at 100%.** The lowest: config functions at ~25%. The gap matters because these categories map directly to real-world attack surface. A 100% command injection rate means every shell-execution function Claude writes without security guidance is immediately exploitable.
 
 ### Model Comparison (Chi-Squared Test)
 
-**χ² = 0.640, df = 3, p > 0.05**
+**χ² = 0.640, df = 3, p > 0.05** — the between-model differences are not statistically significant; the 65-75% spread is sampling variance, not a ranking. The full telling of this exact χ² — how it's derived from the four per-model counts, and why a null result deserved publishing at all — lives in [the p-value canonical](https://ofriperetz.dev/articles/statistical-significance-p-value); here, only the result matters: **Opus 4.6, the newest model, scores identically to Sonnet 4.5 at 65%.** Newer, more capable models don't automatically produce more secure code.
 
-This statistic is _computed from the four per-model counts above_ (14/13/15/13 vulnerable of 20) — it's a derived value, not a field stored in the JSON, so you can recompute it yourself from a 2×4 contingency table. The differences between models are **not [statistically significant](https://ofriperetz.dev/articles/statistical-significance-p-value)**. All four models perform similarly poorly on security—the 65-75% range is within sampling variance. Notably, **Opus 4.6 (the newest model) scores identically to Sonnet 4.5** at 65%. This is an important finding: newer, more capable models don't automatically produce more secure code. The vulnerability rate is a _property of AI code generation_, not a specific model flaw.
-
-And it isn't a Claude problem. When I re-ran the same methodology across **5 models from different providers on 700 functions**, the aggregate insecure rate held at **63%** — the band barely moves whether you're paying for Claude, GPT, or Gemini. If you only remember one number from this article, make it that one: [the leaderboard you'd build to pick the "most secure" model is statistically noise](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), and [the aggregate hides which _domains_ are actually on fire](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). The lever was never which model you pick.
+And it isn't a Claude problem. When I re-ran the same methodology across **5 models from different providers on 700 functions**, the aggregate insecure rate held at **63%** — the band barely moves whether you're paying for Claude, GPT, or Gemini. If you only remember one number from this article, make it that one: [the leaderboard you'd build to pick the "most secure" model is statistically noise](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), and [the aggregate hides which _domains_ are actually on fire](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
 
 If two-in-three of your AI-generated functions ship a vulnerability regardless of which model you pay for, the lever isn't model choice — it's a check that runs on every diff. Every single finding in this benchmark — across all four models, both the 60-function run and the Opus 4.6 follow-up — came from these four plugins; the whole config is copy-paste:
 
@@ -176,7 +174,7 @@ The rest of this article is what happens when you feed that linter's output _bac
 
 ## Why Each Vulnerability Survived: The AI Failure Modes
 
-The 65-75% rate isn't random noise. Each vulnerability category has a specific, predictable AI failure mode — a pattern Claude generates by default because it is overwhelmingly common in training data, looks plausible in isolation, and exposes an attack surface that TypeScript's type system is blind to.
+The 65-75% rate has structure. Each vulnerability category has a specific, predictable AI failure mode — a pattern Claude generates by default because it is overwhelmingly common in training data, looks plausible in isolation, and exposes an attack surface that TypeScript's type system is blind to.
 
 ### Injection (SQL / Command): The "Readable Code" Trap
 
@@ -246,17 +244,17 @@ None of these are "the model didn't understand security." Each is the model prod
 
 _Occurrences below are the de-duplicated `byRule` counts from the published `results/ai-security/2026-02-06.json` run (60 functions, 3 models — Haiku 3.5, Sonnet 4.5, Opus 4.5). Each number is the value stored under `models.<model>.byRule[rule].count` in that one file, summed across the three models. These seven rows account for 74 of the run's findings; a long tail of one- and two-off rules (unchecked-loop-condition, unsafe-deserialization, XXE, object-injection, insecure-comparison, prefer-pool-query, sensitive-payload) makes up the rest, reconciling to the file's recorded **83 total vulnerabilities**._
 
-| Vulnerability                          | Rule that fired                                                | CWE     | CVSS | Occurrences |
-| -------------------------------------- | -------------------------------------------------------------- | ------- | ---- | ----------- |
-| SQL / Query Injection (template-built) | `secure-coding/no-graphql-injection`                           | CWE-89  | 9.8  | 31          |
+| Vulnerability                          | Rule that fired                                                                      | CWE     | CVSS | Occurrences |
+| -------------------------------------- | ------------------------------------------------------------------------------------ | ------- | ---- | ----------- |
+| SQL / Query Injection (template-built) | `secure-coding/no-graphql-injection`                                                 | CWE-89  | 9.8  | 31          |
 | Path Traversal                         | `node-security/detect-non-literal-fs-filename` (22) + `no-arbitrary-file-access` (6) | CWE-22  | 7.5  | 28          |
-| Command Injection                      | `node-security/detect-child-process`                           | CWE-78  | 9.8  | 6           |
-| SELECT \* Over-fetch                   | `pg/no-select-all`                                             | CWE-200 | 5.3  | 3           |
-| Sensitive Info Exposure                | `secure-coding/no-sensitive-data-exposure`                    | CWE-200 | 5.3  | 2           |
-| Hardcoded Credentials                  | `pg/no-hardcoded-credentials`                                 | CWE-798 | 9.8  | 2           |
-| Missing JWT Algorithm Whitelist        | `jwt/require-algorithm-whitelist`                             | CWE-347 | 9.8  | 2           |
+| Command Injection                      | `node-security/detect-child-process`                                                 | CWE-78  | 9.8  | 6           |
+| SELECT \* Over-fetch                   | `pg/no-select-all`                                                                   | CWE-200 | 5.3  | 3           |
+| Sensitive Info Exposure                | `secure-coding/no-sensitive-data-exposure`                                           | CWE-200 | 5.3  | 2           |
+| Hardcoded Credentials                  | `pg/no-hardcoded-credentials`                                                        | CWE-798 | 9.8  | 2           |
+| Missing JWT Algorithm Whitelist        | `jwt/require-algorithm-whitelist`                                                    | CWE-347 | 9.8  | 2           |
 
-> **On naming:** the CWE-89 findings are query-injection risks — string-built SQL/queries flagged at the time of the original run through a template-literal pattern. The rule that fired (`secure-coding/no-graphql-injection`, see [Limitations](#limitations--future-work)) was, at the time of this benchmark, broader than its name suggests, and an earlier draft of this table mislabeled the findings "Template Injection." The CWE is correct (CWE-89 is _Improper Neutralization of Special Elements used in an SQL Command_); the category name now matches it. Genuine server-side template injection would be CWE-1336. **Re-verifying against the current package** (`eslint-plugin-secure-coding@3.3.1`, post the FP-reduction pass documented in its changelog): the rule as it ships today keys specifically on GraphQL-shaped syntax (`query`/`mutation`/`fragment` keywords, nested braces) and does **not** fire on the plain parameterized or template-literal SQL shown in this article's own examples — I confirmed this by running the current rule against this article's exact `getUserById` and `searchUsers` patterns and got zero findings. The 31 hits in the frozen `2026-02-06.json` reflect the rule's behavior *at the time of that run*; they are not reproducible against the current published version, which is a genuine limitation of "reproduce this research" for a live npm dependency. **On scale:** an earlier draft of this table showed an inflated 50/40/12 split — those numbers came from a _different_, much larger run (700 functions × 7 iterations across 5 providers) and didn't trace to the file cited here. The counts above are the actual 60-function values; the 700-function domain breakdown lives in [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
+> **On naming:** the CWE-89 findings are query-injection risks — string-built SQL/queries flagged at the time of the original run through a template-literal pattern. The rule that fired (`secure-coding/no-graphql-injection`, see [Limitations](#limitations--future-work)) was, at the time of this benchmark, broader than its name suggests, and an earlier draft of this table mislabeled the findings "Template Injection." The CWE is correct (CWE-89 is _Improper Neutralization of Special Elements used in an SQL Command_); the category name now matches it. Genuine server-side template injection would be CWE-1336. **Re-verifying against the current package** (`eslint-plugin-secure-coding@3.3.1`, post the FP-reduction pass documented in its changelog): the rule as it ships today keys specifically on GraphQL-shaped syntax (`query`/`mutation`/`fragment` keywords, nested braces) and does **not** fire on the plain parameterized or template-literal SQL shown in this article's own examples — I confirmed this by running the current rule against this article's exact `getUserById` and `searchUsers` patterns and got zero findings. The 31 hits in the frozen `2026-02-06.json` reflect the rule's behavior _at the time of that run_; they are not reproducible against the current published version, which is a genuine limitation of "reproduce this research" for a live npm dependency. **On scale:** an earlier draft of this table showed an inflated 50/40/12 split — those numbers came from a _different_, much larger run (700 functions × 7 iterations across 5 providers) and didn't trace to the file cited here. The counts above are the actual 60-function values; the 700-function domain breakdown lives in [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
 
 ### OWASP Top 10 Mapping
 
@@ -326,7 +324,7 @@ function verifyToken(token) {
 
 **Why this survives code review:** the two-argument `jwt.verify(token, secret)` call is the exact signature shown in the `jsonwebtoken` README's first example. A reviewer sees "a secret is passed, `.verify()` is called" and stops — that pattern-matches "this looks like every other JWT check I've approved." Nobody re-reads it for the third, optional argument that never got typed.
 
-Without an `algorithms` whitelist, `jwt.verify` doesn't read the `alg` claim off the token — it derives the accepted algorithm set from what the *key argument* looks like at runtime. Against this exact code (a plain-string secret from `JWT_SECRET`), that derivation happens to land on HMAC-only, which is why neither the classic "flip `alg` to `none`" attack (throws `jwt signature is required`) nor a naive RS256-confusion attempt (a PEM-format string in that same variable would flip the derived default to asymmetric algorithms instead, rejecting the confused token) works against it today. The real risk is the derivation itself, not this one call site: it's implicit, string-match-based, has already needed two separate CVE fixes (2015, 2022) to close prior gaps in exactly this logic, and gives a reviewer no way to know from the call site which behavior the running version actually has. Pin `algorithms: ['HS256']` and the call stops depending on runtime key-shape inference — no CVE history to inherit, no library-version archaeology required to know it's safe. This is the [JWT algorithm-confusion attack](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) in its general form — one missing argument, and the safety net is a heuristic instead of a rule.
+Without an `algorithms` whitelist, `jwt.verify` doesn't read the `alg` claim off the token — it derives the accepted algorithm set from what the _key argument_ looks like at runtime. Against this exact code (a plain-string secret from `JWT_SECRET`), that derivation happens to land on HMAC-only, which is why neither the classic "flip `alg` to `none`" attack (throws `jwt signature is required`) nor a naive RS256-confusion attempt (a PEM-format string in that same variable would flip the derived default to asymmetric algorithms instead, rejecting the confused token) works against it today. The real risk is the derivation itself, not this one call site: it's implicit, string-match-based, has already needed two separate CVE fixes (2015, 2022) to close prior gaps in exactly this logic, and gives a reviewer no way to know from the call site which behavior the running version actually has. Pin `algorithms: ['HS256']` and the call stops depending on runtime key-shape inference — no CVE history to inherit, no library-version archaeology required to know it's safe. This is the [JWT algorithm-confusion attack](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) in its general form — one missing argument, and the safety net is a heuristic instead of a rule.
 
 **After Remediation (100% Fixed):**
 
@@ -469,7 +467,7 @@ async function deleteUser(id) {
 function encryptSensitiveData(plaintext) {
   const algorithm = "aes-256-cbc";
   const key = crypto.scryptSync(process.env.ENCRYPTION_KEY, "salt", 32);
-  //                                                          ❌ static salt — defeats scrypt's key-stretching guarantee
+  //                                                          ❌ static salt — derives the same key every time (preventing that is the salt's whole job)
   const iv = crypto.randomBytes(16); // ✅ Random IV, correctly generated per call
 
   const cipher = crypto.createCipheriv(algorithm, key, iv);
@@ -481,7 +479,7 @@ function encryptSensitiveData(plaintext) {
 }
 ```
 
-**Why this one matters more than the others:** this function passed every rule in all four plugins — no `no-graphql-injection`, no `detect-child-process`, nothing. It's the clean run in this benchmark's own data. But a hardcoded literal `"salt"` string means every encryption with the same `ENCRYPTION_KEY` derives the *same* AES key regardless of context, and unauthenticated `aes-256-cbc` lets an attacker flip ciphertext bits without detection. The fix is `crypto.randomBytes()` for the salt (stored alongside the ciphertext, the same way the IV already is) and `aes-256-gcm` instead of `aes-256-cbc` for built-in authentication. None of my four plugins target crypto misuse — the honest limitation is that this benchmark's install block has a blind spot exactly where a reader might assume "no findings" means "secure."
+**Why this one matters more than the others:** this function passed every rule in all four plugins — no `no-graphql-injection`, no `detect-child-process`, nothing. It's the clean run in this benchmark's own data. But a hardcoded literal `"salt"` string means every encryption with the same `ENCRYPTION_KEY` derives the _same_ AES key regardless of context — to be precise, scrypt's CPU/memory cost survives intact; what dies is the uniqueness the salt exists to provide, so the derivation work becomes precomputable and reusable across every deployment that copied this snippet. And unauthenticated `aes-256-cbc` lets an attacker flip ciphertext bits without detection. The fix is `crypto.randomBytes()` for the salt (stored alongside the ciphertext, the same way the IV already is) and `aes-256-gcm` instead of `aes-256-cbc` for built-in authentication. None of my four plugins target crypto misuse — the honest limitation is that this benchmark's install block has a blind spot exactly where a reader might assume "no findings" means "secure."
 
 ---
 
@@ -508,12 +506,12 @@ Improvement: ~2x reduction
 
 The [install + config block is above](#phase-1-initial-results), at the point where the pain shows up. Here's which plugin caught which class of finding, with the exact rule-firing counts from the cited `2026-02-06.json` run (60 functions), so you can map it to your own stack:
 
-| Plugin                        | Rule that fired (60-fn run)                                | Catches                                                              | CWE             |
-| ----------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------- | --------------- |
-| `eslint-plugin-secure-coding` | `no-graphql-injection` (31×), `no-sensitive-data-exposure` (2×) | string-built SQL/queries (top finding), sensitive-info exposure | CWE-89, CWE-200 |
-| `eslint-plugin-pg`            | `no-select-all` (3×), `no-hardcoded-credentials` (2×)      | `SELECT *` over-fetch, hardcoded DB password in client config       | CWE-200, CWE-798 |
-| `eslint-plugin-jwt`           | `require-algorithm-whitelist` (2×)                         | `jwt.verify` with no `algorithms` whitelist                          | CWE-347         |
-| `eslint-plugin-node-security` | `detect-non-literal-fs-filename` (22×), `no-arbitrary-file-access` (6×), `detect-child-process` (6×) | path traversal in `fs`, `child_process` command injection | CWE-22, CWE-78  |
+| Plugin                        | Rule that fired (60-fn run)                                                                          | Catches                                                         | CWE              |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------- |
+| `eslint-plugin-secure-coding` | `no-graphql-injection` (31×), `no-sensitive-data-exposure` (2×)                                      | string-built SQL/queries (top finding), sensitive-info exposure | CWE-89, CWE-200  |
+| `eslint-plugin-pg`            | `no-select-all` (3×), `no-hardcoded-credentials` (2×)                                                | `SELECT *` over-fetch, hardcoded DB password in client config   | CWE-200, CWE-798 |
+| `eslint-plugin-jwt`           | `require-algorithm-whitelist` (2×)                                                                   | `jwt.verify` with no `algorithms` whitelist                     | CWE-347          |
+| `eslint-plugin-node-security` | `detect-non-literal-fs-filename` (22×), `no-arbitrary-file-access` (6×), `detect-child-process` (6×) | path traversal in `fs`, `child_process` command injection       | CWE-22, CWE-78   |
 
 These are the rules that produced the findings discussed in this article. The Opus 4.6 follow-up run (`antigravity-opus-4.6-2026-02-08.json`) tripped a few more rules from the _same four plugins_ — `pg/no-unsafe-query`, `node-security/no-ssrf`, `secure-coding/detect-object-injection`, `jwt/no-sensitive-payload` — which is the point: the four-plugin install is the unit of coverage, not any single rule. Full rule documentation lives at [eslint.interlace.tools](https://eslint.interlace.tools). If you're auditing a codebase rather than wiring CI, the same plugins drive [the 30-minute static-analysis onboarding protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
@@ -521,7 +519,7 @@ These are the rules that produced the findings discussed in this article. The Op
 
 ## Reproducing This Research
 
-A senior engineer should be able to run the exact same test and get the same numbers. Here is everything needed to replicate the 60-function original run:
+A senior engineer should be able to run the exact same test and get the same numbers. The full experiment cost one Claude Pro subscription: $20 for 80 functions, 55 of them vulnerable — about 36 cents per vulnerability, which is the best price I have ever paid for security training data. Here is everything needed to replicate the 60-function original run:
 
 ### Prerequisites
 
@@ -540,6 +538,7 @@ npm run benchmark:ai-security
 ```
 
 The benchmark runner:
+
 1. Sends each of the 20 prompts to the specified model via `claude --print --no-session-persistence`
 2. Saves the raw generated code to `benchmarks/ai-security/generated/<model>/<prompt-id>.js`
 3. Runs ESLint with all four security plugins against each file
@@ -579,7 +578,7 @@ This benchmark treats each prompt as an independent Bernoulli trial (n=20 per mo
 - **Chi-squared tests** for cross-model comparison
 - **Significance testing** for remediation effectiveness
 
-**Result:** Model differences are **not statistically significant** (χ² = 0.640, df = 3, p > 0.05), confirming the 65-75% vulnerability rate is a property of AI code generation itself, not model-specific. This holds even with the addition of Opus 4.6.
+**Result:** no significant model differences (χ² = 0.640, df = 3, p > 0.05 — [discussed above](#model-comparison-chi-squared-test)), and that holds with Opus 4.6 included.
 
 ### Current Limitations
 
@@ -599,7 +598,7 @@ This benchmark treats each prompt as an independent Bernoulli trial (n=20 per mo
 
 ## What This Means for Organizations
 
-Security exposure is a matter of probability, not absolutes. There is no bulletproof solution—only risk reduction. The question isn't _if_ vulnerabilities exist in your codebase, but _how many_ and _how quickly_ they're caught.
+Security exposure is a probability you manage. The working questions are _how many_ vulnerabilities ship and _how quickly_ they're caught.
 
 > **Read this section as an illustrative model, not a measurement.** The only numbers I _measured_ are the per-model rates (n=20 per model, 80 functions total) and the ~50% remediation rate. Everything below — lines-per-dev, functions-per-line, team sizes, the dollar figure — is a back-of-envelope extrapolation built on stated assumptions, and small changes in any input swing the totals a lot. The point isn't "your 100-dev org will ship exactly 48,000 vulnerabilities"; it's that a 65-75% per-function [base rate](https://ofriperetz.dev/articles/base-rate-problem-explained), compounded over any realistic AI-assisted output volume, is a number you cannot afford to leave un-checked. Plug in your own org's real throughput before quoting any figure here.
 
@@ -623,7 +622,7 @@ Let's model the impact based on our benchmark data.
 | **Monthly vulnerability accumulation** | ~400          | ~1,200        | ~4,000         |
 | **Annual exposure**                    | 4,800         | 14,400        | 48,000         |
 
-Without automated security tooling, vulnerable functions ship to production at the baseline rate. With 41 of 83 findings sitting at the maximum CVSS of 9.8 (SQL and command injection dominate), a large share of that annual exposure represents functions where a single exploit means complete system compromise, not a minor info leak.
+Without automated security tooling, vulnerable functions ship to production at the baseline rate. With every command-injection and hardcoded-credential finding in this run sitting at the maximum CVSS of 9.8, a meaningful share of that annual exposure is functions where a single exploit means complete system compromise, not a minor info leak.
 
 ### Two Tooling Postures on Top of That Baseline
 
@@ -697,21 +696,25 @@ The "vibe coding" era is here. But vibe coding without static analysis is a secu
 
 **Your turn:** go pull the last function an AI assistant wrote for you — the one you skimmed because the happy path looked clean, the one you'd estimate is fine but have never actually run a linter against. Is the SQL parameterized _and_ the column list scoped? Does `jwt.verify` pin an algorithm? Is there a secret hiding in a config object three lines above the part you actually read? Drop the one that surprised you in the comments — I want to know which class of bug your model reaches for most. Mine is path traversal; it survived remediation more than any other. What's yours?
 
+And once you've run the linter and let the model fix what it found, the next question writes itself: did those fixes actually converge, or did they quietly introduce new bugs? That's what [Part 2, The AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more), measures — I fed the remediation loop back on itself and counted what came out.
+
 ---
 
 📦 [Full Benchmark Results (JSON)](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/results/ai-security)
 📖 [All Generated Code Samples](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/benchmarks/ai-security/generated)
 🔬 [Benchmark Runner Source](https://github.com/ofri-peretz/eslint-benchmark-suite/tree/main/benchmarks/ai-security)
-📦 [All Interlace Plugins on npm](https://www.npmjs.com/~ofri-peretz)
-
-**[⭐ Star on GitHub](https://github.com/ofri-peretz/eslint)**
 
 ---
 
-**The Interlace ESLint Ecosystem**
-332+ security rules. 18 specialized plugins. 100% OWASP Top 10 coverage.
+### The one install this article earns
 
-## [Explore the Documentation](https://eslint.interlace.tools)
+The four-plugin config [above](#phase-1-initial-results) guards the code your AI _writes_. If you're also shipping AI _features_ — LLM calls, agents, the Vercel AI SDK — that's a newer attack surface with even less training-data precedent behind it, and it gets its own linter:
+
+```bash
+npm install -D eslint-plugin-vercel-ai-security
+```
+
+It maps its rules to the OWASP LLM Top 10 the way the four above map to the classic one. Full rule docs at [eslint.interlace.tools](https://eslint.interlace.tools) — and the benchmark repo is public, so check my work before trusting any of these numbers.
 
 ---
 
@@ -728,7 +731,7 @@ The "vibe coding" era is here. But vibe coding without static analysis is a secu
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

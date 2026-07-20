@@ -117,8 +117,12 @@ docker run -d --name pg-leak -e POSTGRES_PASSWORD=demo -e POSTGRES_DB=demo \
 // leak.js — the exact bug, in a loop. pool max = 10.
 const { Pool } = require("pg");
 const pool = new Pool({
-  host: "localhost", port: 55432, user: "postgres",
-  password: "demo", database: "demo", max: 10,
+  host: "localhost",
+  port: 55432,
+  user: "postgres",
+  password: "demo",
+  database: "demo",
+  max: 10,
   connectionTimeoutMillis: 0, // default: wait forever (no timeout)
 });
 
@@ -398,4 +402,4 @@ Have you ever traced a production incident to a resource leak that passed all yo
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
