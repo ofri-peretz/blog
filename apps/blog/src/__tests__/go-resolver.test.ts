@@ -618,13 +618,25 @@ describe("GET /go/[...key] (route wrapper)", () => {
     expect(warnSpy).toHaveBeenCalled();
   });
 
-  it("falls back to the public project key when the env key is empty/unset", async () => {
+  it("falls back to the public project key when the env key is unset", async () => {
     delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
     const res = await call("/go/my-slug");
     expect(res.status).toBe(302);
     await flushAfter();
     // Server routes read env at runtime, and NEXT_PUBLIC_POSTHOG_KEY has shipped
     // empty — so the capture must still fire, using the built-in public key.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.api_key).toMatch(/^phc_/);
+  });
+
+  it("falls back to the public project key when the env key is the empty string", async () => {
+    // This is the EXACT production regression: the var was present but "" in the
+    // deployed runtime env. `??` would keep "" (broken); `||` falls back.
+    process.env.NEXT_PUBLIC_POSTHOG_KEY = "";
+    const res = await call("/go/my-slug");
+    expect(res.status).toBe(302);
+    await flushAfter();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent.api_key).toMatch(/^phc_/);
