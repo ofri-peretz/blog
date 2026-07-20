@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/142076-weekly-downloads-zero-releases-since-2021-is-the-niche-defended-4hko"
+devto_id: 4183799
 title: "142,076 Weekly Downloads. Zero Releases Since 2021. Is the Niche Defended?"
 description: "A Serverless plugin with 142k weekly downloads last shipped a release in 2021. Downloads said taken; the registry said abandoned; the platform's roadmap said something else entirely. The incumbent map — weekly downloads × years since last publish × open-issue decay — is how I decide what to build next, including the pick I shipped against two months before the fact-check caught up with me."
 slug: "abandoned-incumbent-map"
