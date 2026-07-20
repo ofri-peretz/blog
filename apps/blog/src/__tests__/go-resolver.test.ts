@@ -618,12 +618,16 @@ describe("GET /go/[...key] (route wrapper)", () => {
     expect(warnSpy).toHaveBeenCalled();
   });
 
-  it("skips the capture entirely when no PostHog key is configured", async () => {
+  it("falls back to the public project key when the env key is empty/unset", async () => {
     delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
     const res = await call("/go/my-slug");
     expect(res.status).toBe(302);
     await flushAfter();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // Server routes read env at runtime, and NEXT_PUBLIC_POSTHOG_KEY has shipped
+    // empty — so the capture must still fire, using the built-in public key.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.api_key).toMatch(/^phc_/);
   });
 
   it("treats missing params.key as an empty key → home fallback", async () => {
