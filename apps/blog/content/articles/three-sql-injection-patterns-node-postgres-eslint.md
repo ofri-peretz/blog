@@ -28,25 +28,25 @@ series: "Postgres Security Protocol"
 
 Three SQL injection patterns in node-postgres that code reviews consistently miss — and the ESLint rules that don't.
 
-> **AI Security Benchmark Series** — [Part 1: 80 functions, 65–75% vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · [Part 2: the Hydra problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) · [Part 3: 5 models ranked](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4: the domain breakdown](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) · **Applied (you are here): the database domain, weaponized → guarded** → next up, the [full node-postgres failure surface](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern).
-
-TypeScript passed it clean. The code reviewer approved it. It shipped to production. Three months later, a penetration tester sent a report.
+TypeScript passed it clean. The code reviewer approved it. It shipped to production. Three months later, a penetration tester sent a report — one line, one afternoon, the whole `orders` table.
 
 The vulnerable line:
 
 ```javascript
 const result = await pool.query(
-  "SELECT * FROM orders WHERE user_id = " + req.query.userId
+  "SELECT * FROM orders WHERE user_id = " + req.query.userId,
 );
 ```
 
-SQL injection has been a known problem for decades. [OWASP A03:2021](https://ofriperetz.dev/articles/owasp-top-10-explained). Parameterized queries are widely understood. And it still ships — not because developers don't know, but because the three structural forms that actually appear in node-postgres codebases look harmless in code review, one line at a time. ([CWE-89](https://cwe.mitre.org/data/definitions/89.html))
+> **AI Security Benchmark Series** — [Part 1: 80 functions, 65–75% vulnerable](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · [Part 2: the Hydra problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more) · [Part 3: 5 models ranked](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4: the domain breakdown](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) · **Applied (you are here): the database domain, weaponized → guarded** → next up, the [full node-postgres failure surface](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern).
+
+SQL injection has been a known problem for decades — it's [CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained) in the taxonomy ([MITRE's definition](https://cwe.mitre.org/data/definitions/89.html)), [OWASP A03:2021](https://ofriperetz.dev/articles/owasp-top-10-explained) on the list. Parameterized queries are widely understood. And it still ships — not because developers don't know, but because the three structural forms that actually appear in node-postgres codebases look harmless in code review, one line at a time.
 
 In our audit of Node.js postgres codebases, **73% had at least one of these three patterns in production code.** Only 2 of the 3 patterns are caught by standard security linters. The third one — dynamic column and table name injection — almost never is. That gap is exactly why it keeps shipping.
 
-And now there's a second author on the team that reaches for those exact three forms by default: the coding assistant. Trained on the same corpus that produced this bug for twenty years, it regenerates it on demand — cleaner-looking, which makes it harder to catch. I [benchmarked five Claude and Gemini models across 700 generated functions](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong): database queries were the worst security domain for *every* model, topping out at a **96% vulnerable-generation rate** for the most capable one. The line above is what that 96% looks like when a human ships it.
+And now there's a second author on the team that reaches for those exact three forms by default: the coding assistant. Trained on the same corpus that produced this bug for twenty years, it regenerates it on demand — cleaner-looking, which makes it harder to catch. Earlier this year I [benchmarked five Claude and Gemini models across 700 generated functions](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong): database queries were the worst security domain for _every_ model, topping out at a **96% vulnerable-generation rate** for the most capable one. The line above is what that 96% looks like when a human ships it.
 
-Here are the three patterns, why each survives review for a *different* reason, which ESLint rules catch them — and where no rule yet exists.
+Here are the three patterns, why each survives review for a _different_ reason, which ESLint rules catch them — and where no rule yet exists.
 
 ---
 
@@ -58,9 +58,11 @@ A pg-specific rule knows three things a generic tool doesn't:
 
 1. **The API surface.** Only fires on `.query()` calls — `pool.query()`, `client.query()`. Not on other string operations that happen to mention SQL keywords.
 
-2. **The parameterization contract.** pg uses `$1, $2` positional placeholders, with values passed as the second argument array. The rule decides on the *shape of the first argument*: a plain string literal (`"SELECT ... WHERE id = $1"`) is structurally safe, while a `+` concatenation or a `${...}` template literal in that first slot is the injection surface. A corollary: `client.query("SELECT..." + x, [])` is still flagged — not because the array is empty, but because the `+` in the first argument is unsafe no matter what follows it.
+2. **The parameterization contract.** pg uses `$1, $2` positional placeholders, with values passed as the second argument array. The rule decides on the _shape of the first argument_: a plain string literal (`"SELECT ... WHERE id = $1"`) is structurally safe, while a `+` concatenation or a `${...}` template literal in that first slot is the injection surface. A corollary: `client.query("SELECT..." + x, [])` is still flagged — not because the array is empty, but because the `+` in the first argument is unsafe no matter what follows it.
 
 3. **Cross-line assignment taint.** When a SQL string is built via concatenation and stored in a variable before `.query()`, the variable is marked tainted. The rule tracks that [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) across the assignment and fires at the `.query()` call.
+
+Note the boundary, because it's the whole trick: the rule follows a tainted string across assignments _inside_ a function, but it never chases `req.query.userId` back up into the route handler that created it. ESLint is intraprocedural — and here that doesn't matter. Code review misses these lines precisely because judging them requires the cross-function data-flow nobody holds in their head; the rule sidesteps all of it by distrusting the _shape_ of the first argument to `.query()` — any `+`, any `${...}` — no matter where the operands came from. "Parameterize when the value is tainted" needs the whole call graph. "Parameterize, period" needs only the one line.
 
 This is why the rule's spec classifies Patterns 1 and 2 correctly. Its [behavioral test suite](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-pg/src/rules/no-unsafe-query/index.spec.ts) holds 8 valid cases that stay silent (parameterized `$1` + values array, `pg-format`, safe-init variables) and 7 invalid cases that fire (direct concatenation, template literals, and cross-line taint — including `+=` augmented assignment).
 
@@ -73,7 +75,7 @@ Pattern 3 is a different story. More on that below.
 ```javascript
 // ❌ Flagged — string + user input in a .query() call
 const result = await client.query(
-  "SELECT * FROM users WHERE email = '" + email + "'"
+  "SELECT * FROM users WHERE email = '" + email + "'",
 );
 ```
 
@@ -81,10 +83,9 @@ const result = await client.query(
 
 ```javascript
 // ✅ Parameterized — rule stays silent
-const result = await client.query(
-  "SELECT * FROM users WHERE email = $1",
-  [email]
-);
+const result = await client.query("SELECT * FROM users WHERE email = $1", [
+  email,
+]);
 ```
 
 The `$1` placeholder + second-argument values array is pg's escaping contract. The database driver handles quoting and type coercion. This pattern cannot be accidentally broken.
@@ -98,11 +99,11 @@ The `$1` placeholder + second-argument values array is pg's escaping contract. T
 ```javascript
 // ❌ Flagged — looks safe, isn't
 const result = await pool.query(
-  `SELECT * FROM orders WHERE user_id = ${userId} AND status = '${status}'`
+  `SELECT * FROM orders WHERE user_id = ${userId} AND status = '${status}'`,
 );
 ```
 
-**Why it survives code review:** This one is especially dangerous because it *looks* like the safe version. Tagged template literals — `sql\`SELECT ... WHERE id = ${userId}\`` — are genuinely safe when the library handles escaping. This bare template literal isn't tagged. `${userId}` is vanilla JavaScript string interpolation: the variable lands directly in the SQL string, unescaped.
+**Why it survives code review:** This one is especially dangerous because it _looks_ like the safe version. Tagged template literals — `sql\`SELECT ... WHERE id = ${userId}\`` — are genuinely safe when the library handles escaping. This bare template literal isn't tagged. `${userId}` is vanilla JavaScript string interpolation: the variable lands directly in the SQL string, unescaped.
 
 > Template literal SQL isn't parameterized just because it uses backticks. If the variable isn't `$1`, it's injectable.
 
@@ -112,7 +113,7 @@ The reviewer sees backticks and a clean, modern-looking expression. Their patter
 // ✅ Parameterized — stays silent
 const result = await pool.query(
   "SELECT * FROM orders WHERE user_id = $1 AND status = $2",
-  [userId, status]
+  [userId, status],
 );
 ```
 
@@ -131,27 +132,27 @@ This is the pattern most teams don't think of as SQL injection at all.
 async function getReport(tableName, sortColumn) {
   const result = await client.query(
     `SELECT ${sortColumn} FROM ${tableName} WHERE tenant_id = $1`,
-    [tenantId]
+    [tenantId],
   );
   return result.rows;
 }
 ```
 
-Notice: this query *uses* parameterization — `$1` is correct for the value. But `tableName` and `sortColumn` are identifiers, not values. PostgreSQL doesn't allow you to parameterize identifiers with `$1`. Column names and table names can't be passed as bound parameters; they have to be embedded in the query string itself. So developers embed them.
+Notice: this query _uses_ parameterization — `$1` is correct for the value. But `tableName` and `sortColumn` are identifiers, not values. PostgreSQL doesn't allow you to parameterize identifiers with `$1`. Column names and table names can't be passed as bound parameters; they have to be embedded in the query string itself. So developers embed them.
 
 **Why it survives code review:** The code is usually classified as "internal admin code." The table name comes from a config, an enum, an internal API — not from `req.body`. The reviewer's threat model says: "this is backend-to-backend, not user-facing." That threat model is often wrong. The sort column, the table selector, the report type — these frequently trace back to a UI dropdown or an API parameter further up the call stack, and that path is invisible at the database layer.
 
 The correct fix uses `pg-format` for identifier quoting:
 
 ```javascript
-import { format } from "pg-format";
+import format from "pg-format"; // pg-format is a CommonJS default export — not a named import
 
 async function getReport(tableName, sortColumn) {
   // pg-format's %I identifier quoting prevents injection
   const sql = format(
     "SELECT %I FROM %I WHERE tenant_id = $1",
     sortColumn,
-    tableName
+    tableName,
   );
   const result = await client.query(sql, [tenantId]);
   return result.rows;
@@ -166,23 +167,23 @@ async function getReport(tableName, sortColumn) {
 
 These three patterns predate AI. They got harder the moment a coding assistant joined the team — because the assistant was trained on the same corpus that produced them.
 
-Ask Claude, Gemini, or Copilot to "write a function that fetches orders for a user id from Postgres," and watch which form it reaches for. In my runs it lands on Pattern 1 or Pattern 2 more often than parameterized `$1` — not because the model doesn't know parameterization, but because string-built SQL is the statistically dominant shape in its training data, and the prompt asked for a query, not for a *safe* query. Parameterization is a constraint. The prompt described behavior, so the model fulfilled behavior.
+Ask Claude, Gemini, or Copilot to "write a function that fetches orders for a user id from Postgres," and watch which form it reaches for. In my runs it lands on Pattern 1 or Pattern 2 more often than parameterized `$1` — not because the model doesn't know parameterization, but because string-built SQL is the statistically dominant shape in its training data, and the prompt asked for a query, not for a _safe_ query. Parameterization is a constraint. The prompt described behavior, so the model fulfilled behavior.
 
 Ask it to write a "flexible report query with configurable columns" and it will almost certainly produce Pattern 3 — and it will use `$1` for the values, which makes it look correct.
 
 This is the same negative-space failure I measured at scale. When I [benchmarked five Claude and Gemini models across 700 generated functions and 332 ESLint security rules](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), database queries were the single worst domain — and `pg/no-unsafe-query`, the rule in this article, was one of the rules doing the flagging:
 
 | Model (database domain) | Vulnerable generation rate |
-| --- | --- |
-| Claude Haiku 4.5 | 39% |
-| Claude Opus 4.6 | 61% |
-| Claude Sonnet 4.5 | 71% |
-| Gemini 2.5 Flash | 75% |
-| Gemini 2.5 Pro | **96%** |
+| ----------------------- | -------------------------- |
+| Claude Haiku 4.5        | 39%                        |
+| Claude Opus 4.6         | 61%                        |
+| Claude Sonnet 4.5       | 71%                        |
+| Gemini 2.5 Flash        | 75%                        |
+| Gemini 2.5 Pro          | **96%**                    |
 
-Read that bottom row again. The model with the *deepest* model of Postgres — connection pooling, env-var config, column enumeration — generated unsafe database code 96% of the time, because [elaborate, senior-looking code is exactly where the parameterization bug hides](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). The model that "won" generation (Haiku, 39%) won by writing *simple, parameterized* queries. Competence-signaling is not safety.
+Read that bottom row again. The model with the _deepest_ model of Postgres — connection pooling, env-var config, column enumeration — generated unsafe database code 96% of the time, because [elaborate, senior-looking code is exactly where the parameterization bug hides](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). The model that "won" generation (Haiku, 39%) won by writing _simple, parameterized_ queries. Competence-signaling is not safety.
 
-The uncomfortable part for review: AI-generated SQL looks *more* trustworthy than the human kind. It's clean, consistently formatted, and uses a tidy template literal. Pattern 2 — the template-literal form — is exactly what a reviewer skims past as "modern, readable code." The linter doesn't skim. It sees `${userId}` inside the first argument to `.query()` and fires, whether a human or a model typed it.
+The uncomfortable part for review: AI-generated SQL looks _more_ trustworthy than the human kind. It's clean, consistently formatted, and uses a tidy template literal. Pattern 2 — the template-literal form — is exactly what a reviewer skims past as "modern, readable code." The linter doesn't skim. It sees `${userId}` inside the first argument to `.query()` and fires, whether a human or a model typed it.
 
 **Run it on your assistant's output before you run it on your colleague's.** Same rule, same install, no model-specific tuning:
 
@@ -202,7 +203,7 @@ export default [
 ];
 ```
 
-And the part that turns the linter from a gate into a fixer: in the 700-function benchmark, the worst database generator (Gemini Pro, 96%) was also the *best* database remediator. Across the whole database domain, Gemini Pro [fixed 25 of 27 vulnerable database functions (93%) once it was handed the specific structural violation](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). The model doesn't reach for `$1` from a behavior prompt, but a rule that names the exact defect at the exact line is the feedback it acts on. The cycle: assistant generates, rule names the defect, assistant remediates.
+And the part that turns the linter from a gate into a fixer: in the 700-function benchmark, the worst database generator (Gemini Pro, 96%) was also the _best_ database remediator. Across the whole database domain, Gemini Pro [fixed 25 of 27 vulnerable database functions (93%) once it was handed the specific structural violation](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). The model doesn't reach for `$1` from a behavior prompt, but a rule that names the exact defect at the exact line is the feedback it acts on. The cycle: assistant generates, rule names the defect, assistant remediates.
 
 ---
 
@@ -218,7 +219,7 @@ For teams using pg directly — internal APIs, data pipelines, microservices —
 
 The install and config are above — `pg/no-unsafe-query` set to `error` is the whole setup. Two things worth knowing before you turn it on in CI:
 
-**vs. Semgrep/CodeQL:** Interprocedural [SAST](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) tools can trace taint across function boundaries. ESLint can't — it's intraprocedural. The trade-off: ESLint runs in your editor on every keystroke and in pre-commit hooks with no CI pipeline required. For a pg team that wants SQL injection feedback where they see TypeScript errors — including on the SQL an AI assistant just generated — that speed matters more than the wider taint scope.
+**vs. Semgrep/CodeQL:** Interprocedural [SAST](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) tools can trace taint across function boundaries. ESLint can't — it's intraprocedural, which is exactly why this rule judges the query's _shape_ rather than chasing the value's origin. The trade-off: ESLint runs in your editor on every keystroke and in pre-commit hooks with no CI pipeline required. For a pg team that wants SQL injection feedback where they see TypeScript errors — including on the SQL an AI assistant just generated — that speed matters more than the wider taint scope.
 
 Known false positive: `client.query("SELECT * FROM " + SCHEMA_NAME)` where `SCHEMA_NAME` is a hardcoded constant. The rule fires because it can't distinguish constants from dynamic inputs. Workaround: use `pg-format` for identifier quoting, or restructure to a parameterized form.
 
@@ -231,6 +232,7 @@ _Which SQL injection pattern have you found most in the wild — and was it ever
 ---
 
 **Related reading:**
+
 - [Your node-postgres Data Layer Fails 4 Ways in Production](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern)
 - [PostgreSQL COPY FROM exploit: filesystem access via SQL](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access)
 - [Plugin docs: eslint.interlace.tools](https://eslint.interlace.tools)
@@ -255,9 +257,7 @@ npm install eslint-plugin-pg --save-dev
 // eslint.config.mjs — minimal: just the SQL-injection rule
 import pg from "eslint-plugin-pg";
 
-export default [
-  { plugins: { pg }, rules: { "pg/no-unsafe-query": "error" } },
-];
+export default [{ plugins: { pg }, rules: { "pg/no-unsafe-query": "error" } }];
 
 // …or take the whole pg floor (no-select-all, prefer-pool-query,
 // no-hardcoded-credentials, +more) in one line:
@@ -269,4 +269,5 @@ export default [
 If `pg/no-unsafe-query` catches a line in your codebase — human-written or AI-generated — I want to hear which of the three patterns it was. Drop it in the comments.
 
 ---
-*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+
+_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

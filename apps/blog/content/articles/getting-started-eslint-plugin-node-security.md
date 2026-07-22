@@ -28,9 +28,9 @@ These four lines have shipped as CVEs. They passed code review first.
 
 ```ts
 crypto.createHash("md5").update(password).digest("hex"); // weak hash (CWE-327)
-exec(`convert ${req.query.file} out.png`);               // command injection (CWE-78)
-await unzipper.extract({ path: dest });                  // Zip Slip path traversal (CWE-22)
-const token = Math.random().toString(36).slice(2);       // predictable token (CWE-338)
+exec(`convert ${req.query.file} out.png`); // command injection (CWE-78)
+await unzipper.extract({ path: dest }); // Zip Slip path traversal (CWE-22)
+const token = Math.random().toString(36).slice(2); // predictable token (CWE-338)
 ```
 
 Each one is a property of the Node.js standard library used the easy way instead of the safe way. They pass type-checking. They pass unit tests (the test feeds trusted input). Then they ship, and a researcher finds them with `grep`.
@@ -95,7 +95,7 @@ export function convertImage(filename: string) {
 
 **Why it survived review**
 
-The `exec(\`convert ${file}\`)` line looks *more* correct than the safe version — it reads like the shell command you'd type by hand. `execFile("convert", [file])` looks fussier. The "clean code" instinct argues for the wrong one. And because the vulnerability lives in what an attacker might pass for `filename` — not in the code itself — the reviewer would need to mentally model the attack path, which isn't what code review optimizes for.
+The `exec(\`convert ${file}\`)`line looks *more* correct than the safe version — it reads like the shell command you'd type by hand.`execFile("convert", [file])`looks fussier. The "clean code" instinct argues for the wrong one. And because the vulnerability lives in what an attacker might pass for`filename` — not in the code itself — the reviewer would need to mentally model the attack path, which isn't what code review optimizes for.
 
 I approved an `exec()` shelling out to a media tool in a PR I led. The diff was a feature I'd asked for, and the line read like the command I'd have typed in a terminal. It sat in production until a dependency bump made me re-read the file. Nothing about my review process would have caught it.
 
@@ -180,7 +180,7 @@ export function renderTemplate(template: string, vars: Record<string, string>) {
 
 **Why it survived review**
 
-`eval` in application code is rare enough that reviewers flag it on sight — except when the surrounding context makes it look intentional and bounded. A template-rendering function that reaches for `eval` looks like a deliberate design choice ("this is how templates work"), not a footgun. The distinction between *evaluating an expression* and *executing attacker-controlled code* doesn't surface from the diff alone.
+`eval` in application code is rare enough that reviewers flag it on sight — except when the surrounding context makes it look intentional and bounded. A template-rendering function that reaches for `eval` looks like a deliberate design choice ("this is how templates work"), not a footgun. The distinction between _evaluating an expression_ and _executing attacker-controlled code_ doesn't surface from the diff alone.
 
 **The rule**
 
@@ -383,4 +383,4 @@ The generic security linters flag a few of these (`eval`, obvious `child_process
 
 ---
 
-*[eslint-plugin-node-security](https://www.npmjs.com/package/eslint-plugin-node-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-node-security](https://www.npmjs.com/package/eslint-plugin-node-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

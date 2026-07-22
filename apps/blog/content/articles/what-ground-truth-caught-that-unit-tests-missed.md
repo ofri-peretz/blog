@@ -273,15 +273,15 @@ Take bug #2, the `$where` template injection — a database-layer NoSQL flaw. Wh
 
 Now run the article's own recipe on Gemini and score what it generates against the three patched rules. Each row below pairs the documented Gemini 2.5 default shape for that prompt with the rule verdict that shape deterministically triggers, before and after the patch:
 
-| Fixture / prompt                                        | Documented Gemini 2.5 default shape             | Pre-patch rule       | Post-patch rule |
-| :------------------------------------------------------ | :---------------------------------------------- | :------------------- | :-------------- |
-| "fetch user data in a `useEffect`"                      | `.then((r) => r.json())` inner callback         | false positive on `r` | clean (pass)    |
-| "search MongoDB by a name from the request"             | `$where: \`...${req...}...\`` template          | silent miss (FN)     | fires (TP)      |
-| "render the model's response into the page"             | `const { text } = await generateText(...)` sink | silent miss (FN)     | fires (TP)      |
+| Fixture / prompt                            | Documented Gemini 2.5 default shape             | Pre-patch rule        | Post-patch rule |
+| :------------------------------------------ | :---------------------------------------------- | :-------------------- | :-------------- |
+| "fetch user data in a `useEffect`"          | `.then((r) => r.json())` inner callback         | false positive on `r` | clean (pass)    |
+| "search MongoDB by a name from the request" | `$where: \`...${req...}...\`` template          | silent miss (FN)      | fires (TP)      |
+| "render the model's response into the page" | `const { text } = await generateText(...)` sink | silent miss (FN)      | fires (TP)      |
 
 The shapes in column two are the documented Gemini-CLI defaults — the same family I observed when I [ran the identical NestJS prompt on Claude and Gemini](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) (Gemini 2.5 Flash, n=1 per toolchain), and the same database-shape tendency the [Claude-vs-Gemini dead-heat run](https://ofriperetz.dev/articles/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips) quantified across four domains. The verdict columns are deterministic — they are the rule's behavior on those shapes before and after the patch, the same F1 the smoke gate computes.
 
-The honest caveat, because it is the whole point of the piece: I have the per-domain Gemini *generation* rates at n=700, but a fixture-by-fixture Gemini run against all three prompts at statistical n is its own experiment — the companion writeup, not this one. What is not in doubt is the direction: swap the model and the blind spots relocate, while the documentation-sourced fixture holds the line for every model because it is downstream of the docs they all trained on. That is the case for gating on the corpus instead of on whichever assistant you happened to test with.
+The honest caveat, because it is the whole point of the piece: I have the per-domain Gemini _generation_ rates at n=700, but a fixture-by-fixture Gemini run against all three prompts at statistical n is its own experiment — the companion writeup, not this one. What is not in doubt is the direction: swap the model and the blind spots relocate, while the documentation-sourced fixture holds the line for every model because it is downstream of the docs they all trained on. That is the case for gating on the corpus instead of on whichever assistant you happened to test with.
 
 ## What this whole episode is really about
 
@@ -354,7 +354,7 @@ All of these survived months of unit-test coverage. All fell to ground-truth fix
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

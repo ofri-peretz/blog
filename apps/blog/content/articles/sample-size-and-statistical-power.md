@@ -92,28 +92,28 @@ Four rules for reading any benchmark, audit, or scorecard:
 
 ## Quick Reference {#quick-reference}
 
-| Question type | Needs significance test? | Why |
-|---|---|---|
-| Does the tool detect this failure at all? | No | Presence/absence, not magnitude — zero is zero |
-| Which of two tools scores higher? | Depends on effect size | Run a power calculation before claiming the difference is real |
-| Do three groups have different rates? | Yes (random sample) | Random draws + categorical comparison — chi-squared appropriate |
-| Is our score significantly above 90% on a fixed test set? | No (constructed set) | Not a random sample; a CI would be false precision |
-| Did it miss an entire category? | No | Observational count — report the zeros directly |
-| Is a 5-point improvement real? | Yes | Small effect; small n has low power; significance test or power calc required |
+| Question type                                             | Needs significance test? | Why                                                                           |
+| --------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------- |
+| Does the tool detect this failure at all?                 | No                       | Presence/absence, not magnitude — zero is zero                                |
+| Which of two tools scores higher?                         | Depends on effect size   | Run a power calculation before claiming the difference is real                |
+| Do three groups have different rates?                     | Yes (random sample)      | Random draws + categorical comparison — chi-squared appropriate               |
+| Is our score significantly above 90% on a fixed test set? | No (constructed set)     | Not a random sample; a CI would be false precision                            |
+| Did it miss an entire category?                           | No                       | Observational count — report the zeros directly                               |
+| Is a 5-point improvement real?                            | Yes                      | Small effect; small n has low power; significance test or power calc required |
 
-*If this is the kind of page you'll want open mid-argument, bookmark it — and [follow me on Dev.to](https://dev.to/ofri-peretz) to catch the next one in the series.*
+_If this is the kind of page you'll want open mid-argument, bookmark it — and [follow me on Dev.to](https://dev.to/ofri-peretz) to catch the next one in the series._
 
 ---
 
 ## References
 
-Cohen, J. (1988). [*Statistical Power Analysis for the Behavioral Sciences*](https://doi.org/10.4324/9780203771587) (2nd ed.). Lawrence Erlbaum Associates. The foundational book on power analysis — defines the small/medium/large effect size conventions (d = 0.2 / 0.5 / 0.8) used throughout statistics and cited in this article.
+Cohen, J. (1988). [_Statistical Power Analysis for the Behavioral Sciences_](https://doi.org/10.4324/9780203771587) (2nd ed.). Lawrence Erlbaum Associates. The foundational book on power analysis — defines the small/medium/large effect size conventions (d = 0.2 / 0.5 / 0.8) used throughout statistics and cited in this article.
 
-Lakens, D. (2013). [Calculating and reporting effect sizes to facilitate cumulative science: a practical primer for t-tests and ANOVAs](https://doi.org/10.3389/fpsyg.2013.00863). *Frontiers in Psychology*, 4, 863. Accessible practical guide to effect size and statistical power — freely available online and the clearest non-textbook treatment of the topic.
+Lakens, D. (2013). [Calculating and reporting effect sizes to facilitate cumulative science: a practical primer for t-tests and ANOVAs](https://doi.org/10.3389/fpsyg.2013.00863). _Frontiers in Psychology_, 4, 863. Accessible practical guide to effect size and statistical power — freely available online and the clearest non-textbook treatment of the topic.
 
-Faul, F., Erdfelder, E., Lang, A.-G., & Buchner, A. (2007). [G\*Power 3: A flexible statistical power analysis program for the social, behavioral, and biomedical sciences](https://doi.org/10.3758/BF03193146). *Behavior Research Methods*, 39(2), 175–191. The paper behind the G\*Power tool (freely available at gpower.hhu.de) — the standard software for the power calculations referenced in this article.
+Faul, F., Erdfelder, E., Lang, A.-G., & Buchner, A. (2007). [G\*Power 3: A flexible statistical power analysis program for the social, behavioral, and biomedical sciences](https://doi.org/10.3758/BF03193146). _Behavior Research Methods_, 39(2), 175–191. The paper behind the G\*Power tool (freely available at gpower.hhu.de) — the standard software for the power calculations referenced in this article.
 
-Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). [The extent and consequences of p-hacking in science](https://doi.org/10.1371/journal.pbio.1002106). *PLOS Biology*, 13(3). On what goes wrong when significance tests are applied carelessly — the publication bias and null-result-suppression problem that motivates rule four above.
+Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). [The extent and consequences of p-hacking in science](https://doi.org/10.1371/journal.pbio.1002106). _PLOS Biology_, 13(3). On what goes wrong when significance tests are applied carelessly — the publication bias and null-result-suppression problem that motivates rule four above.
 
 ---
 
@@ -127,6 +127,6 @@ Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). [Th
 
 ---
 
-*Foundations series: ← [Reproducibility vs replicability](https://ofriperetz.dev/articles/reproducibility-vs-replicability) · [hub](https://ofriperetz.dev/foundations) · [p-values & significance](https://ofriperetz.dev/articles/statistical-significance-p-value) →*
+_Foundations series: ← [Reproducibility vs replicability](https://ofriperetz.dev/articles/reproducibility-vs-replicability) · [hub](https://ofriperetz.dev/foundations) · [p-values & significance](https://ofriperetz.dev/articles/statistical-significance-p-value) →_
 
-*Part of the Interlace ESLint ecosystem. [Source on GitHub](https://github.com/ofri-peretz/eslint-benchmark-suite) · [npm](https://www.npmjs.com/search?q=%40interlace) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the Interlace ESLint ecosystem. [Source on GitHub](https://github.com/ofri-peretz/eslint-benchmark-suite) · [npm](https://www.npmjs.com/search?q=%40interlace) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

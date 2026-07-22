@@ -7,7 +7,7 @@ tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/searchpath-hijacking-the-postgresql-attack-youve-never-heard-of-10co"
 devto_id: 3144104
 published_at: "2026-01-02T19:49:31Z"
-edited_at: "2026-07-06T00:00:00Z"
+edited_at: "2026-07-20T00:00:00Z"
 cover_image: "https://ofriperetz.dev/og/cover/searchpath-hijacking-postgresql-attack"
 social_image: "https://ofriperetz.dev/og/article/searchpath-hijacking-postgresql-attack"
 reading_time_minutes: 9
@@ -24,11 +24,22 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-PostgreSQL's `search_path` can be hijacked to redirect every unqualified table reference to a malicious schema — in a multi-tenant database, this means tenant A can read tenant B's data. Here's the exact attack.
+`SELECT * FROM users` is the most boring line in your codebase. In the wrong
+PostgreSQL setup it's also the one an attacker turns against you — without
+changing a single character of it. Control a connection's `search_path` and
+every unqualified table reference silently resolves to a schema _they_ picked;
+in a multi-tenant database, that means tenant A reads tenant B's data.
 
 There is no `'; DROP TABLE` here. No quotes to escape, no payload to spot in a
-diff. The query that gets exploited is the most boring line in your codebase —
-which is exactly why it survives review.
+diff. The query that gets exploited never changes — which is exactly why it
+survives review.
+
+This is not a new bug. The writable-`public`-schema half of it is
+[CVE-2018-1058](https://nvd.nist.gov/vuln/detail/CVE-2018-1058) — the 2018
+disclosure that pushed PostgreSQL to rewrite its docs around schema-qualified
+names and, in PG15, finally revoke the permissive `public` grant by default.
+What's fresh is where it lands now: schema-per-tenant SaaS, and AI assistants
+generating the exact vulnerable line at scale.
 
 > **The vulnerability is in the PostgreSQL session setup — 2 lines in a connection pool initializer that no application developer thinks to audit.** Search path attacks are invisible to application-level code review because the dangerous line and the exploited line are in completely different places: one in your connection middleware, one deep in your query layer.
 
@@ -108,8 +119,8 @@ CREATE TABLE evil.users AS SELECT 'pwned' AS who, 'attacker@evil.com' AS email;
 
 ```js
 // ❌ connection pool initializer — the 2 vulnerable lines
-const schema = req.query.tenant;           // line 1: attacker controls this
-await client.query(`SET search_path TO ${schema}`);  // line 2: raw interpolation
+const schema = req.query.tenant; // line 1: attacker controls this
+await client.query(`SET search_path TO ${schema}`); // line 2: raw interpolation
 ```
 
 **Step 3: Your app's perfectly normal query now reads the wrong table**
@@ -173,7 +184,7 @@ name is an **identifier**, and identifiers need identifier-escaping, not value
 binding.
 
 There is one genuinely parameterizable form — `set_config('search_path', $1,
-false)` is a regular function call, so the value *can* go through a bind
+false)` is a regular function call, so the value _can_ go through a bind
 parameter:
 
 ```js
@@ -181,8 +192,8 @@ await client.query("SELECT set_config('search_path', $1, false)", [schema]);
 ```
 
 Don't mistake this for a fix, though. Bind parameters stop SQL from being
-injected into the *statement* — they say nothing about which schema the
-*value* is allowed to name. `set_config` will happily bind-parameterize a
+injected into the _statement_ — they say nothing about which schema the
+_value_ is allowed to name. `set_config` will happily bind-parameterize a
 value of `evil, public` exactly as willingly as `tenant_2, public`; you've
 solved the syntax-error problem, not the trust problem. It's a genuine
 answer to "isn't there a parameterizable form?" — and a non-answer to
@@ -256,7 +267,7 @@ await client.query(format("SET search_path TO %I", schema));
 ```
 
 The disable comment below is only safe because `Number.isInteger` guarantees
-the interpolated value can't be anything *but* digits — a validated integer
+the interpolated value can't be anything _but_ digits — a validated integer
 literally cannot carry SQL syntax. That guarantee is what earns the
 exception; swap the guard for a string check and the same line becomes the
 vulnerability again:
@@ -269,7 +280,7 @@ await client.query(`SET search_path TO ${"tenant_" + tenantId}`);
 ```
 
 What is **never** safe — no matter how "trusted" the source feels — is raw
-interpolation of a *string* identifier: `SET search_path TO ${schema}` is the
+interpolation of a _string_ identifier: `SET search_path TO ${schema}` is the
 vulnerability, not the fix. The only reason the integer case above is
 different is that a validated integer isn't a string in the way that matters —
 it can't contain a quote, a semicolon, or a schema name that isn't yours.
@@ -312,11 +323,14 @@ export default [configs.recommended];
 >
 > **On the severity label.** [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) 7.5 falls in the v3.1 **High** band (7.0–8.9);
 > `Critical` starts at 9.0. The rule's fixed label runs ahead of the number —
-> if you score the *cross-tenant confidentiality break* specifically (C:H over
+> if you score the _cross-tenant confidentiality break_ specifically (C:H over
 > a plausible network vector), it can land closer to 9.1 and earn `Critical`
-> honestly, but as shipped the label and the score disagree, and a
-> security-literate reader is right to notice. Treat the finding as **High**
-> until the label catches up. Same honesty applies to `OWASP:A05` — a
+> honestly, but as shipped the label and the score disagree —
+> `no-unsafe-search-path` is itself one of the [16% of our own rules whose
+> printed severity doesn't match its CVSS number](https://ofriperetz.dev/articles/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score),
+> so a security-literate reader is right to notice. Treat the finding as
+> **High** until the label catches up. Same honesty applies to `OWASP:A05` — in
+> the [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained), a
 > dynamically interpolated `SET` is arguably closer to **A03 (Injection)** than
 > A05 (Misconfiguration); I framed `search_path` as a config surface for this
 > rule, but the injection reading is defensible too.
@@ -354,7 +368,7 @@ identifier safe by construction, regardless of provenance.
 matters most for exactly the no-privilege case from Step 1. `%I` guarantees
 `tenant.schema` can't smuggle extra SQL (`evil, public` can't break out of
 the identifier). It does **nothing** to stop `%I` from safely, correctly
-setting `search_path` to a schema the *caller* isn't authorized to see. If
+setting `search_path` to a schema the _caller_ isn't authorized to see. If
 `tenantId` is read from a request field instead of the authenticated
 session, `queryTenant(attackerSuppliedTenantId, ...)` runs cleanly —
 no injection, perfectly escaped, wrong tenant's data. That's not a
@@ -434,7 +448,7 @@ and across the whole 700-function corpus in
 > artifact, not a ceiling — it defaults to the insecure-but-popular form for the
 > same statistical reason a human reaches for it, then cleans up once a linter
 > points. The head-to-head against Claude on the same prompts is in
-> [Claude vs Gemini Across 4 Security Domains: A Dead Heat](https://ofriperetz.dev/articles/gemini-vs-claude-security-4-domains-eslint-benchmark).
+> [Claude vs Gemini Across 4 Security Domains: A Dead Heat](https://ofriperetz.dev/articles/claude-vs-gemini-4-security-domains-dead-heat).
 
 The practical upshot: the same `no-unsafe-search-path` rule that catches a
 human's slip is the cheapest guardrail you can put between an AI-generated
@@ -447,7 +461,8 @@ value is trusted."
 Static analysis guards the source; pair it with the server:
 
 - `REVOKE CREATE ON SCHEMA public FROM PUBLIC` so attackers can't create the
-  shadowing schema/objects in the first place. PostgreSQL 15 made this the
+  shadowing schema/objects in the first place. This is the exact hardening
+  PostgreSQL shipped in response to CVE-2018-1058; PostgreSQL 15 made it the
   default — but only for **newly created** databases on a fresh cluster.
   Upgrade a pre-15 cluster with `pg_upgrade`, or restore an old dump, and it
   keeps the permissive grant it always had. Run the `REVOKE` explicitly;
@@ -477,6 +492,7 @@ and the [N+1 insert loop](https://ofriperetz.dev/articles/n-plus-1-insert-loop-a
 that quietly turns one request into thousands of round-trips.
 
 Related attacks in this series:
+
 - [PostgreSQL COPY FROM: Filesystem Access via SQL](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — another vector that lives in a "trusted" server command
 - [Three SQL Injection Patterns That Still Ship in Node.js](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) — the patterns search_path hijacking deliberately evades
 
@@ -501,7 +517,7 @@ trusted source" line talked out of catching it?**
 
 ---
 
-*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

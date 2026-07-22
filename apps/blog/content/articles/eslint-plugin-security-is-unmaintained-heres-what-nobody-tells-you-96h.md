@@ -59,9 +59,9 @@ Here's what each gap archetype looks like as actual code.
 
 ```js
 // Vulnerable — eslint-plugin-security: no warning
-app.get('/users/:id', async (req, res) => {
-  const query = 'SELECT * FROM users WHERE id = ' + req.params.id;
-  const result = await pool.query(query);  // string-concatenated, attacker-controlled
+app.get("/users/:id", async (req, res) => {
+  const query = "SELECT * FROM users WHERE id = " + req.params.id;
+  const result = await pool.query(query); // string-concatenated, attacker-controlled
   res.json(result.rows);
 });
 ```
@@ -72,8 +72,10 @@ The fix:
 
 ```js
 // Safe — parameterized query
-app.get('/users/:id', async (req, res) => {
-  const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
+app.get("/users/:id", async (req, res) => {
+  const result = await pool.query("SELECT * FROM users WHERE id = $1", [
+    req.params.id,
+  ]);
   res.json(result.rows);
 });
 ```
@@ -85,7 +87,7 @@ app.get('/users/:id', async (req, res) => {
 function verifyToken(token) {
   // Developer was being careful — pinned the algorithm list explicitly
   return jwt.verify(token, process.env.JWT_SECRET, {
-    algorithms: ['HS256', 'none']  // 'none' means: accept unsigned tokens
+    algorithms: ["HS256", "none"], // 'none' means: accept unsigned tokens
   });
 }
 ```
@@ -94,7 +96,7 @@ The author had _added_ that options object on purpose. The reviewer saw an expli
 
 ```js
 // Safe
-return jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+return jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
 ```
 
 ### Archetype 3: `Math.random()` for security tokens
@@ -102,7 +104,7 @@ return jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 ```js
 // Vulnerable — eslint-plugin-security: no warning
 function generateSessionToken() {
-  return Math.random().toString(36).slice(2);  // predictable, not cryptographic
+  return Math.random().toString(36).slice(2); // predictable, not cryptographic
 }
 ```
 
@@ -111,7 +113,7 @@ function generateSessionToken() {
 ```js
 // Safe
 function generateSessionToken() {
-  return require('crypto').randomBytes(32).toString('hex');
+  return require("crypto").randomBytes(32).toString("hex");
 }
 ```
 
@@ -119,11 +121,11 @@ function generateSessionToken() {
 
 | Domain              | Missing findings | What's missing from a generic linter              | The layer that adds it                                                                                                  |
 | ------------------- | :--------------: | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **PostgreSQL**      | ~12              | SQL injection, connection leaks, COPY exploits    | [`eslint-plugin-pg`](https://eslint.interlace.tools/docs/security/plugin-pg) (13 rules)                                 |
-| **JWT / auth**      | ~6               | `alg:none`, algorithm confusion, claim validation | [`eslint-plugin-jwt`](https://eslint.interlace.tools/docs/security/plugin-jwt) (13 rules)                               |
-| **Crypto & system** | ~5               | weak hashes, ECB/static-IV, SSRF, zip-slip        | [`eslint-plugin-node-security`](https://eslint.interlace.tools/docs/security/plugin-node-security) (35 rules)           |
-| **Browser / DOM**   | ~2               | CSP, CORS, `innerHTML`, JWT-in-storage            | [`eslint-plugin-browser-security`](https://eslint.interlace.tools/docs/security/plugin-browser-security) (45 rules)     |
-| **AI / LLM**        | ~0 in fixture    | prompt injection, tool-call agency                | [`eslint-plugin-vercel-ai-security`](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security) (19 rules) |
+| **PostgreSQL**      |       ~12        | SQL injection, connection leaks, COPY exploits    | [`eslint-plugin-pg`](https://eslint.interlace.tools/docs/security/plugin-pg) (13 rules)                                 |
+| **JWT / auth**      |        ~6        | `alg:none`, algorithm confusion, claim validation | [`eslint-plugin-jwt`](https://eslint.interlace.tools/docs/security/plugin-jwt) (13 rules)                               |
+| **Crypto & system** |        ~5        | weak hashes, ECB/static-IV, SSRF, zip-slip        | [`eslint-plugin-node-security`](https://eslint.interlace.tools/docs/security/plugin-node-security) (35 rules)           |
+| **Browser / DOM**   |        ~2        | CSP, CORS, `innerHTML`, JWT-in-storage            | [`eslint-plugin-browser-security`](https://eslint.interlace.tools/docs/security/plugin-browser-security) (45 rules)     |
+| **AI / LLM**        |  ~0 in fixture   | prompt injection, tool-call agency                | [`eslint-plugin-vercel-ai-security`](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security) (19 rules) |
 
 There's also a [**precision**](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) difference: on validated-safe code, `eslint-plugin-security` produced 5 [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) in that benchmark (`detect-object-injection` on allowlist-validated keys, `detect-non-literal-fs-filename` on path-validated reads) — it pattern-matches the sink without seeing the guard.
 
@@ -187,12 +189,12 @@ import { configs as browserSecurity } from "eslint-plugin-browser-security";
 import { configs as vercelAiSecurity } from "eslint-plugin-vercel-ai-security";
 
 export default [
-  security.configs.recommended,           // your existing floor (14 rules)
-  nodeSecurity.recommended,               // crypto, supply-chain, SSRF
-  { files: ["**/db/**"], ...pg.recommended },              // SQL depth
-  jwt.recommended,                        // auth depth
+  security.configs.recommended, // your existing floor (14 rules)
+  nodeSecurity.recommended, // crypto, supply-chain, SSRF
+  { files: ["**/db/**"], ...pg.recommended }, // SQL depth
+  jwt.recommended, // auth depth
   { files: ["**/*.{tsx,jsx}", "**/client/**"], ...browserSecurity.recommended }, // DOM/CSP
-  { files: ["**/ai/**", "**/agents/**"], ...vercelAiSecurity.recommended },      // LLM
+  { files: ["**/ai/**", "**/agents/**"], ...vercelAiSecurity.recommended }, // LLM
 ];
 ```
 
@@ -270,4 +272,4 @@ The domain layers ship the same contract:
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

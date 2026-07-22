@@ -50,11 +50,11 @@ The differences get concrete on one vulnerability, shown two ways.
 
 ```js
 // vulnerable.js
-app.get('/users/:id', (req, res) => {
-  const query = 'SELECT * FROM users WHERE id = ' + req.params.id;
+app.get("/users/:id", (req, res) => {
+  const query = "SELECT * FROM users WHERE id = " + req.params.id;
   //                                                 ^^^^^^^^^^^^^^^^^^
   //            ESLint sees: string + user-controlled value at a db.query call
-  pool.query(query).then(r => res.json(r.rows));
+  pool.query(query).then((r) => res.json(r.rows));
 });
 ```
 
@@ -64,22 +64,22 @@ The linter sees the concatenation at the call site — source (`req.params.id`) 
 
 ```js
 // routes/users.js
-import { buildQuery } from '../db/query-builder.js';
+import { buildQuery } from "../db/query-builder.js";
 
-app.get('/users/:id', (req, res) => {
-  const userId = req.params.id;                // source: user-controlled
-  const sanitized = userId.trim();              // looks sanitized — only strips whitespace
-  const query = buildQuery('users', sanitized); // tainted value crosses file boundary
-  pool.query(query).then(r => res.json(r.rows));
+app.get("/users/:id", (req, res) => {
+  const userId = req.params.id; // source: user-controlled
+  const sanitized = userId.trim(); // looks sanitized — only strips whitespace
+  const query = buildQuery("users", sanitized); // tainted value crosses file boundary
+  pool.query(query).then((r) => res.json(r.rows));
 });
 
 // db/query-builder.js
 export function buildQuery(table, id) {
-  return `SELECT * FROM ${table} WHERE id = ${id}`;  // template injection
+  return `SELECT * FROM ${table} WHERE id = ${id}`; // template injection
 }
 ```
 
-A lint rule scanning `routes/users.js` sees `userId.trim()` and a function call — the concatenation itself sits one file away, inside `buildQuery()`. The call site looks clean; the rule doesn't fire. (And it isn't safe: `.trim()` removes whitespace, not SQL — `1; DROP TABLE users--` passes through untouched and reaches the template intact. Had the code used `parseInt(userId, 10)` the payload really would have collapsed to the integer `1`; the trap is the sanitizer that only *looks* like one.) CodeQL traces `req.params.id` → `userId` → `sanitized` → `query` inside `buildQuery` → `pool.query`, and files a CWE-89 finding with the full path as evidence.
+A lint rule scanning `routes/users.js` sees `userId.trim()` and a function call — the concatenation itself sits one file away, inside `buildQuery()`. The call site looks clean; the rule doesn't fire. (And it isn't safe: `.trim()` removes whitespace, not SQL — `1; DROP TABLE users--` passes through untouched and reaches the template intact. Had the code used `parseInt(userId, 10)` the payload really would have collapsed to the integer `1`; the trap is the sanitizer that only _looks_ like one.) CodeQL traces `req.params.id` → `userId` → `sanitized` → `query` inside `buildQuery` → `pool.query`, and files a CWE-89 finding with the full path as evidence.
 
 Same vulnerability, two different visibility ceilings — not a defect in either tool, just two levels of the taxonomy doing what they're built to do.
 
@@ -127,27 +127,27 @@ Teams that skip positions 1–2 pay for 3–4 to catch what the editor could hav
 
 ## Quick reference {#quick-reference}
 
-| Category | Example tools | When runs | Cross-file | Taint tracking | Speed |
-|----------|--------------|-----------|-----------|---------------|-------|
-| Linting | ESLint, Pylint, RuboCop | Edit time | No | No | Under 1 sec |
-| Security linting | eslint-plugin-security, Bandit | Edit time | No | No | Under 1 sec |
-| SAST — light | Semgrep, CodeQL default | PR check | Yes | Partial | 1–5 min |
-| SAST — deep | Checkmarx, Veracode, Snyk Code | Weekly | Yes | Yes | 30 min+ |
-| DAST | OWASP ZAP, Burp Suite | QA / staging | N/A | N/A | Minutes–hours |
+| Category         | Example tools                  | When runs    | Cross-file | Taint tracking | Speed         |
+| ---------------- | ------------------------------ | ------------ | ---------- | -------------- | ------------- |
+| Linting          | ESLint, Pylint, RuboCop        | Edit time    | No         | No             | Under 1 sec   |
+| Security linting | eslint-plugin-security, Bandit | Edit time    | No         | No             | Under 1 sec   |
+| SAST — light     | Semgrep, CodeQL default        | PR check     | Yes        | Partial        | 1–5 min       |
+| SAST — deep      | Checkmarx, Veracode, Snyk Code | Weekly       | Yes        | Yes            | 30 min+       |
+| DAST             | OWASP ZAP, Burp Suite          | QA / staging | N/A        | N/A            | Minutes–hours |
 
-*DAST (Dynamic Application Security Testing) tests a running application, not source — out of scope here, but it catches categories, auth state, session management, server-side rendering injection, that no source-code read can reach.*
+_DAST (Dynamic Application Security Testing) tests a running application, not source — out of scope here, but it catches categories, auth state, session management, server-side rendering injection, that no source-code read can reach._
 
 ---
 
 ## References
 
-1. Chess, B., & West, J. (2007). *[Secure Programming with Static Analysis](https://books.google.com/books/about/Secure_Programming_with_Static_Analysis.html?id=DnUbmQEACAAJ)*. Addison-Wesley. The foundational industrial treatment of static analysis for security — data-flow and taint techniques, rule design, and the false-positive economics that separate a linter from a SAST engine.
+1. Chess, B., & West, J. (2007). _[Secure Programming with Static Analysis](https://books.google.com/books/about/Secure_Programming_with_Static_Analysis.html?id=DnUbmQEACAAJ)_. Addison-Wesley. The foundational industrial treatment of static analysis for security — data-flow and taint techniques, rule design, and the false-positive economics that separate a linter from a SAST engine.
 
-2. NIST IR 8397: *[Guidelines on Minimum Standards for Developer Verification of Software](https://nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8397.pdf)*. National Institute of Standards and Technology, 2021. nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8397.pdf. Note that NIST itself uses "static analysis" and "SAST" interchangeably here — even listing ESLint among its example SAST tools — which is itself a data point on how loosely the industry applies the label.
+2. NIST IR 8397: _[Guidelines on Minimum Standards for Developer Verification of Software](https://nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8397.pdf)_. National Institute of Standards and Technology, 2021. nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8397.pdf. Note that NIST itself uses "static analysis" and "SAST" interchangeably here — even listing ESLint among its example SAST tools — which is itself a data point on how loosely the industry applies the label.
 
 3. [OWASP Source Code Analysis Tools](https://owasp.org/www-community/Source_Code_Analysis_Tools). owasp.org/www-community/Source_Code_Analysis_Tools. OWASP's community-maintained list of source-code (SAST) analysis tools. For the automated-analysis-vs-manual-review distinction specifically, see OWASP's [Static Code Analysis](https://owasp.org/www-community/controls/Static_Code_Analysis) control page.
 
-4. Livshits, B., & Lam, M. S. (2005). [Finding security vulnerabilities in Java applications with static analysis](https://www.usenix.org/conference/14th-usenix-security-symposium/finding-security-vulnerabilities-java-applications-static). *USENIX Security Symposium*, 14. The structural basis for what makes taint analysis different from pattern matching.
+4. Livshits, B., & Lam, M. S. (2005). [Finding security vulnerabilities in Java applications with static analysis](https://www.usenix.org/conference/14th-usenix-security-symposium/finding-security-vulnerabilities-java-applications-static). _USENIX Security Symposium_, 14. The structural basis for what makes taint analysis different from pattern matching.
 
 5. Zakas, N. C. (2013, July 16). Introducing ESLint. humanwhocodes.com. https://humanwhocodes.com/blog/2013/07/16/introducing-eslint/. The original announcement of ESLint's pluggable, per-file rule architecture — the design decision this whole taxonomy hangs on.
 
@@ -155,6 +155,6 @@ Teams that skip positions 1–2 pay for 3–4 to catch what the editor could hav
 
 This is the reference for the next time a scan result gets called "SAST" and it's actually a lint rule — bookmark it, and [follow me on Dev.to](https://dev.to/ofri-peretz) for the rest of the Foundations series.
 
-*Foundations series: ← [Taint vs. Heuristic Detection](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) · [hub](https://ofriperetz.dev/foundations) · [start over: The Confusion Matrix](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) →*
+_Foundations series: ← [Taint vs. Heuristic Detection](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) · [hub](https://ofriperetz.dev/foundations) · [start over: The Confusion Matrix](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

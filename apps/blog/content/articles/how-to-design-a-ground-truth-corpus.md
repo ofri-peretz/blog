@@ -20,13 +20,13 @@ author:
   title: Security Engineering Leader
 ---
 
-`'SELECT * FROM users WHERE id = ' + userId` is a vulnerable fixture — no debate. Wrap the input in `parseInt(userId)` — vulnerable or safe? The label depends entirely on your threat model, and whichever way the author calls it, [that call *is* the ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing#hard-decisions). The corpus behind the Interlace security benchmarks took 40 calls like that one; `parseInt` is the call I've gone back and forth on longest — it's still not in the corpus, which is itself a judgment call. And the cost of getting the discipline wrong isn't hypothetical: this corpus scores its own author's tool at a perfect 100% — a number that reads as evidence only because the fixtures demonstrably came first, and as a mirror otherwise. That discipline — categories, borderline labels, and the sequencing rule — is the rest of this article.
+`'SELECT * FROM users WHERE id = ' + userId` is a vulnerable fixture — no debate. Wrap the input in `parseInt(userId)` — vulnerable or safe? The label depends entirely on your threat model, and whichever way the author calls it, [that call _is_ the ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing#hard-decisions). The corpus behind the Interlace security benchmarks took 40 calls like that one; `parseInt` is the call I've gone back and forth on longest — it's still not in the corpus, which is itself a judgment call. And the cost of getting the discipline wrong isn't hypothetical: this corpus scores its own author's tool at a perfect 100% — a number that reads as evidence only because the fixtures demonstrably came first, and as a mirror otherwise. That discipline — categories, borderline labels, and the sequencing rule — is the rest of this article.
 
 ---
 
 ## Why do fixtures have to come before rules? {#fixtures-before-rules}
 
-Write the corpus *after* the tool, with one eye on what it already detects, and the fixtures inherit its blind spots — the benchmark stops measuring and starts reflecting. That's [Goodhart's Law](https://ofriperetz.dev/articles/goodharts-law-explained) operating at design time.
+Write the corpus _after_ the tool, with one eye on what it already detects, and the fixtures inherit its blind spots — the benchmark stops measuring and starts reflecting. That's [Goodhart's Law](https://ofriperetz.dev/articles/goodharts-law-explained) operating at design time.
 
 The defense is sequencing: this corpus was designed against published OWASP categories and CWE mappings before any Interlace rule existed to cover it, and its 38 safe patterns represent realistic validated code, not Interlace's allow-listing logic. Sequencing bounds the [bias](https://ofriperetz.dev/articles/bias-in-measurement), not removes it — the same person still wrote both sides of the test.
 
@@ -40,11 +40,11 @@ One distortion to own out loud: the corpus is roughly balanced across categories
 
 ## How do you label the edge cases? {#labeling-edge-cases}
 
-The `parseInt` label is an author judgment inside the CWE-89 definition, and it earns an annotation carrying its reasoning: *borderline; would be vulnerable if the query used string interpolation instead of the typed value*. The generalizable rule: record the reasoning, not just the verdict. Six months later, a label without reasoning is an opinion with tenure.
+The `parseInt` label is an author judgment inside the CWE-89 definition, and it earns an annotation carrying its reasoning: _borderline; would be vulnerable if the query used string interpolation instead of the typed value_. The generalizable rule: record the reasoning, not just the verdict. Six months later, a label without reasoning is an opinion with tenure.
 
 This corpus has one rater, and [inter-rater agreement](https://ofriperetz.dev/articles/inter-rater-agreement-cohens-kappa) needs at least two — there is no kappa to report, only me agreeing with myself. That's the weakest joint in the design, and why the reasoning must be public: so a second rater can show up later and disagree precisely.
 
-Labels live *with* the code: a manifest at the fixture file's bottom (`EXPECTED_DETECTIONS`: function → `{cwe, severity}`; `EXPECTED_NO_DETECTIONS`: the safe list) is what the runner imports to score [TP/FP/FN/TN](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) — no spreadsheet drifting out of sync.
+Labels live _with_ the code: a manifest at the fixture file's bottom (`EXPECTED_DETECTIONS`: function → `{cwe, severity}`; `EXPECTED_NO_DETECTIONS`: the safe list) is what the runner imports to score [TP/FP/FN/TN](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) — no spreadsheet drifting out of sync.
 
 ## How do you make a corpus result reproducible? {#pinning-and-publishing}
 
@@ -68,7 +68,7 @@ The 78 fixtures are a constructed set, not a random draw, so results are descrip
 
 The lifecycle: design → publish → saturate → refresh.
 
-Saturation is where mine is now: Interlace v3.0.2 scores 40 TP, 0 FP, 0 FN — 100/100/100 precision/recall/F1. The tempting read is "the tool is finished." The correct read: the *corpus* is finished, for that tool — a saturated corpus can't measure the improvement of the tool that saturates it. Publishing that line felt less like winning and more like watching the instrument go quiet. The corpus still measures competitors (next best: 14 of 40, eslint-plugin-sonarjs 3.0.6), but for Interlace it's now a regression test, not a benchmark.
+Saturation is where mine is now: Interlace v3.0.2 scores 40 TP, 0 FP, 0 FN — 100/100/100 precision/recall/F1. The tempting read is "the tool is finished." The correct read: the _corpus_ is finished, for that tool — a saturated corpus can't measure the improvement of the tool that saturates it. Publishing that line felt less like winning and more like watching the instrument go quiet. The corpus still measures competitors (next best: 14 of 40, eslint-plugin-sonarjs 3.0.6), but for Interlace it's now a regression test, not a benchmark.
 
 Then contamination: public fixtures can be tuned against — by any tool, mine included. Public corpora decay the way public trading signals do: once everyone sees the signal, trading on it erases the information it carried. The answer is versioning, not secrecy (secrecy kills reproducibility): treat the published corpus as v1 and plan a harder v2 held to the same fixtures-before-rules discipline — anchored to the taxonomy, not to any tool's known behavior, Interlace's misses included.
 
@@ -80,14 +80,14 @@ Before publishing, run leave-one-category-out: re-score the leaderboard 14 times
 
 The last discipline is documentation, and it deserves a name: **Fixture Cards** — per-fixture documentation modeled on Datasheets for Datasets (Gebru et al.) and Model Cards (Mitchell et al.), scaled down to the single labeled example. Six fields:
 
-| Field | The `parseInt` fixture's card would read |
-| --- | --- |
-| **CWE** | CWE-89 |
-| **Label** | threat-model-conditional: vulnerable under "any non-parameterized query is unsafe"; safe under "direct injection vector only" |
-| **Reasoning** | borderline; would be vulnerable if the query used string interpolation instead of the typed value |
-| **Author** | Ofri Peretz |
-| **Date** | the day the call is made, pinned to the corpus version it enters |
-| **Disputed?** | open — threat-model-dependent |
+| Field         | The `parseInt` fixture's card would read                                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **CWE**       | CWE-89                                                                                                                        |
+| **Label**     | threat-model-conditional: vulnerable under "any non-parameterized query is unsafe"; safe under "direct injection vector only" |
+| **Reasoning** | borderline; would be vulnerable if the query used string interpolation instead of the typed value                             |
+| **Author**    | Ofri Peretz                                                                                                                   |
+| **Date**      | the day the call is made, pinned to the corpus version it enters                                                              |
+| **Disputed?** | open — threat-model-dependent                                                                                                 |
 
 Four of the six fields already exist in the suite: CWE and label live in the manifest the runner imports, author and date in the fixture file's git history. The Card names that standard and adds the two fields no runner ever checks — reasoning and dispute status. Packaging all six as a JSON schema is the remaining step, and it doubles as the contribution unit: to submit a fixture is to submit its Card. Labeling debt stops accumulating silently, and the single-rater problem gets its structural fix — every `disputed?` field is an open seat for a second rater.
 
@@ -97,19 +97,19 @@ The `parseInt` Card above is the first open seat, and it's yours if you want it:
 
 ## Quick reference {#quick-reference}
 
-| Design decision | The rule | If you skip it |
-| --- | --- | --- |
-| Sequencing | Fixtures before rules | The benchmark becomes a mirror |
-| Category selection | Anchor to CWE/OWASP (here: 14 categories, 17 CWE IDs) | Blind spots inherited from instinct |
-| Balance | Balanced corpus — and say what it can't estimate | Base-rate overclaims about production FP rates |
-| Edge-case labels | Record reasoning with the label; mark borderline calls | Labels become opinions with tenure |
-| Machine-readable labels | Manifest lives in the fixture file; runner imports it | Spreadsheet drift |
-| Versions | Lockfile + per-run resolved versions in the results | Irreproducible numbers |
-| Publishing | Public corpus + a divergence channel | A claim, not a benchmark |
-| Sample claims | n=40 describes; it does not infer | Fake statistical rigor |
-| Lifecycle | Version the corpus; plan v2 at saturation | 100% scores misread as "done" |
-| Robustness | Leave-one-category-out before publishing | Fragile rankings published as real |
-| Fixture Cards | CWE · label · reasoning · author · date · disputed? | Labeling debt accumulates silently |
+| Design decision         | The rule                                               | If you skip it                                 |
+| ----------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| Sequencing              | Fixtures before rules                                  | The benchmark becomes a mirror                 |
+| Category selection      | Anchor to CWE/OWASP (here: 14 categories, 17 CWE IDs)  | Blind spots inherited from instinct            |
+| Balance                 | Balanced corpus — and say what it can't estimate       | Base-rate overclaims about production FP rates |
+| Edge-case labels        | Record reasoning with the label; mark borderline calls | Labels become opinions with tenure             |
+| Machine-readable labels | Manifest lives in the fixture file; runner imports it  | Spreadsheet drift                              |
+| Versions                | Lockfile + per-run resolved versions in the results    | Irreproducible numbers                         |
+| Publishing              | Public corpus + a divergence channel                   | A claim, not a benchmark                       |
+| Sample claims           | n=40 describes; it does not infer                      | Fake statistical rigor                         |
+| Lifecycle               | Version the corpus; plan v2 at saturation              | 100% scores misread as "done"                  |
+| Robustness              | Leave-one-category-out before publishing               | Fragile rankings published as real             |
+| Fixture Cards           | CWE · label · reasoning · author · date · disputed?    | Labeling debt accumulates silently             |
 
 ---
 
@@ -136,4 +136,4 @@ If this is the discipline you'd want behind a benchmark you trust, the corpus �
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

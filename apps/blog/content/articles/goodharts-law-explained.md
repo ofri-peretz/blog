@@ -41,7 +41,7 @@ None of this requires bad intent. Someone who has internalized what their system
 
 ## The Three Ways a Benchmark Gets Gamed {#manifestations}
 
-**Building the test around what you already pass** is the highest-risk form, because it doesn't feel like cheating. A trading desk that tunes a strategy on the exact price history it then reports returns against will always show a winner — the back-test and the design drew on the same data, so nothing is left to discover; the out-of-sample market it meets next is a different world. A school that drills the precise question bank lifts scores without lifting learning. The fix is sequencing, not virtue: fix the test from an independent standard *before* you build the thing it grades, so the test still has the power to surprise you.
+**Building the test around what you already pass** is the highest-risk form, because it doesn't feel like cheating. A trading desk that tunes a strategy on the exact price history it then reports returns against will always show a winner — the back-test and the design drew on the same data, so nothing is left to discover; the out-of-sample market it meets next is a different world. A school that drills the precise question bank lifts scores without lifting learning. The fix is sequencing, not virtue: fix the test from an independent standard _before_ you build the thing it grades, so the test still has the power to surprise you.
 
 **Choosing weak comparators** is the easiest form to execute and the easiest to hide. A fund benchmarks its returns against a deliberately soft index; a 40-0 boxing record gets built on hand-picked opponents; a new drug is trialled against a placebo when a proven standard-of-care treatment already exists and would be the honest thing to beat. A headline that reads "beats five rivals" means nothing if the five were chosen because they couldn't fight back. The defense is to compare against the strongest available alternative, at its current best — not the version that makes your margin look widest.
 
@@ -62,7 +62,7 @@ The riskiest number of all is the single aggregate score: one figure is easy to 
 
 Before trusting any benchmark, ask one question: which came first, the test or the thing it grades? If the answer is "the thing, then a test built to fit it," the score is measuring the author's confidence, not the capability. It's a fair question to ask of anyone's numbers — including mine.
 
-*Cited by: [I Built What I Benchmark](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat) — these four controls run through a live conflict of interest, a benchmark whose author wrote the tool under test — and [its false-positive benchmark](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark), the evidence table built on this foundation.*
+_Cited by: [I Built What I Benchmark](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat) — these four controls run through a live conflict of interest, a benchmark whose author wrote the tool under test — and [its false-positive benchmark](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark), the evidence table built on this foundation._
 
 If this cleared up why a rising score can still be the wrong signal, bookmark the page — and [follow me on Dev.to](https://dev.to/ofri-peretz) for the rest of the measurement series.
 
@@ -70,30 +70,30 @@ If this cleared up why a rising score can still be the wrong signal, bookmark th
 
 ## Quick Reference {#quick-reference}
 
-| Form | What it looks like | Prevention |
-|------|-------------------|------------|
-| Test built to fit | A perfect pass rate on a test designed after you already knew the answer | Fix the test from an independent standard before building what it grades |
-| Category cherry-picking | "We score well on the five dimensions we chose to report" | Report every dimension you claim to cover — wins and losses in the same place |
-| Weak comparators | Winning against opponents picked because they can't fight back | Compare against the strongest available alternative, at its current best |
-| Post-hoc tuning | Re-tuning to lift the score without re-checking real-world effect | Validate on a held-out, real-world sample before republishing |
-| Aggregation | A single overall score that hides which parts got worse | Publish the component numbers next to the total |
+| Form                    | What it looks like                                                       | Prevention                                                                    |
+| ----------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Test built to fit       | A perfect pass rate on a test designed after you already knew the answer | Fix the test from an independent standard before building what it grades      |
+| Category cherry-picking | "We score well on the five dimensions we chose to report"                | Report every dimension you claim to cover — wins and losses in the same place |
+| Weak comparators        | Winning against opponents picked because they can't fight back           | Compare against the strongest available alternative, at its current best      |
+| Post-hoc tuning         | Re-tuning to lift the score without re-checking real-world effect        | Validate on a held-out, real-world sample before republishing                 |
+| Aggregation             | A single overall score that hides which parts got worse                  | Publish the component numbers next to the total                               |
 
 ---
 
 ## References
 
-Goodhart, C. A. E. (1975). Problems of Monetary Management: The UK Experience. *Papers in Monetary Economics*, Reserve Bank of Australia, vol. 1. The original paper — monetary policy context, but Goodhart himself never claimed the principle was domain-specific.
+Goodhart, C. A. E. (1975). Problems of Monetary Management: The UK Experience. _Papers in Monetary Economics_, Reserve Bank of Australia, vol. 1. The original paper — monetary policy context, but Goodhart himself never claimed the principle was domain-specific.
 
-Strathern, M. (1997). ["Improving Ratings": Audit in the British University System](https://doi.org/10.1002/%28SICI%291234-981X%28199707%295:3%3C305::AID-EURO184%3E3.0.CO;2-4). *European Review*, 5(3), 305–321. The source of the "measure becomes a target" phrasing commonly misattributed to Goodhart; her academic-audit case is the generalization that made it a standalone aphorism.
+Strathern, M. (1997). ["Improving Ratings": Audit in the British University System](https://doi.org/10.1002/%28SICI%291234-981X%28199707%295:3%3C305::AID-EURO184%3E3.0.CO;2-4). _European Review_, 5(3), 305–321. The source of the "measure becomes a target" phrasing commonly misattributed to Goodhart; her academic-audit case is the generalization that made it a standalone aphorism.
 
-Campbell, D. T. (1979). [Assessing the Impact of Planned Social Change](https://doi.org/10.1016/0149-7189%2879%2990048-X). *Evaluation and Program Planning*, 2(1), 67–90. Campbell's Law — the independent social-science formulation of the same structural mechanism, reached from outside economics entirely.
+Campbell, D. T. (1979). [Assessing the Impact of Planned Social Change](https://doi.org/10.1016/0149-7189%2879%2990048-X). _Evaluation and Program Planning_, 2(1), 67–90. Campbell's Law — the independent social-science formulation of the same structural mechanism, reached from outside economics entirely.
 
-Graham, J. R., Harvey, C. R., & Rajgopal, S. (2005). [The Economic Implications of Corporate Financial Reporting](https://doi.org/10.1016/j.jacceco.2005.01.002). *Journal of Accounting and Economics*, 40(1–3), 3–73. A survey of 401 financial executives in which a large majority — roughly 78% — reported they would sacrifice long-term economic value to smooth reported earnings or hit an earnings target. The empirical source behind the earnings-management example above.
+Graham, J. R., Harvey, C. R., & Rajgopal, S. (2005). [The Economic Implications of Corporate Financial Reporting](https://doi.org/10.1016/j.jacceco.2005.01.002). _Journal of Accounting and Economics_, 40(1–3), 3–73. A survey of 401 financial executives in which a large majority — roughly 78% — reported they would sacrifice long-term economic value to smooth reported earnings or hit an earnings target. The empirical source behind the earnings-management example above.
 
-Manheim, D., & Garrabrant, S. (2018). [Categorizing Variants of Goodhart's Law](https://arxiv.org/abs/1803.04585). *arXiv:1803.04585*. A modern taxonomy separating the distinct failure modes bundled under "Goodhart's Law" (regressional, extremal, causal, adversarial) — useful background before designing a measurement system of your own.
+Manheim, D., & Garrabrant, S. (2018). [Categorizing Variants of Goodhart's Law](https://arxiv.org/abs/1803.04585). _arXiv:1803.04585_. A modern taxonomy separating the distinct failure modes bundled under "Goodhart's Law" (regressional, extremal, causal, adversarial) — useful background before designing a measurement system of your own.
 
 ---
 
-*Foundations series: ← [Bias in measurement](https://ofriperetz.dev/articles/bias-in-measurement) · [hub](https://ofriperetz.dev/foundations) · [Reproducibility vs replicability](https://ofriperetz.dev/articles/reproducibility-vs-replicability) →*
+_Foundations series: ← [Bias in measurement](https://ofriperetz.dev/articles/bias-in-measurement) · [hub](https://ofriperetz.dev/foundations) · [Reproducibility vs replicability](https://ofriperetz.dev/articles/reproducibility-vs-replicability) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

@@ -22,7 +22,7 @@ author:
 The top Stack Overflow answer for "generate a unique token in JavaScript" returns this:
 
 ```javascript
-Math.random().toString(36).substring(2)
+Math.random().toString(36).substring(2);
 ```
 
 It appears in password reset tokens, session IDs, invite codes, and API keys across the JavaScript ecosystem. I found it verbatim in [calcom/cal.diy](https://github.com/calcom/cal.diy) (~44K stars) — the MIT open-source edition of Cal.com:
@@ -50,7 +50,7 @@ const token = Math.random().toString(36).substring(2);
 // → all future tokens predictable
 ```
 
-**CWE-338: Use of Cryptographically Weak Pseudo-Random Number Generator.**
+**[CWE-338](https://ofriperetz.dev/articles/cwe-taxonomy-explained): Use of Cryptographically Weak Pseudo-Random Number Generator.**
 
 ### The exploit
 
@@ -87,7 +87,8 @@ _Server-side (the more general case):_ If `Math.random()` generates tokens in a 
 const token = Math.random().toString(36).substring(2, 15);
 
 // Session ID (with Date.now() — adds a predictable timestamp, not additional unpredictability):
-const sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2);
+const sessionId =
+  Date.now().toString(36) + Math.random().toString(36).substring(2);
 
 // Invite code:
 const inviteToken = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -107,7 +108,7 @@ The first three are less exploitable than the calcom/cal.diy pattern — partial
 - No runtime errors — tokens generate correctly, tests pass
 - Reviewers focus on the business logic, not PRNG security properties
 
-Nobody reviews token generation and asks "is this the right _kind_ of random?" The ESLint rule asks it for you.
+Nobody reviews token generation and asks "is this the right _kind_ of random?" I didn't catch the calcom/cal.diy line by being clever either — `cal_live_` and `Math.random()` on the same line stops being subtle the moment you're looking for it. It's the chess habit: distrust the move that looks free. A token that _looks_ random is exactly the one worth a second glance. The ESLint rule takes that second glance on every commit, so nobody has to remember to.
 
 > **Source context:** calcom/cal.diy is the MIT open-source edition of Cal.com (the enterprise codebase runs separately under AGPL as `calcom/cal.com`). The `Math.random()` line is in a client-side React component. For client-side code, the architectural problem — generating a secret in the browser — is the primary concern. The PRNG weakness is secondary, but it compounds. The state-recovery attack in the Exploit section applies directly to server-side equivalents of this pattern.
 
@@ -117,7 +118,7 @@ Nobody reviews token generation and asks "is this the right _kind_ of random?" T
 
 `eslint-plugin-node-security/no-math-random-crypto` fires when `Math.random()` is assigned to a variable whose name matches any of 18+ security-sensitive patterns: `token`, `key`, `secret`, `session`, `auth`, `csrf`, `nonce`, `otp`, `code`, `verify`, and more.
 
-**On false positives:** React's list reconciliation `key` prop doesn't trigger this — the rule checks `Math.random()` assignments, not JSX attributes. `code` for HTTP status codes or country codes won't trigger either, because the rule only fires when `Math.random()` is the value being assigned. If you have legitimate non-security uses of a `key` variable fed by `Math.random()` (rare but possible), configure `allowInTests: true` or use an ESLint disable comment with a note explaining why.
+**On [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn):** React's list reconciliation `key` prop doesn't trigger this — the rule checks `Math.random()` assignments, not JSX attributes. `code` for HTTP status codes or country codes won't trigger either, because the rule only fires when `Math.random()` is the value being assigned. If you have legitimate non-security uses of a `key` variable fed by `Math.random()` (rare but possible), configure `allowInTests: true` or use an ESLint disable comment with a note explaining why.
 
 ```text
 node-security/no-math-random-crypto
@@ -135,10 +136,10 @@ This fires on the calcom/cal.diy line.
 **Server-side (Node.js API route, Express, NestJS):**
 
 ```javascript
-import crypto from 'node:crypto';
+import crypto from "node:crypto";
 
 // Opaque token — hex string, 48 characters:
-const apiKey = `cal_live_${crypto.randomBytes(24).toString('hex')}`;
+const apiKey = `cal_live_${crypto.randomBytes(24).toString("hex")}`;
 
 // UUID format:
 const id = crypto.randomUUID();
@@ -152,7 +153,9 @@ Generating secret API keys client-side is itself the architectural problem — t
 // Web Crypto — available in all modern browsers and Node.js 19+:
 const array = new Uint8Array(24);
 globalThis.crypto.getRandomValues(array);
-const token = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+const token = Array.from(array)
+  .map((b) => b.toString(16).padStart(2, "0"))
+  .join("");
 ```
 
 `globalThis.crypto.getRandomValues()` uses the OS CSPRNG and is safe in both browser and Node.js environments.
@@ -163,16 +166,16 @@ const token = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('
 
 ```javascript
 // eslint.config.mjs
-import nodeSecurity from 'eslint-plugin-node-security';
-import tsParser from '@typescript-eslint/parser';
+import nodeSecurity from "eslint-plugin-node-security";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
     languageOptions: { parser: tsParser },
-    plugins: { 'node-security': nodeSecurity },
+    plugins: { "node-security": nodeSecurity },
     rules: {
-      'node-security/no-math-random-crypto': 'error',
+      "node-security/no-math-random-crypto": "error",
     },
   },
 ];
@@ -187,7 +190,7 @@ Full rule documentation at [eslint.interlace.tools](https://eslint.interlace.too
 
 Note: this rule catches the PRNG problem. It won't flag client-side key generation as an architectural issue — that's a separate concern for code review.
 
-If you're auditing older code for this class of vulnerability more broadly, the [30-minute security audit protocol](https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a-new-codebase-4f91) covers Math.random() alongside credential handling, JWT configuration, and input validation in a single pass.
+If you're auditing older code for this class of vulnerability more broadly, the [30-minute security audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) covers Math.random() alongside credential handling, JWT configuration, and input validation in a single pass.
 
 ---
 
@@ -196,16 +199,18 @@ _Have you run this against your codebase yet? I'm specifically curious where it 
 ---
 
 _See also:_
-_[Exploit Analysis: The JWT Algorithm 'none' Attack (And the Guard)](https://dev.to/ofri-peretz/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g)_
+_[Exploit Analysis: The JWT Algorithm 'none' Attack (And the Guard)](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g)_
 
 ---
 
 📦 [`eslint-plugin-node-security`](https://www.npmjs.com/package/eslint-plugin-node-security) · [Rule docs](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-math-random-crypto)
 
 <!-- markdownlint-disable MD034 -->
+
 {% cta https://github.com/ofri-peretz/eslint %}
 ⭐ Star on GitHub
 {% endcta %}
+
 <!-- markdownlint-enable MD034 -->
 
 ---

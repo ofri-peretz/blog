@@ -33,7 +33,7 @@ author:
 
 **The most alarming finding:** The median plugin in this benchmark detected under 10% of vulnerability patterns. SonarJS — the best-performing competitor with 3M+ weekly downloads and 269 rules — caught **0 of 6 SQL injection cases**. Zero. The category most teams assume a "security" linter covers is a complete blind spot for every single plugin except Interlace.
 
-*Series: [The Methodology](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark) ← **you are here: the ecosystem overview** → [SonarJS vs Interlace](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace) · [Microsoft SDL vs Interlace](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)*
+_Series: [The Methodology](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark) ← **you are here: the ecosystem overview** → [SonarJS vs Interlace](https://ofriperetz.dev/articles/benchmark-sonarjs-vs-interlace) · [Microsoft SDL vs Interlace](https://ofriperetz.dev/articles/benchmark-microsoft-sdl-vs-interlace)_
 
 ## TL;DR
 
@@ -43,13 +43,13 @@ I built a benchmark suite with **40 vulnerable code patterns** across 13 [CWE](h
 
 > **Benchmark provenance — read this once before the table.** The 16 competitor rows are a single Feb-2026 snapshot (`results/fn-fp-comparison/2026-02-07.json`). The Interlace row is a later golden verification run (`golden-2026-05-29.json`), after the rule work described in [How Interlace got from 77.5% to 100%](#how-interlace-got-from-775-to-100). These are **not the same execution**: in the Feb snapshot, on older plugin versions, Interlace scored 31/40 with 9 FPs (F1 77.5%) — that earlier row is shown explicitly in the journey section. Both runs share the same 40-fixture suite, ESLint 9.39.2, and macOS arm64. Node.js version (v20.19.5 vs v24.12.0) does not affect ESLint rule execution; the same rules fire on both.
 
-| Rank | Plugin                              | Rules | TP        | FP    | F1 Score    |
-| :--- | :---------------------------------- | :---- | :-------- | :---- | :---------- |
-| 🥇   | **Interlace Ecosystem (10 plugins) ‡** | 201   | **40/40** | **0** | **100.0%**  |
-| 🥈   | eslint-plugin-unicorn †             | 144   | 22/40     | 23    | 51.8%       |
-| 🥉   | eslint-plugin-security ††           | 13    | 11/40     | 8     | 37.3%       |
-| 4    | eslint-plugin-sonarjs ‡‡            | 269   | 10/40     | 5     | 36.4%       |
-| 5    | @microsoft/eslint-plugin-sdl        | 17    | 4/40      | 1     | 17.8%       |
+| Rank | Plugin                                 | Rules | TP        | FP    | F1 Score   |
+| :--- | :------------------------------------- | :---- | :-------- | :---- | :--------- |
+| 🥇   | **Interlace Ecosystem (10 plugins) ‡** | 201   | **40/40** | **0** | **100.0%** |
+| 🥈   | eslint-plugin-unicorn †                | 144   | 22/40     | 23    | 51.8%      |
+| 🥉   | eslint-plugin-security ††              | 13    | 11/40     | 8     | 37.3%      |
+| 4    | eslint-plugin-sonarjs ‡‡               | 269   | 10/40     | 5     | 36.4%      |
+| 5    | @microsoft/eslint-plugin-sdl           | 17    | 4/40      | 1     | 17.8%      |
 
 > † `eslint-plugin-unicorn` is a general-purpose code-style plugin. Its 22 detections are **incidental** — security fixtures happen to trigger style rules like `unicorn/no-process-exit`, `unicorn/prefer-module`, and `unicorn/no-static-only-class`. It ships 23 false positives alongside those 22 TPs (a nearly 1:1 noise ratio), making it unusable as a security tool. It ranks #3 in raw TPs only because it has 144 opinionated rules that fire broadly. See [Non-Security Plugins](#the-non-security-plugins-confirmed-gaps) for the full table.
 >
@@ -93,7 +93,7 @@ The data shows a **massive detection gap** across the entire ecosystem. Plugins 
 
 ### Where SonarJS wins — and when you'd choose it
 
-SonarJS is still a credible competitor, but the current release (4.1.0) has a narrower case than the version most benchmarks would cite: **Insecure Randomness (2/2)** is its one clean category, with partial credit on Hardcoded Credentials (2/4), Weak Cryptography (2/3), XSS (2/4), and JWT (1/3). It also has 269 rules covering a wider range of code quality issues beyond security — if you need a single plugin for code quality *and* some security coverage, SonarJS is still a reasonable pragmatic choice, just not for command injection specifically anymore.
+SonarJS is still a credible competitor, but the current release (4.1.0) has a narrower case than the version most benchmarks would cite: **Insecure Randomness (2/2)** is its one clean category, with partial credit on Hardcoded Credentials (2/4), Weak Cryptography (2/3), XSS (2/4), and JWT (1/3). It also has 269 rules covering a wider range of code quality issues beyond security — if you need a single plugin for code quality _and_ some security coverage, SonarJS is still a reasonable pragmatic choice, just not for command injection specifically anymore.
 
 Where SonarJS falls short: SQL injection (0/6), path traversal (0/4), prototype pollution (0/3), timing attacks (0/2), SSRF (0/2), open redirect (0/1), and — new in this version — **command injection (0/4, down from 4/4 in 3.0.6)**. If your stack touches a database, a filesystem, user-controlled URLs, or shell commands, SonarJS's 25% [recall](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) on the current release (v4.1.0 — down from 14/40 = 35.0% on v3.0.6) leaves you blind in the categories that matter most.
 
@@ -105,7 +105,7 @@ I've watched this exact failure on real teams, and I watched it happen to my own
 
 Here's the precise moment it goes dark, and why nobody notices: someone bumps ESLint 8 → 9 in a Renovate PR. From that version on, the plugin's rules hit `context.getScope is not a function` and stop producing findings — the security checks that used to flag a [tainted](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) query now report nothing. The PR title says "chore(deps): bump eslint." It gets one approval and merges on a Friday. From that commit forward, every SQL-concatenation and `child_process` call your security linter used to catch sails through, and the only evidence is a plugin name in a config file that no longer does anything. I have never once seen that PR get a security review — it's a dependency bump, who reviews those for coverage regressions? **A security rule that silently stops firing isn't a weaker control than no rule; it's a worse one, because it's also a lie your reviewers believe.**
 
-The same cognitive failure applies to SonarJS users, just more subtly. SonarJS fires on real things — weak randomness, some hardcoded credentials — so developers see real alerts. That activity creates an implicit sense of coverage. Nobody checks whether SQL injection is in the detected set because the linter is clearly doing *something*. The gap stays invisible until something ships. It got quieter still on the current release: teams that upgraded SonarJS expecting their command-injection coverage to carry forward lost it silently — no error, no changelog headline, just a rule that used to fire and doesn't anymore.
+The same cognitive failure applies to SonarJS users, just more subtly. SonarJS fires on real things — weak randomness, some hardcoded credentials — so developers see real alerts. That activity creates an implicit sense of coverage. Nobody checks whether SQL injection is in the detected set because the linter is clearly doing _something_. The gap stays invisible until something ships. It got quieter still on the current release: teams that upgraded SonarJS expecting their command-injection coverage to carry forward lost it silently — no error, no changelog headline, just a rule that used to fire and doesn't anymore.
 
 And upgrading `eslint-plugin-security` doesn't close this one. The current release fixes the crash, so the config's claim of coverage stops being a lie — but SQL injection is still 0/6 on the version that isn't broken. The false sense of security just moves from "the linter stopped firing" to "the linter is firing on other things." Same blind spot, quieter alarm.
 
@@ -130,21 +130,21 @@ This table is pinned to the run that produced the headline `40/40, 0 FP` figure 
 
 > Category labels and counts below mirror the `categoryBreakdown` in `golden-2026-05-29.json` exactly, so a reader cloning the repo sees identical buckets. SQL and NoSQL injection are scored together as one **SQL Injection (6)** bucket (4 relational + 2 document-store, CWE-89/CWE-943); the fixture taxonomy does not split them.
 
-| Category               | Cases | CWEs             | Real-World Impact              |
-| :--------------------- | :---- | :--------------- | :----------------------------- |
+| Category                | Cases | CWEs             | Real-World Impact              |
+| :---------------------- | :---- | :--------------- | :----------------------------- |
 | SQL Injection (+ NoSQL) | 6     | CWE-89, CWE-943  | Data exfiltration, auth bypass |
-| Command Injection      | 4     | CWE-78           | Remote code execution          |
-| Path Traversal         | 4     | CWE-22           | Arbitrary file read/write      |
-| Hardcoded Credentials  | 4     | CWE-798          | Account takeover               |
-| JWT Vulnerabilities    | 3     | CWE-757, CWE-347 | Auth bypass                    |
-| XSS / Code Execution   | 4     | CWE-79, CWE-94   | Session hijack, RCE            |
-| Prototype Pollution    | 3     | CWE-1321         | DoS, property injection        |
-| Insecure Randomness    | 2     | CWE-330          | Predictable tokens             |
-| Weak Cryptography      | 3     | CWE-328, CWE-327 | Credential exposure            |
-| Timing Attacks         | 2     | CWE-208          | Secret extraction              |
-| SSRF                   | 2     | CWE-918          | Internal network access        |
-| Open Redirect          | 1     | CWE-601          | Phishing                       |
-| ReDoS                  | 2     | CWE-1333         | Denial of service              |
+| Command Injection       | 4     | CWE-78           | Remote code execution          |
+| Path Traversal          | 4     | CWE-22           | Arbitrary file read/write      |
+| Hardcoded Credentials   | 4     | CWE-798          | Account takeover               |
+| JWT Vulnerabilities     | 3     | CWE-757, CWE-347 | Auth bypass                    |
+| XSS / Code Execution    | 4     | CWE-79, CWE-94   | Session hijack, RCE            |
+| Prototype Pollution     | 3     | CWE-1321         | DoS, property injection        |
+| Insecure Randomness     | 2     | CWE-330          | Predictable tokens             |
+| Weak Cryptography       | 3     | CWE-328, CWE-327 | Credential exposure            |
+| Timing Attacks          | 2     | CWE-208          | Secret extraction              |
+| SSRF                    | 2     | CWE-918          | Internal network access        |
+| Open Redirect           | 1     | CWE-601          | Phishing                       |
+| ReDoS                   | 2     | CWE-1333         | Denial of service              |
 
 > **One CWE note before a pedant beats me to it:** the fixtures tag the JWT cases with **CWE-757** (algorithm downgrade — what the rule's diagnostic prints, so the table matches the repo). For the specific `alg:none` case (`vuln_jwt_alg_none`), the more precise mapping is **CWE-347 (Improper Verification of Cryptographic Signature)**, since accepting `none` skips signature verification entirely. Both CWEs are listed above on purpose; the detection is identical either way.
 
@@ -160,7 +160,9 @@ The category table above is abstract until you see the code. Three fixtures from
 const user = await db.query("SELECT * FROM users WHERE id = " + req.params.id);
 
 // fixed — parameterized query, identical behavior
-const user = await db.query("SELECT * FROM users WHERE id = $1", [req.params.id]);
+const user = await db.query("SELECT * FROM users WHERE id = $1", [
+  req.params.id,
+]);
 ```
 
 **`vuln_nosql_mongo` (CWE-943) — the same bug in a shape "SQL injection" rules don't recognize:**
@@ -231,24 +233,24 @@ npm run benchmark:fn-fp
 >
 > **Row provenance:** rows 2–16 (every competitor) are the Feb-2026 snapshot run (`2026-02-07.json`). The Interlace row (🥇) is the later golden verification run (`golden-2026-05-29.json`), with the fleet pinned to `eslint-plugin-node-security` ≥ 4.2.0 — the version that closed the last gaps (see [the 77.5%→100% section](#how-interlace-got-from-775-to-100)). In the Feb snapshot, on the older plugin versions, Interlace scored **31/40 with 9 FPs (F1 77.5%)**; that row is shown explicitly in the journey section rather than buried. The two runs share the same 40-fixture suite, ESLint 9.39.2, and macOS arm64.
 
-| Rank | Plugin                        | Version           | Rules | TP     | FP    | FN    | Precision  | Recall     | F1         |
-| :--- | :---------------------------- | :---------------- | :---- | :----- | :---- | :---- | :--------- | :--------- | :--------- |
+| Rank | Plugin                                 | Version             | Rules | TP     | FP    | FN    | Precision  | Recall     | F1         |
+| :--- | :------------------------------------- | :------------------ | :---- | :----- | :---- | :---- | :--------- | :--------- | :--------- |
 | 🥇   | **Interlace Ecosystem (10 plugins) ‡** | node-security 4.2.0 | 201   | **40** | **0** | **0** | **100.0%** | **100.0%** | **100.0%** |
-| 🥈   | eslint-plugin-unicorn †       | 65.0.0  | 144   | 22     | 23    | 18    | 48.9%      | 55.0%      | 51.8%      |
-| 🥉   | eslint-plugin-security ††     | 4.0.1   | 13    | 11     | 8     | 29    | 57.9%      | 27.5%      | 37.3%      |
-| 4    | eslint-plugin-sonarjs ‡‡      | 4.1.0   | 269   | 10     | 5     | 30    | 66.7%      | 25.0%      | 36.4%      |
-| 5    | @microsoft/eslint-plugin-sdl  | 1.1.0   | 17    | 4      | 1     | 36    | 80.0%      | 10.0%      | 17.8%      |
-| 6    | eslint-plugin-no-secrets      | 2.2.1   | 2     | 2      | 0     | 38    | 100.0%     | 5.0%       | 9.5%       |
-| 7    | eslint-plugin-no-unsanitized  | 4.1.4   | 2     | 2      | 1     | 38    | 66.7%      | 5.0%       | 9.3%       |
-| 8    | eslint-plugin-n               | 17.23.2 | 41    | 2      | 3     | 38    | 40.0%      | 5.0%       | 8.9%       |
-| 9    | eslint-plugin-regexp          | 3.0.0   | 78    | 1      | 2     | 39    | 33.3%      | 2.5%       | 4.7%       |
-| 10   | eslint-plugin-react           | 7.37.5  | 103   | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
-| 11   | eslint-plugin-jsx-a11y        | 6.10.2  | 39    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
-| 12   | eslint-plugin-import          | 2.32.0  | 44    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
-| 13   | eslint-plugin-promise         | 7.2.1   | 13    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
-| 14   | eslint-plugin-jest            | 29.12.2 | 71    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
-| 15   | eslint-plugin-vue             | 10.7.0  | 250   | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
-| 16   | @angular-eslint/eslint-plugin | 21.2.0  | 48    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
+| 🥈   | eslint-plugin-unicorn †                | 65.0.0              | 144   | 22     | 23    | 18    | 48.9%      | 55.0%      | 51.8%      |
+| 🥉   | eslint-plugin-security ††              | 4.0.1               | 13    | 11     | 8     | 29    | 57.9%      | 27.5%      | 37.3%      |
+| 4    | eslint-plugin-sonarjs ‡‡               | 4.1.0               | 269   | 10     | 5     | 30    | 66.7%      | 25.0%      | 36.4%      |
+| 5    | @microsoft/eslint-plugin-sdl           | 1.1.0               | 17    | 4      | 1     | 36    | 80.0%      | 10.0%      | 17.8%      |
+| 6    | eslint-plugin-no-secrets               | 2.2.1               | 2     | 2      | 0     | 38    | 100.0%     | 5.0%       | 9.5%       |
+| 7    | eslint-plugin-no-unsanitized           | 4.1.4               | 2     | 2      | 1     | 38    | 66.7%      | 5.0%       | 9.3%       |
+| 8    | eslint-plugin-n                        | 17.23.2             | 41    | 2      | 3     | 38    | 40.0%      | 5.0%       | 8.9%       |
+| 9    | eslint-plugin-regexp                   | 3.0.0               | 78    | 1      | 2     | 39    | 33.3%      | 2.5%       | 4.7%       |
+| 10   | eslint-plugin-react                    | 7.37.5              | 103   | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
+| 11   | eslint-plugin-jsx-a11y                 | 6.10.2              | 39    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
+| 12   | eslint-plugin-import                   | 2.32.0              | 44    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
+| 13   | eslint-plugin-promise                  | 7.2.1               | 13    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
+| 14   | eslint-plugin-jest                     | 29.12.2             | 71    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
+| 15   | eslint-plugin-vue                      | 10.7.0              | 250   | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
+| 16   | @angular-eslint/eslint-plugin          | 21.2.0              | 48    | 0      | 0     | 40    | —          | 0.0%       | 0.0%       |
 
 > † `eslint-plugin-unicorn` ranks #3 in raw TPs because its 144 opinionated style rules incidentally overlap with security fixtures (e.g., `unicorn/no-process-exit`, `unicorn/prefer-module`, `unicorn/no-static-only-class`). These are not security detections — they are style violations that happen to co-occur with vulnerable patterns. Its 23 FPs (firing on safe code) confirm this: a 1:1 TP:FP ratio is alert fatigue, not security coverage.
 >
@@ -334,21 +336,21 @@ That's due to the deprecated `context.getScope()` API removed in ESLint 9. **If 
 
 Upgrade to the current release (4.0.1) and the crash goes away. Coverage doesn't fully come back with it:
 
-| Category              | 4.0.1   | What It Still Misses                        |
-| :--------------------- | :------ | :------------------------------------------ |
-| Path Traversal         | 4/4 ✅  | —                                            |
-| ReDoS                  | 2/2 ✅  | —                                            |
-| Prototype Pollution    | 2/3     | one assignment-based case                    |
-| Command Injection      | 2/4     | `execSync`, `spawn` with `shell: true`        |
-| XSS / eval             | 1/4     | `innerHTML`, `document.write`, `new Function` |
-| SQL + NoSQL Injection  | 0/6     | ❌ All — every relational and document-store case |
-| Hardcoded Credentials  | 0/4     | ❌ All                                        |
-| JWT                    | 0/3     | ❌ All                                        |
-| Insecure Randomness    | 0/2     | ❌ All                                        |
-| Weak Cryptography      | 0/3     | ❌ All                                        |
-| Timing Attacks         | 0/2     | ❌ All                                        |
-| SSRF                   | 0/2     | ❌ All                                        |
-| Open Redirect          | 0/1     | ❌ All                                        |
+| Category              | 4.0.1  | What It Still Misses                              |
+| :-------------------- | :----- | :------------------------------------------------ |
+| Path Traversal        | 4/4 ✅ | —                                                 |
+| ReDoS                 | 2/2 ✅ | —                                                 |
+| Prototype Pollution   | 2/3    | one assignment-based case                         |
+| Command Injection     | 2/4    | `execSync`, `spawn` with `shell: true`            |
+| XSS / eval            | 1/4    | `innerHTML`, `document.write`, `new Function`     |
+| SQL + NoSQL Injection | 0/6    | ❌ All — every relational and document-store case |
+| Hardcoded Credentials | 0/4    | ❌ All                                            |
+| JWT                   | 0/3    | ❌ All                                            |
+| Insecure Randomness   | 0/2    | ❌ All                                            |
+| Weak Cryptography     | 0/3    | ❌ All                                            |
+| Timing Attacks        | 0/2    | ❌ All                                            |
+| SSRF                  | 0/2    | ❌ All                                            |
+| Open Redirect         | 0/1    | ❌ All                                            |
 
 Eleven of 40, with 8 false positives alongside them. The category it's most associated with by name — SQL injection — is a complete miss, current version or not.
 
@@ -360,21 +362,21 @@ Eleven of 40, with 8 false positives alongside them. The category it's most asso
 
 Re-benchmarked against the current release before publishing — the version most comparisons would cite (3.0.6) actually scores higher (14/40, 35.0% recall) than what's on npm today:
 
-| Category              | SonarJS (4.1.0) | What It Missed                              |
-| :-------------------- | :-------------- | :------------------------------------------ |
-| Insecure Randomness   | 2/2 ✅          | —                                            |
-| Hardcoded Credentials | 2/4             | AWS keys, API keys                           |
-| Weak Cryptography     | 2/3             | DES                                          |
-| XSS / eval            | 2/4             | `innerHTML`, `document.write`                |
+| Category              | SonarJS (4.1.0) | What It Missed                                      |
+| :-------------------- | :-------------- | :-------------------------------------------------- |
+| Insecure Randomness   | 2/2 ✅          | —                                                   |
+| Hardcoded Credentials | 2/4             | AWS keys, API keys                                  |
+| Weak Cryptography     | 2/3             | DES                                                 |
+| XSS / eval            | 2/4             | `innerHTML`, `document.write`                       |
 | JWT                   | 1/3             | missing-algorithm, no-expiry (caught only alg:none) |
-| ReDoS                 | 1/2             | user-supplied pattern                        |
-| Command Injection     | 0/4 ❌          | **Regression — was 4/4 on v3.0.6, now 0/4** |
-| SQL + NoSQL Injection | 0/6             | ❌ All — every relational and document-store case |
-| Path Traversal        | 0/4             | ❌ All                                       |
-| Prototype Pollution   | 0/3             | ❌ All                                       |
-| Timing Attacks        | 0/2             | ❌ All                                       |
-| SSRF                  | 0/2             | ❌ All                                       |
-| Open Redirect         | 0/1             | ❌ All                                       |
+| ReDoS                 | 1/2             | user-supplied pattern                               |
+| Command Injection     | 0/4 ❌          | **Regression — was 4/4 on v3.0.6, now 0/4**         |
+| SQL + NoSQL Injection | 0/6             | ❌ All — every relational and document-store case   |
+| Path Traversal        | 0/4             | ❌ All                                              |
+| Prototype Pollution   | 0/3             | ❌ All                                              |
+| Timing Attacks        | 0/2             | ❌ All                                              |
+| SSRF                  | 0/2             | ❌ All                                              |
+| Open Redirect         | 0/1             | ❌ All                                              |
 
 The one category SonarJS still carries cleanly is Insecure Randomness. Despite having **269 rules** (the most of any plugin tested), the current release (v4.1.0) catches **10/40** (25.0% recall) — down from 14/40 (35.0%) on v3.0.6, the version originally tested — and misses 75% of vulnerabilities, including **0 of 6 SQL/NoSQL injection cases** (unchanged) and, new in this release, **0 of 4 command injection cases** it used to catch completely. Many of its rules target code quality, not security.
 
@@ -388,10 +390,10 @@ The one category SonarJS still carries cleanly is Insecure Randomness. Despite h
 
 Microsoft's SDL (Security Development Lifecycle) plugin found all four cases in the XSS/eval bucket — `innerHTML`, `document.write`, `eval`, and `new Function` — but missed everything else. Its 17 rules focus narrowly on browser-side injection. (In the fixture taxonomy these four split as 2 DOM-XSS + 2 code-execution; the benchmark scores them as one XSS/eval category, so this is the full 4/4 of that bucket and nothing beyond it.)
 
-| Category               | Microsoft SDL |
-| :--------------------- | :------------ |
-| XSS / eval             | 4/4 ✅        |
-| Everything else (36)   | 0/36 ❌       |
+| Category             | Microsoft SDL |
+| :------------------- | :------------ |
+| XSS / eval           | 4/4 ✅        |
+| Everything else (36) | 0/36 ❌       |
 
 **When a developer would believe they're covered:** Microsoft SDL is often installed alongside a broader security posture ("we follow the SDL"). Its name implies enterprise-grade coverage. Engineers who see XSS alerts in their feed assume the tool is catching the important things — and SQL injection, path traversal, and SSRF never come up because the rules don't exist.
 
@@ -434,21 +436,21 @@ These are excellent tools for their intended purpose. But if your security postu
 > Every cell below is read straight from the `categoryBreakdown` blocks of the two run files: the Interlace column from `golden-2026-05-29.json`, the five competitor columns from `2026-02-07.json`. SQL and NoSQL are scored as one **SQL Injection (6)** bucket here, exactly as the fixture taxonomy and line-96 table do — so the row totals reconcile to the leaderboard. If you clone the repo, these are the numbers `npm run benchmark:fn-fp` prints.
 
 | Category                  | Interlace | SonarJS (4.1.0) | MS SDL   | Security (4.0.1) | no-unsanitized | no-secrets |
-| :------------------------ | :-------- | :--------------- | :------- | :---------------- | :------------- | :--------- |
-| SQL Injection (6)         | ✅ 6/6    | ❌ 0/6           | ❌ 0/6   | ❌ 0/6             | ❌ 0/6         | ❌ 0/6     |
-| Command Injection (4)     | ✅ 4/4    | ❌ 0/4           | ❌ 0/4   | ⚠️ 2/4             | ❌ 0/4         | ❌ 0/4     |
-| Path Traversal (4)        | ✅ 4/4    | ❌ 0/4    | ❌ 0/4   | ✅ 4/4             | ❌ 0/4         | ❌ 0/4     |
-| Hardcoded Credentials (4) | ✅ 4/4    | ⚠️ 2/4    | ❌ 0/4   | ❌ 0/4             | ❌ 0/4         | ⚠️ 2/4     |
-| JWT (3)                   | ✅ 3/3    | ⚠️ 1/3    | ❌ 0/3   | ❌ 0/3             | ❌ 0/3         | ❌ 0/3     |
-| XSS / eval (4)            | ✅ 4/4    | ⚠️ 2/4    | ✅ 4/4   | ⚠️ 1/4             | ⚠️ 2/4         | ❌ 0/4     |
-| Prototype Pollution (3)   | ✅ 3/3    | ❌ 0/3    | ❌ 0/3   | ⚠️ 2/3             | ❌ 0/3         | ❌ 0/3     |
-| Insecure Random (2)       | ✅ 2/2    | ✅ 2/2    | ❌ 0/2   | ❌ 0/2             | ❌ 0/2         | ❌ 0/2     |
-| Weak Crypto (3)           | ✅ 3/3    | ⚠️ 2/3    | ❌ 0/3   | ❌ 0/3             | ❌ 0/3         | ❌ 0/3     |
-| Timing Attacks (2)        | ✅ 2/2    | ❌ 0/2    | ❌ 0/2   | ❌ 0/2             | ❌ 0/2         | ❌ 0/2     |
-| SSRF (2)                  | ✅ 2/2    | ❌ 0/2    | ❌ 0/2   | ❌ 0/2             | ❌ 0/2         | ❌ 0/2     |
-| Open Redirect (1)         | ✅ 1/1    | ❌ 0/1    | ❌ 0/1   | ❌ 0/1             | ❌ 0/1         | ❌ 0/1     |
-| ReDoS (2)                 | ✅ 2/2    | ⚠️ 1/2    | ❌ 0/2   | ✅ 2/2             | ❌ 0/2         | ❌ 0/2     |
-| **TOTAL**                 | **40/40** | **10/40**         | **4/40** | **11/40**          | **2/40**       | **2/40**   |
+| :------------------------ | :-------- | :-------------- | :------- | :--------------- | :------------- | :--------- |
+| SQL Injection (6)         | ✅ 6/6    | ❌ 0/6          | ❌ 0/6   | ❌ 0/6           | ❌ 0/6         | ❌ 0/6     |
+| Command Injection (4)     | ✅ 4/4    | ❌ 0/4          | ❌ 0/4   | ⚠️ 2/4           | ❌ 0/4         | ❌ 0/4     |
+| Path Traversal (4)        | ✅ 4/4    | ❌ 0/4          | ❌ 0/4   | ✅ 4/4           | ❌ 0/4         | ❌ 0/4     |
+| Hardcoded Credentials (4) | ✅ 4/4    | ⚠️ 2/4          | ❌ 0/4   | ❌ 0/4           | ❌ 0/4         | ⚠️ 2/4     |
+| JWT (3)                   | ✅ 3/3    | ⚠️ 1/3          | ❌ 0/3   | ❌ 0/3           | ❌ 0/3         | ❌ 0/3     |
+| XSS / eval (4)            | ✅ 4/4    | ⚠️ 2/4          | ✅ 4/4   | ⚠️ 1/4           | ⚠️ 2/4         | ❌ 0/4     |
+| Prototype Pollution (3)   | ✅ 3/3    | ❌ 0/3          | ❌ 0/3   | ⚠️ 2/3           | ❌ 0/3         | ❌ 0/3     |
+| Insecure Random (2)       | ✅ 2/2    | ✅ 2/2          | ❌ 0/2   | ❌ 0/2           | ❌ 0/2         | ❌ 0/2     |
+| Weak Crypto (3)           | ✅ 3/3    | ⚠️ 2/3          | ❌ 0/3   | ❌ 0/3           | ❌ 0/3         | ❌ 0/3     |
+| Timing Attacks (2)        | ✅ 2/2    | ❌ 0/2          | ❌ 0/2   | ❌ 0/2           | ❌ 0/2         | ❌ 0/2     |
+| SSRF (2)                  | ✅ 2/2    | ❌ 0/2          | ❌ 0/2   | ❌ 0/2           | ❌ 0/2         | ❌ 0/2     |
+| Open Redirect (1)         | ✅ 1/1    | ❌ 0/1          | ❌ 0/1   | ❌ 0/1           | ❌ 0/1         | ❌ 0/1     |
+| ReDoS (2)                 | ✅ 2/2    | ⚠️ 1/2          | ❌ 0/2   | ✅ 2/2           | ❌ 0/2         | ❌ 0/2     |
+| **TOTAL**                 | **40/40** | **10/40**       | **4/40** | **11/40**        | **2/40**       | **2/40**   |
 
 > `eslint-plugin-security` and `eslint-plugin-sonarjs` columns reflect their current releases (4.0.1 and 4.1.0), both re-benchmarked 2026-07-05 — see [the version note](#a-note-on-versions-i-re-ran-this-before-publishing) above. The previously pinned versions score 0/40 (2.1.1, crashes before evaluating any fixture) and 14/40 (3.0.6 — higher than the current release; the difference is a lost Command Injection detector).
 
@@ -456,18 +458,18 @@ These are excellent tools for their intended purpose. But if your security postu
 
 The reason Interlace achieves 100% coverage is **specialization**. Instead of one monolithic plugin trying to cover everything, the ecosystem uses 10 purpose-built plugins:
 
-| Plugin                             | Focus                                          | Rules |
-| :--------------------------------- | :--------------------------------------------- | :---- |
-| `eslint-plugin-secure-coding`      | Core OWASP patterns                            | 23    |
-| `eslint-plugin-node-security`      | fs, child_process, vm, weak crypto, randomness | 42    |
-| `eslint-plugin-browser-security`   | XSS, CORS, CSP                                 | 45    |
-| `eslint-plugin-pg`                 | SQL injection, connection safety               | 13    |
-| `eslint-plugin-jwt`                | Algorithm confusion, token safety              | 13    |
-| `eslint-plugin-mongodb-security`   | NoSQL injection, operator injection            | 16    |
-| `eslint-plugin-vercel-ai-security` | Prompt injection, output validation            | 19    |
-| [`eslint-plugin-lambda-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-lambda-security) | IAM, cold starts, secrets | 14 |
-| `eslint-plugin-express-security`   | Helmet, CORS, sessions                         | 10    |
-| `eslint-plugin-nestjs-security`    | Guards, pipes, decorators                      | 6     |
+| Plugin                                                                                                                | Focus                                          | Rules |
+| :-------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------- | :---- |
+| `eslint-plugin-secure-coding`                                                                                         | Core OWASP patterns                            | 23    |
+| `eslint-plugin-node-security`                                                                                         | fs, child_process, vm, weak crypto, randomness | 42    |
+| `eslint-plugin-browser-security`                                                                                      | XSS, CORS, CSP                                 | 45    |
+| `eslint-plugin-pg`                                                                                                    | SQL injection, connection safety               | 13    |
+| `eslint-plugin-jwt`                                                                                                   | Algorithm confusion, token safety              | 13    |
+| `eslint-plugin-mongodb-security`                                                                                      | NoSQL injection, operator injection            | 16    |
+| `eslint-plugin-vercel-ai-security`                                                                                    | Prompt injection, output validation            | 19    |
+| [`eslint-plugin-lambda-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-lambda-security) | IAM, cold starts, secrets                      | 14    |
+| `eslint-plugin-express-security`                                                                                      | Helmet, CORS, sessions                         | 10    |
+| `eslint-plugin-nestjs-security`                                                                                       | Guards, pipes, decorators                      | 6     |
 
 > Crypto rules (weak algorithms, insecure randomness) were consolidated into `eslint-plugin-node-security` on 2026-05-10. The previously separate `eslint-plugin-crypto` package is deprecated and should not be installed.
 
@@ -604,4 +606,5 @@ I'm Ofri Peretz, a Security Engineering Leader and the architect of the [Interla
 [ofriperetz.dev](https://ofriperetz.dev?utm_source=devto&utm_medium=article&utm_campaign=benchmark-17-plugins) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
 
 ---
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Benchmark source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Benchmark source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

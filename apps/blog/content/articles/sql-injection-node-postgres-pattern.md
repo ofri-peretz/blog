@@ -78,7 +78,7 @@ survives review.
 
 ```js
 // ❌ textbook SQL injection — also in 30% of Node.js PostgreSQL code we audit
-pool.query('SELECT * FROM users WHERE id = ' + userId);
+pool.query("SELECT * FROM users WHERE id = " + userId);
 ```
 
 `pool.query('SELECT * FROM users WHERE id = ' + userId)` is a textbook SQL
@@ -93,7 +93,9 @@ name, not the type contract.
 
 ```js
 const client = await pool.connect();
-client.query(`SELECT * FROM orders WHERE customer_id = ${customerId} AND status = '${status}'`); // ❌
+client.query(
+  `SELECT * FROM orders WHERE customer_id = ${customerId} AND status = '${status}'`,
+); // ❌
 ```
 
 **Why it survives review:** template literals read as declarative — they _look_
@@ -120,12 +122,15 @@ to actually use bind parameters, the tag reads as protection it isn't providing.
 
 ```js
 // ✅ pool.query — single-shot, no client acquire needed
-pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+pool.query("SELECT * FROM users WHERE id = $1", [userId]);
 
 // ✅ client.query — explicit client, bound parameters
 const client = await pool.connect();
 try {
-  await client.query('SELECT * FROM orders WHERE customer_id = $1 AND status = $2', [customerId, status]);
+  await client.query(
+    "SELECT * FROM orders WHERE customer_id = $1 AND status = $2",
+    [customerId, status],
+  );
 } finally {
   client.release();
 }
@@ -362,7 +367,7 @@ The rules are AST-based, so the only thing the glob controls is _where_ they run
 | **Node**             | `>= 18.0.0`                                                                           |
 | **ESLint**           | `^8.0.0 \|\| ^9.0.0`, flat config                                                     |
 | **`pg` driver**      | peer `^6 \|\| ^7 \|\| ^8`; AST-based, lints regardless of installed version           |
-| **Module system**    | ESM or CommonJS flat config (`eslint.config.mjs`, `.js`, or `.cjs`)                    |
+| **Module system**    | ESM or CommonJS flat config (`eslint.config.mjs`, `.js`, or `.cjs`)                   |
 | **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-pg` port, parity-gated in CI |
 
 ---
@@ -404,4 +409,4 @@ rule would have saved you a 3 AM page.
 
 ---
 
-*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

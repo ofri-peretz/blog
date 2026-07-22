@@ -92,7 +92,7 @@ const stripeKey = "sk_live_testmode1234"; // structural catch: prefix shape
 ```ts
 // Entropy: ~3.3 — scanner silent
 const dbConfig = {
-  password: "correct-horse-battery"  // context catch: property name
+  password: "correct-horse-battery", // context catch: property name
 };
 ```
 
@@ -289,4 +289,4 @@ Two more rule bugs from the same bench sweep, written up separately: [What groun
 
 ---
 
-*[eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

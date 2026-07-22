@@ -69,18 +69,18 @@ Most teams don't know this. They install a lint config, see OWASP categories in 
 
 Here's the distribution across all 10 categories (approximate, from the ecosystem at time of writing):
 
-| Category | Representative rule count | Coverage type |
-|---|---|---|
-| A03 Injection | ~80 rules | Full (SQL, NoSQL, DOM, LDAP, eval) |
-| A07 Auth Failures | ~40 rules | Full |
-| A02 Crypto Failures | ~35 rules | Full |
-| A05 Misconfiguration | ~30 rules | Full |
-| A01 Broken Access Control | ~25 rules | Full |
-| A08 Data Integrity | ~20 rules | Full |
-| A09 Logging Failures | ~10 rules | Full |
-| A10 SSRF | ~7 rules | Full |
-| A06 Vulnerable Components | ~5 rules | Partial (source hygiene only — not CVE graph) |
-| A04 Insecure Design | ~2 rules | Partial (defaults nudges — not design coverage) |
+| Category                  | Representative rule count | Coverage type                                   |
+| ------------------------- | ------------------------- | ----------------------------------------------- |
+| A03 Injection             | ~80 rules                 | Full (SQL, NoSQL, DOM, LDAP, eval)              |
+| A07 Auth Failures         | ~40 rules                 | Full                                            |
+| A02 Crypto Failures       | ~35 rules                 | Full                                            |
+| A05 Misconfiguration      | ~30 rules                 | Full                                            |
+| A01 Broken Access Control | ~25 rules                 | Full                                            |
+| A08 Data Integrity        | ~20 rules                 | Full                                            |
+| A09 Logging Failures      | ~10 rules                 | Full                                            |
+| A10 SSRF                  | ~7 rules                  | Full                                            |
+| A06 Vulnerable Components | ~5 rules                  | Partial (source hygiene only — not CVE graph)   |
+| A04 Insecure Design       | ~2 rules                  | Partial (defaults nudges — not design coverage) |
 
 A03 alone has more rules than A04, A06, A09, and A10 combined. If your threat model includes Insecure Design, your linter can't help — and that's the category most enterprise security questionnaires ask about first.
 
@@ -111,7 +111,7 @@ If you want to verify your own install right now, skip to the [one-liner at the 
 | [A07](https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/) | Authentication Failures           | `jwt`, `secure-coding`, `express-security`                    | [`no-algorithm-none`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-algorithm-none), [`no-algorithm-confusion`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-algorithm-confusion), [`no-insecure-cookie-options`](https://eslint.interlace.tools/docs/security/plugin-express-security/rules/no-insecure-cookie-options)                              |
 | [A08](https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/)       | Data Integrity Failures           | `secure-coding`, `node-security`                              | [`no-unsafe-deserialization`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-unsafe-deserialization), [`no-zip-slip`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-zip-slip), [`no-unsafe-dynamic-require`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-unsafe-dynamic-require)                     |
 | [A09](https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/)   | Logging Failures                  | `secure-coding`, `lambda-security`                            | [`no-pii-in-logs`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-pii-in-logs), [`no-env-logging`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-env-logging), [`no-error-swallowing`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-error-swallowing)                                             |
-| [A10](https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/)           | SSRF                              | `node-security`, `lambda-security`, `browser-security`        | [`no-ssrf`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-ssrf), [`no-user-controlled-requests`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-user-controlled-requests), [`require-url-validation`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/require-url-validation)                          |
+| [A10](https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/)     | SSRF                              | `node-security`, `lambda-security`, `browser-security`        | [`no-ssrf`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-ssrf), [`no-user-controlled-requests`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-user-controlled-requests), [`require-url-validation`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/require-url-validation)                          |
 
 Each row lists representative rules, not the whole set — A03 alone spans SQL,
 NoSQL, LDAP, XPath, and DOM injection across the four plugins above, plus
@@ -348,4 +348,4 @@ Which OWASP Top 10 category are you least confident your CI covers — and have 
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

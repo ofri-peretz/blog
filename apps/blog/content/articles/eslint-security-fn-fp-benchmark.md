@@ -37,7 +37,7 @@ I didn't expect the noise to be as bad as the signal. I expected low recall (it 
 
 **Full disclosure before the numbers:** I'm the author of the Interlace ESLint ecosystem, and Interlace scores 100%/0 FP in this benchmark. The skeptic read — "he built the test to fit his tool" — is the right instinct, so I'll give you the means to disprove it.
 
-**How a [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) is counted, stated explicitly because it's load-bearing:** a firing is an FP if the flagged pattern is not exploitable *as written* — regardless of whether the underlying rule concept is sound. That's a real methodological choice, not a neutral default: the SonarJS `no-os-command-from-path` firings later in this piece are rules working *correctly* (the command genuinely resolves through PATH) on code that isn't exploitable here (the argument is a hardcoded literal, not attacker-controlled). Counting "correct rule, wrong scope for this fixture" as an FP is a stricter bar than "rule made a logical error," and it's the bar every plugin in this benchmark is held to, including Interlace's own rules.
+**How a [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) is counted, stated explicitly because it's load-bearing:** a firing is an FP if the flagged pattern is not exploitable _as written_ — regardless of whether the underlying rule concept is sound. That's a real methodological choice, not a neutral default: the SonarJS `no-os-command-from-path` firings later in this piece are rules working _correctly_ (the command genuinely resolves through PATH) on code that isn't exploitable here (the argument is a hardcoded literal, not attacker-controlled). Counting "correct rule, wrong scope for this fixture" as an FP is a stricter bar than "rule made a logical error," and it's the bar every plugin in this benchmark is held to, including Interlace's own rules.
 
 The fixture suite was built first, against published [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) categories and [CWE mappings](https://ofriperetz.dev/articles/cwe-taxonomy-explained), before I wrote a single Interlace rule to cover it. Every fixture, every vulnerable pattern, every safe pattern is in the [public GitHub repo](https://github.com/ofri-peretz/eslint-benchmark-suite). If you run the benchmark against only the five non-Interlace plugins, the recall numbers don't change. The methodology is in the [Reproducibility section](#reproducibility) — one command, public repo, verifiable output. I built this to quantify what I made, not to sell it. The numbers either hold up when you run them yourself, or they don't.
 
@@ -51,14 +51,14 @@ I built a benchmark with **40 vulnerable code patterns** across 14 security cate
 
 > Plugin download counts cited throughout this article are weekly figures snapshotted on 2026-02-08 from [npm-stat.com](https://npm-stat.com).
 
-| Plugin                           | Rules | TP (Detections) | FP (False Alarms) | Precision | Recall | F1 Score   | ESLint 9   |
-| -------------------------------- | ----- | --------------- | ----------------- | --------- | ------ | ---------- | ---------- |
-| **eslint-plugin-sonarjs**        | 269   | 14/40           | 5                 | 73.7%     | 35.0%  | 47.5%      | ✅ Works   |
+| Plugin                           | Rules | TP (Detections) | FP (False Alarms) | Precision | Recall | F1 Score   | ESLint 9       |
+| -------------------------------- | ----- | --------------- | ----------------- | --------- | ------ | ---------- | -------------- |
+| **eslint-plugin-sonarjs**        | 269   | 14/40           | 5                 | 73.7%     | 35.0%  | 47.5%      | ✅ Works       |
 | **eslint-plugin-security** †     | 13    | 11/40           | 11                | 50.0%     | 27.5%  | 35.5%      | ⚠️ v2.1.1 only |
-| **eslint-plugin-security-node**  | 22    | 7/40            | 4                 | 63.6%     | 17.5%  | 27.4%      | ✅ Works   |
-| **@microsoft/eslint-plugin-sdl** | 17    | 4/40            | 1                 | 80.0%     | 10.0%  | 17.8%      | ✅ Works   |
-| **eslint-plugin-no-unsanitized** | 2     | 2/40            | 1                 | 66.7%     | 5.0%   | 9.3%       | ✅ Works   |
-| **Interlace Ecosystem**          | 198   | **40/40**       | **0**             | 100.0%    | 100.0% | **100.0%** | ✅ Works   |
+| **eslint-plugin-security-node**  | 22    | 7/40            | 4                 | 63.6%     | 17.5%  | 27.4%      | ✅ Works       |
+| **@microsoft/eslint-plugin-sdl** | 17    | 4/40            | 1                 | 80.0%     | 10.0%  | 17.8%      | ✅ Works       |
+| **eslint-plugin-no-unsanitized** | 2     | 2/40            | 1                 | 66.7%     | 5.0%   | 9.3%       | ✅ Works       |
+| **Interlace Ecosystem**          | 198   | **40/40**       | **0**             | 100.0%    | 100.0% | **100.0%** | ✅ Works       |
 
 > † `eslint-plugin-security` was benchmarked at **v2.1.1**, the last release under the plugin's original maintainer, which crashes on ESLint 9 with `context.getScope is not a function`. Its results here are from ESLint 8.57.0. The plugin has since passed to the `eslint-community` org: v3.0.0+ (April 2024 onward, per the [npm version history](https://www.npmjs.com/package/eslint-plugin-security?activeTab=versions)) ships flat-config support and runs cleanly on ESLint 9 — I verified `detect-child-process` still fires correctly on v4.0.1 with ESLint 9.39. The precision/recall numbers below are still v2.1.1-only and have not been re-run against v3+; treat the ESLint-9 compatibility claims and the FN/FP numbers as two separate facts. All other plugins were tested on ESLint 9.39.2.
 
@@ -76,7 +76,7 @@ I built a benchmark with **40 vulnerable code patterns** across 14 security cate
 
 Two failure modes undermine a security linter: false negatives ship an illusion of clean code, false positives train developers to ignore the tool entirely. Most teams optimize for recall and forget that [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) is what keeps recall usable.
 
-Here's why this is a 2026 problem and not a 2020 one: when a human wrote every line, low recall felt survivable because humans don't introduce `jwt.verify` without an algorithm allowlist *that often*. That [base rate](https://ofriperetz.dev/articles/base-rate-problem-explained) is gone. AI assistants reproduce the insecure patterns in their training data at a much higher rate — which means a linter's recall number is no longer a rounding error, it's your actual catch rate on a much larger volume of code. More on that in [The AI Multiplier](#the-ai-multiplier-why-recall-stopped-being-optional) below.
+Here's why this is a 2026 problem and not a 2020 one: when a human wrote every line, low recall felt survivable because humans don't introduce `jwt.verify` without an algorithm allowlist _that often_. That [base rate](https://ofriperetz.dev/articles/base-rate-problem-explained) is gone. AI assistants reproduce the insecure patterns in their training data at a much higher rate — which means a linter's recall number is no longer a rounding error, it's your actual catch rate on a much larger volume of code. More on that in [The AI Multiplier](#the-ai-multiplier-why-recall-stopped-being-optional) below.
 
 ---
 
@@ -86,22 +86,22 @@ The suite pairs 40 vulnerable patterns against 38 safe look-alikes across 14 OWA
 
 ### Vulnerable Patterns (40 cases across 14 categories)
 
-| Category              | Test Cases | CWEs             |
-| --------------------- | ---------- | ---------------- |
-| SQL Injection         | 4          | CWE-89           |
-| Command Injection     | 4          | CWE-78           |
-| Path Traversal        | 4          | CWE-22           |
-| Hardcoded Credentials | 4          | CWE-798          |
-| JWT Vulnerabilities   | 3          | CWE-757, CWE-347 |
+| Category              | Test Cases | CWEs                   |
+| --------------------- | ---------- | ---------------------- |
+| SQL Injection         | 4          | CWE-89                 |
+| Command Injection     | 4          | CWE-78                 |
+| Path Traversal        | 4          | CWE-22                 |
+| Hardcoded Credentials | 4          | CWE-798                |
+| JWT Vulnerabilities   | 3          | CWE-757, CWE-347       |
 | XSS / Code Execution  | 4          | CWE-79, CWE-94, CWE-95 |
-| Prototype Pollution   | 3          | CWE-1321         |
-| Insecure Randomness   | 2          | CWE-330          |
-| Weak Cryptography     | 3          | CWE-328, CWE-327 |
-| Timing Attacks        | 2          | CWE-208          |
-| NoSQL Injection       | 2          | CWE-943          |
-| SSRF                  | 2          | CWE-918          |
-| Open Redirect         | 1          | CWE-601          |
-| ReDoS                 | 2          | CWE-1333         |
+| Prototype Pollution   | 3          | CWE-1321               |
+| Insecure Randomness   | 2          | CWE-330                |
+| Weak Cryptography     | 3          | CWE-328, CWE-327       |
+| Timing Attacks        | 2          | CWE-208                |
+| NoSQL Injection       | 2          | CWE-943                |
+| SSRF                  | 2          | CWE-918                |
+| Open Redirect         | 1          | CWE-601                |
+| ReDoS                 | 2          | CWE-1333               |
 
 > The XSS/Code-Execution row spans the injection family: DOM XSS is CWE-79, generic dynamic-code execution is CWE-94, and `eval()` specifically is CWE-95 (Eval Injection, a child of CWE-94). That's why the Interlace sample output below tags the `eval()` finding as CWE-95 rather than the broader CWE-94 — it reports the most specific applicable weakness.
 
@@ -268,7 +268,7 @@ function shuffleForDisplay(array) {
 // ⚠️ SonarJS's pseudo-random rule flags Math.random() regardless of use case
 ```
 
-**Why it survived review:** `sonarjs/pseudo-random` fires on any `Math.random()` call — it has no way to distinguish "shuffling a UI card list" from "generating a session token." The reviewer confirmed this shuffle has zero security context (it's cosmetic ordering, not token or key generation) and suppressed the warning. Correct call — but the rule can't tell the difference between this and the exact pattern (`Math.random()` for a token) that SonarJS *should* be flagging elsewhere in the codebase.
+**Why it survived review:** `sonarjs/pseudo-random` fires on any `Math.random()` call — it has no way to distinguish "shuffling a UI card list" from "generating a session token." The reviewer confirmed this shuffle has zero security context (it's cosmetic ordering, not token or key generation) and suppressed the warning. Correct call — but the rule can't tell the difference between this and the exact pattern (`Math.random()` for a token) that SonarJS _should_ be flagging elsewhere in the codebase.
 
 The other 4 FPs follow the same shape: `no-os-command-from-path` firing three times on `execFile`/`spawn` calls with a hardcoded, bare command name (e.g. `execFile('git', [...])`) — the command genuinely does resolve through `PATH` (that's what the rule correctly flags), but the argument is a literal the developer wrote, not attacker-controlled input, so the real risk is PATH-planting at deployment time, not injection in this code. That's a hardening concern, not the vulnerability class the rule's positioned against — and `slow-regex` firing on a simple, non-backtracking email regex is the fifth:
 
@@ -298,8 +298,8 @@ A 63.6% precision rate — better than eslint-plugin-security's 50%, but still n
 
 ```javascript
 // ✅ SAFE: execFile with whitelist-validated arguments, not exec with shell
-const { execFile } = require('child_process');
-execFile('git', ['status', '--porcelain'], callback);
+const { execFile } = require("child_process");
+execFile("git", ["status", "--porcelain"], callback);
 // ⚠️ Flagged by security-node as unsafe child process usage
 ```
 
@@ -418,7 +418,7 @@ No plugin's aggregate recall number tells you what it does for the specific cate
 
 **Read this table one column at a time, matched against your actual risk surface.** `eslint-plugin-security` scores 4/4 on path traversal and 0/4 on SQL injection — the 27.5% aggregate tells you nothing about whether you're covered for the specific category your codebase (or your AI assistant) happens to generate most frequently.
 
-**The obvious follow-up: what if you just run two plugins together?** Reading the matrix by category shows real complementary coverage: `eslint-plugin-security` alone gets path traversal (4/4) and ReDoS (2/2), categories `sonarjs` misses entirely, while `sonarjs` alone gets partial hardcoded-credentials coverage (2/4) that `security` misses entirely — stacking them would raise recall above either plugin's 27.5%/35.0% alone, somewhere between the higher of the two per category and their combined total, depending on exactly which fixtures within each shared category (SQL, command injection, XSS) they each catch — a number this benchmark's category-level data doesn't pin down precisely without re-running fixture-by-fixture. What the data *does* settle: false positives don't cancel out, they add. `security`'s 11 FPs and `sonarjs`'s 5 FPs come from different rules flagging different (or the same) safe patterns for different reasons, so the floor on combined noise is 16, not some averaged-down number. Two independent rule engines each capable of flagging the same safe pattern is *more* review overhead per warning, not less. Combining plugins is a reasonable recall stopgap, but it doesn't fix the underlying problem: no single general-purpose plugin here was built with enough domain depth in any one category to both catch the bug and recognize the safe pattern next to it.
+**The obvious follow-up: what if you just run two plugins together?** Reading the matrix by category shows real complementary coverage: `eslint-plugin-security` alone gets path traversal (4/4) and ReDoS (2/2), categories `sonarjs` misses entirely, while `sonarjs` alone gets partial hardcoded-credentials coverage (2/4) that `security` misses entirely — stacking them would raise recall above either plugin's 27.5%/35.0% alone, somewhere between the higher of the two per category and their combined total, depending on exactly which fixtures within each shared category (SQL, command injection, XSS) they each catch — a number this benchmark's category-level data doesn't pin down precisely without re-running fixture-by-fixture. What the data _does_ settle: false positives don't cancel out, they add. `security`'s 11 FPs and `sonarjs`'s 5 FPs come from different rules flagging different (or the same) safe patterns for different reasons, so the floor on combined noise is 16, not some averaged-down number. Two independent rule engines each capable of flagging the same safe pattern is _more_ review overhead per warning, not less. Combining plugins is a reasonable recall stopgap, but it doesn't fix the underlying problem: no single general-purpose plugin here was built with enough domain depth in any one category to both catch the bug and recognize the safe pattern next to it.
 
 ---
 
@@ -444,10 +444,10 @@ If your codebase has 100 potentially vulnerable patterns, distributed the same w
 
 You already know how this ends if you've maintained a shared ESLint config for more than a year: enough disabled-line comments on a noisy rule and someone eventually moves it to `off` for everyone, including the one unvalidated lookup that rule would have caught.
 
-> **A note on the label:** the column below is the *noise rate* — FP / (TP + FP), the share of a plugin's positive firings that are false alarms (also called false discovery rate). That's a different, stricter number than the textbook false positive rate, FP / (FP + TN), which would put `eslint-plugin-security` at 11/38 = 28.9% instead of 50%. Both are legitimate ways to measure "how much noise does a developer wade through," but they answer different questions — this table answers "of the warnings I see, how many are wrong," which is the developer-facing framing this article is making.
+> **A note on the label:** the column below is the _noise rate_ — FP / (TP + FP), the share of a plugin's positive firings that are false alarms (also called false discovery rate). That's a different, stricter number than the textbook false positive rate, FP / (FP + TN), which would put `eslint-plugin-security` at 11/38 = 28.9% instead of 50%. Both are legitimate ways to measure "how much noise does a developer wade through," but they answer different questions — this table answers "of the warnings I see, how many are wrong," which is the developer-facing framing this article is making.
 
 | Plugin                       | Noise Rate | Developer Impact             |
-| :--------------------------- | :--------- | :---------------------------- |
+| :--------------------------- | :--------- | :--------------------------- |
 | eslint-plugin-security       | 50.0%      | Every other warning is wrong |
 | eslint-plugin-sonarjs        | 26.3%      | 1 in 4 is noise              |
 | eslint-plugin-security-node  | 36.4%      | 1 in 3 is noise              |
@@ -583,4 +583,4 @@ That's the real cost of the false-positive tax: not the annoying warnings, but t
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · [npm](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · [npm](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

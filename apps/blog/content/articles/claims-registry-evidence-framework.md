@@ -50,7 +50,7 @@ The contract also kills a third category — the adjective. "Battle-tested," "bl
 
 Draft → evidenced → stale → re-verified or retired — every transition a visible edit to one file.
 
-**Draft.** The add-a-claim procedure opens with its most important sentence: *don't write the marketing copy first.* Build or extend the benchmark until it produces a measurable result for your product and at least one competitor, add the row with today's date, and only then write the copy. The rule is that blunt because my instinct runs the other way — when I draft a README, the adjective arrives before the evidence.
+**Draft.** The add-a-claim procedure opens with its most important sentence: _don't write the marketing copy first._ Build or extend the benchmark until it produces a measurable result for your product and at least one competitor, add the row with today's date, and only then write the copy. The rule is that blunt because my instinct runs the other way — when I draft a README, the adjective arrives before the evidence.
 
 **Pending.** Unbacked copy isn't deleted — it's routed into a "Pending claims" section next to the suite that would back it. As of today my serverless registry holds 11 verified rows (4 static-evidence, 7 live-evidence) and 2 pending, both "Not started." Pending is the honest parking lot: marketing wishes become a benchmark backlog, priced in engineering hours instead of adjectives.
 
@@ -60,11 +60,11 @@ Draft → evidenced → stale → re-verified or retired — every transition a 
 
 ## When does a claim go stale — and who decides? {#staleness}
 
-The misconception to kill: **"claims go stale when the product changes."** They don't. A claim goes stale when its *evidence* ages past its warranty — the product changing is just one way that happens. Your code can be byte-for-byte identical while the competitor you compared against ships three releases and the runtime you benchmarked goes end-of-life. The sentence didn't move; everything it pointed at did.
+The misconception to kill: **"claims go stale when the product changes."** They don't. A claim goes stale when its _evidence_ ages past its warranty — the product changing is just one way that happens. Your code can be byte-for-byte identical while the competitor you compared against ships three releases and the runtime you benchmarked goes end-of-life. The sentence didn't move; everything it pointed at did.
 
-That's why staleness is *declared, not discovered*. Discovered staleness means a reader catches the drift, and the correction arrives after the damage. Declared staleness is date arithmetic: "Last verified" older than 90 days, banner up, mechanically, before anyone is misled. Ninety isn't sacred; it's a warranty one maintainer can honor — pick yours and enforce it the same way.
+That's why staleness is _declared, not discovered_. Discovered staleness means a reader catches the drift, and the correction arrives after the damage. Declared staleness is date arithmetic: "Last verified" older than 90 days, banner up, mechanically, before anyone is misled. Ninety isn't sacred; it's a warranty one maintainer can honor — pick yours and enforce it the same way.
 
-What keeps this from becoming a refresh treadmill is the version stamp. "eslint-plugin-security has 27.5% recall" rots — a standing claim about the present. "eslint-plugin-security v2.1.1 scored 27.5% recall on our 40-fixture corpus, on ESLint 8.57.0" is a dated measurement no future release can falsify — true forever. Financial statements solved this long ago: a balance sheet is always "as of" a date. Stamped measurements carry zero refresh obligation; only *standing* claims — "fastest," "most complete," anything in the present tense — sit under the 90-day clock.
+What keeps this from becoming a refresh treadmill is the version stamp. "eslint-plugin-security has 27.5% recall" rots — a standing claim about the present. "eslint-plugin-security v2.1.1 scored 27.5% recall on our 40-fixture corpus, on ESLint 8.57.0" is a dated measurement no future release can falsify — true forever. Financial statements solved this long ago: a balance sheet is always "as of" a date. Stamped measurements carry zero refresh obligation; only _standing_ claims — "fastest," "most complete," anything in the present tense — sit under the 90-day clock.
 
 The opening countdown is this rule running on its author: the banner lands around 2026-08-01 whether or not I get the re-runs done first. The ESLint registry is already there — one row, a synthetic-corpus speedup last verified 2026-01-02, carries the "re-verify recommended" flag today. That's the system working on me, twice.
 
@@ -90,7 +90,7 @@ Nothing above depends on ESLint, serverless, or even software — the suite can 
 4. For everything new: evidence first, row second, copy last.
 5. On refresh, commit the new result as a dated file (`<suite>/<YYYY-MM-DD>_v<version>/`) and bump the date — what you claimed, and when it was last true, becomes repo history.
 
-This isn't an island. The closest neighbor is the [OpenSSF Scorecard](https://scorecard.dev/), which treats a repo's security posture as automated, publicly specified checks pointed at repositories from the outside. The claims registry is the manual, product-side sibling, pointed inward at your own marketing copy ([corpus design](https://ofriperetz.dev/articles/how-to-design-a-ground-truth-corpus) covers the datasheets-for-datasets lineage). And it pairs with the conflict-of-interest discipline in [I Built What I Benchmark](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat): I built the products *and* the registry that polices them — a suspicious arrangement, which is why every row names the command that would catch me.
+This isn't an island. The closest neighbor is the [OpenSSF Scorecard](https://scorecard.dev/), which treats a repo's security posture as automated, publicly specified checks pointed at repositories from the outside. The claims registry is the manual, product-side sibling, pointed inward at your own marketing copy ([corpus design](https://ofriperetz.dev/articles/how-to-design-a-ground-truth-corpus) covers the datasheets-for-datasets lineage). And it pairs with the conflict-of-interest discipline in [I Built What I Benchmark](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat): I built the products _and_ the registry that polices them — a suspicious arrangement, which is why every row names the command that would catch me.
 
 Next in this arc: [We Were Wrong About sls remove](https://ofriperetz.dev/articles/we-were-wrong-about-sls-remove) — the re-scope told in full, because the lifecycle is easiest to believe when you watch it delete a claim I liked.
 
@@ -124,4 +124,4 @@ Before the clock catches yours: what's the oldest undated claim on your product 
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

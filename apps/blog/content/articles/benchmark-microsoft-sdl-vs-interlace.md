@@ -36,7 +36,7 @@ That's not a flaw in Microsoft's plugin. It's a layer mismatch that looks exactl
 
 On one Node file with 12 vulnerability classes, `@microsoft/eslint-plugin-sdl@1.1.0` running its `recommended` config caught **5** (and only **3** of those came from its own `@microsoft/sdl/*` rules). The domain plugins caught **46** — same file. And you'd already told the team the backend was covered by Microsoft's Security Development Lifecycle, because the build went green. Your SQL injection, your path traversal, your unsafe deserialization — all of it walked straight past the linter you trusted, and the pipeline never went red to warn you.
 
-That gap isn't a quality verdict, and it isn't Microsoft shipping a bad tool. `@microsoft/eslint-plugin-sdl` is 17 rules (at v1.1.0) distilled from the SDL standard, and it's a *good* tool — for the surface it was built for. Look at the rule list and the result is obvious: SDL was built to harden **frontends** (Angular, Electron, the DOM), not Node backends. Point it at an API and most of its rules have nothing to match.
+That gap isn't a quality verdict, and it isn't Microsoft shipping a bad tool. `@microsoft/eslint-plugin-sdl` is 17 rules (at v1.1.0) distilled from the SDL standard, and it's a _good_ tool — for the surface it was built for. Look at the rule list and the result is obvious: SDL was built to harden **frontends** (Angular, Electron, the DOM), not Node backends. Point it at an API and most of its rules have nothing to match.
 
 ## What SDL's 17 rules actually target
 
@@ -60,26 +60,26 @@ that surface.
 
 ## Detection — `vulnerable.js` (12 Node vulnerability classes)
 
-| Config                                | Engine | Security findings |
-| ------------------------------------- | ------ | ----------------- |
-| Oxlint built-in                       | Oxlint | 1                 |
-| `@microsoft/sdl/*` rules only         | ESLint | 3                 |
+| Config                                             | Engine | Security findings |
+| -------------------------------------------------- | ------ | ----------------- |
+| Oxlint built-in                                    | Oxlint | 1                 |
+| `@microsoft/sdl/*` rules only                      | ESLint | 3                 |
 | **`@microsoft/eslint-plugin-sdl` (`recommended`)** | ESLint | **5**             |
-| Interlace flagship rules              | Oxlint | 5                 |
-| eslint-plugin-security (recommended)  | ESLint | 21                |
-| Interlace (4 plugins, recommended)    | ESLint | 46                |
+| Interlace flagship rules                           | Oxlint | 5                 |
+| eslint-plugin-security (recommended)               | ESLint | 21                |
+| Interlace (4 plugins, recommended)                 | ESLint | 46                |
 
 **Read that table honestly — the line a senior SDL user will check first.** The
-SDL *namespaced* rules (`@microsoft/sdl/*`) caught **3**: `no-inner-html`,
+SDL _namespaced_ rules (`@microsoft/sdl/*`) caught **3**: `no-inner-html`,
 `no-document-write`, and `no-cookies`. Its Angular, Electron, and WinJS rules had
 nothing to match — there's no Angular in a Node API. But nobody runs the bare
-namespace; they run `sdl.configs.recommended`, and that config *also* turns on
+namespace; they run `sdl.configs.recommended`, and that config _also_ turns on
 four core ESLint rules (`no-eval`, `no-implied-eval`, `no-new-func`, `no-caller`)
 — so on this fixture the real `recommended` number is **5** (the 3 above plus
 `no-eval` and `no-new-func` firing on the `eval()` / `new Function()` sites).
 
 One detail that surprised me and matters for fairness: `sdl.configs.recommended`
-*registers* `eslint-plugin-security` as a plugin but never switches its rules to
+_registers_ `eslint-plugin-security` as a plugin but never switches its rules to
 `error` — I confirmed this with `eslint --print-config` (zero `security/*` rules
 in the resolved config). So recommended does **not** quietly inherit
 eslint-plugin-security's 21 findings; that 21 is what you get only if you add
@@ -116,21 +116,21 @@ class, so you can diff it against your own:
 <details>
 <summary><strong>The 46 Interlace findings on <code>vulnerable.js</code>, by rule ID</strong> (37 land on lines SDL's recommended config never flags)</summary>
 
-| Vulnerability class            | Rule ID (count)                                                                                                | CWE     |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------- |
-| SQL injection                  | `pg/no-unsafe-query` (2), `pg/no-floating-query` (2)                                                           | CWE-89  |
-| Path traversal                 | `node-security/detect-non-literal-fs-filename` (5), `node-security/no-arbitrary-file-access` (4)               | CWE-22  |
-| Object injection / proto-poll. | `secure-coding/detect-object-injection` (5)                                                                    | CWE-915 |
+| Vulnerability class            | Rule ID (count)                                                                                                                                   | CWE      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| SQL injection                  | `pg/no-unsafe-query` (2), `pg/no-floating-query` (2)                                                                                              | CWE-89   |
+| Path traversal                 | `node-security/detect-non-literal-fs-filename` (5), `node-security/no-arbitrary-file-access` (4)                                                  | CWE-22   |
+| Object injection / proto-poll. | `secure-coding/detect-object-injection` (5)                                                                                                       | CWE-915  |
 | Unsafe deserialization / eval  | `secure-coding/no-unsafe-deserialization` (4) → CWE-502; `node-security/detect-eval-with-expression` (2), `browser-security/no-eval` (2) → CWE-95 | 502 / 95 |
-| ReDoS / unsafe regex           | `secure-coding/detect-non-literal-regexp` (3), `secure-coding/no-redos-vulnerable-regex` (2), `secure-coding/no-unsafe-regex-construction` (1) | CWE-1333 |
-| Weak hashing                   | `node-security/no-weak-hash-algorithm` (2)                                                                     | CWE-327 |
-| Insecure comparison (timing)   | `secure-coding/no-insecure-comparison` (3)                                                                     | CWE-208 |
-| Hardcoded credentials          | `secure-coding/no-hardcoded-credentials` (2)                                                                   | CWE-798 |
-| Dynamic / unsafe require       | `node-security/no-unsafe-dynamic-require` (2)                                                                  | CWE-95  |
-| XSS / unsafe HTML              | `browser-security/no-innerhtml` (1)                                                                            | CWE-79  |
-| Insecure cookies               | `browser-security/require-cookie-secure-attrs` (2)                                                             | CWE-614 |
-| XPath injection                | `secure-coding/no-xpath-injection` (1)                                                                         | CWE-643 |
-| Deprecated Buffer              | `node-security/no-deprecated-buffer` (1)                                                                       | CWE-676 |
+| ReDoS / unsafe regex           | `secure-coding/detect-non-literal-regexp` (3), `secure-coding/no-redos-vulnerable-regex` (2), `secure-coding/no-unsafe-regex-construction` (1)    | CWE-1333 |
+| Weak hashing                   | `node-security/no-weak-hash-algorithm` (2)                                                                                                        | CWE-327  |
+| Insecure comparison (timing)   | `secure-coding/no-insecure-comparison` (3)                                                                                                        | CWE-208  |
+| Hardcoded credentials          | `secure-coding/no-hardcoded-credentials` (2)                                                                                                      | CWE-798  |
+| Dynamic / unsafe require       | `node-security/no-unsafe-dynamic-require` (2)                                                                                                     | CWE-95   |
+| XSS / unsafe HTML              | `browser-security/no-innerhtml` (1)                                                                                                               | CWE-79   |
+| Insecure cookies               | `browser-security/require-cookie-secure-attrs` (2)                                                                                                | CWE-614  |
+| XPath injection                | `secure-coding/no-xpath-injection` (1)                                                                                                            | CWE-643  |
+| Deprecated Buffer              | `node-security/no-deprecated-buffer` (1)                                                                                                          | CWE-676  |
 
 **Total: 46.** SDL's `recommended` config touches three of these rows — XSS row
 (via `no-inner-html`), cookie row (via `no-cookies`), and the `eval`/`Function`
@@ -150,22 +150,22 @@ Versions and exact commands in the methodology section.)
 
 Aggregate counts are easy to wave away. Here's what the coverage gap looks like on
 three specific lines — the ones most likely to slip through code review because
-they *look* safe.
+they _look_ safe.
 
 ### SQL injection (CWE-89)
 
 ```js
 // vulnerable.js — queryDatabase(userId, orderBy)
-db.query('SELECT * FROM users WHERE id = ' + userId);
+db.query("SELECT * FROM users WHERE id = " + userId);
 ```
 
 **Why a reviewer waves this through.** It's not incompetence — it's context
-collapse. `userId` *reads* like an integer from a typed route param, the diff is
+collapse. `userId` _reads_ like an integer from a typed route param, the diff is
 one line in a 400-line PR, and the CI badge is green because the SDL linter ran
 and found nothing to say about it. The reviewer isn't approving SQL injection;
 they're trusting a green check that was scoped to a layer this file isn't on.
 SDL has no `query`-aware rule, so the line is invisible to it — not downgraded to
-a warning, *absent from the output entirely*.
+a warning, _absent from the output entirely_.
 
 This survives automation in SDL because catching SQL injection requires understanding the call shape of a specific database driver (`pg.query`, `mysql.execute`, `knex.raw`) and recognizing when its argument is built dynamically. That context is driver-specific and runtime-adjacent — SDL's rules were written for DOM and Angular APIs, not database access patterns.
 
@@ -184,7 +184,7 @@ parameter so it's never part of the SQL string:
 
 ```js
 // parameterized — the driver escapes $1; the query string is now constant
-db.query('SELECT * FROM users WHERE id = $1', [userId]);
+db.query("SELECT * FROM users WHERE id = $1", [userId]);
 ```
 
 Deeper on this exact pattern: [three SQL-injection shapes in node-postgres and the rule that catches each](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).
@@ -193,8 +193,8 @@ Deeper on this exact pattern: [three SQL-injection shapes in node-postgres and t
 
 ```js
 // route handler — serves files by user-supplied filename
-const filePath = path.join(__dirname, 'uploads', req.query.file);
-fs.readFile(filePath, 'utf8', callback);
+const filePath = path.join(__dirname, "uploads", req.query.file);
+fs.readFile(filePath, "utf8", callback);
 ```
 
 **Why it ships.** `path.join` looks safe because developers associate it with "safe path construction." The CI is green. SDL has no `fs`-aware rule — `node-security/detect-non-literal-fs-filename` (an Interlace rule) flags the `fs.readFile` call because its first argument is non-literal. SDL's rules cover DOM APIs; `fs` is out of scope by design.
@@ -206,11 +206,11 @@ This survives automation in SDL because it requires correlating `fs.*` call shap
 ```js
 // constrain the filename to a safe directory and reject traversal sequences
 const filename = path.basename(req.query.file); // strips ../ sequences
-const filePath = path.join(__dirname, 'uploads', filename);
-if (!filePath.startsWith(path.join(__dirname, 'uploads'))) {
-  return res.status(403).send('Forbidden');
+const filePath = path.join(__dirname, "uploads", filename);
+if (!filePath.startsWith(path.join(__dirname, "uploads"))) {
+  return res.status(403).send("Forbidden");
 }
-fs.readFile(filePath, 'utf8', callback);
+fs.readFile(filePath, "utf8", callback);
 ```
 
 ### Prototype pollution (CWE-915)
@@ -233,7 +233,8 @@ This survives automation in SDL because detecting object injection requires unde
 ```js
 function merge(target, source) {
   for (const key of Object.keys(source)) {
-    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+    if (key === "__proto__" || key === "constructor" || key === "prototype")
+      continue;
     target[key] = source[key];
   }
 }
@@ -244,11 +245,11 @@ function merge(target, source) {
 ## Why this mismatch survives review
 
 Nobody approves "ship SQL injection." What gets approved is a green pipeline.
-`@microsoft/eslint-plugin-sdl` carries the Microsoft name and the letters *SDL* —
+`@microsoft/eslint-plugin-sdl` carries the Microsoft name and the letters _SDL_ —
 the same standard that gates a lot of enterprise shops — so when it lands in CI
 and the build goes green, "do we have a security linter?" quietly becomes "yes,
 the Microsoft one." The plugin did exactly what it promised; it just promised to
-harden a surface this repo doesn't have. The rules that *would* have caught the
+harden a surface this repo doesn't have. The rules that _would_ have caught the
 backend bugs were never installed, so there was nothing red for a reviewer to
 question. A passing security linter on the wrong layer is more dangerous than no
 linter, because it converts an open question into a settled one.
@@ -259,7 +260,7 @@ AI-generated code too — same root cause, faster.
 ## The AI angle: assistants reintroduce exactly what SDL can't see
 
 This is the part that turns a layer mismatch into a recurring incident. The 37
-findings SDL's recommended config has no rule for are the *modal* mistakes an LLM
+findings SDL's recommended config has no rule for are the _modal_ mistakes an LLM
 makes when it writes a Node backend: string-concatenated `pg` queries, `fs` paths
 built from request input, object injection, weak hashing. (Its core `no-eval`
 catches the textbook `eval(userInput)`, but the LLM-modal bug is rarely literal
@@ -271,7 +272,7 @@ and it isn't a Claude problem. I extended it to
 [700 AI-generated functions across 5 models from Claude and Gemini](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
 and **every model landed between a 49% and 73% vulnerability rate** — Gemini 2.5
 Pro topped the chart at **73%**, and even the safest model still shipped a vuln
-in nearly half its functions. These are the *exact* CWE classes SDL's recommended
+in nearly half its functions. These are the _exact_ CWE classes SDL's recommended
 config has no rule for: SQLi, path traversal, object injection, weak hashing,
 ReDoS. Whether the author is Claude, Gemini, or a junior in a hurry, the backend
 bug lands on a line your frontend linter was never built to read.
@@ -307,9 +308,9 @@ import { configs as pg } from "eslint-plugin-pg";
 import { configs as browserSecurity } from "eslint-plugin-browser-security";
 
 export default [
-  secureCoding.recommended,   // object injection, unsafe deserialization, weak hashing
-  nodeSecurity.recommended,   // fs path traversal, dynamic require, deprecated Buffer
-  pg.recommended,             // SQL injection in node-postgres
+  secureCoding.recommended, // object injection, unsafe deserialization, weak hashing
+  nodeSecurity.recommended, // fs path traversal, dynamic require, deprecated Buffer
+  pg.recommended, // SQL injection in node-postgres
   browserSecurity.recommended, // innerHTML/eval/cookie — the rows that overlap SDL
 ];
 ```
@@ -387,7 +388,7 @@ browser-shaped rules (`no-insecure-random`, `no-insecure-url`, `no-unsafe-alloc`
 **throw** on this fixture's dynamic `require(variable)` (a `path.basename(undefined)`
 inside the rule), so they're set to `off` to let the rest of the config run —
 that throw is itself reported above. Note that `sdl.configs.recommended`
-*registers* `eslint-plugin-security` but does **not** enable its rules at `error`
+_registers_ `eslint-plugin-security` but does **not** enable its rules at `error`
 (verify with `eslint --print-config`), so it contributes 0 here.
 
 The whole run [reproduces](https://ofriperetz.dev/articles/reproducibility-vs-replicability) from the two configs below — no private files needed:
@@ -407,8 +408,15 @@ export default [
   { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
   ...sdl.configs.recommended.map((c) =>
     c.rules
-      ? { ...c, rules: Object.fromEntries(Object.entries(c.rules).map(([k, v]) =>
-          [k, off.some((r) => k.endsWith(r)) ? "off" : v])) }
+      ? {
+          ...c,
+          rules: Object.fromEntries(
+            Object.entries(c.rules).map(([k, v]) => [
+              k,
+              off.some((r) => k.endsWith(r)) ? "off" : v,
+            ]),
+          ),
+        }
       : c,
   ),
 ];
@@ -422,8 +430,10 @@ import { configs as pg } from "eslint-plugin-pg";
 import { configs as browserSecurity } from "eslint-plugin-browser-security";
 export default [
   { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
-  secureCoding.recommended, nodeSecurity.recommended,
-  pg.recommended, browserSecurity.recommended,
+  secureCoding.recommended,
+  nodeSecurity.recommended,
+  pg.recommended,
+  browserSecurity.recommended,
 ];
 ```
 
@@ -482,7 +492,7 @@ Same fixture, same method, one tool per post:
 
 Why these numbers keep mattering: the bugs they catch are the
 [same ones AI assistants reintroduce](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
-at a 49–73% clip, which is why the *layer* — not the author — is the thing to fix.
+at a 49–73% clip, which is why the _layer_ — not the author — is the thing to fix.
 
 ---
 
@@ -506,4 +516,4 @@ it — needs more than a frontend security linter.
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

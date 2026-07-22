@@ -42,9 +42,11 @@ Here's the line I'd send to your team: **a security fix that removes the finding
 In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) we measured **how often** AI generates vulnerable code (65-75%). This article answers the next question: **what happens when you try to fix it?**
 
 > **Get the Guardian Layer running in 60 seconds:**
+>
 > ```bash
 > npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt
 > ```
+>
 > ```javascript
 > // eslint.config.js
 > import secure from "eslint-plugin-secure-coding";
@@ -59,6 +61,7 @@ In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-7
 >   jwt.configs.recommended,
 > ];
 > ```
+>
 > Feed the ESLint output back to your AI tool. That feedback loop is what separates the 8% Hydra rate from the 32% Hydra rate. Full config and explanation at the [end of this article](#eslint-configuration-used).
 
 > **AI Security Benchmark Series:** [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **Part 2 (you are here)** · [Part 3](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
@@ -549,6 +552,7 @@ export default [
 ---
 
 **Related reading:**
+
 - [I Let Claude Write 60+ Functions. 65-75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — The baseline experiment that set up this remediation study
 - [Hardcoded Secrets in AI Agent Code: The Autofix Problem](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix) — How AI handles another class of security fixes
 - [ESLint Interlace Plugin Docs](https://eslint.interlace.tools) — All 332+ rules with fix examples
@@ -573,7 +577,7 @@ export default [
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 

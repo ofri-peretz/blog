@@ -36,18 +36,18 @@ Two version facts before the table. First, the year is part of the address. Cate
 
 Here is the 2021 list, with a representative CWE class for each category and whether a source-level linter can see it. Each A-code is a family that expands to many CWEs; the column shows one anchor CWE per row, not the full set.
 
-| # | Category (2021) | Representative CWE | Source-visible to a linter? |
-|---|---|---|---|
-| A01 | Broken Access Control | CWE-284, CWE-639 | Partial — explicit checks visible |
-| A02 | Cryptographic Failures | CWE-327, CWE-326 | Yes |
-| A03 | Injection | CWE-89, CWE-79, CWE-78 | Yes |
-| A04 | Insecure Design | CWE-501, CWE-657 | No — architectural |
-| A05 | Security Misconfiguration | CWE-16, CWE-611 | Yes — config in code |
-| A06 | Vulnerable and Outdated Components | CWE-1104, CWE-1035 | No — dependency graph |
-| A07 | Identification and Authentication Failures | CWE-287, CWE-384 | Yes |
-| A08 | Software and Data Integrity Failures | CWE-502, CWE-829 | Yes |
-| A09 | Security Logging and Monitoring Failures | CWE-778, CWE-532 | Yes |
-| A10 | Server-Side Request Forgery (SSRF) | CWE-918 | Yes |
+| #   | Category (2021)                            | Representative CWE     | Source-visible to a linter?       |
+| --- | ------------------------------------------ | ---------------------- | --------------------------------- |
+| A01 | Broken Access Control                      | CWE-284, CWE-639       | Partial — explicit checks visible |
+| A02 | Cryptographic Failures                     | CWE-327, CWE-326       | Yes                               |
+| A03 | Injection                                  | CWE-89, CWE-79, CWE-78 | Yes                               |
+| A04 | Insecure Design                            | CWE-501, CWE-657       | No — architectural                |
+| A05 | Security Misconfiguration                  | CWE-16, CWE-611        | Yes — config in code              |
+| A06 | Vulnerable and Outdated Components         | CWE-1104, CWE-1035     | No — dependency graph             |
+| A07 | Identification and Authentication Failures | CWE-287, CWE-384       | Yes                               |
+| A08 | Software and Data Integrity Failures       | CWE-502, CWE-829       | Yes                               |
+| A09 | Security Logging and Monitoring Failures   | CWE-778, CWE-532       | Yes                               |
+| A10 | Server-Side Request Forgery (SSRF)         | CWE-918                | Yes                               |
 
 Two rows carry a No — A04 and A06 — and those two are where most vendor coverage decks quietly stop being honest. The coverage section below is about them.
 
@@ -55,7 +55,7 @@ Two rows carry a No — A04 and A06 — and those two are where most vendor cove
 
 The 2021 methodology, documented on owasp.org, selected eight of the ten categories from contributed application-testing data and two from a community survey of practitioners; Brian Glas built the CWE-incidence methodology behind the data half. The ordering reflects incidence in that contributed data, blended with estimates of exploitability and impact. It is an editorial compression, and OWASP is open about that.
 
-A stock index orders its members by market cap, not by how good each one is to own — nobody buys the top holding *because* it sits at the top. The OWASP rank works the same way: it weights categories by how often they appeared in the data, not by how much any single finding should scare you. Reading the rank as a severity order is the same mistake as reading index weight as a buy signal.
+A stock index orders its members by market cap, not by how good each one is to own — nobody buys the top holding _because_ it sits at the top. The OWASP rank works the same way: it weights categories by how often they appeared in the data, not by how much any single finding should scare you. Reading the rank as a severity order is the same mistake as reading index weight as a buy signal.
 
 What the ordering is not: a per-instance severity scale. Category and severity are different measurements with different owners. A category names the family; severity scores one concrete finding. A SQL injection in an internal admin script and one in your public login endpoint are both A03:2021 — same address, and their CVSS scores can sit at opposite ends of the 0.0–10.0 range. When you need to decide how loudly to worry about one finding, that is [CVSS's job](https://ofriperetz.dev/articles/cvss-scores-explained). When you need the precise weakness name, that is CWE's. The Top 10 answers a third question: which families of weaknesses deserve your organization's attention this cycle.
 
@@ -89,14 +89,14 @@ Used this way, the list earns its reputation: Top 10 for shared vocabulary and r
 
 ## Quick Reference {#quick-reference}
 
-| You want | Instrument | What it gives you |
-|---|---|---|
-| Shared vocabulary for risk families | OWASP Top 10 (2021) | Ten named categories, awareness-ordered |
-| The precise weakness name | [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained) | A taxonomy node (e.g. CWE-89), no severity |
-| Severity of one finding | [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) | A 0.0–10.0 score per instance |
-| A testable security standard | OWASP ASVS | Leveled, verifiable requirements |
-| How to fix a weakness class | OWASP Cheat Sheet Series | Per-topic defensive guidance |
-| How to verify by testing | OWASP Web Security Testing Guide | Concrete test procedures |
+| You want                            | Instrument                                                    | What it gives you                          |
+| ----------------------------------- | ------------------------------------------------------------- | ------------------------------------------ |
+| Shared vocabulary for risk families | OWASP Top 10 (2021)                                           | Ten named categories, awareness-ordered    |
+| The precise weakness name           | [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained) | A taxonomy node (e.g. CWE-89), no severity |
+| Severity of one finding             | [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) | A 0.0–10.0 score per instance              |
+| A testable security standard        | OWASP ASVS                                                    | Leveled, verifiable requirements           |
+| How to fix a weakness class         | OWASP Cheat Sheet Series                                      | Per-topic defensive guidance               |
+| How to verify by testing            | OWASP Web Security Testing Guide                              | Concrete test procedures                   |
 
 ---
 
@@ -110,12 +110,12 @@ Used this way, the list earns its reputation: Top 10 for shared vocabulary and r
 
 [OWASP Web Security Testing Guide](https://owasp.org/www-project-web-security-testing-guide/) (owasp.org/www-project-web-security-testing-guide/). The verify-side companion — how to actually test for the weaknesses the Top 10 names.
 
-*Cited by: [Mapping a codebase to the OWASP Top 10 with 247 lint rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) — a worked example applying this address system to one ecosystem's rule coverage.*
+_Cited by: [Mapping a codebase to the OWASP Top 10 with 247 lint rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) — a worked example applying this address system to one ecosystem's rule coverage._
 
 ---
 
 If this kind of vocabulary reference earns a place in your review threads, [follow me on Dev.to](https://dev.to/ofri-peretz) and bookmark this one — it is written to be cited, not re-read.
 
-*Foundations series: ← [CWE Taxonomy, Explained](https://ofriperetz.dev/articles/cwe-taxonomy-explained) · [hub](https://ofriperetz.dev/foundations) · [Taint vs. Heuristic Detection](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) →*
+_Foundations series: ← [CWE Taxonomy, Explained](https://ofriperetz.dev/articles/cwe-taxonomy-explained) · [hub](https://ofriperetz.dev/foundations) · [Taint vs. Heuristic Detection](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

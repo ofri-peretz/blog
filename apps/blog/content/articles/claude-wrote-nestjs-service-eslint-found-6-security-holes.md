@@ -49,31 +49,31 @@ npm install --save-dev eslint-plugin-nestjs-security
 Claude generated a 200-line, TypeScript-clean NestJS users service from a single prompt — no security requirements included. Here is the output. The prompt was intentionally minimal: no security requirements, just functionality. This is how most developers prompt AI assistants — describe what the code should _do_, not what it should _prevent_.
 
 ```typescript
-@Controller('users')
+@Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post('register')
+  @Post("register")
   async register(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
-  @Post('login')
+  @Post("login")
   async login(@Body() dto: LoginDto) {
     return this.usersService.login(dto);
   }
 
-  @Get('profile/:id')
-  async getProfile(@Param('id') id: string) {
+  @Get("profile/:id")
+  async getProfile(@Param("id") id: string) {
     return this.usersService.findOne(id);
   }
 
-  @Get('admin/users')
+  @Get("admin/users")
   async listAllUsers() {
     return this.usersService.findAll();
   }
 
-  @Get('debug/config')
+  @Get("debug/config")
   async getConfig() {
     return { env: process.env.NODE_ENV, db: process.env.DATABASE_URL };
   }
@@ -112,14 +112,16 @@ Each finding follows the same structure: what ESLint caught, why AI generates th
 // The rule reports the offending route handler, but is satisfied by @UseGuards at
 // either class or method level. Method-level is correct here — this controller also
 // handles unauthenticated routes (login, register). Class-level would 401 them.
-@Controller('users')
+@Controller("users")
 export class UsersController {
-  @Post('login') // intentionally unauthenticated
-  async login(@Body() dto: LoginDto) { /* ... */ }
+  @Post("login") // intentionally unauthenticated
+  async login(@Body() dto: LoginDto) {
+    /* ... */
+  }
 
-  @Get('admin/users')
+  @Get("admin/users")
   @UseGuards(JwtAuthGuard, RolesGuard) // satisfies require-guards; RolesGuard reads @Roles metadata
-  @Roles('admin') // your own decorator: export const Roles = (...roles: string[]) => SetMetadata('roles', roles)
+  @Roles("admin") // your own decorator: export const Roles = (...roles: string[]) => SetMetadata('roles', roles)
   async listAllUsers() {
     return this.usersService.findAll();
   }
@@ -150,7 +152,7 @@ The fix requires two steps: registering the module in `AppModule` **and** applyi
 
 ```typescript
 // app.module.ts — register ThrottlerModule FIRST or the app fails to boot
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from "@nestjs/throttler";
 
 @Module({
   imports: [
@@ -190,7 +192,7 @@ Every API response from this service included `password` in the JSON body. Not _
 ```typescript
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn('uuid') id: string;
+  @PrimaryGeneratedColumn("uuid") id: string;
   @Column() email: string;
   @Column() password: string; // hashed — still in every API response
 }
@@ -201,11 +203,11 @@ export class User {
 **Why it survives review:** The entity type is `User`. The controller returns `User`. TypeScript shows no errors. Reviewers see typed, structured data. What they don't see is the JSON shape at runtime, because they're reading code, not running `curl` against staging. I would have approved this — the type system looked correct because it was.
 
 ```typescript
-import { Exclude } from 'class-transformer';
+import { Exclude } from "class-transformer";
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn('uuid') id: string;
+  @PrimaryGeneratedColumn("uuid") id: string;
   @Column() email: string;
 
   @Column()
@@ -246,10 +248,10 @@ Claude generated typed DTOs. TypeScript enforces the shape at compile time. At r
 // In main.ts — global is recommended over per-parameter
 app.useGlobalPipes(
   new ValidationPipe({
-    whitelist: true,            // strip properties with no class-validator decorator
+    whitelist: true, // strip properties with no class-validator decorator
     forbidNonWhitelisted: true, // throw on unexpected properties
-    transform: true,            // coerce to class instances; without this, instanceof checks fail
-  })
+    transform: true, // coerce to class instances; without this, instanceof checks fail
+  }),
 );
 ```
 
@@ -289,13 +291,13 @@ This is the one finding of the six I'd flag as hardest to catch by eye: Claude a
 **Findings 4 and 5 are coupled:** `whitelist`/`forbidNonWhitelisted` police unknown _keys_ — strip or reject them. Neither constrains _values_ on keys that are already known and decorated. You need both: the pipe (Finding 4) and enum decorators (Finding 5). Either without the other leaves a privilege escalation path — the pipe alone just changes whether that path fails loud (400) or silent (dropped field) today, and reopens the moment `role` gets any decorator that isn't `@IsEnum`.
 
 ```typescript
-import { IsEmail, IsString, MaxLength, IsEnum } from 'class-validator';
+import { IsEmail, IsString, MaxLength, IsEnum } from "class-validator";
 
 // Separate from UserRole — admin is not self-assignable at registration.
 // Using UserRole here would allow role: 'admin' since it's a valid member.
 enum SelfAssignableRole {
-  user = 'user',
-  moderator = 'moderator',
+  user = "user",
+  moderator = "moderator",
   // admin intentionally absent
 }
 
@@ -349,17 +351,15 @@ A `DATABASE_URL` leaked through a live route is one path to the same outcome as 
 // Fix: environment-gated module — never conditionally guard a live endpoint
 // In app.module.ts:
 @Module({
-  imports: [
-    ...(process.env.NODE_ENV !== 'production' ? [DebugModule] : []),
-  ],
+  imports: [...(process.env.NODE_ENV !== "production" ? [DebugModule] : [])],
 })
 export class AppModule {}
 
 // In debug.controller.ts — AdminGuard is your own CanActivate checking req.user.role === 'admin'
-@Controller('debug')
+@Controller("debug")
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class DebugController {
-  @Get('config')
+  @Get("config")
   getConfig() {
     return { env: process.env.NODE_ENV }; // never return DATABASE_URL
   }
@@ -386,7 +386,7 @@ Static analysis asks the negative-space question on every file, every run — an
 
 ### The count moves by toolchain. The failure class doesn't.
 
-The natural objection: maybe six is a Claude-specific weakness, and another toolchain gets it right. The count *does* move with the toolchain — but the root cause doesn't. These aren't bugs the model got wrong; they're constraints the prompt never stated. Change assistants and the count changes; the negative-space class survives. That's also the finding of [a broader leaderboard comparing 5 AI models on security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong): rank one model above another and you're still measuring which constraints it happened to infer, not which ones it was told.
+The natural objection: maybe six is a Claude-specific weakness, and another toolchain gets it right. The count _does_ move with the toolchain — but the root cause doesn't. These aren't bugs the model got wrong; they're constraints the prompt never stated. Change assistants and the count changes; the negative-space class survives. That's also the finding of [a broader leaderboard comparing 5 AI models on security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong): rank one model above another and you're still measuring which constraints it happened to infer, not which ones it was told.
 
 I ran the identical prompt through Gemini 2.5 Flash via the Gemini CLI and scanned the output with the same plugin: [Same NestJS Prompt. Claude Got 6 Errors. Gemini Got 2.](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) Gemini's default scaffolding was structurally tighter — it got guards, validators, and serialization right where Claude didn't. But both toolchains shipped the same Finding 2: **no rate limiting on the login endpoint.** The one class that survived the model swap is the one neither prompt thought to constrain. Zoomed out across four security domains — not just NestJS — [the pattern holds at a larger sample too](https://dev.to/ofri-peretz/claude-vs-gemini-across-4-security-domains-a-dead-heat-and-the-hardening-63-of-ai-code-skips-mpp): the two models trade wins domain by domain, but converge on skipping the same hardening step.
 
@@ -394,7 +394,7 @@ You can verify the whole thing yourself in three steps:
 
 1. Paste the same prompt — _"Build a NestJS users service. Authentication, registration, login, profile endpoint, admin panel."_ — into whatever assistant you use (Claude, Gemini, GPT-4, Copilot).
 2. Run the [config below](#the-config) on the output.
-3. Count the findings by *class*, not by line. The total drifts by toolchain; the rate-limit, missing-guard, and exposed-`password` classes keep recurring. The rules read the decorator tree, not the git blame. Expect at minimum: a `require-throttler` hit on `login`, a `require-guards` hit on whatever route lists all resource records, and a `no-exposed-private-fields` hit on any entity with a `password` or token column — those three classes are the ones that survived every assistant I've run this against.
+3. Count the findings by _class_, not by line. The total drifts by toolchain; the rate-limit, missing-guard, and exposed-`password` classes keep recurring. The rules read the decorator tree, not the git blame. Expect at minimum: a `require-throttler` hit on `login`, a `require-guards` hit on whatever route lists all resource records, and a `no-exposed-private-fields` hit on any entity with a `password` or token column — those three classes are the ones that survived every assistant I've run this against.
 
 ---
 
@@ -404,18 +404,21 @@ This is the full flat-config setup for `eslint-plugin-nestjs-security` — copy 
 
 ```javascript
 // eslint.config.mjs
-import nestjsSecurity from 'eslint-plugin-nestjs-security';
+import nestjsSecurity from "eslint-plugin-nestjs-security";
 
 export default [
   {
-    plugins: { 'nestjs-security': nestjsSecurity },
+    plugins: { "nestjs-security": nestjsSecurity },
     rules: {
-      'nestjs-security/require-guards': ['error', { assumeGlobalGuards: false }],
-      'nestjs-security/no-exposed-private-fields': 'error',
-      'nestjs-security/require-throttler': 'error',
-      'nestjs-security/no-missing-validation-pipe': 'error',
-      'nestjs-security/require-class-validator': 'error',
-      'nestjs-security/no-exposed-debug-endpoints': 'error',
+      "nestjs-security/require-guards": [
+        "error",
+        { assumeGlobalGuards: false },
+      ],
+      "nestjs-security/no-exposed-private-fields": "error",
+      "nestjs-security/require-throttler": "error",
+      "nestjs-security/no-missing-validation-pipe": "error",
+      "nestjs-security/require-class-validator": "error",
+      "nestjs-security/no-exposed-debug-endpoints": "error",
     },
   },
 ];
@@ -444,4 +447,4 @@ _← [I Let Claude Write 60 Functions. 65-75% Had Security Vulnerabilities.](htt
 
 ---
 
-*[eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev) · [npm/~ofri-peretz](https://www.npmjs.com/~ofri-peretz)*
+_[eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev) · [npm/~ofri-peretz](https://www.npmjs.com/~ofri-peretz)_

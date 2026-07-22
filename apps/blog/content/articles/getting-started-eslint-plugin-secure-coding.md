@@ -196,7 +196,10 @@ export default [
   configs.recommended,
   {
     rules: {
-      "secure-coding/no-hardcoded-credentials": ["error", { allowInTests: true, minLength: 12 }],
+      "secure-coding/no-hardcoded-credentials": [
+        "error",
+        { allowInTests: true, minLength: 12 },
+      ],
       "secure-coding/no-pii-in-logs": "warn",
     },
   },
@@ -344,4 +347,4 @@ export default [
 
 ---
 
-*[eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

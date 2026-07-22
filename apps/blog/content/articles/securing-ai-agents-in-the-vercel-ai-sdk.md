@@ -234,13 +234,13 @@ npx eslint src/*.ts
 
 Counting only the five agency rules from this article:
 
-| Rule                       | Hits  | What that means                                                        |
-| -------------------------- | ----- | --------------------------------------------------------------------- |
-| `require-tool-schema`      | 12/12 | **every** tool was declared without an `inputSchema`                   |
-| `require-tool-confirmation` | 6     | `deleteUser`, `updateUserRole`, `executeCommand`, `transferFunds`, `createInvoice`, `removePost` — ungated |
-| `require-max-steps`        | 4     | all 4 tool-calling call-sites (admin has 2 — a `generateText` and a `streamText` — billing and CMS one each) were unbounded |
-| `require-abort-signal`     | 1     | the one streaming call had no `abortSignal`                            |
-| `require-error-handling`   | 0     | _off in `recommended`_ — flip to `configs.strict` and it fires too    |
+| Rule                        | Hits  | What that means                                                                                                             |
+| --------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------- |
+| `require-tool-schema`       | 12/12 | **every** tool was declared without an `inputSchema`                                                                        |
+| `require-tool-confirmation` | 6     | `deleteUser`, `updateUserRole`, `executeCommand`, `transferFunds`, `createInvoice`, `removePost` — ungated                  |
+| `require-max-steps`         | 4     | all 4 tool-calling call-sites (admin has 2 — a `generateText` and a `streamText` — billing and CMS one each) were unbounded |
+| `require-abort-signal`      | 1     | the one streaming call had no `abortSignal`                                                                                 |
+| `require-error-handling`    | 0     | _off in `recommended`_ — flip to `configs.strict` and it fires too                                                          |
 
 (The other 8 errors/warnings come from `require-max-tokens` and
 `require-request-timeout`, also in `recommended`: 27 errors = 6 + 12 + 4 + 1 + 4
@@ -415,4 +415,4 @@ I'll bet more of you have an ungated `delete` than will admit it.
 
 ---
 
-*[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

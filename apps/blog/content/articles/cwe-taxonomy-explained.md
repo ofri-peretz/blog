@@ -28,7 +28,7 @@ Here's how easy that is to forget. Two vulnerabilities can carry the identical C
 
 ## What Is a CWE? {#what-cwe-is}
 
-CWE stands for Common Weakness Enumeration: a catalog of software and hardware weakness *types*, maintained by MITRE under CISA sponsorship. The operative word is *enumeration*. Steve Christey Coley — CVE's co-creator and CWE's technical lead — has been consistent: CWE enumerates kinds of mistakes; it does not rank them.
+CWE stands for Common Weakness Enumeration: a catalog of software and hardware weakness _types_, maintained by MITRE under CISA sponsorship. The operative word is _enumeration_. Steve Christey Coley — CVE's co-creator and CWE's technical lead — has been consistent: CWE enumerates kinds of mistakes; it does not rank them.
 
 The distinction that makes everything else click is weakness versus vulnerability. A **weakness** is a category of mistake — concatenating untrusted input into a SQL string, evaluating a string as code, redirecting to a URL the user supplied. A **vulnerability** is one concrete occurrence of that weakness in a specific product and version — what CVE catalogs. CWE-89 is "SQL injection, as a concept"; a CVE record is "SQL injection, in this package, in these versions." Categories don't have patches; instances do.
 
@@ -44,19 +44,19 @@ Abstraction level is practical, not trivia. A finding labeled "CWE-707" is techn
 
 ## Which CWEs Show Up in Node.js Code? {#nodejs-cwes}
 
-Most of what a JavaScript security linter meets concentrates in a short list. Here are the nine I see most in Node.js work, each with the *class* of detector that typically catches it.
+Most of what a JavaScript security linter meets concentrates in a short list. Here are the nine I see most in Node.js work, each with the _class_ of detector that typically catches it.
 
-| CWE | Name | Typical Node.js shape | Example detector class |
-|---|---|---|---|
-| CWE-89 | SQL Injection | String-built queries passed to a DB driver | Taint-tracking SAST or a query-builder lint rule |
-| CWE-94 | Code Injection | Generating code from user input (`new Function`) | AST rule banning dynamic code construction |
-| CWE-95 | Eval Injection | `eval()` over tainted strings | `no-eval`-style lint rule |
-| CWE-287 | Improper Authentication | JWT verified without audience/issuer checks | Auth-configuration linter |
-| CWE-326 | Inadequate Encryption Strength | Short keys, legacy algorithms | Crypto-configuration checker |
-| CWE-400 | Uncontrolled Resource Consumption | ReDoS-vulnerable regexes | Static ReDoS analyzer |
-| CWE-426 | Untrusted Search Path | Unpinned `search_path` in PostgreSQL | Configuration lint rule |
-| CWE-601 | Open Redirect | `res.redirect(req.query.url)` | Taint-based redirect check |
-| CWE-918 | Server-Side Request Forgery | `fetch()` on a user-supplied URL | Taint or heuristic URL-sink rule |
+| CWE     | Name                              | Typical Node.js shape                            | Example detector class                           |
+| ------- | --------------------------------- | ------------------------------------------------ | ------------------------------------------------ |
+| CWE-89  | SQL Injection                     | String-built queries passed to a DB driver       | Taint-tracking SAST or a query-builder lint rule |
+| CWE-94  | Code Injection                    | Generating code from user input (`new Function`) | AST rule banning dynamic code construction       |
+| CWE-95  | Eval Injection                    | `eval()` over tainted strings                    | `no-eval`-style lint rule                        |
+| CWE-287 | Improper Authentication           | JWT verified without audience/issuer checks      | Auth-configuration linter                        |
+| CWE-326 | Inadequate Encryption Strength    | Short keys, legacy algorithms                    | Crypto-configuration checker                     |
+| CWE-400 | Uncontrolled Resource Consumption | ReDoS-vulnerable regexes                         | Static ReDoS analyzer                            |
+| CWE-426 | Untrusted Search Path             | Unpinned `search_path` in PostgreSQL             | Configuration lint rule                          |
+| CWE-601 | Open Redirect                     | `res.redirect(req.query.url)`                    | Taint-based redirect check                       |
+| CWE-918 | Server-Side Request Forgery       | `fetch()` on a user-supplied URL                 | Taint or heuristic URL-sink rule                 |
 
 Notice what the id buys you: a CWE-89 rule for `pg` and one for `mysql2` look nothing alike in code, yet the shared id says they hunt the same weakness — cross-tool, cross-stack vocabulary. (Swap MongoDB in and the id changes with it: NoSQL injection is its own weakness, CWE-943, with CWE-89 as a SQL-specific child — the taxonomy tracks the mechanism, not the syntax.)
 
@@ -64,25 +64,25 @@ Notice what the id buys you: a CWE-89 rule for `pg` and one for `mysql2` look no
 
 Three identifiers, routinely confused, answering three different questions:
 
-| Identifier | What it names | The question it answers |
-|---|---|---|
-| **CWE** | A weakness type (a category) | "What kind of mistake is this?" |
-| **CVE** | A vulnerability instance in a specific product | "Which concrete bug are we talking about?" |
-| **CVSS** | A score computed for an instance | "How bad is the worst case if this is exploited?" |
+| Identifier | What it names                                  | The question it answers                           |
+| ---------- | ---------------------------------------------- | ------------------------------------------------- |
+| **CWE**    | A weakness type (a category)                   | "What kind of mistake is this?"                   |
+| **CVE**    | A vulnerability instance in a specific product | "Which concrete bug are we talking about?"        |
+| **CVSS**   | A score computed for an instance               | "How bad is the worst case if this is exploited?" |
 
-They chain: a CVE record is labeled with a CWE (through the CWE-1003 view) and scored with CVSS. The direction is the whole point — severity flows from the *instance*, never from the category. The two CWE-89 records from the opening prove it: same category, opposite scores, set by where the injection sits and what an attacker gains. The scoring half — bands, vectors, what CVSS deliberately doesn't measure — is covered in [CVSS scores, explained](https://ofriperetz.dev/articles/cvss-scores-explained).
+They chain: a CVE record is labeled with a CWE (through the CWE-1003 view) and scored with CVSS. The direction is the whole point — severity flows from the _instance_, never from the category. The two CWE-89 records from the opening prove it: same category, opposite scores, set by where the injection sits and what an attacker gains. The scoring half — bands, vectors, what CVSS deliberately doesn't measure — is covered in [CVSS scores, explained](https://ofriperetz.dev/articles/cvss-scores-explained).
 
 ## The CWE Top 25: When a Taxonomy Meets a Metric {#cwe-top-25}
 
-MITRE periodically publishes the **CWE Top 25 Most Dangerous Software Weaknesses** (compiled annually by MITRE's CWE program under CISA sponsorship) — worth studying for what it demonstrates about measurement. Unlike the OWASP Top 10 — an awareness document whose ordering mixes incidence, detectability, and impact ([separate article](https://ofriperetz.dev/articles/owasp-top-10-explained)) — the Top 25 *is* rank-ordered, by a published formula: how frequently each CWE appears on recent NVD CVE records, weighted by the average CVSS of those records (2024 edition methodology).
+MITRE periodically publishes the **CWE Top 25 Most Dangerous Software Weaknesses** (compiled annually by MITRE's CWE program under CISA sponsorship) — worth studying for what it demonstrates about measurement. Unlike the OWASP Top 10 — an awareness document whose ordering mixes incidence, detectability, and impact ([separate article](https://ofriperetz.dev/articles/owasp-top-10-explained)) — the Top 25 _is_ rank-ordered, by a published formula: how frequently each CWE appears on recent NVD CVE records, weighted by the average CVSS of those records (2024 edition methodology).
 
-That makes it a clean equation: a taxonomy (CWE) plus a metric (the formula) equals a ranking. Because the formula and the NVD data are public, the ranking is *checkable* — you can disagree with the weighting, but you can re-run it yourself. Most rankings you'll meet in security marketing fail that test. The deeper distinction — what a rank can and cannot tell you that a measurement can — gets its own treatment in [Ranking vs measuring](https://ofriperetz.dev/articles/ranking-vs-measuring).
+That makes it a clean equation: a taxonomy (CWE) plus a metric (the formula) equals a ranking. Because the formula and the NVD data are public, the ranking is _checkable_ — you can disagree with the weighting, but you can re-run it yourself. Most rankings you'll meet in security marketing fail that test. The deeper distinction — what a rank can and cannot tell you that a measurement can — gets its own treatment in [Ranking vs measuring](https://ofriperetz.dev/articles/ranking-vs-measuring).
 
 Two caveats travel with the Top 25: it inherits NVD's labeling (the CWE-1003 lens again), and frequency-in-reported-CVEs is not frequency-in-your-codebase. It ranks the ecosystem's reported past, not your repository's present.
 
 ## What Does a CWE Number Tell You? {#what-cwe-tells-you}
 
-Three things, all valuable. It gives tools a shared vocabulary — findings from different linters tagged CWE-89 are claims about the same weakness, whatever the rule internals. It gives benchmarks honest labels — NIST's SARD suites and the OWASP Benchmark Project key every test case to a CWE id, naming which weakness each fixture exercises. And it keeps coverage claims checkable — "covers CWE-89, -601, -918" is a *breadth* statement you can verify, saying nothing about detection quality.
+Three things, all valuable. It gives tools a shared vocabulary — findings from different linters tagged CWE-89 are claims about the same weakness, whatever the rule internals. It gives benchmarks honest labels — NIST's SARD suites and the OWASP Benchmark Project key every test case to a CWE id, naming which weakness each fixture exercises. And it keeps coverage claims checkable — "covers CWE-89, -601, -918" is a _breadth_ statement you can verify, saying nothing about detection quality.
 
 The one reading to unlearn, and the misconception this whole article exists to kill: **a CWE number implies a severity.** It cannot. CWE is categorical — it has no scale, no ordering, no bands. Severity is computed per instance, by CVSS, from a vector describing that instance. Any pipeline that derives `CRITICAL` or `LOW` from a CWE label alone has manufactured a measurement out of a category.
 
@@ -94,17 +94,17 @@ Used for what it is, CWE is quietly one of the best-run standards in security: n
 
 ## Quick Reference {#quick-reference}
 
-| Question | Answer |
-|---|---|
-| What is a CWE? | A named category of software weakness — the bug's shape, not an incident |
-| What does the number mean? | Nothing — accession id, no ordering, no arithmetic |
-| CWE vs CVE | CWE = a weakness type; CVE = one vulnerability instance in a specific product |
-| CWE vs CVSS | CWE names the category; CVSS scores an instance — severity never flows from the CWE |
-| Who runs it? | MITRE, sponsored by CISA |
-| Structure | Views (Research CWE-1000, Development CWE-699, NVD's CWE-1003) over a pillar → class → base → variant hierarchy |
-| Which level should tools map to? | Base or variant — pillar-level labels carry almost no information |
-| Is the CWE Top 25 a severity scale? | No — a ranking by a published formula (NVD frequency × average CVSS), checkable but NVD-lensed |
-| What does "covers N CWEs" mean? | Breadth of categories claimed — nothing about precision or recall |
+| Question                            | Answer                                                                                                          |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| What is a CWE?                      | A named category of software weakness — the bug's shape, not an incident                                        |
+| What does the number mean?          | Nothing — accession id, no ordering, no arithmetic                                                              |
+| CWE vs CVE                          | CWE = a weakness type; CVE = one vulnerability instance in a specific product                                   |
+| CWE vs CVSS                         | CWE names the category; CVSS scores an instance — severity never flows from the CWE                             |
+| Who runs it?                        | MITRE, sponsored by CISA                                                                                        |
+| Structure                           | Views (Research CWE-1000, Development CWE-699, NVD's CWE-1003) over a pillar → class → base → variant hierarchy |
+| Which level should tools map to?    | Base or variant — pillar-level labels carry almost no information                                               |
+| Is the CWE Top 25 a severity scale? | No — a ranking by a published formula (NVD frequency × average CVSS), checkable but NVD-lensed                  |
+| What does "covers N CWEs" mean?     | Breadth of categories claimed — nothing about precision or recall                                               |
 
 ---
 
@@ -119,6 +119,6 @@ Used for what it is, CWE is quietly one of the best-run standards in security: n
 
 If this is the kind of reference you'll want open mid-code-review, bookmark it — and [follow me on Dev.to](https://dev.to/ofri-peretz) for the rest of the Foundations series.
 
-*Foundations series: ← [CVSS scores](https://ofriperetz.dev/articles/cvss-scores-explained) · [hub](https://ofriperetz.dev/foundations) · [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) →*
+_Foundations series: ← [CVSS scores](https://ofriperetz.dev/articles/cvss-scores-explained) · [hub](https://ofriperetz.dev/foundations) · [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_
