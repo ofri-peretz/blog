@@ -143,6 +143,27 @@ const eslintConfig = defineConfig([
       "react-features/jsx-key": "warn",
     },
   },
+
+  // ── Covers must go through next/image ─────────────────────────────────────
+  // Ratcheted from the eslint-config-next default of `warn` to `error`. A raw
+  // <img> bypasses Vercel's optimizer entirely: measured on a real article
+  // cover, 245 KB PNG → 43 KB AVIF, and grid tiles were shipping full-size
+  // images to thumbnails. This regressed once already (a raw <img> in
+  // devto-articles.tsx carried a comment explaining it was needed because
+  // next.config had no remotePatterns — that gap is now fixed), so the rule
+  // is `error` to stop it coming back.
+  //
+  // Legitimate exceptions:
+  //   - src/app/og/**   already globally ignored (Satori has no next/image)
+  //   - <img> inside an email template or raw-HTML string is not JSX, so the
+  //     rule never sees it
+  // Anything else needs an inline disable WITH a reason.
+  {
+    files: ["**/*.tsx"],
+    rules: {
+      "@next/next/no-img-element": "error",
+    },
+  },
   // scripts/ are devtools/automation utilities — pre-existing findings baselied here
   // (baseline-then-ratchet: fix these in follow-up PRs, don't block article PRs).
   {

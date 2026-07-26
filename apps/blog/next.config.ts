@@ -11,9 +11,74 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+
+  // Security headers. All free — they ride on responses Vercel already sends.
+  // HSTS is set by Vercel; these are the ones that were missing.
+  //
+  // CSP ships as Report-Only on purpose: Next injects inline scripts for
+  // hydration, so an enforcing policy needs nonces and would break the site if
+  // any origin is missed. Report-Only surfaces violations in the console
+  // without blocking. Promote to `Content-Security-Policy` once the reports
+  // come back clean for a few days.
+  async headers() {
+    const csp = [
+      "default-src 'self'",
+      // 'unsafe-inline'/'unsafe-eval': Next hydration + PostHog's snippet.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com",
+      "style-src 'self' 'unsafe-inline'",
+      // data: for inlined SVG/blur placeholders; dev.to hosts the covers.
+      "img-src 'self' data: blob: https://media2.dev.to https://media.dev.to https://dev-to-uploads.s3.amazonaws.com https://dev-to-uploads.s3.us-east-2.amazonaws.com",
+      "font-src 'self' data:",
+      "connect-src 'self' https://us.i.posthog.com https://us-assets.i.posthog.com",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+      "upgrade-insecure-requests",
+    ].join("; ");
+
+    return [
+      {
+        // /articles reads ?page/?tag, which makes the route dynamic and
+        // defaults to `no-store` — every hit re-renders at the origin even
+        // though the data is local markdown that only changes on deploy.
+        // s-maxage lets the edge hold each variant; stale-while-revalidate
+        // means a visitor never waits for the refresh.
+        source: "/articles",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=60, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+          },
+          { key: "Content-Security-Policy-Report-Only", value: csp },
+        ],
+      },
+    ];
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31_536_000,
+    // Article covers come from three places: self-hosted under /cdn (relative,
+    // needs no entry), Dev.to's CDN proxy, and Dev.to's S3 bucket for covers
+    // uploaded through their editor. Without these, <Image> throws on ~25 posts.
+    remotePatterns: [
+      { protocol: "https", hostname: "media2.dev.to" },
+      { protocol: "https", hostname: "media.dev.to" },
+      { protocol: "https", hostname: "dev-to-uploads.s3.amazonaws.com" },
+      { protocol: "https", hostname: "dev-to-uploads.s3.us-east-2.amazonaws.com" },
+    ],
   },
   experimental: {
     optimizePackageImports: ["lucide-react"],

@@ -7,8 +7,8 @@ tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain-1hgj"
 devto_id: 3688611
 published_at: "2026-05-17T15:40:50Z"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/gjifodfaukn49e9y18ux.png"
-social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/gjifodfaukn49e9y18ux.png"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain.jpg"
 reading_time_minutes: 12
 tags:
   - "ai"

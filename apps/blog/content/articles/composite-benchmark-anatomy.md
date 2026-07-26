@@ -1,4 +1,6 @@
 ---
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy.jpg"
 devto_url: "https://dev.to/ofri-peretz/25-of-my-benchmark-verdict-is-an-opinion-heres-the-anatomy-294d"
 devto_id: 4183788
 title: "25% of My Benchmark Verdict Is an Opinion. Here's the Anatomy."

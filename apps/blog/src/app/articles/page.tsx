@@ -12,6 +12,10 @@ interface PageProps {
   searchParams: Promise<{ page?: string; tag?: string }>;
 }
 
+// Note: `export const revalidate` has no effect here — awaiting `searchParams`
+// opts the route out of the full route cache entirely. Edge caching for this
+// page is set via a Cache-Control header on /articles in next.config.ts.
+
 export const metadata: Metadata = {
   title: "Articles — Ofri Peretz",
   description:

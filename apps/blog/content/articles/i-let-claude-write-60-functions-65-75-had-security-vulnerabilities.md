@@ -12,7 +12,7 @@ devto_url: "https://dev.to/ofri-peretz/i-let-claude-write-60-functions-65-75-had
 devto_id: 3236684
 published_at: "2026-02-06T02:51:25Z"
 edited_at: "2026-07-05T00:00:00Z"
-cover_image: "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fofriperetz.dev%2Fcdn%2Fblog-cover-image%2Fi-let-claude-write-60-functions-65-75-had-security-vulnerabilities.png"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities.png"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities.png"
 reading_time_minutes: 11
 tags:
