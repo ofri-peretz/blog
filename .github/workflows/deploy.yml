@@ -124,7 +124,10 @@ jobs:
           set -euo pipefail
           # --no-wait means the deployment may still be building. Poll for
           # READY (its own state, not the checks) before promoting.
-          for _ in $(seq 1 40); do
+          # 24 x 10s = 240s, inside this step's 5m budget with room for the
+          # promote calls after it.
+          state=""
+          for _ in $(seq 1 24); do
             state=$(vercel inspect "$URL" --token="$VERCEL_TOKEN" 2>&1 | grep -oE 'READY|ERROR|BUILDING|QUEUED' | head -1 || true)
             echo "  deployment state: ${state:-unknown}"
             case "$state" in
@@ -133,6 +136,13 @@ jobs:
             esac
             sleep 10
           done
+
+          # Never promote something that never reached READY — falling through
+          # would alias the apex to a half-built deployment.
+          if [ "$state" != "READY" ]; then
+            echo "::error::$URL stuck in '${state:-unknown}' after 240s; not promoting."
+            exit 1
+          fi
 
           vercel promote "$URL" --yes --token="$VERCEL_TOKEN" \
             || vercel alias set "$URL" "$APEX" --token="$VERCEL_TOKEN" \
