@@ -1,4 +1,6 @@
 ---
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/why-eslint-plugin-import-slow-fix.png"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/why-eslint-plugin-import-slow-fix.png"
 title: "Post-Mortem: Why ESLint Performance Failed (And the 100x Fix)"
 description: "A technical analysis of performance degradation in large-scale static analysis. The engineering journey from 45s to 0.4s linting times."
 slug: "why-eslint-plugin-import-takes-45-seconds"

@@ -8,8 +8,8 @@ canonical_url: "https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-securit
 tier: "T3"
 published_at: "2026-02-11T08:14:59Z"
 edited_at: "2026-07-05T08:00:00Z"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2cazqf3s2d1rj53sheya.png"
-social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2cazqf3s2d1rj53sheya.png"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong.jpg"
 reading_time_minutes: 10
 tags:
   - "ai"

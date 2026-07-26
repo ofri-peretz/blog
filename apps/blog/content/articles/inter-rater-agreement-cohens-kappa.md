@@ -1,4 +1,7 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/inter-rater-agreement-and-cohens-kappa-when-your-labels-are-opinions-2jdk"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/inter-rater-agreement-cohens-kappa.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/inter-rater-agreement-cohens-kappa.jpg"
 title: "Inter-Rater Agreement and Cohen's Kappa: When Your Labels Are Opinions"
 description: "Two radiologists agreed on 92 of 100 scans. Cohen's kappa scores that at 0.16 — barely above chance. When labels are judgment calls, raw percent agreement is the wrong check. Here is the right one."
 slug: "inter-rater-agreement-cohens-kappa"

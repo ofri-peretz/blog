@@ -1,4 +1,6 @@
 ---
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-import-next.png"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-import-next.png"
 title: "Performance at Scale: The Static Analysis Standard for 100x Faster Linting"
 description: "Engineering for developer velocity. Use static analysis optimization to reduce CI/CD times by up to 100x while maintaining code quality."
 slug: "getting-started-eslint-plugin-import-next"

@@ -1,4 +1,6 @@
 ---
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/bias-in-measurement.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/bias-in-measurement.jpg"
 title: "Bias in Measurement: The Silent Failure Mode in Benchmark Design"
 description: "A blood panel, a fund's track record, and a security benchmark can all report a clean, confident number that is quietly wrong. Measurement bias doesn't announce itself — the five kinds, and how to catch each before you publish."
 slug: "bias-in-measurement"
