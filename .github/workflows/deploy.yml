@@ -129,7 +129,10 @@ jobs:
           # parse (an earlier grep for /READY/ matched nothing and every poll
           # read "unknown"). readyState is a plain uppercase enum.
           # 24 x 10s = 240s, inside this step's 5m budget.
-          id="${URL##*/}"
+          # Strip any trailing slash first: on "https://host/" a bare
+          # ${URL##*/} would yield an empty id and every poll would 4xx.
+          id="${URL%/}"; id="${id##*/}"
+          [ -n "$id" ] || { echo "::error::could not derive deployment id from '$URL'"; exit 1; }
           state=""
           for _ in $(seq 1 24); do
             state=$(curl -sf -H "Authorization: Bearer $VERCEL_TOKEN" \
