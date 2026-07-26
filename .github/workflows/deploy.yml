@@ -107,11 +107,15 @@ jobs:
       # so try it when promote does not take.
       - name: Promote to apex
         timeout-minutes: 5
+        env:
+          # Via env, never inlined into the script: `${{ }}` is substituted as
+          # text before bash parses the line, so a value containing a quote
+          # would break out of it (CWE-78).
+          URL: ${{ steps.deploy.outputs.url }}
         run: |
           set -euo pipefail
-          url='${{ steps.deploy.outputs.url }}'
-          vercel promote "$url" --yes --token="$VERCEL_TOKEN" \
-            || vercel alias set "$url" "$APEX" --token="$VERCEL_TOKEN" \
+          vercel promote "$URL" --yes --token="$VERCEL_TOKEN" \
+            || vercel alias set "$URL" "$APEX" --token="$VERCEL_TOKEN" \
             || echo "promote and alias both failed — the verify step decides"
 
       # A green promote has historically meant nothing: deployments reached
@@ -127,16 +131,28 @@ jobs:
       # change after. Same signal, no protected URL involved.
       - name: Verify apex serves this build
         timeout-minutes: 2
+        env:
+          BEFORE: ${{ steps.deploy.outputs.apex_build_id }}
         run: |
           set -euo pipefail
-          before='${{ steps.deploy.outputs.apex_build_id }}'
-          echo "apex build id before deploy: ${before:-<none>}"
+          echo "apex build id before deploy: ${BEFORE:-<unreadable>}"
 
+          # If BEFORE was unreadable (apex down, first deploy, BUILD_ID not
+          # exposed) a changed id proves nothing — any non-empty value would
+          # "differ" from empty. Fall back to asserting the apex is simply
+          # serving, and say so, rather than reporting a verification we did
+          # not actually perform.
           for _ in $(seq 1 6); do
             now=$(curl -sf "https://$APEX/_next/BUILD_ID" || true)
-            if [ -n "$now" ] && [ "$now" != "$before" ]; then
-              echo "apex verified: build id moved to $now"
-              exit 0
+            if [ -n "$now" ]; then
+              if [ -z "$BEFORE" ]; then
+                echo "apex is up (build $now) — no pre-deploy id to compare, promotion UNVERIFIED"
+                exit 0
+              fi
+              if [ "$now" != "$BEFORE" ]; then
+                echo "apex verified: build id moved $BEFORE -> $now"
+                exit 0
+              fi
             fi
             sleep 5
           done
