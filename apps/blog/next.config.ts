@@ -20,11 +20,25 @@ const nextConfig: NextConfig = {
   // any origin is missed. Report-Only surfaces violations in the console
   // without blocking. Promote to `Content-Security-Policy` once the reports
   // come back clean for a few days.
+  //
+  // No 'unsafe-eval' and no 'unsafe-inline' on script-src — our own
+  // eslint-plugin-browser-security rightly flags both (CWE-79 / CWE-95): a
+  // policy carrying them buys almost no XSS protection. Next's inline
+  // hydration scripts are covered by 'strict-dynamic' + the per-request nonce
+  // Next emits; browsers that don't grok strict-dynamic fall back to the
+  // host allowlist. style-src keeps 'unsafe-inline' because Tailwind and
+  // next/font inject style attributes with no nonce hook — that is a
+  // materially smaller risk than script injection, and it is the reason this
+  // stays Report-Only until the reports are clean.
   async headers() {
     const csp = [
       "default-src 'self'",
-      // 'unsafe-inline'/'unsafe-eval': Next hydration + PostHog's snippet.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com",
+      "script-src 'self' 'strict-dynamic' https://us-assets.i.posthog.com",
+      // Tailwind and next/font emit inline style attributes with no nonce hook,
+      // so this cannot be removed without dropping both. Scoped to styles, never
+      // scripts: no script execution is permitted by this directive. Revisit if
+      // Next exposes a nonce for injected <style> tags.
+      // eslint-disable-next-line browser-security/no-unsafe-inline-csp
       "style-src 'self' 'unsafe-inline'",
       // data: for inlined SVG/blur placeholders; dev.to hosts the covers.
       "img-src 'self' data: blob: https://media2.dev.to https://media.dev.to https://dev-to-uploads.s3.amazonaws.com https://dev-to-uploads.s3.us-east-2.amazonaws.com",
