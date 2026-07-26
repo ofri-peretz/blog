@@ -20,6 +20,7 @@ concurrency:
 
 env:
   APEX: ofriperetz.dev
+  SITE_URL: https://ofriperetz.dev
   VERCEL_CLI_VERSION: 54.20.1
 
 jobs:
@@ -28,7 +29,7 @@ jobs:
     timeout-minutes: 20
     environment:
       name: production
-      url: https://ofriperetz.dev
+      url: https://ofriperetz.dev  # must be a literal; env is not available here
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -36,9 +37,9 @@ jobs:
 
     steps:
       # ── Setup ────────────────────────────────────────────────────────────
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
 
@@ -47,7 +48,7 @@ jobs:
       # out setup-node's lockfile-keyed cache, but not caching the npm
       # download dir. Keyed on the manifests that decide what gets installed.
       - name: Restore npm cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('package.json', 'apps/*/package.json', '.npmrc') }}
@@ -79,7 +80,7 @@ jobs:
       - name: Build
         run: vercel build --prod --token="$VERCEL_TOKEN"
         env:
-          NEXT_PUBLIC_SITE_URL: https://ofriperetz.dev
+          NEXT_PUBLIC_SITE_URL: ${{ env.SITE_URL }}
 
       # ── Deploy ───────────────────────────────────────────────────────────
       # --skip-domain is load-bearing. Without it the CLI blocks on Vercel
