@@ -88,11 +88,14 @@ jobs:
           NEXT_PUBLIC_SITE_URL: ${{ env.SITE_URL }}
 
       # ── Deploy ───────────────────────────────────────────────────────────
-      # --skip-domain is load-bearing. Without it the CLI blocks on Vercel
-      # Deployment Checks, which never resolve here because ssoProtection
-      # (all_except_custom_domains) puts every *.vercel.app URL behind an SSO
-      # redirect the checks can't get past. That hung nine deploys for 30+ min
-      # each. We assign the domain ourselves in the next step anyway.
+      # Two separate flags, both needed — conflating them cost several runs:
+      #   --skip-domain  disables auto-aliasing (we alias ourselves below)
+      #   --no-wait      returns as soon as the deployment is queued
+      # Without --no-wait the CLI blocks on "Running Checks…", which never
+      # resolve here: ssoProtection (all_except_custom_domains) puts every
+      # *.vercel.app URL behind an SSO redirect the checks cannot get past.
+      # That hung ten deploys. Since we no longer wait, the next step polls
+      # for READY itself before promoting.
       - name: Deploy
         id: deploy
         timeout-minutes: 8
@@ -102,7 +105,7 @@ jobs:
           # actually moved rather than guessing.
           echo "apex_build_id=$(curl -sf "https://$APEX/_next/BUILD_ID" || true)" >> "$GITHUB_OUTPUT"
 
-          url=$(vercel deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN" | tail -1)
+          url=$(vercel deploy --prebuilt --prod --skip-domain --no-wait --token="$VERCEL_TOKEN" | tail -1)
           [ -n "$url" ] || { echo "::error::vercel deploy returned no URL"; exit 1; }
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "deployed: $url"
@@ -119,6 +122,18 @@ jobs:
           URL: ${{ steps.deploy.outputs.url }}
         run: |
           set -euo pipefail
+          # --no-wait means the deployment may still be building. Poll for
+          # READY (its own state, not the checks) before promoting.
+          for _ in $(seq 1 40); do
+            state=$(vercel inspect "$URL" --token="$VERCEL_TOKEN" 2>&1 | grep -oE 'READY|ERROR|BUILDING|QUEUED' | head -1 || true)
+            echo "  deployment state: ${state:-unknown}"
+            case "$state" in
+              READY) break ;;
+              ERROR) echo "::error::deployment failed to build"; exit 1 ;;
+            esac
+            sleep 10
+          done
+
           vercel promote "$URL" --yes --token="$VERCEL_TOKEN" \
             || vercel alias set "$URL" "$APEX" --token="$VERCEL_TOKEN" \
             || echo "promote and alias both failed — the verify step decides"
