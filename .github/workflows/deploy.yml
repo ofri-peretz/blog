@@ -87,8 +87,19 @@ jobs:
         run: |
           set -euo pipefail
           NEXT_PUBLIC_SITE_URL=https://ofriperetz.dev vercel build --prod --token="$VERCEL_TOKEN"
-          URL=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+
+          # `vercel deploy` is the actual hang (run 30185203623):
+          #   02:54:32  Deployment completed
+          #   02:54:34  Running Checks…      <- blocks here
+          #   03:26:06  ##[error]The operation was canceled.
+          # The upload and build finish in ~100s, then the CLI waits on Vercel
+          # Deployment Checks and never returns, so nothing after this line ever
+          # ran. --skip-domain makes deploy return the URL as soon as the
+          # deployment exists; we assign the domain ourselves below, which is
+          # what we wanted anyway given the apex pin. timeout is a second belt.
+          URL=$(timeout 600 vercel deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN" | tail -1)
           echo "deployed: $URL"
+          [ -n "$URL" ] || { echo "::error::vercel deploy returned no URL"; exit 1; }
 
           # 1) Preferred path, but never allowed to hang the job.
           if timeout 180 vercel promote "$URL" --yes --token="$VERCEL_TOKEN"; then
