@@ -42,6 +42,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          # v7 auto-caches when package.json declares a packageManager, then
+          # hard-fails on the missing lockfile this repo deliberately does not
+          # commit. The Restore npm cache step below covers ~/.npm instead,
+          # keyed on manifests rather than a lockfile.
+          package-manager-cache: false
 
       # The lockfile is intentionally uncommitted (exact versions come from
       # .npmrc) so linux never inherits darwin native bindings — which rules
