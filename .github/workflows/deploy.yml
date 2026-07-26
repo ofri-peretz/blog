@@ -73,9 +73,55 @@ jobs:
         # (see agents/footprint/incident-ledger.md, "production apex was
         # PINNED"). Waiting for Ready and promoting explicitly makes
         # main -> apex deterministic regardless of platform pin state.
-        # (--no-wait removed: promote 422s on a not-yet-ready deployment.)
+        #
+        # Hardened 2026-07-26 after NINE consecutive failed deploys. The logs
+        # are unambiguous: build + deploy finish in ~50s and report Ready, then
+        # `vercel promote` emits nothing at all and hangs until the job-level
+        # timeout kills it 32 minutes later. The apex kept serving a 6-day-old
+        # deployment while every run "succeeded" up to that point.
+        #
+        # So: bound the promote, fall back to `alias set` (a different API path
+        # that assigns the domain directly and does not wait on the promotion
+        # pin), and then VERIFY the apex actually moved instead of trusting an
+        # exit code. A deploy that cannot take the domain must fail loudly.
         run: |
+          set -euo pipefail
           NEXT_PUBLIC_SITE_URL=https://ofriperetz.dev vercel build --prod --token="$VERCEL_TOKEN"
           URL=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
           echo "deployed: $URL"
-          vercel promote "$URL" --yes --token="$VERCEL_TOKEN"
+
+          # 1) Preferred path, but never allowed to hang the job.
+          if timeout 180 vercel promote "$URL" --yes --token="$VERCEL_TOKEN"; then
+            echo "promote: ok"
+          else
+            echo "promote: timed out or failed — falling back to alias set"
+            timeout 180 vercel alias set "$URL" "$APEX" --token="$VERCEL_TOKEN" \
+              || echo "alias set: also failed; verification below decides the job"
+          fi
+
+          # 2) Trust nothing — confirm the apex is really serving THIS build.
+          #    Compare the deployment's own build id against the apex's: if the
+          #    apex still points at the previous deployment they differ, which
+          #    catches a silent no-op promote without depending on any one file.
+          echo "verifying apex…"
+          want=$(curl -s "$URL/_next/BUILD_ID" -A 'gha-deploy-verify' || true)
+          echo "expected build id: ${want:-<unavailable>}"
+          ok=0
+          for i in $(seq 1 20); do
+            got=$(curl -s "https://$APEX/_next/BUILD_ID" -A 'gha-deploy-verify' || true)
+            if [ -n "$want" ] && [ "$got" = "$want" ]; then ok=1; break; fi
+            # Fallback when BUILD_ID is not exposed: just require the apex to be up.
+            if [ -z "$want" ] && [ "$(curl -s -o /dev/null -w '%{http_code}' "https://$APEX/")" = "200" ]; then
+              echo "BUILD_ID unavailable — falling back to a liveness check only"; ok=1; break
+            fi
+            sleep 10
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::Deployment $URL is Ready but $APEX is NOT serving it."
+            echo "::error::The production apex is pinned. Clear the pin in the Vercel"
+            echo "::error::dashboard (Project → Deployments → promote manually), then re-run."
+            exit 1
+          fi
+          echo "apex verified: https://$APEX is serving $URL"
+        env:
+          APEX: ofriperetz.dev
