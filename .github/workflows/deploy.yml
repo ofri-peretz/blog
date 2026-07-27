@@ -101,10 +101,6 @@ jobs:
         timeout-minutes: 8
         run: |
           set -euo pipefail
-          # Snapshot what the apex serves now, so the verify step can prove it
-          # actually moved rather than guessing.
-          echo "apex_build_id=$(curl -sf "https://$APEX/_next/BUILD_ID" || true)" >> "$GITHUB_OUTPUT"
-
           url=$(vercel deploy --prebuilt --prod --skip-domain --no-wait --token="$VERCEL_TOKEN" | tail -1)
           [ -n "$url" ] || { echo "::error::vercel deploy returned no URL"; exit 1; }
           echo "url=$url" >> "$GITHUB_OUTPUT"
@@ -158,45 +154,42 @@ jobs:
             || echo "promote and alias both failed — the verify step decides"
 
       # A green promote has historically meant nothing: deployments reached
-      # Ready while the apex kept serving a six-day-old build. So check.
+      # Ready while the apex kept serving a six-day-old build. So check — but
+      # ask the alias itself which deployment it points at, rather than
+      # fingerprinting the HTML.
       #
-      # 30s, not minutes. An alias swap is a routing change that either took
-      # or did not — it does not "warm up". Waiting longer only delays a
-      # failure we already know how to act on.
-      #
-      # The deployment URL sits behind SSO (ssoProtection covers every
-      # *.vercel.app host), so its BUILD_ID is unreadable from CI. Compare the
-      # apex against itself instead: capture before promote, expect it to
-      # change after. Same signal, no protected URL involved.
+      # (The previous version fetched /_next/BUILD_ID, which 404s on this
+      # site. Both reads came back empty, so it reported "still serves
+      # 'unknown'" on a deploy that had actually succeeded — a false alarm on
+      # a green deploy, which is exactly the kind of wrong signal this step
+      # exists to prevent.)
       - name: Verify apex serves this build
         timeout-minutes: 2
         env:
-          BEFORE: ${{ steps.deploy.outputs.apex_build_id }}
+          URL: ${{ steps.deploy.outputs.url }}
         run: |
           set -euo pipefail
-          echo "apex build id before deploy: ${BEFORE:-<unreadable>}"
+          host="${URL%/}"; host="${host##*/}"
 
-          # If BEFORE was unreadable (apex down, first deploy, BUILD_ID not
-          # exposed) a changed id proves nothing — any non-empty value would
-          # "differ" from empty. Fall back to asserting the apex is simply
-          # serving, and say so, rather than reporting a verification we did
-          # not actually perform.
+          want=$(curl -sf -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v13/deployments/${host}?teamId=${VERCEL_ORG_ID}" \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin).get("id",""))')
+          [ -n "$want" ] || { echo "::error::could not resolve deployment id for $host"; exit 1; }
+          echo "expecting apex -> $want"
+
           for _ in $(seq 1 6); do
-            now=$(curl -sf "https://$APEX/_next/BUILD_ID" || true)
-            if [ -n "$now" ]; then
-              if [ -z "$BEFORE" ]; then
-                echo "apex is up (build $now) — no pre-deploy id to compare, promotion UNVERIFIED"
-                exit 0
-              fi
-              if [ "$now" != "$BEFORE" ]; then
-                echo "apex verified: build id moved $BEFORE -> $now"
-                exit 0
-              fi
+            got=$(curl -sf -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v4/aliases/${APEX}?teamId=${VERCEL_ORG_ID}" \
+              | python3 -c 'import sys,json;print(json.load(sys.stdin).get("deploymentId",""))' 2>/dev/null || true)
+            if [ "$got" = "$want" ]; then
+              echo "apex verified: https://$APEX -> $want"
+              exit 0
             fi
+            echo "  apex currently -> ${got:-unknown}"
             sleep 5
           done
 
-          echo "::error::https://$APEX still serves build '${before:-unknown}' after promote."
-          echo "::error::The apex is pinned. Promote manually in the Vercel dashboard"
-          echo "::error::(Project → Deployments), then re-run this workflow."
+          echo "::error::https://$APEX points at '${got:-unknown}', expected '$want'."
+          echo "::error::Promote did not take. Promote manually in the Vercel"
+          echo "::error::dashboard (Project -> Deployments), then re-run."
           exit 1
