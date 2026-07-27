@@ -88,6 +88,12 @@ const nextConfig: NextConfig = {
     // needs no entry), Dev.to's CDN proxy, and Dev.to's S3 bucket for covers
     // uploaded through their editor. Without these, <Image> throws on ~25 posts.
     remotePatterns: [
+      // Our own domain. Frontmatter stores absolute URLs (OG scrapers and
+      // dev.to cannot resolve relative ones), so next/image treats the cover
+      // as REMOTE even though it is served from this very host — and without
+      // this entry the optimizer answers INVALID_IMAGE_OPTIMIZE_REQUEST, i.e.
+      // every self-hosted cover 400s in the browser while the raw file 200s.
+      { protocol: "https", hostname: "ofriperetz.dev" },
       { protocol: "https", hostname: "media2.dev.to" },
       { protocol: "https", hostname: "media.dev.to" },
       { protocol: "https", hostname: "dev-to-uploads.s3.amazonaws.com" },
