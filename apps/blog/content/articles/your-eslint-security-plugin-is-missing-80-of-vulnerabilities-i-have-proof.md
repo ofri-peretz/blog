@@ -71,7 +71,7 @@ Coverage numbers:
 
 Two of the 7 "zero coverage" classes deserve a caveat, not a footnote, because I checked the actual rule source rather than the rule name — and `eslint-plugin-security` ships two rules that sound closer than they are.
 
-`detect-unsafe-regex` and `detect-non-literal-regexp` both exist in the `recommended` preset and both touch regex. Neither closes the ReDoS gap in this fixture. `detect-unsafe-regex` only flags regex _literals_ that are statically evaluable as catastrophic-backtracking-prone — under the hood it runs the `safe-regex` backtracking analysis, which requires a statically-known pattern string to evaluate. A variable can't be fed into that analysis, so it does not fire on `new RegExp(userInput)` at all — that's a structural limit of the rule, not a gap in its pattern list. `detect-non-literal-regexp` _does_ fire on `new RegExp(userInput)` — but read its check, not its name: it flags **any** non-literal `RegExp` construction, including `new RegExp(validatedPattern)` where `validatedPattern` was checked against an allowlist first. It has no attacker-control analysis; it fires identically on the dangerous line and the safe one. A rule that can't distinguish the two either gets disabled the first time it fires on validated code, or gets left on and trains the team to ignore its own warnings — both outcomes leave the actual ReDoS pattern uncaught in practice, which is why I still count this class as effectively zero-coverage rather than credit a rule that can't discriminate the failure mode it's supposedly catching.
+`detect-unsafe-regex` and `detect-non-literal-regexp` both exist in the `recommended` preset and both touch regex. Neither closes the ReDoS gap in this fixture. `detect-unsafe-regex` only flags regex *literals* that are statically evaluable as catastrophic-backtracking-prone — under the hood it runs the `safe-regex` backtracking analysis, which requires a statically-known pattern string to evaluate. A variable can't be fed into that analysis, so it does not fire on `new RegExp(userInput)` at all — that's a structural limit of the rule, not a gap in its pattern list. `detect-non-literal-regexp` *does* fire on `new RegExp(userInput)` — but read its check, not its name: it flags **any** non-literal `RegExp` construction, including `new RegExp(validatedPattern)` where `validatedPattern` was checked against an allowlist first. It has no attacker-control analysis; it fires identically on the dangerous line and the safe one. A rule that can't distinguish the two either gets disabled the first time it fires on validated code, or gets left on and trains the team to ignore its own warnings — both outcomes leave the actual ReDoS pattern uncaught in practice, which is why I still count this class as effectively zero-coverage rather than credit a rule that can't discriminate the failure mode it's supposedly catching.
 
 `eslint-plugin-security` also ships `detect-possible-timing-attacks`, which sounds like it should catch `if (userToken === storedToken)`. I read the rule source directly rather than trusting the name: it only fires when the compared identifier's name is an exact, whole-word, case-insensitive match against a fixed list (`token`, `secret`, `password`, `hash`, `pass`, `auth`, `api`, `apiKey`) — a substring like `userToken` or `storedToken` does not match. So the rule stays silent on this fixture. Rename both variables to exactly `token` and `secret` — no other change — and the same rule fires on the identical comparison. That's not timing-attack detection; that's a variable-naming lint with a security-sounding name.
 
@@ -108,7 +108,7 @@ Run across one file containing 12 vulnerability classes, the four linter configu
 | ------------------------------------ | ------ | -------- | ------------------------------- |
 | Oxlint built-in                      | Oxlint | **1**    | `no-eval` only                  |
 | Interlace flagship (3 wired rules)   | Oxlint | **5**    | the rules that are parity-wired |
-| eslint-plugin-security (recommended) | ESLint | **21**   | the classic generic patterns¹   |
+| eslint-plugin-security (recommended) | ESLint | **21**   | the classic generic patterns¹    |
 | Interlace (4 plugins, recommended)   | ESLint | **46**   | across 20 distinct rules        |
 
 ¹ Two `eslint-plugin-security` rules sound like they cover ReDoS and timing attacks but don't in practice on this fixture — see the caveat above `detect-unsafe-regex` / `detect-non-literal-regexp` / `detect-possible-timing-attacks`.
@@ -130,11 +130,11 @@ The flat-config block that wires all four (`recommended` presets) is in the [Met
 
 Detection only counts if [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) holds. Run against a file of deliberately safe patterns:
 
-| Config                 | False positives | On what                                                                                                                                 |
-| ---------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Oxlint built-in        | **0**           | —                                                                                                                                       |
-| Interlace @ Oxlint     | **0**           | —                                                                                                                                       |
-| Interlace @ ESLint     | 3               | `pg/no-select-all` (a perf/clarity rule) ×2, conservative `browser-security/no-innerhtml` ×1                                            |
+| Config                 | False positives | On what                                                                                                               |
+| ---------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Oxlint built-in        | **0**           | —                                                                                                                     |
+| Interlace @ Oxlint     | **0**           | —                                                                                                                     |
+| Interlace @ ESLint     | 3               | `pg/no-select-all` (a perf/clarity rule) ×2, conservative `browser-security/no-innerhtml` ×1                          |
 | eslint-plugin-security | **5**           | `security/detect-object-injection` on allowlist-validated keys ×3, `security/detect-non-literal-fs-filename` on path-validated reads ×2 |
 
 The honest difference: the incumbent's 5 are **genuine [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn)** — `security/detect-object-injection` flags `obj[key]` even after `VALID_KEYS.includes(key)`, and `security/detect-non-literal-fs-filename` flags `fs.readFileSync(p)` even after `path.basename` + `startsWith` validation, because it pattern-matches the sink without seeing the guard. The Interlace "3" aren't security false positives: `no-select-all` is a performance/clarity rule firing on `SELECT *`, and `no-innerhtml` is conservative by design (it flags `innerHTML` even when the value is DOMPurify-sanitized — a deliberate choice you can disable with a documented comment).
@@ -258,4 +258,4 @@ npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security e
 
 ---
 
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [Twitter](https://twitter.com/ofriperetzdev) · [ofriperetz.dev](https://ofriperetz.dev)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [Twitter](https://twitter.com/ofriperetzdev) · [ofriperetz.dev](https://ofriperetz.dev)*

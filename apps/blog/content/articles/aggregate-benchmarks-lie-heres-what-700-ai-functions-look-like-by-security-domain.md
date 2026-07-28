@@ -46,13 +46,13 @@ When I broke 700 functions down by **security domain**, the rankings inverted. T
 
 ### Category Champions (Lowest Vulnerability Rate)
 
-| Domain                | Champion         | Rate                | Runner-Up     | Rate |
-| --------------------- | ---------------- | ------------------- | ------------- | ---- |
-| **Database**          | Haiku 4.5        | **39%**             | Opus 4.6      | 61%  |
-| **Authentication**    | Haiku 4.5        | **29%**             | Sonnet 4.5    | 39%  |
+| Domain                | Champion         | Rate    | Runner-Up     | Rate |
+| --------------------- | ---------------- | ------- | ------------- | ---- |
+| **Database**          | Haiku 4.5        | **39%** | Opus 4.6      | 61%  |
+| **Authentication**    | Haiku 4.5        | **29%** | Sonnet 4.5    | 39%  |
 | **File I/O**          | Gemini 2.5 Pro   | **86%** (least-bad) | Haiku / Opus  | 93%  |
-| **Configuration**     | Gemini 2.5 Flash | **21%**             | Sonnet / Opus | 25%  |
-| **Command Execution** | Haiku 4.5        | **50%**             | Sonnet 4.5    | 75%  |
+| **Configuration**     | Gemini 2.5 Flash | **21%** | Sonnet / Opus | 25%  |
+| **Command Execution** | Haiku 4.5        | **50%** | Sonnet 4.5    | 75%  |
 
 ### Remediation Champions (Highest Fix Rate)
 
@@ -117,7 +117,7 @@ The reassuring part: these are the exact patterns a static-analysis pass catches
 | Model            | Vuln Rate  | Key Vulnerabilities                                                       |
 | ---------------- | ---------- | ------------------------------------------------------------------------- |
 | **Haiku 4.5**    | **39%** 🏆 | `pg/no-select-all`                                                        |
-| Opus 4.6         | 61%        | `pg/no-select-all`, `secure-coding/detect-object-injection`               |
+| Opus 4.6         | 61%        | `pg/no-select-all`, `secure-coding/detect-object-injection`                             |
 | Sonnet 4.5       | 71%        | `pg/no-select-all`, `pg/no-unsafe-query`                                  |
 | Gemini 2.5 Flash | 75%        | `pg/no-hardcoded-credentials`, `pg/prefer-pool-query`                     |
 | Gemini 2.5 Pro   | 96%        | `pg/prefer-pool-query`, `pg/no-hardcoded-credentials`, `pg/no-select-all` |
@@ -152,13 +152,13 @@ The aggregate score conceals both of these facts. Opus "loses" the aggregate, bu
 
 **Prompts:** `readUpload`, `saveUpload`, `listDirectory`, `deleteFile`
 
-| Model              | Vuln Rate           | Key Vulnerabilities                                                                      |
-| ------------------ | ------------------- | ---------------------------------------------------------------------------------------- |
+| Model              | Vuln Rate       | Key Vulnerabilities                                          |
+| ------------------ | --------------- | ------------------------------------------------------------ |
 | **Gemini 2.5 Pro** | **86% (least-bad)** | `node-security/detect-non-literal-fs-filename`, `node-security/no-arbitrary-file-access` |
-| Haiku 4.5          | 93%                 | Same rules                                                                               |
-| Opus 4.6           | 93%                 | Same rules                                                                               |
-| Gemini 2.5 Flash   | 96%                 | Same rules                                                                               |
-| Sonnet 4.5         | 100%                | Same rules — every iteration, every time                                                 |
+| Haiku 4.5          | 93%             | Same rules                                                   |
+| Opus 4.6           | 93%             | Same rules                                                   |
+| Gemini 2.5 Flash   | 96%             | Same rules                                                   |
+| Sonnet 4.5         | 100%       | Same rules — every iteration, every time                     |
 
 **The hardest category for every model.** File operations with user-supplied filenames will almost always trigger `node-security/detect-non-literal-fs-filename`. That's an architectural constraint, not a model failure: any function that takes a dynamic filename parameter and passes it to `fs.readFile()` will flag this rule. The only "safe" pattern is to never accept user filenames, which defeats the purpose of the prompt.
 
@@ -170,30 +170,30 @@ Even here, there's a spread: Gemini Pro's 86% vs Sonnet's 100% reflects Gemini P
 
 **Prompts:** `compressFile`, `convertImage`, `runCommand`, `backupDatabase`
 
-| Model            | Vuln Rate  | Key Vulnerabilities                                                                  |
-| ---------------- | ---------- | ------------------------------------------------------------------------------------ |
+| Model            | Vuln Rate  | Key Vulnerabilities                                      |
+| ---------------- | ---------- | -------------------------------------------------------- |
 | **Haiku 4.5**    | **50%** 🏆 | `node-security/detect-child-process`, `node-security/detect-non-literal-fs-filename` |
-| Sonnet 4.5       | 75%        | Same                                                                                 |
-| Gemini 2.5 Flash | 82%        | Same                                                                                 |
-| Gemini 2.5 Pro   | 93%        | Same                                                                                 |
-| Opus 4.6         | 96%        | Same                                                                                 |
+| Sonnet 4.5       | 75%        | Same                                                     |
+| Gemini 2.5 Flash | 82%        | Same                                                     |
+| Gemini 2.5 Pro   | 93%        | Same                                                     |
+| Opus 4.6         | 96%        | Same                                                     |
 
 **Haiku's simplicity advantage is clearest here.** When asked to compress a file, Haiku sometimes generates code that uses a library API (like `archiver`) instead of spawning a shell process. The larger models generate shell commands with `child_process.exec()` — more flexible, but inherently flagged by security rules.
 
 Worth stating plainly here, not just in the limitations section: [`node-security/detect-child-process`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/detect-child-process) flags **all** `child_process` usage, including a properly-sanitized `execFile()` call with a fixed argument array. Some of what's counted as "vulnerable" in this category is legitimate shell access the rule can't distinguish from an injection sink. That's a real confound — but it doesn't change the remediation story below, where even models given the exact violation and asked to fix it still can't get the fix rate above 19%.
 
-**Why this survives review:** ``exec(`tar -czf ${out} ${dir}`)`` reads as the obvious, idiomatic way to shell out — it's exactly what a reviewer would have written themselves, so it pattern-matches as correct and the review moves on. The command-injection sink is hiding in plain sight inside a template literal that _looks_ like a string, not like a security boundary. It only bites when `dir` arrives as `; rm -rf /` from a request body weeks later, in code the original reviewer never imagined would take untrusted input. Familiarity is the vulnerability here: the more ordinary the shell call looks, the less anyone scrutinizes where its arguments came from.
+**Why this survives review:** `` exec(`tar -czf ${out} ${dir}`) `` reads as the obvious, idiomatic way to shell out — it's exactly what a reviewer would have written themselves, so it pattern-matches as correct and the review moves on. The command-injection sink is hiding in plain sight inside a template literal that _looks_ like a string, not like a security boundary. It only bites when `dir` arrives as `; rm -rf /` from a request body weeks later, in code the original reviewer never imagined would take untrusted input. Familiarity is the vulnerability here: the more ordinary the shell call looks, the less anyone scrutinizes where its arguments came from.
 
 ### 5. Configuration & Secrets
 
 **Prompts:** `dbConnection`, `sendEmail`, `apiCall`, `encryptData`
 
-| Model                | Vuln Rate  | Key Vulnerabilities                                                                 |
-| -------------------- | ---------- | ----------------------------------------------------------------------------------- |
-| **Gemini 2.5 Flash** | **21%** 🏆 | Rarely hardcodes credentials                                                        |
-| Opus 4.6             | 25%        | `secure-coding/no-hardcoded-credentials`                                            |
-| Sonnet 4.5           | 25%        | Same                                                                                |
-| Haiku 4.5            | 32%        | `secure-coding/no-hardcoded-credentials`                                            |
+| Model                | Vuln Rate  | Key Vulnerabilities                                     |
+| -------------------- | ---------- | ------------------------------------------------------- |
+| **Gemini 2.5 Flash** | **21%** 🏆 | Rarely hardcodes credentials                            |
+| Opus 4.6             | 25%        | `secure-coding/no-hardcoded-credentials`                              |
+| Sonnet 4.5           | 25%        | Same                                                    |
+| Haiku 4.5            | 32%        | `secure-coding/no-hardcoded-credentials`                              |
 | Gemini 2.5 Pro       | 46%        | `secure-coding/no-hardcoded-credentials`, `secure-coding/no-unsafe-deserialization` |
 
 **Configuration is where all models do best**, but Gemini Flash stands out with a 21% vulnerability rate. Flash consistently generates code that reads from `process.env` instead of using placeholder credentials — the simplest pattern, but the most secure default.
@@ -277,8 +277,8 @@ import jwt from "eslint-plugin-jwt";
 export default [
   secureCoding.configs.recommended, // secure-coding/detect-object-injection, secure-coding/no-hardcoded-credentials
   nodeSecurity.configs.recommended, // node-security/detect-child-process, node-security/detect-non-literal-fs-filename, node-security/no-arbitrary-file-access
-  pg.configs.recommended, // pg/no-select-all, pg/no-unsafe-query, pg/prefer-pool-query
-  jwt.configs.recommended, // jwt/no-sensitive-payload
+  pg.configs.recommended,           // pg/no-select-all, pg/no-unsafe-query, pg/prefer-pool-query
+  jwt.configs.recommended,          // jwt/no-sensitive-payload
 ];
 ```
 
@@ -306,7 +306,7 @@ Vulnerability rate and fix rate in isolation both mislead — what actually pred
 
 > **Net security position** = initial vulnerability rate × (1 − fix rate)
 >
-> The fraction of generated functions that are _still_ vulnerable after the model has had one chance to fix its own ESLint violations. This is the number that should drive model selection when you have a remediation pipeline — not the generation-only leaderboard.
+> The fraction of generated functions that are *still* vulnerable after the model has had one chance to fix its own ESLint violations. This is the number that should drive model selection when you have a remediation pipeline — not the generation-only leaderboard.
 
 The table below uses a flat average across all five domains, weighted equally. That's a simplification: if your codebase is 80% database code and 5% command execution, your real net position is the domain-weighted sum — `Σ (domain share × domain net-remaining)` — not the flat average below. Swap in your own repo's domain mix against the per-domain net-remaining numbers in each section above to get your actual number; the table below is the equal-weight baseline, not a universal constant.
 
@@ -314,9 +314,9 @@ The table below uses a flat average across all five domains, weighted equally. T
 | ------------------ | ----------------- | -------- | ----------------- | --------------------- |
 | **Opus 4.6**       | 65.0%             | 60.4%    | **25.7%**         | ⬆️ 4th → **1st**      |
 | **Haiku 4.5**      | 48.6%             | 38.2%    | **30.0%**         | ⬇️ 1st → 2nd          |
-| Sonnet 4.5         | 62.1%             | 36.8%    | 39.3%             | ⬇️ 2nd → tied 3rd–4th |
-| **Gemini 2.5 Pro** | 72.9%             | 46.1%    | **39.3%**         | ⬆️ 5th → tied 3rd–4th |
-| Gemini 2.5 Flash   | 63.6%             | 33.7%    | 42.1%             | ⬇️ 3rd → 5th          |
+| Sonnet 4.5         | 62.1%             | 36.8%    | 39.3%              | ⬇️ 2nd → tied 3rd–4th |
+| **Gemini 2.5 Pro** | 72.9%             | 46.1%    | **39.3%**          | ⬆️ 5th → tied 3rd–4th |
+| Gemini 2.5 Flash   | 63.6%             | 33.7%    | 42.1%              | ⬇️ 3rd → 5th          |
 
 _(Gemini Pro's fix rate pools the five domain remediation rows above: 25/27 + 7/12 + 10/24 + 0/26 + 5/13 = 47/102 = 46.1%. One remediation call in this run failed on an API timeout rather than returning a real fix attempt; excluding it from the denominator gives 46.5%, which is what a couple of earlier drafts of this table showed. The domain rows above are the [ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing) — 46.1% is the number that reconciles against them, so that's what's used here.)_
 
@@ -522,7 +522,7 @@ Two measurement concepts do quiet work throughout this analysis. The equal-weigh
 
 ---
 
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
 
 ---
 

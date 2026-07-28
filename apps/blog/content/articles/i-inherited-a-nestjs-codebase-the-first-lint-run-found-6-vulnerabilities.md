@@ -36,15 +36,15 @@ That number is why this ran on every inherited service after, on day one, before
 
 Here's how the 47 broke down across 6 rule classes, on a 40K-line codebase with roughly 80 controllers and service classes:
 
-| Rule                         | CWE     |  Count |
-| ---------------------------- | ------- | -----: |
-| `require-guards`             | CWE-284 |     11 |
-| `no-exposed-private-fields`  | CWE-200 |      9 |
-| `no-missing-validation-pipe` | CWE-20  |      8 |
-| `require-class-validator`    | CWE-20  |      7 |
-| `require-throttler`          | CWE-770 |      7 |
-| `no-exposed-debug-endpoints` | CWE-489 |      5 |
-| **Total**                    |         | **47** |
+| Rule | CWE | Count |
+| --- | --- | ---: |
+| `require-guards` | CWE-284 | 11 |
+| `no-exposed-private-fields` | CWE-200 | 9 |
+| `no-missing-validation-pipe` | CWE-20 | 8 |
+| `require-class-validator` | CWE-20 | 7 |
+| `require-throttler` | CWE-770 | 7 |
+| `no-exposed-debug-endpoints` | CWE-489 | 5 |
+| **Total** | | **47** |
 
 > **[Reproducibility](https://ofriperetz.dev/articles/reproducibility-vs-replicability) (this run).** Plugin `eslint-plugin-nestjs-security@1.2.3` (current published version is 1.2.4 — a `no-missing-null-checks` fix unrelated to the six rules here), all six rules at `error` ([config below](#the-config)). Scanned with `npx eslint "src/**/*.ts"` on the inherited service (~40K lines, 2 years of feature PRs, zero prior security passes). The 12-second figure is wall-clock on a single cold run, M2 / Node 20. Counts are from this one codebase — yours will differ, but the _class distribution_ (guards and validation dominate, debug routes are rare-but-fatal) is the part that holds across the NestJS services I've audited.
 
@@ -67,46 +67,46 @@ Here are all 6 — and exactly why experienced engineers didn't catch each one.
 
 ```typescript
 // admin.controller.ts
-import { Controller, Get, Delete, Param } from "@nestjs/common";
-import { UsersService } from "../users/users.service";
+import { Controller, Get, Delete, Param } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
 
-@Controller("admin")
+@Controller('admin')
 export class AdminController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get("users")
+  @Get('users')
   async getAllUsers() {
     return this.usersService.findAll();
   }
 
-  @Delete("user/:id")
-  async deleteUser(@Param("id") id: string) {
+  @Delete('user/:id')
+  async deleteUser(@Param('id') id: string) {
     return this.usersService.delete(id);
   }
 }
 ```
 
-**Why it survived review:** This is the one that still bothers me most. The team had a global `JwtAuthGuard` — it was real, tested, and documented in the onboarding wiki, registered via `{ provide: APP_GUARD, useClass: JwtAuthGuard }` so Nest could inject its `JwtService` properly. `canActivate()` rejected outright — `return false`, a clean 401 — for any request with no `Authorization` header or an obviously malformed one, before ever calling `jwtService.verify()`. Only a structurally well-formed token reached the `try { jwtService.verify(token) } catch { return true }` beyond it — added early on with a comment reading "verify() throwing here means the token library hiccuped, not that the user is unauthorized." Every test the team had sent either no token (rejected pre-`verify()`, correctly) or a valid one (accepted, correctly); nobody had a test for "well-formed token, `verify()` throws anyway," because until that day, no such token had ever existed. Six months later, a `JwtModule` re-registration during a refactor left `JwtService` pointed at a secret that no longer matched the one issuing tokens. Now every real token — still structurally well-formed — made `verify()` throw, straight into the catch block that had always meant "let it through." CI stayed green: nothing in the suite exercised a valid-shaped-but-cryptographically-wrong token, because that token type hadn't existed until the refactor created it. This wasn't scoped to `/admin` — every route behind that global guard was fail-open the same way, for the same reason: it's a global guard, one class, one catch block. It stayed invisible for six months precisely _because_ it was global — legitimate users kept authenticating with real, freshly-issued tokens that also failed `verify()` against the wrong secret and also got waved through by the same catch. Nothing broke for anyone, which is exactly why nobody went looking. Any request to `/admin/users`, forged token or not, returned the full user list.
+**Why it survived review:** This is the one that still bothers me most. The team had a global `JwtAuthGuard` — it was real, tested, and documented in the onboarding wiki, registered via `{ provide: APP_GUARD, useClass: JwtAuthGuard }` so Nest could inject its `JwtService` properly. `canActivate()` rejected outright — `return false`, a clean 401 — for any request with no `Authorization` header or an obviously malformed one, before ever calling `jwtService.verify()`. Only a structurally well-formed token reached the `try { jwtService.verify(token) } catch { return true }` beyond it — added early on with a comment reading "verify() throwing here means the token library hiccuped, not that the user is unauthorized." Every test the team had sent either no token (rejected pre-`verify()`, correctly) or a valid one (accepted, correctly); nobody had a test for "well-formed token, `verify()` throws anyway," because until that day, no such token had ever existed. Six months later, a `JwtModule` re-registration during a refactor left `JwtService` pointed at a secret that no longer matched the one issuing tokens. Now every real token — still structurally well-formed — made `verify()` throw, straight into the catch block that had always meant "let it through." CI stayed green: nothing in the suite exercised a valid-shaped-but-cryptographically-wrong token, because that token type hadn't existed until the refactor created it. This wasn't scoped to `/admin` — every route behind that global guard was fail-open the same way, for the same reason: it's a global guard, one class, one catch block. It stayed invisible for six months precisely *because* it was global — legitimate users kept authenticating with real, freshly-issued tokens that also failed `verify()` against the wrong secret and also got waved through by the same catch. Nothing broke for anyone, which is exactly why nobody went looking. Any request to `/admin/users`, forged token or not, returned the full user list.
 
 **Why the decorator pattern hides it:** When you read a controller in a PR diff, your eye looks for what's _there_ — the route handlers, the service calls, the response shape. A missing decorator is invisible in a diff. There's no red line that says "authentication check removed here." The absence doesn't show up.
 
-**What the lint rule catches:** `require-guards` fires on any route-handler method that lacks `@UseGuards(...)` — either its own or inherited from a class-level decorator — and lacks a `@Public()` / `@SkipAuth()` / `@AllowAnonymous()` / `@NoAuth()` opt-out. No type inference needed — pure structural, decorator-name analysis. Notice what that means for this exact bug: `require-guards` doesn't know or care whether `app.useGlobalGuards()` exists in `main.ts` — a global guard is invisible to a rule that only reads one controller file at a time. It would have flagged `AdminController` as missing a _local_ `@UseGuards()` regardless of the global guard's health. That's the design: it forces every route's guard to be explicit and co-located with the route, so a reviewer checking guard coverage never has to trust a bootstrap file from a distance. It's worth naming the seam honestly, though — this specific bug wasn't a _missing_ guard, it was a _broken_ one. A local `@UseGuards(JwtAuthGuard)` on `AdminController` would have satisfied `require-guards` and still shipped the same fail-open `catch`. The rule catches the class of bug (unguarded routes); this instance was a guard-logic bug, and no structural AST rule catches a `catch` block that returns the wrong boolean.
+**What the lint rule catches:** `require-guards` fires on any route-handler method that lacks `@UseGuards(...)` — either its own or inherited from a class-level decorator — and lacks a `@Public()` / `@SkipAuth()` / `@AllowAnonymous()` / `@NoAuth()` opt-out. No type inference needed — pure structural, decorator-name analysis. Notice what that means for this exact bug: `require-guards` doesn't know or care whether `app.useGlobalGuards()` exists in `main.ts` — a global guard is invisible to a rule that only reads one controller file at a time. It would have flagged `AdminController` as missing a *local* `@UseGuards()` regardless of the global guard's health. That's the design: it forces every route's guard to be explicit and co-located with the route, so a reviewer checking guard coverage never has to trust a bootstrap file from a distance. It's worth naming the seam honestly, though — this specific bug wasn't a *missing* guard, it was a *broken* one. A local `@UseGuards(JwtAuthGuard)` on `AdminController` would have satisfied `require-guards` and still shipped the same fail-open `catch`. The rule catches the class of bug (unguarded routes); this instance was a guard-logic bug, and no structural AST rule catches a `catch` block that returns the wrong boolean.
 
 ```typescript
 // admin.controller.ts — fixed
-import { Controller, Get, Delete, Param, UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { RolesGuard } from "../auth/guards/roles.guard";
-import { Roles } from "../auth/decorators/roles.decorator";
-import { UsersService } from "../users/users.service";
+import { Controller, Get, Delete, Param, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UsersService } from '../users/users.service';
 
-@Controller("admin")
+@Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get("users")
-  @Roles("admin")
+  @Get('users')
+  @Roles('admin')
   async getAllUsers() {
     return this.usersService.findAll();
   }
@@ -153,12 +153,12 @@ async getUser(@Param('id') id: string): Promise<User> {
 
 ```typescript
 // user.entity.ts — fixed
-import { Entity, Column, PrimaryGeneratedColumn } from "typeorm";
-import { Exclude } from "class-transformer";
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Exclude } from 'class-transformer';
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column()
@@ -185,21 +185,21 @@ export class User {
 
 ```typescript
 // auth.controller.ts
-import { Controller, Post, Body } from "@nestjs/common";
-import { AuthService } from "./auth.service";
-import { LoginDto } from "./dto/login.dto";
-import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { Controller, Post, Body } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
-@Controller("auth")
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post("login")
+  @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
-  @Post("reset-password")
+  @Post('reset-password')
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
@@ -212,31 +212,33 @@ export class AuthController {
 
 ```typescript
 // auth.module.ts — ThrottlerModule must be configured
-import { Module } from "@nestjs/common";
-import { ThrottlerModule } from "@nestjs/throttler";
-import { AuthController } from "./auth.controller";
-import { AuthService } from "./auth.service";
+import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 
 @Module({
-  imports: [ThrottlerModule.forRoot([{ ttl: 60000, limit: 10 }])],
+  imports: [
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 10 }]),
+  ],
   controllers: [AuthController],
   providers: [AuthService],
 })
 export class AuthModule {}
 
 // auth.controller.ts — fixed
-import { Controller, Post, Body, UseGuards } from "@nestjs/common";
-import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
-import { AuthService } from "./auth.service";
-import { LoginDto } from "./dto/login.dto";
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
 
 // requires @nestjs/throttler@^5 — ttl is in milliseconds (v4 and earlier used seconds)
-@Controller("auth")
+@Controller('auth')
 @UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post("login")
+  @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 per 60 seconds
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
@@ -254,11 +256,11 @@ export class AuthController {
 
 ```typescript
 // posts.controller.ts
-import { Controller, Post, Body } from "@nestjs/common";
-import { CreatePostDto } from "./dto/create-post.dto";
-import { PostsService } from "./posts.service";
+import { Controller, Post, Body } from '@nestjs/common';
+import { CreatePostDto } from './dto/create-post.dto';
+import { PostsService } from './posts.service';
 
-@Controller("posts")
+@Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
@@ -294,15 +296,15 @@ async createPost(@Body(new ValidationPipe()) body: CreatePostDto) {
 
 ```typescript
 // create-user.dto.ts
-import { IsEmail } from "class-validator";
+import { IsEmail } from 'class-validator';
 
 export class CreateUserDto {
   @IsEmail()
   email: string;
 
-  name: string; // no validator — accepts any length, any encoding
+  name: string;  // no validator — accepts any length, any encoding
 
-  role: string; // no validator — accepts 'admin' as easily as 'user'
+  role: string;  // no validator — accepts 'admin' as easily as 'user'
 }
 ```
 
@@ -312,11 +314,11 @@ export class CreateUserDto {
 
 ```typescript
 // create-user.dto.ts — fixed
-import { IsEmail, IsString, MaxLength, IsEnum } from "class-validator";
+import { IsEmail, IsString, MaxLength, IsEnum } from 'class-validator';
 
 export enum UserRole {
-  User = "user",
-  Moderator = "moderator",
+  User = 'user',
+  Moderator = 'moderator',
 }
 
 export class CreateUserDto {
@@ -340,13 +342,13 @@ export class CreateUserDto {
 
 ```typescript
 // debug.controller.ts
-import { Controller, Get, UseGuards } from "@nestjs/common";
-import { DebugGuard } from "./debug.guard";
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { DebugGuard } from './debug.guard';
 
-@Controller("debug")
+@Controller('debug')
 @UseGuards(DebugGuard)
 export class DebugController {
-  @Get("config")
+  @Get('config')
   getConfig() {
     return process.env; // DATABASE_URL, JWT_SECRET, STRIPE_SECRET_KEY, all of it
   }
@@ -357,7 +359,7 @@ export class DebugController {
 export class DebugGuard implements CanActivate {
   canActivate(): boolean {
     // intent: block in prod, allow elsewhere — shipped inverted
-    return process.env.NODE_ENV === "production";
+    return process.env.NODE_ENV === 'production';
   }
 }
 ```
@@ -376,13 +378,13 @@ Note the overlap this creates with bug #1: `admin` is in `DEFAULT_DEBUG_PATHS`, 
 // use a dedicated module that never touches process.env:
 
 // health.controller.ts
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get } from '@nestjs/common';
 
-@Controller("health")
+@Controller('health')
 export class HealthController {
   @Get()
   check() {
-    return { status: "ok", timestamp: Date.now() };
+    return { status: 'ok', timestamp: Date.now() };
   }
 }
 // Note: 'health' IS in DEFAULT_DEBUG_PATHS. Health checks are intentionally public —
@@ -401,24 +403,26 @@ export class HealthController {
 
 ```javascript
 // eslint.config.mjs
-import tseslint from "typescript-eslint";
-import nestjsSecurity from "eslint-plugin-nestjs-security";
+import tseslint from 'typescript-eslint';
+import nestjsSecurity from 'eslint-plugin-nestjs-security';
 
-export default tseslint.config({
-  languageOptions: {
-    parser: tseslint.parser,
-    parserOptions: { project: true },
-  },
-  plugins: { "nestjs-security": nestjsSecurity },
-  rules: {
-    "nestjs-security/require-guards": "error",
-    "nestjs-security/no-exposed-private-fields": "error",
-    "nestjs-security/require-throttler": "error",
-    "nestjs-security/no-missing-validation-pipe": "error",
-    "nestjs-security/require-class-validator": "error",
-    "nestjs-security/no-exposed-debug-endpoints": "error",
-  },
-});
+export default tseslint.config(
+  {
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: { project: true },
+    },
+    plugins: { 'nestjs-security': nestjsSecurity },
+    rules: {
+      'nestjs-security/require-guards': 'error',
+      'nestjs-security/no-exposed-private-fields': 'error',
+      'nestjs-security/require-throttler': 'error',
+      'nestjs-security/no-missing-validation-pipe': 'error',
+      'nestjs-security/require-class-validator': 'error',
+      'nestjs-security/no-exposed-debug-endpoints': 'error',
+    },
+  }
+);
 ```
 
 ```bash
@@ -479,4 +483,4 @@ _← [The 30-Minute Security Audit: onboarding a new codebase](https://ofriperet
 
 ---
 
-_[eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*[eslint-plugin-nestjs-security](https://www.npmjs.com/package/eslint-plugin-nestjs-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

@@ -41,12 +41,12 @@ series: "AI Security Benchmark Series"
 
 ### Key Findings
 
-| Metric                    | Result                                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Vulnerability Rate**    | 65-75% (statistically consistent across all models)                                                     |
-| **Highest-Risk Category** | Command injection: 100% vulnerable (6/6 functions that used `exec`/`execSync`)                          |
-| **Worst Severity**        | 41 of 83 findings score the maximum CVSS of 9.8 (SQL/command injection, hardcoded creds, JWT algorithm) |
-| **Model Differences**     | Consistent with no model difference, but n=20/model is underpowered to prove it\*                       |
+| Metric                  | Result                                              |
+| ----------------------- | --------------------------------------------------- |
+| **Vulnerability Rate**  | 65-75% (statistically consistent across all models) |
+| **Highest-Risk Category** | Command injection: 100% vulnerable (6/6 functions that used `exec`/`execSync`) |
+| **Worst Severity**      | 41 of 83 findings score the maximum CVSS of 9.8 (SQL/command injection, hardcoded creds, JWT algorithm) |
+| **Model Differences**   | Consistent with no model difference, but n=20/model is underpowered to prove it\* |
 
 _\*χ² = 0.640, df = 3, p > 0.05 — a small, non-significant sample-level result, not proof all models are equally insecure. The stronger evidence for "model choice doesn't matter" is the 700-function, 5-provider follow-up below, which held at 63%._
 
@@ -128,13 +128,13 @@ _(60-fn subset — core tables in this section are the frozen 3-model, 20-prompt
 
 Not all security domains fail equally. Each of the 5 domains has 12 functions in the 60-function run (4 prompts × 3 models) — but the denominators below are narrower than 12 where a "vulnerable" verdict only applies to the subset of functions that actually exercised the risky API (e.g., only some Command-domain prompts call `exec`/`execSync` at all; the rest are safe by construction):
 
-| Domain       | Vulnerable (of functions using the risky pattern) | Rate     | Notes                                                                                                                                                                                                                                 |
-| ------------ | ------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Command**  | 6/6                                               | **100%** | Every `exec`/`execSync` call came back vulnerable                                                                                                                                                                                     |
-| **File I/O** | ~10/12                                            | **~83%** | Path traversal survived remediation more than any other class                                                                                                                                                                         |
-| **Database** | ~8/12                                             | **~67%** | SQL injection + `SELECT *` + hardcoded credentials                                                                                                                                                                                    |
-| **Auth**     | ~5/8                                              | **~63%** | Missing JWT algorithm whitelist was the dominant finding                                                                                                                                                                              |
-| **Config**   | ~2/8                                              | **~25%** | Lowest rate; encryption and hashing prompts were mostly clean, though the "secure" encryption example still had a static-salt weakness no plugin in this stack catches (see [Example 7](#-example-7-suite-prompt-20-data-encryption)) |
+| Domain   | Vulnerable (of functions using the risky pattern) | Rate | Notes |
+| -------- | -------------------- | ---- | ----- |
+| **Command** | 6/6 | **100%** | Every `exec`/`execSync` call came back vulnerable |
+| **File I/O** | ~10/12 | **~83%** | Path traversal survived remediation more than any other class |
+| **Database** | ~8/12 | **~67%** | SQL injection + `SELECT *` + hardcoded credentials |
+| **Auth** | ~5/8 | **~63%** | Missing JWT algorithm whitelist was the dominant finding |
+| **Config** | ~2/8 | **~25%** | Lowest rate; encryption and hashing prompts were mostly clean, though the "secure" encryption example still had a static-salt weakness no plugin in this stack catches (see [Example 7](#-example-7-suite-prompt-20-data-encryption)) |
 
 **The highest rate: command injection at 100%.** The lowest: config functions at ~25%. The gap matters because these categories map directly to real-world attack surface. A 100% command injection rate means every shell-execution function Claude writes without security guidance is immediately exploitable.
 
@@ -246,17 +246,17 @@ None of these are "the model didn't understand security." Each is the model prod
 
 _Occurrences below are the de-duplicated `byRule` counts from the published `results/ai-security/2026-02-06.json` run (60 functions, 3 models — Haiku 3.5, Sonnet 4.5, Opus 4.5). Each number is the value stored under `models.<model>.byRule[rule].count` in that one file, summed across the three models. These seven rows account for 74 of the run's findings; a long tail of one- and two-off rules (unchecked-loop-condition, unsafe-deserialization, XXE, object-injection, insecure-comparison, prefer-pool-query, sensitive-payload) makes up the rest, reconciling to the file's recorded **83 total vulnerabilities**._
 
-| Vulnerability                          | Rule that fired                                                                      | CWE     | CVSS | Occurrences |
-| -------------------------------------- | ------------------------------------------------------------------------------------ | ------- | ---- | ----------- |
-| SQL / Query Injection (template-built) | `secure-coding/no-graphql-injection`                                                 | CWE-89  | 9.8  | 31          |
+| Vulnerability                          | Rule that fired                                                | CWE     | CVSS | Occurrences |
+| -------------------------------------- | -------------------------------------------------------------- | ------- | ---- | ----------- |
+| SQL / Query Injection (template-built) | `secure-coding/no-graphql-injection`                           | CWE-89  | 9.8  | 31          |
 | Path Traversal                         | `node-security/detect-non-literal-fs-filename` (22) + `no-arbitrary-file-access` (6) | CWE-22  | 7.5  | 28          |
-| Command Injection                      | `node-security/detect-child-process`                                                 | CWE-78  | 9.8  | 6           |
-| SELECT \* Over-fetch                   | `pg/no-select-all`                                                                   | CWE-200 | 5.3  | 3           |
-| Sensitive Info Exposure                | `secure-coding/no-sensitive-data-exposure`                                           | CWE-200 | 5.3  | 2           |
-| Hardcoded Credentials                  | `pg/no-hardcoded-credentials`                                                        | CWE-798 | 9.8  | 2           |
-| Missing JWT Algorithm Whitelist        | `jwt/require-algorithm-whitelist`                                                    | CWE-347 | 9.8  | 2           |
+| Command Injection                      | `node-security/detect-child-process`                           | CWE-78  | 9.8  | 6           |
+| SELECT \* Over-fetch                   | `pg/no-select-all`                                             | CWE-200 | 5.3  | 3           |
+| Sensitive Info Exposure                | `secure-coding/no-sensitive-data-exposure`                    | CWE-200 | 5.3  | 2           |
+| Hardcoded Credentials                  | `pg/no-hardcoded-credentials`                                 | CWE-798 | 9.8  | 2           |
+| Missing JWT Algorithm Whitelist        | `jwt/require-algorithm-whitelist`                             | CWE-347 | 9.8  | 2           |
 
-> **On naming:** the CWE-89 findings are query-injection risks — string-built SQL/queries flagged at the time of the original run through a template-literal pattern. The rule that fired (`secure-coding/no-graphql-injection`, see [Limitations](#limitations--future-work)) was, at the time of this benchmark, broader than its name suggests, and an earlier draft of this table mislabeled the findings "Template Injection." The CWE is correct (CWE-89 is _Improper Neutralization of Special Elements used in an SQL Command_); the category name now matches it. Genuine server-side template injection would be CWE-1336. **Re-verifying against the current package** (`eslint-plugin-secure-coding@3.3.1`, post the FP-reduction pass documented in its changelog): the rule as it ships today keys specifically on GraphQL-shaped syntax (`query`/`mutation`/`fragment` keywords, nested braces) and does **not** fire on the plain parameterized or template-literal SQL shown in this article's own examples — I confirmed this by running the current rule against this article's exact `getUserById` and `searchUsers` patterns and got zero findings. The 31 hits in the frozen `2026-02-06.json` reflect the rule's behavior _at the time of that run_; they are not reproducible against the current published version, which is a genuine limitation of "reproduce this research" for a live npm dependency. **On scale:** an earlier draft of this table showed an inflated 50/40/12 split — those numbers came from a _different_, much larger run (700 functions × 7 iterations across 5 providers) and didn't trace to the file cited here. The counts above are the actual 60-function values; the 700-function domain breakdown lives in [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
+> **On naming:** the CWE-89 findings are query-injection risks — string-built SQL/queries flagged at the time of the original run through a template-literal pattern. The rule that fired (`secure-coding/no-graphql-injection`, see [Limitations](#limitations--future-work)) was, at the time of this benchmark, broader than its name suggests, and an earlier draft of this table mislabeled the findings "Template Injection." The CWE is correct (CWE-89 is _Improper Neutralization of Special Elements used in an SQL Command_); the category name now matches it. Genuine server-side template injection would be CWE-1336. **Re-verifying against the current package** (`eslint-plugin-secure-coding@3.3.1`, post the FP-reduction pass documented in its changelog): the rule as it ships today keys specifically on GraphQL-shaped syntax (`query`/`mutation`/`fragment` keywords, nested braces) and does **not** fire on the plain parameterized or template-literal SQL shown in this article's own examples — I confirmed this by running the current rule against this article's exact `getUserById` and `searchUsers` patterns and got zero findings. The 31 hits in the frozen `2026-02-06.json` reflect the rule's behavior *at the time of that run*; they are not reproducible against the current published version, which is a genuine limitation of "reproduce this research" for a live npm dependency. **On scale:** an earlier draft of this table showed an inflated 50/40/12 split — those numbers came from a _different_, much larger run (700 functions × 7 iterations across 5 providers) and didn't trace to the file cited here. The counts above are the actual 60-function values; the 700-function domain breakdown lives in [Part 4](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
 
 ### OWASP Top 10 Mapping
 
@@ -326,7 +326,7 @@ function verifyToken(token) {
 
 **Why this survives code review:** the two-argument `jwt.verify(token, secret)` call is the exact signature shown in the `jsonwebtoken` README's first example. A reviewer sees "a secret is passed, `.verify()` is called" and stops — that pattern-matches "this looks like every other JWT check I've approved." Nobody re-reads it for the third, optional argument that never got typed.
 
-Without an `algorithms` whitelist, `jwt.verify` doesn't read the `alg` claim off the token — it derives the accepted algorithm set from what the _key argument_ looks like at runtime. Against this exact code (a plain-string secret from `JWT_SECRET`), that derivation happens to land on HMAC-only, which is why neither the classic "flip `alg` to `none`" attack (throws `jwt signature is required`) nor a naive RS256-confusion attempt (a PEM-format string in that same variable would flip the derived default to asymmetric algorithms instead, rejecting the confused token) works against it today. The real risk is the derivation itself, not this one call site: it's implicit, string-match-based, has already needed two separate CVE fixes (2015, 2022) to close prior gaps in exactly this logic, and gives a reviewer no way to know from the call site which behavior the running version actually has. Pin `algorithms: ['HS256']` and the call stops depending on runtime key-shape inference — no CVE history to inherit, no library-version archaeology required to know it's safe. This is the [JWT algorithm-confusion attack](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) in its general form — one missing argument, and the safety net is a heuristic instead of a rule.
+Without an `algorithms` whitelist, `jwt.verify` doesn't read the `alg` claim off the token — it derives the accepted algorithm set from what the *key argument* looks like at runtime. Against this exact code (a plain-string secret from `JWT_SECRET`), that derivation happens to land on HMAC-only, which is why neither the classic "flip `alg` to `none`" attack (throws `jwt signature is required`) nor a naive RS256-confusion attempt (a PEM-format string in that same variable would flip the derived default to asymmetric algorithms instead, rejecting the confused token) works against it today. The real risk is the derivation itself, not this one call site: it's implicit, string-match-based, has already needed two separate CVE fixes (2015, 2022) to close prior gaps in exactly this logic, and gives a reviewer no way to know from the call site which behavior the running version actually has. Pin `algorithms: ['HS256']` and the call stops depending on runtime key-shape inference — no CVE history to inherit, no library-version archaeology required to know it's safe. This is the [JWT algorithm-confusion attack](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) in its general form — one missing argument, and the safety net is a heuristic instead of a rule.
 
 **After Remediation (100% Fixed):**
 
@@ -481,7 +481,7 @@ function encryptSensitiveData(plaintext) {
 }
 ```
 
-**Why this one matters more than the others:** this function passed every rule in all four plugins — no `no-graphql-injection`, no `detect-child-process`, nothing. It's the clean run in this benchmark's own data. But a hardcoded literal `"salt"` string means every encryption with the same `ENCRYPTION_KEY` derives the _same_ AES key regardless of context, and unauthenticated `aes-256-cbc` lets an attacker flip ciphertext bits without detection. The fix is `crypto.randomBytes()` for the salt (stored alongside the ciphertext, the same way the IV already is) and `aes-256-gcm` instead of `aes-256-cbc` for built-in authentication. None of my four plugins target crypto misuse — the honest limitation is that this benchmark's install block has a blind spot exactly where a reader might assume "no findings" means "secure."
+**Why this one matters more than the others:** this function passed every rule in all four plugins — no `no-graphql-injection`, no `detect-child-process`, nothing. It's the clean run in this benchmark's own data. But a hardcoded literal `"salt"` string means every encryption with the same `ENCRYPTION_KEY` derives the *same* AES key regardless of context, and unauthenticated `aes-256-cbc` lets an attacker flip ciphertext bits without detection. The fix is `crypto.randomBytes()` for the salt (stored alongside the ciphertext, the same way the IV already is) and `aes-256-gcm` instead of `aes-256-cbc` for built-in authentication. None of my four plugins target crypto misuse — the honest limitation is that this benchmark's install block has a blind spot exactly where a reader might assume "no findings" means "secure."
 
 ---
 
@@ -508,12 +508,12 @@ Improvement: ~2x reduction
 
 The [install + config block is above](#phase-1-initial-results), at the point where the pain shows up. Here's which plugin caught which class of finding, with the exact rule-firing counts from the cited `2026-02-06.json` run (60 functions), so you can map it to your own stack:
 
-| Plugin                        | Rule that fired (60-fn run)                                                                          | Catches                                                         | CWE              |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------- |
-| `eslint-plugin-secure-coding` | `no-graphql-injection` (31×), `no-sensitive-data-exposure` (2×)                                      | string-built SQL/queries (top finding), sensitive-info exposure | CWE-89, CWE-200  |
-| `eslint-plugin-pg`            | `no-select-all` (3×), `no-hardcoded-credentials` (2×)                                                | `SELECT *` over-fetch, hardcoded DB password in client config   | CWE-200, CWE-798 |
-| `eslint-plugin-jwt`           | `require-algorithm-whitelist` (2×)                                                                   | `jwt.verify` with no `algorithms` whitelist                     | CWE-347          |
-| `eslint-plugin-node-security` | `detect-non-literal-fs-filename` (22×), `no-arbitrary-file-access` (6×), `detect-child-process` (6×) | path traversal in `fs`, `child_process` command injection       | CWE-22, CWE-78   |
+| Plugin                        | Rule that fired (60-fn run)                                | Catches                                                              | CWE             |
+| ----------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------- | --------------- |
+| `eslint-plugin-secure-coding` | `no-graphql-injection` (31×), `no-sensitive-data-exposure` (2×) | string-built SQL/queries (top finding), sensitive-info exposure | CWE-89, CWE-200 |
+| `eslint-plugin-pg`            | `no-select-all` (3×), `no-hardcoded-credentials` (2×)      | `SELECT *` over-fetch, hardcoded DB password in client config       | CWE-200, CWE-798 |
+| `eslint-plugin-jwt`           | `require-algorithm-whitelist` (2×)                         | `jwt.verify` with no `algorithms` whitelist                          | CWE-347         |
+| `eslint-plugin-node-security` | `detect-non-literal-fs-filename` (22×), `no-arbitrary-file-access` (6×), `detect-child-process` (6×) | path traversal in `fs`, `child_process` command injection | CWE-22, CWE-78  |
 
 These are the rules that produced the findings discussed in this article. The Opus 4.6 follow-up run (`antigravity-opus-4.6-2026-02-08.json`) tripped a few more rules from the _same four plugins_ — `pg/no-unsafe-query`, `node-security/no-ssrf`, `secure-coding/detect-object-injection`, `jwt/no-sensitive-payload` — which is the point: the four-plugin install is the unit of coverage, not any single rule. Full rule documentation lives at [eslint.interlace.tools](https://eslint.interlace.tools). If you're auditing a codebase rather than wiring CI, the same plugins drive [the 30-minute static-analysis onboarding protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
@@ -540,7 +540,6 @@ npm run benchmark:ai-security
 ```
 
 The benchmark runner:
-
 1. Sends each of the 20 prompts to the specified model via `claude --print --no-session-persistence`
 2. Saves the raw generated code to `benchmarks/ai-security/generated/<model>/<prompt-id>.js`
 3. Runs ESLint with all four security plugins against each file
@@ -729,7 +728,7 @@ The "vibe coding" era is here. But vibe coding without static analysis is a secu
 
 ---
 
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
 
 ---
 

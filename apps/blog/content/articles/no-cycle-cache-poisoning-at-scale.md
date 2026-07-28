@@ -63,7 +63,7 @@ interface FileSystemCache {
 }
 ```
 
-And the use site. For each import `sourceFile → targetFile`, we DFS _forward_ from `targetFile` looking for a path back to `sourceFile` — if we find one, `sourceFile` is in a cycle:
+And the use site. For each import `sourceFile → targetFile`, we DFS *forward* from `targetFile` looking for a path back to `sourceFile` — if we find one, `sourceFile` is in a cycle:
 
 ```ts
 // sourceFile = the file that contains the import
@@ -71,12 +71,11 @@ And the use site. For each import `sourceFile → targetFile`, we DFS _forward_ 
 const pathStack: string[] = [sourceFile];
 
 function dfs(file: string, depth: number, visited: Set<string>) {
-  if (file === sourceFile) {
-    // path looped back to the importer
+  if (file === sourceFile) {        // path looped back to the importer
     allCycles.push([...pathStack, file]);
     return;
   }
-  if (depth >= maxDepth) return; // <-- early return on depth limit
+  if (depth >= maxDepth) return;    // <-- early return on depth limit
   if (visited.has(file)) return;
   if (cache.nonCyclicFiles.has(file)) return; // <-- trust a prior verdict
   visited.add(file);
@@ -91,23 +90,23 @@ if (allCycles.length === 0) {
 }
 ```
 
-Spot the bug? It's between those two `// <--` lines. And note the cache key: `add(targetFile)` — the verdict is stored against the _imported_ file alone, with no record of _which_ `sourceFile` we were searching for. Hold onto that; it's what turns one truncated search into a wrong answer for every other search.
+Spot the bug? It's between those two `// <--` lines. And note the cache key: `add(targetFile)` — the verdict is stored against the *imported* file alone, with no record of *which* `sourceFile` we were searching for. Hold onto that; it's what turns one truncated search into a wrong answer for every other search.
 
 ## Why the cache poisons itself
 
 When the DFS hits `depth >= maxDepth`, it returns _as if it had completed exploration without finding a cycle_. The caller can't tell the difference between "I explored everything and found nothing" and "I gave up at depth 10."
 
-Here's the subtlety that makes this hide even _short_ cycles — the part a careful reader rightly pushes on. Take file `F`, which sits on a 3-file cycle inside router-reducer. You'd think `F` could never be cached acyclic: walk its own short cycle and you find it immediately. But the cache entry for `F` isn't necessarily written by a search that started looking for _F's_ cycle. `F` is imported from many places. Suppose some _distant_ file `S` (outside router-reducer) imports `F`. We run `detectCycleFromImport(S, F)`: DFS forward from `F`, looking for a path back to `S`. That search threads out through `F`'s barrel re-exports — `index.ts` → sibling → sibling — and at depth 11, still chasing a path to `S`, it hits the cap and returns empty. `allCycles.length === 0`, so:
+Here's the subtlety that makes this hide even *short* cycles — the part a careful reader rightly pushes on. Take file `F`, which sits on a 3-file cycle inside router-reducer. You'd think `F` could never be cached acyclic: walk its own short cycle and you find it immediately. But the cache entry for `F` isn't necessarily written by a search that started looking for *F's* cycle. `F` is imported from many places. Suppose some *distant* file `S` (outside router-reducer) imports `F`. We run `detectCycleFromImport(S, F)`: DFS forward from `F`, looking for a path back to `S`. That search threads out through `F`'s barrel re-exports — `index.ts` → sibling → sibling — and at depth 11, still chasing a path to `S`, it hits the cap and returns empty. `allCycles.length === 0`, so:
 
 1. DFS truncated at depth 10 (searching for a path to `S`, never reached)
 2. `allCycles.length === 0`
-3. **`cache.nonCyclicFiles.add(F)`** — `F` marked acyclic, _with no record that we were only ever looking for `S`_
+3. **`cache.nonCyclicFiles.add(F)`** — `F` marked acyclic, *with no record that we were only ever looking for `S`*
 
-That's the real defect: the cache key is `F` alone (`add(targetFile)`), but the verdict it just stored — "no cycle" — was only ever true _relative to `S`_. The cache promotes "`F` has no path back to `S` within 10 hops" into the unconditional claim "`F` is in no cycle at all." So now when router-reducer's own file imports `F` and we go looking for `F`'s _short_ cycle, `if (cache.nonCyclicFiles.has(F)) return;` fires first — and the 3-file cycle that's sitting right there, two hops away, is never walked. A deep, unrelated search poisoned a node that a shallow, local search would have flagged in microseconds.
+That's the real defect: the cache key is `F` alone (`add(targetFile)`), but the verdict it just stored — "no cycle" — was only ever true *relative to `S`*. The cache promotes "`F` has no path back to `S` within 10 hops" into the unconditional claim "`F` is in no cycle at all." So now when router-reducer's own file imports `F` and we go looking for `F`'s *short* cycle, `if (cache.nonCyclicFiles.has(F)) return;` fires first — and the 3-file cycle that's sitting right there, two hops away, is never walked. A deep, unrelated search poisoned a node that a shallow, local search would have flagged in microseconds.
 
-And it cascades, because `nonCyclicFiles` is module-scoped shared state, deliberately _not_ cleared between files in a run (cross-file reuse is the whole point of the cache — it's what keeps the rule fast enough for CI). One sourceFile-blind entry suppresses every later search that routes through `F`, each of which then caches _itself_ acyclic, and the dark patch spreads through the cluster one target at a time.
+And it cascades, because `nonCyclicFiles` is module-scoped shared state, deliberately *not* cleared between files in a run (cross-file reuse is the whole point of the cache — it's what keeps the rule fast enough for CI). One sourceFile-blind entry suppresses every later search that routes through `F`, each of which then caches *itself* acyclic, and the dark patch spreads through the cluster one target at a time.
 
-To be precise about what actually fired at scale: the production default in effect during that bench run was **`maxDepth: 10`** — the rule's historical default at the time. That `10` is shallower than real next.js cycles reach: `webpack-config.ts`, for instance, sits ~12 hops deep, proof that production import chains routinely exceed the cap. Any DFS that runs out of depth before closing a loop — anywhere in the graph, including along the paths feeding the router-reducer cluster — takes the truncate-then-cache path. (The fix raised the default to unbounded _and_ stopped truncated runs from writing to the cache — both halves, covered below. If you're reading the rule source today, you'll see the new unbounded default, not the `10` that caused this.)
+To be precise about what actually fired at scale: the production default in effect during that bench run was **`maxDepth: 10`** — the rule's historical default at the time. That `10` is shallower than real next.js cycles reach: `webpack-config.ts`, for instance, sits ~12 hops deep, proof that production import chains routinely exceed the cap. Any DFS that runs out of depth before closing a loop — anywhere in the graph, including along the paths feeding the router-reducer cluster — takes the truncate-then-cache path. (The fix raised the default to unbounded *and* stopped truncated runs from writing to the cache — both halves, covered below. If you're reading the rule source today, you'll see the new unbounded default, not the `10` that caused this.)
 
 In a small lint scope, you don't see the cascade — there aren't enough files for one bad cache entry to mask the others. In a 14K-file scope, one early miss-then-cache wipes out the whole cluster.
 
@@ -117,7 +116,7 @@ Cache bugs don't throw errors — they silently return wrong results. The poison
 
 No reviewer was asleep. The bug survived because both halves of it are individually correct and they were written at different times.
 
-The `if (depth >= maxDepth) return;` line is a textbook performance guard — every reviewer who's ever paged through a dense graph nods at it and moves on. The `if (allCycles.length === 0) cache.nonCyclicFiles.add(targetFile);` line reads in plain English as "we found no cycles, so remember this file is fine" — also obviously correct, in isolation. Neither line is wrong. The bug lives in the _gap between them_: the early return makes `allCycles.length === 0` mean two different things, and nothing in the diff for the cache write forced anyone to remember the early return existed. A diff-scoped review sees a correct line added to a correct function. You only catch this if you're holding the whole control-flow in your head at once — which is exactly what review at PR granularity optimizes against. The green unit tests and the two-linter consensus then certified the wrong answer, so there was no signal pulling anyone back to look.
+The `if (depth >= maxDepth) return;` line is a textbook performance guard — every reviewer who's ever paged through a dense graph nods at it and moves on. The `if (allCycles.length === 0) cache.nonCyclicFiles.add(targetFile);` line reads in plain English as "we found no cycles, so remember this file is fine" — also obviously correct, in isolation. Neither line is wrong. The bug lives in the *gap between them*: the early return makes `allCycles.length === 0` mean two different things, and nothing in the diff for the cache write forced anyone to remember the early return existed. A diff-scoped review sees a correct line added to a correct function. You only catch this if you're holding the whole control-flow in your head at once — which is exactly what review at PR granularity optimizes against. The green unit tests and the two-linter consensus then certified the wrong answer, so there was no signal pulling anyone back to look.
 
 ## The narrow-vs-wide scope smoking gun
 
@@ -133,7 +132,7 @@ $ eslint --no-cache --config flagship.config.mjs 'packages/next/src/client/compo
 # 5 import-next/no-cycle findings
 ```
 
-The narrow run finds cycles. The wide run starts from a fresh process with a fresh cache too — but it lints the 2,363 files in some order, and as it goes it fills `nonCyclicFiles` with exactly the kind of sourceFile-blind entry described above: a router-reducer file gets searched _forward_ on behalf of some distant importer, the search runs past depth 10 through the cluster's barrels without closing _that_ loop, and the file is cached acyclic. By the time the pass gets around to detecting the cluster's own short cycles, those nodes are already marked clean and the short-circuit skips them. The narrow run never builds those entries: with only 33 files in scope, no forward search has a 10-hop barrel chain to get lost in before the local cycle closes, so every cache write is honest. Scope isn't the cause; it's how many deep, sourceFile-blind searches get to run and poison nodes before the cluster's own short cycles are evaluated — which is why a small subtree stays clean and the 14K-file pass goes dark.
+The narrow run finds cycles. The wide run starts from a fresh process with a fresh cache too — but it lints the 2,363 files in some order, and as it goes it fills `nonCyclicFiles` with exactly the kind of sourceFile-blind entry described above: a router-reducer file gets searched *forward* on behalf of some distant importer, the search runs past depth 10 through the cluster's barrels without closing *that* loop, and the file is cached acyclic. By the time the pass gets around to detecting the cluster's own short cycles, those nodes are already marked clean and the short-circuit skips them. The narrow run never builds those entries: with only 33 files in scope, no forward search has a 10-hop barrel chain to get lost in before the local cycle closes, so every cache write is honest. Scope isn't the cause; it's how many deep, sourceFile-blind searches get to run and poison nodes before the cluster's own short cycles are evaluated — which is why a small subtree stays clean and the 14K-file pass goes dark.
 
 oxlint, being a different process with its own implementation, doesn't share our cache. It uses oxlint's own `ModuleGraphVisitorBuilder` and finds 17 cycles. (Why oxlint's 17 differs from `eslint-plugin-import`'s 0 is a separate story about `import type` edge-counting policy — I trace that in the [companion root-cause writeup](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it).)
 
@@ -165,9 +164,9 @@ if (allCycles.length === 0 && !depthLimitHit) {
 }
 ```
 
-Five lines — but be precise about what they buy. The guard stops a truncated DFS from _poisoning its neighbors_: no more false-acyclic cache entries cascading through a cluster. It does **not**, on its own, make a depth-truncated run find a cycle that sits past the limit — a file whose only cycle is at depth 12 still reports 0 _for itself_ under `maxDepth: 10`. That second [false negative](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) is closed by the other half of the fix: raising the default to unbounded, so the DFS actually reaches the deep loop. The guard makes unbounded _safe_ to default to (a truncated run on a dense graph no longer corrupts the cache); the unbounded default is what surfaces the deep cycles. Together: re-running on next.js goes **0 → 245 unique files in cycles, 914 unique (file, line) pairs**, and the wide-scope correctness now matches the narrow-scope correctness.
+Five lines — but be precise about what they buy. The guard stops a truncated DFS from *poisoning its neighbors*: no more false-acyclic cache entries cascading through a cluster. It does **not**, on its own, make a depth-truncated run find a cycle that sits past the limit — a file whose only cycle is at depth 12 still reports 0 *for itself* under `maxDepth: 10`. That second [false negative](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) is closed by the other half of the fix: raising the default to unbounded, so the DFS actually reaches the deep loop. The guard makes unbounded *safe* to default to (a truncated run on a dense graph no longer corrupts the cache); the unbounded default is what surfaces the deep cycles. Together: re-running on next.js goes **0 → 245 unique files in cycles, 914 unique (file, line) pairs**, and the wide-scope correctness now matches the narrow-scope correctness.
 
-The obvious objection: _unbounded recursive DFS on a 14K-file graph — doesn't that blow the call stack?_ No, and the reason is the same `visited` set that scopes one search. Recursion descends a node only once per search tree (`if (visited.has(file)) return;`), so the real recursion depth is bounded by the longest _acyclic_ import chain — the graph's diameter, not the file count — and never by the cycle itself (a back-edge hits `visited` and returns instead of recursing forever). That's also the answer to the question every reviewer eventually asks: if per-call `visited` already bounds the search, why did the cascade happen? Because `visited` is created fresh **per target file** — it only protects one search — while `nonCyclicFiles` is the module-scoped cache shared across _every_ file in the run. `visited` stops infinite recursion within a search; the cross-file cache is the state that leaks a wrong answer from one search into all the later ones. Two different sets, two different jobs — and only one of them was lying. (`maxDepth` existed originally as a blunt stack-and-latency guard; the real fix was making the cache honest, which let the cap go.)
+The obvious objection: *unbounded recursive DFS on a 14K-file graph — doesn't that blow the call stack?* No, and the reason is the same `visited` set that scopes one search. Recursion descends a node only once per search tree (`if (visited.has(file)) return;`), so the real recursion depth is bounded by the longest *acyclic* import chain — the graph's diameter, not the file count — and never by the cycle itself (a back-edge hits `visited` and returns instead of recursing forever). That's also the answer to the question every reviewer eventually asks: if per-call `visited` already bounds the search, why did the cascade happen? Because `visited` is created fresh **per target file** — it only protects one search — while `nonCyclicFiles` is the module-scoped cache shared across *every* file in the run. `visited` stops infinite recursion within a search; the cross-file cache is the state that leaks a wrong answer from one search into all the later ones. Two different sets, two different jobs — and only one of them was lying. (`maxDepth` existed originally as a blunt stack-and-latency guard; the real fix was making the cache honest, which let the cap go.)
 
 The fix shipped in `eslint-plugin-import-next@2.3.6`. If you want the corrected detector in your own CI, this is the whole setup — no truncation default to lower, no cache flag to remember. (If you're also evaluating how this compares to the 17 other ESLint security and quality plugins in our benchmark, see [the full plugin comparison](https://eslint.interlace.tools).)
 
@@ -215,7 +214,7 @@ npx eslint 'src/<your-gnarliest-subdir>/**/*.{ts,tsx}'
 #  scope than for its subset. A subset finding more is the signature.)
 ```
 
-That single comparison — subset finds more than the whole — is the signature. It works on _any_ cycle detector, not just ours. It's also where AI-scaffolded code lights up hardest, for reasons I get into [below](#why-ai-generated-code-makes-this-worse).
+That single comparison — subset finds more than the whole — is the signature. It works on *any* cycle detector, not just ours. It's also where AI-scaffolded code lights up hardest, for reasons I get into [below](#why-ai-generated-code-makes-this-worse).
 
 ## What `eslint-plugin-import` does instead
 
@@ -257,7 +256,7 @@ The uncomfortable part: the detector doesn't error. It returns **0**, the build 
 
 ### Reproduce it on a Gemini-scaffolded repo (challenge protocol)
 
-Want to turn the structural claim into original data on a specific model? Here's the exact, [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) protocol — I'm publishing the recipe rather than a number I haven't measured, because I want the count to come from _your_ model and _your_ scaffold, not a fabricated one:
+Want to turn the structural claim into original data on a specific model? Here's the exact, [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) protocol — I'm publishing the recipe rather than a number I haven't measured, because I want the count to come from *your* model and *your* scaffold, not a fabricated one:
 
 ```bash
 # 1. Have Gemini scaffold a small feature across modules. A prompt that
@@ -285,7 +284,7 @@ npx eslint 'src/orders/**'
 
 Run it across Gemini 2.5 Pro, Gemini 3 Pro, and Gemini 3 Flash and you have an original, model-specific dataset on how AI barrel-scaffolding interacts with depth-bounded cycle detection — the four-number signature is the whole experiment. I'm running this sweep next; until I have the counts in hand I won't print one here. (It also happens to be a clean [Build with Gemini](https://dev.to/challenges) entry under `#googleai #geminichallenge` — beat me to it if you want.)
 
-What I _have_ measured across these exact models is adjacent and points the same way: when I [benchmarked 700 AI-generated functions across 5 models from Gemini and Claude](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) against 332 ESLint rules, [Claude and Gemini landed in a near dead-heat on security](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) — both leaning on the same tidy-looking re-export and abstraction habits that lengthen import paths. The model isn't the variable; the _structure_ is, and that structure is exactly what feeds this false `0`.
+What I *have* measured across these exact models is adjacent and points the same way: when I [benchmarked 700 AI-generated functions across 5 models from Gemini and Claude](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) against 332 ESLint rules, [Claude and Gemini landed in a near dead-heat on security](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) — both leaning on the same tidy-looking re-export and abstraction habits that lengthen import paths. The model isn't the variable; the *structure* is, and that structure is exactly what feeds this false `0`.
 
 ## Three takeaways
 
@@ -307,4 +306,4 @@ Have you ever had a CI tool report a false green because of a caching bug — an
 
 ---
 
-_[eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*[eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

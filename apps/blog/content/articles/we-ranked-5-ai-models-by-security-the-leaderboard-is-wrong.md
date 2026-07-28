@@ -47,7 +47,7 @@ Most AI security benchmarks produce a single number — an aggregate vulnerabili
 
 **1. Aggregate scores mask complete category inversions.** Claude Opus (ranked #4 aggregate) generates perfect Configuration code; Gemini Flash (ranked #3 aggregate) generates perfect JWT code where Opus fails every single time. A model ranked "worse" outright dominates the category that matters most for your auth stack.
 
-**2. "Fewer vulnerabilities" is not the same as "more secure output."** Haiku's low rate comes from generating _simpler_ code — fewer features, fewer lines, less surface area for rules to flag. Haiku's 49% isn't evidence of security expertise; it's a side effect of producing minimal implementations. Gemini Pro generates elaborate production patterns (connection pooling, retry logic, credential management) that Haiku skips entirely. The benchmark penalizes ambition.
+**2. "Fewer vulnerabilities" is not the same as "more secure output."** Haiku's low rate comes from generating *simpler* code — fewer features, fewer lines, less surface area for rules to flag. Haiku's 49% isn't evidence of security expertise; it's a side effect of producing minimal implementations. Gemini Pro generates elaborate production patterns (connection pooling, retry logic, credential management) that Haiku skips entirely. The benchmark penalizes ambition.
 
 **3. The model ranked #1 is the most unpredictable.** Haiku produced mixed results (sometimes vulnerable, sometimes clean) on 75% of prompts. Opus produced the same result 85% of the time. Haiku's lead is stochastic, not deterministic — which is exactly the wrong property to optimize for in a security-sensitive pipeline.
 
@@ -156,7 +156,7 @@ Three of Flash's prompts produced **zero vulnerabilities across all 7 iterations
 
 The `generateJWT` result is particularly striking. Gemini Flash generates JWT creation code with minimal payloads containing only the user ID — **perfectly clean, every single time**. Opus, the flagship Claude model, generates vulnerable JWT code with sensitive user data in every single iteration (7/7). Same prompt, opposite outcomes, 100% consistency on both sides.
 
-**Honest loss for Gemini Flash:** Flash actually generates _more_ injection vulnerabilities than Haiku in the Database category (75% vs 39%). If your codebase is database-heavy rather than auth-heavy, Flash is not the right primary model. Use it for configuration and auth; reach for Haiku for database generation.
+**Honest loss for Gemini Flash:** Flash actually generates *more* injection vulnerabilities than Haiku in the Database category (75% vs 39%). If your codebase is database-heavy rather than auth-heavy, Flash is not the right primary model. Use it for configuration and auth; reach for Haiku for database generation.
 
 When Flash does encounter configuration vulnerabilities, it fixes **100% of them** (6/6). This gives Flash the strongest end-to-end configuration security pipeline of any model tested — lowest generation rate plus perfect remediation.
 
@@ -178,7 +178,7 @@ But Gemini Pro's most significant strength shows up in **remediation** — speci
 
 **The model with the highest database vulnerability rate (96%) also has the highest database fix rate (93%)**. When told exactly what's wrong — "[CWE-1049](https://ofriperetz.dev/articles/cwe-taxonomy-explained): Avoid `SELECT *`, enumerate explicit columns" — Gemini Pro restructures the query correctly 25 out of 27 times.
 
-**Honest loss for Gemini Pro:** Pro actually generates _more total vulnerabilities_ than every Claude model — 102 vs 91 for Opus. If you care only about raw generation quality and don't have a remediation pipeline, Pro is genuinely the worst choice. The 93% database fix rate only matters if you run ESLint feedback loops. Without tooling, Pro's output is the least safe.
+**Honest loss for Gemini Pro:** Pro actually generates *more total vulnerabilities* than every Claude model — 102 vs 91 for Opus. If you care only about raw generation quality and don't have a remediation pipeline, Pro is genuinely the worst choice. The 93% database fix rate only matters if you run ESLint feedback loops. Without tooling, Pro's output is the least safe.
 
 This pattern makes sense. Pro generates complex database code because it has a deep model of the domain — connection pooling, credential management, column enumeration. That same depth of understanding means it can parse a specific ESLint violation and apply the right fix. Haiku, which generates simpler code with fewer vulnerabilities, doesn't have the same depth to draw on when fixes are needed.
 
@@ -333,5 +333,4 @@ I'm Ofri Peretz, a Security Engineering Leader and the architect of the Interlac
 [ofriperetz.dev](https://ofriperetz.dev?utm_source=devto&utm_medium=article&utm_campaign=700-benchmark) | [LinkedIn](https://linkedin.com/in/ofri-peretz) | [GitHub](https://github.com/ofri-peretz)
 
 ---
-
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

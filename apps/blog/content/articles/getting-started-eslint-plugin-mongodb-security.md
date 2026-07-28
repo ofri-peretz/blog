@@ -1,6 +1,6 @@
 ---
 title: "MongoDB Injection Bugs Your Code Review Misses — 16 ESLint Rules Catch Them Before Deployment"
-description: '{ "$ne": null } as a password bypasses MongoDB auth — no SQL string, no injection your generic linter understands. Flagship Gemini ships this database bug in 96% of runs. NoSQL operator injection, the $where RCE behind CVE-2025-23061, and the 16 CWE-mapped ESLint rules built specifically for MongoDB/Mongoose — catching 3 of the 4 bugs below in CI, with the honest gap named.'
+description: "{ \"$ne\": null } as a password bypasses MongoDB auth — no SQL string, no injection your generic linter understands. Flagship Gemini ships this database bug in 96% of runs. NoSQL operator injection, the $where RCE behind CVE-2025-23061, and the 16 CWE-mapped ESLint rules built specifically for MongoDB/Mongoose — catching 3 of the 4 bugs below in CI, with the honest gap named."
 slug: "getting-started-eslint-plugin-mongodb-security"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-mongodb-security"
 tier: "TUTORIAL"
@@ -40,13 +40,13 @@ Here are four specific bugs your team has almost certainly shipped — three the
 // POST body: { "username": "admin", "password": { "$ne": null } }
 await db.collection("users").findOne({
   username: req.body.username,
-  password: req.body.password, // ← { "$ne": null } bypasses this one named user
+  password: req.body.password,  // ← { "$ne": null } bypasses this one named user
 });
 ```
 
 **Why it survived review:** `password: req.body.password` is the obvious, correct-looking thing to write. You wrote this, your tests posted a string, everything passed, and you had no reason to look twice. It only becomes a vulnerability when `req.body.password` stops being a string and becomes an operator object — and nothing in the diff signals that. The type is `any`, and the bug ships green. The attacker sends `{ "username": "admin", "password": { "$ne": null } }`; Express parses the body into a real JavaScript object; `findOne` matches the named user whose password field is not null — which is true for every real account, so any known username logs in with zero correct credentials. Full authentication bypass in valid JSON, no brute force required.
 
-**ESLint rule:** [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-query), catching a CWE-943 injection (CVSS 9.8) on both `username` and `password` — one finding per tainted property. [`no-operator-injection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-operator-injection) is the sibling rule for the _inverse_ shape: code that writes the dangerous operator explicitly in source, like `password: { $ne: req.body.exclude }`. Here the operator only exists in the attacker's JSON, not in your source, so `no-unsafe-query`'s broader "tainted value reaches a query sink" check is the one that fires — confirmed by running both rules against this exact snippet. One scope caveat: the check is direct-expression, not full inter-procedural [taint tracking](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) — `const pwd = req.body.password; findOne({ password: pwd })` one hop removed can still slip past today.
+**ESLint rule:** [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-query), catching a CWE-943 injection (CVSS 9.8) on both `username` and `password` — one finding per tainted property. [`no-operator-injection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-operator-injection) is the sibling rule for the *inverse* shape: code that writes the dangerous operator explicitly in source, like `password: { $ne: req.body.exclude }`. Here the operator only exists in the attacker's JSON, not in your source, so `no-unsafe-query`'s broader "tainted value reaches a query sink" check is the one that fires — confirmed by running both rules against this exact snippet. One scope caveat: the check is direct-expression, not full inter-procedural [taint tracking](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) — `const pwd = req.body.password; findOne({ password: pwd })` one hop removed can still slip past today.
 
 **Fix:**
 
@@ -60,7 +60,7 @@ const valid = await bcrypt.compare(req.body.password, user.passwordHash);
 if (!valid) return res.status(401).json({ error: "Invalid credentials" });
 ```
 
-One correction worth being explicit about, because it's a common misconception: switching to Mongoose (`User.findOne` instead of the raw driver) does **not** fix this on its own. I checked — Mongoose's schema-level casting only coerces an operator's _operand_, not the operator itself; `findOne({ username: { $ne: null } })` against a `String`-typed field passes straight through as `{ username: { $ne: null } }` on current Mongoose (verified on 9.7.3, `strictQuery` on or off), because `$ne` is a valid query operator and `null` needs no casting. The ODM layer is not a NoSQL-injection boundary. What actually closes the hole is the explicit `$eq` wrap `no-unsafe-query`'s own suggested fix uses, plus never gating auth on anything but `bcrypt.compare` against the hash — the query only has to find the account, not verify the password.
+One correction worth being explicit about, because it's a common misconception: switching to Mongoose (`User.findOne` instead of the raw driver) does **not** fix this on its own. I checked — Mongoose's schema-level casting only coerces an operator's *operand*, not the operator itself; `findOne({ username: { $ne: null } })` against a `String`-typed field passes straight through as `{ username: { $ne: null } }` on current Mongoose (verified on 9.7.3, `strictQuery` on or off), because `$ne` is a valid query operator and `null` needs no casting. The ODM layer is not a NoSQL-injection boundary. What actually closes the hole is the explicit `$eq` wrap `no-unsafe-query`'s own suggested fix uses, plus never gating auth on anything but `bcrypt.compare` against the hash — the query only has to find the account, not verify the password.
 
 ---
 
@@ -147,7 +147,7 @@ Passing `req.body` straight into an `.aggregate()` pipeline stage lets an attack
 const pipeline = [
   { $match: { category: req.query.category } },
   { $group: { _id: "$userId", total: { $sum: "$amount" } } },
-  { $match: req.body.additionalFilter }, // ← attacker controls pipeline stage
+  { $match: req.body.additionalFilter },  // ← attacker controls pipeline stage
 ];
 await db.collection("transactions").aggregate(pipeline);
 ```
@@ -188,7 +188,9 @@ npm install eslint-plugin-mongodb-security --save-dev
 // eslint.config.mjs
 import mongodbSecurity from "eslint-plugin-mongodb-security";
 
-export default [mongodbSecurity.configs.recommended];
+export default [
+  mongodbSecurity.configs.recommended,
+];
 ```
 
 Run `npx eslint .` and findings appear at the exact vulnerable line, tagged with CWE number and a fix suggestion. The `recommended` preset fires the NoSQL-injection rules as errors (CI-blocking) and the data-exposure rules as warnings. Use `configs.strict` to promote everything to errors; `configs.mongoose` for Mongoose-only projects.
@@ -197,9 +199,7 @@ Run `npx eslint .` and findings appear at the exact vulnerable line, tagged with
 
 ```javascript
 const { MongoClient } = require("mongodb");
-const client = new MongoClient(
-  "mongodb://admin:supersecret@prod-cluster.example.com:27017/app",
-);
+const client = new MongoClient("mongodb://admin:supersecret@prod-cluster.example.com:27017/app");
 
 async function login(req, res) {
   const db = client.db("app");
@@ -210,12 +210,9 @@ async function login(req, res) {
   if (!user) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
-  const orders = await db
-    .collection("orders")
-    .find({
-      $where: `this.userId == '${user._id}'`,
-    })
-    .toArray();
+  const orders = await db.collection("orders").find({
+    $where: `this.userId == '${user._id}'`,
+  }).toArray();
   return res.json({ user, orders });
 }
 
@@ -252,28 +249,28 @@ One honest caveat on that last error: in this snippet `user._id` came back from 
 
 The 8 injection and credential rules below are near-zero [false-positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) in practice, though not all for the same reason: `no-unsafe-query` and `no-operator-injection` trace the flagged value back to a `req.*`-shaped source before firing (direct-expression only — see the scope caveat in Bug 1), while `no-unsafe-where` and the credential rules fire on the sink pattern itself (any `$where` key, any literal connection string) regardless of where the interpolated value came from — because there's no safe use of either pattern to begin with, tainted or not.
 
-| Rule                                                                                                                                          | Severity | CWE     |
-| --------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------- |
-| [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-query)                               | error    | CWE-943 |
-| [`no-operator-injection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-operator-injection)                   | error    | CWE-943 |
-| [`no-hardcoded-connection-string`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-hardcoded-connection-string) | error    | CWE-798 |
-| [`no-hardcoded-credentials`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-hardcoded-credentials)             | error    | CWE-798 |
-| [`no-unsafe-where`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-where)                               | error    | CWE-943 |
-| [`no-unsafe-regex-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-regex-query)                   | error    | CWE-400 |
-| [`no-unsafe-populate`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-populate)                         | error    | CWE-943 |
-| [`no-debug-mode-production`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-debug-mode-production)             | error    | CWE-489 |
-| [`require-tls-connection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-tls-connection)                 | warn     | CWE-319 |
-| [`require-auth-mechanism`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-auth-mechanism)                 | warn     | CWE-287 |
-| [`require-schema-validation`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-schema-validation)           | warn     | CWE-20  |
-| [`no-select-sensitive-fields`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-select-sensitive-fields)         | warn     | CWE-200 |
-| [`no-bypass-middleware`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-bypass-middleware)                     | warn     | CWE-284 |
-| [`no-unbounded-find`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unbounded-find)                           | warn     | CWE-400 |
-| [`require-projection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-projection)                         | off      | CWE-200 |
-| [`require-lean-queries`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-lean-queries)                     | off      | CWE-400 |
+| Rule | Severity | CWE |
+|---|---|---|
+| [`no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-query) | error | CWE-943 |
+| [`no-operator-injection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-operator-injection) | error | CWE-943 |
+| [`no-hardcoded-connection-string`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-hardcoded-connection-string) | error | CWE-798 |
+| [`no-hardcoded-credentials`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-hardcoded-credentials) | error | CWE-798 |
+| [`no-unsafe-where`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-where) | error | CWE-943 |
+| [`no-unsafe-regex-query`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-regex-query) | error | CWE-400 |
+| [`no-unsafe-populate`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unsafe-populate) | error | CWE-943 |
+| [`no-debug-mode-production`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-debug-mode-production) | error | CWE-489 |
+| [`require-tls-connection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-tls-connection) | warn | CWE-319 |
+| [`require-auth-mechanism`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-auth-mechanism) | warn | CWE-287 |
+| [`require-schema-validation`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-schema-validation) | warn | CWE-20 |
+| [`no-select-sensitive-fields`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-select-sensitive-fields) | warn | CWE-200 |
+| [`no-bypass-middleware`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-bypass-middleware) | warn | CWE-284 |
+| [`no-unbounded-find`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/no-unbounded-find) | warn | CWE-400 |
+| [`require-projection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-projection) | off | CWE-200 |
+| [`require-lean-queries`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-lean-queries) | off | CWE-400 |
 
-Severity column reflects the shipped `recommended` preset at v8.2.3. `strict` promotes all 16 to `error`. `require-projection` and `require-lean-queries` are `off` by default (perf hygiene, not security) — turn them on explicitly. `no-select-sensitive-fields` and `require-projection` both carry CWE-200 but check different things: `no-select-sensitive-fields` fires on any `.find()`/`.findOne()`/`.findById()` that lacks a projection provably excluding a default sensitive-field list (`password`, `refreshToken`, `apiKey`, `secret`) — an unprojected call is unsafe by default, since it can't prove those fields are excluded — while `require-projection` (off by default) is the blunter rule that flags _any_ missing projection at all, regardless of field sensitivity. That's why Bug 3's `User.find({ role: "member" })` triggers the former as a warning even though `role` itself isn't sensitive — the query has no projection, so the rule can't rule out `passwordHash` coming back too. `require-tls-connection` is filed under CWE-319 (Cleartext Transmission of Sensitive Information), not CWE-295 (Improper Certificate Validation) — the rule flags the absence of TLS entirely, not a misconfigured certificate check on a connection that already has one. The two credential rows (`no-hardcoded-connection-string`, `no-hardcoded-credentials`) are the same CWE-798 class covered in depth in [My credential rule reported 842 secrets in vercel/ai. The real count was 0.](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough) — including why naive secret-detection regexes false-positive on TypeScript union types and how to keep the true-positive rate high. The two `off`-by-default rules are also the noisiest: they flag missing performance hygiene on every query, not a specific exploit, so they're opt-in rather than shipped as warnings.
+Severity column reflects the shipped `recommended` preset at v8.2.3. `strict` promotes all 16 to `error`. `require-projection` and `require-lean-queries` are `off` by default (perf hygiene, not security) — turn them on explicitly. `no-select-sensitive-fields` and `require-projection` both carry CWE-200 but check different things: `no-select-sensitive-fields` fires on any `.find()`/`.findOne()`/`.findById()` that lacks a projection provably excluding a default sensitive-field list (`password`, `refreshToken`, `apiKey`, `secret`) — an unprojected call is unsafe by default, since it can't prove those fields are excluded — while `require-projection` (off by default) is the blunter rule that flags *any* missing projection at all, regardless of field sensitivity. That's why Bug 3's `User.find({ role: "member" })` triggers the former as a warning even though `role` itself isn't sensitive — the query has no projection, so the rule can't rule out `passwordHash` coming back too. `require-tls-connection` is filed under CWE-319 (Cleartext Transmission of Sensitive Information), not CWE-295 (Improper Certificate Validation) — the rule flags the absence of TLS entirely, not a misconfigured certificate check on a connection that already has one. The two credential rows (`no-hardcoded-connection-string`, `no-hardcoded-credentials`) are the same CWE-798 class covered in depth in [My credential rule reported 842 secrets in vercel/ai. The real count was 0.](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough) — including why naive secret-detection regexes false-positive on TypeScript union types and how to keep the true-positive rate high. The two `off`-by-default rules are also the noisiest: they flag missing performance hygiene on every query, not a specific exploit, so they're opt-in rather than shipped as warnings.
 
-**"We already run `express-mongo-sanitize`."** That's the first objection any senior MongoDB dev will raise, and it's a fair one — so it's worth being specific about where that middleware stops. `express-mongo-sanitize` strips `$`-prefixed keys from `req.body`/`req.query`/`req.params` on routes where it's mounted. It does nothing for Bug 2's `$where` template literal (the payload isn't a `$`-prefixed key, it's a string interpolated into one), nothing for Bug 4's raw `.aggregate()` pipeline (many teams only mount sanitizer middleware on top-level route bodies, not on every field that eventually reaches an aggregation stage), and nothing for Bug 3's projection leak (there's no operator to strip — the bug is what you _didn't_ ask for, not what the attacker sent). Mongoose's schema-level query casting doesn't help here either — as Bug 1 shows, casting coerces an operator's operand, not the operator itself, so `$ne`/`$gt`/etc. sail through a typed field on the ODM exactly as they would on the raw driver. The linter beats both middleware and the ODM's non-existent injection boundary on Bugs 1 through 3 because it runs at author time, on every code path, including the one an AI assistant just pasted in — before either runtime defense is even in the request path. Bug 4 is the honest exception: neither the sanitizer, Mongoose, nor (currently) the linter catches it, which is the strongest argument for why `.aggregate()` calls still need a human in the loop.
+**"We already run `express-mongo-sanitize`."** That's the first objection any senior MongoDB dev will raise, and it's a fair one — so it's worth being specific about where that middleware stops. `express-mongo-sanitize` strips `$`-prefixed keys from `req.body`/`req.query`/`req.params` on routes where it's mounted. It does nothing for Bug 2's `$where` template literal (the payload isn't a `$`-prefixed key, it's a string interpolated into one), nothing for Bug 4's raw `.aggregate()` pipeline (many teams only mount sanitizer middleware on top-level route bodies, not on every field that eventually reaches an aggregation stage), and nothing for Bug 3's projection leak (there's no operator to strip — the bug is what you *didn't* ask for, not what the attacker sent). Mongoose's schema-level query casting doesn't help here either — as Bug 1 shows, casting coerces an operator's operand, not the operator itself, so `$ne`/`$gt`/etc. sail through a typed field on the ODM exactly as they would on the raw driver. The linter beats both middleware and the ODM's non-existent injection boundary on Bugs 1 through 3 because it runs at author time, on every code path, including the one an AI assistant just pasted in — before either runtime defense is even in the request path. Bug 4 is the honest exception: neither the sanitizer, Mongoose, nor (currently) the linter catches it, which is the strongest argument for why `.aggregate()` calls still need a human in the loop.
 
 ---
 
@@ -290,12 +287,12 @@ The MongoDB-specific plugin knows which methods are query execution points (`.fi
 MongoDB operator injection, `$where` RCE, projection leaks, and pipeline injection are not hypotheticals — they are the shapes AI assistants hand back when asked for "an Express login route with MongoDB." I benchmarked [700 AI-generated functions across 5 models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) — see [Aggregate Benchmarks Lie: What 700 AI Functions Look Like by Security Domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain) for the full per-domain breakdown — and sliced to the database layer, filtered to the functions that made a database call:
 
 | Model (database tasks) | Vulnerability rate |
-| ---------------------- | -----------------: |
-| Claude Haiku 4.5       |                39% |
-| Claude Opus 4.6        |                61% |
-| Claude Sonnet 4.5      |                71% |
-| Gemini 2.5 Flash       |                75% |
-| Gemini 2.5 Pro         |            **96%** |
+|---|--:|
+| Claude Haiku 4.5 | 39% |
+| Claude Opus 4.6 | 61% |
+| Claude Sonnet 4.5 | 71% |
+| Gemini 2.5 Flash | 75% |
+| Gemini 2.5 Pro | **96%** |
 
 That's the database-task slice only (the subset of the 700 that made a DB call), not the models' overall security scores — Opus 4.6's 61% here is database-layer specific and doesn't reflect its standing on auth or injection classes outside this slice. Read as a slice, the ordering is still counterintuitive: Claude Haiku 4.5 at 39% beats both larger Claude models on this task class, which is the kind of inversion worth checking your own assumptions against before picking a model by parameter count alone.
 
@@ -314,11 +311,10 @@ For the onboarding workflow that pairs this with a broader static analysis proto
 **More in the ESLint Security Plugins series** — [← Your node-postgres Data Layer Fails 4 Ways in Production](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) (the SQL-side counterpart) · this MongoDB article · [next: My credential rule reported 842 secrets in vercel/ai. The real count was 0. →](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough)
 
 Also relevant:
-
 - [I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
 - [We Ranked 5 AI Models by Security. The Leaderboard Is Wrong.](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
 - [The AI Hydra Problem: Fix One AI Bug, Get Two More](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
 
 ---
 
-_[eslint-plugin-mongodb-security](https://www.npmjs.com/package/eslint-plugin-mongodb-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*[eslint-plugin-mongodb-security](https://www.npmjs.com/package/eslint-plugin-mongodb-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

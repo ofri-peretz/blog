@@ -57,14 +57,14 @@ where lint output stops being trustworthy and starts being decoration.
 A single line of our lint output packs in three unrelated standards. Quick
 definitions — there's a full reference for each if you need it:
 
-- **[CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained)** names _what kind_ of bug it is.
+- **[CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained)** names *what kind* of bug it is.
   `CWE-918` is SSRF; `CWE-287` is Improper Authentication. A category, not a
   verdict.
-- **[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained)** is a _computed_ 0.0–10.0 score
+- **[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained)** is a *computed* 0.0–10.0 score
   from a fixed formula. It maps to four official bands: 0.1–3.9 Low, 4.0–6.9
   Medium, 7.0–8.9 High, 9.0–10.0 Critical. The number is the primary source;
   the band name is derived from it.
-- **[OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained)** is a _category_ bucket
+- **[OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained)** is a *category* bucket
   (A01–A10) — an address, not a severity measurement.
 
 Only CVSS is actually a severity measurement. So when a lint rule prints a
@@ -73,7 +73,7 @@ next to it. If they disagree, the word is wrong.
 
 ## Case 1: a 9.1 that prints LOW — and the honest reason it might be fine
 
-`no-ssrf` flags HTTP calls where the URL argument's _name_ looks
+`no-ssrf` flags HTTP calls where the URL argument's *name* looks
 user-supplied (`userUrl`, `req.query.endpoint`, `targetUri`) — a classic
 [Server-Side Request Forgery](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)
 setup, the bug class behind more than one well-known cloud metadata-endpoint
@@ -96,14 +96,14 @@ attacker-influenced source. That's a real limitation — plenty of
 `userUrl`-named parameters are perfectly safe, admin-configured constants.
 A low-confidence match that could be a
 [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn)
-_does_ deserve a lower-urgency label than a rule that traced the actual
+*does* deserve a lower-urgency label than a rule that traced the actual
 [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection).
 
 The part that isn't defensible: **confidence and impact are two different
 axes, and `severity` is only supposed to encode one of them.** "How sure are
 we this is real" and "how bad is it if it's real" are independent
 questions — a low-confidence match on a 9.1-impact bug is still worth
-_more_ attention than a high-confidence match on a 3.0. Collapsing both into
+*more* attention than a high-confidence match on a 3.0. Collapsing both into
 one `LOW`/`MEDIUM`/`HIGH`/`CRITICAL` string means the reader can't tell
 which axis they're looking at, and a `grep`-based triage pass (or an
 LLM agent doing the same) will deprioritize a Critical-impact finding on the
@@ -123,8 +123,8 @@ jwt.verify(token, publicKey);
 jwt.verify(token, publicKey, { audience: "https://api.example.com" });
 ```
 
-Skip audience validation and a JWT minted for _any_ service that trusts the
-same signing key gets accepted by _this_ service too — a textbook confused
+Skip audience validation and a JWT minted for *any* service that trusts the
+same signing key gets accepted by *this* service too — a textbook confused
 deputy, [CWE-287](https://cwe.mitre.org/data/definitions/287.html),
 `cvss: 9.8`. Same story on the issuer side. Both rules print `severity:
 'MEDIUM'`.
@@ -141,7 +141,7 @@ behind a color contrast warning.
 Not every mismatch under-states. [`no-unsafe-search-path`](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack)
 — the PostgreSQL `search_path` hijacking rule I wrote up in full elsewhere —
 ships `cvss: 7.5` (High band) but prints `severity: 'CRITICAL'`, one band
-_above_ its own score. I won't re-run the attack walkthrough here — the
+*above* its own score. I won't re-run the attack walkthrough here — the
 short version, if a label disagreeing with a number bothers you as much as
 it bothers me: read that piece for the exploit, come back here for why the
 label drifted in the first place.
@@ -168,7 +168,7 @@ function enrichFromCWE(options) {
 }
 ```
 
-There's a canonical lookup table, `CWE_MAPPING`, and it's _correct_ — its
+There's a canonical lookup table, `CWE_MAPPING`, and it's *correct* — its
 entry for `CWE-918` is `{ cvss: 9.1, severity: 'CRITICAL' }`, internally
 consistent, right band. `CWE-287` maps to `{ cvss: 9.8, severity:
 'CRITICAL' }`. If every rule simply deferred to this table, none of the 33
@@ -241,7 +241,7 @@ write:
    behind it, not a human's word choice.
 2. **CWE tells you the shape of the bug, not how loudly to worry.** "This is
    a `CWE-918` (SSRF)" is a fact about the code. It says nothing about
-   _this instance's_ severity until a CVSS vector is computed for it
+   *this instance's* severity until a CVSS vector is computed for it
    specifically.
 3. **A low-confidence detector and a low-impact bug produce the same label
    and mean opposite things.** If a tool's docs mention "heuristic" anywhere
@@ -279,7 +279,7 @@ printing a severity word that matches their own CVSS band is a real bar,
 and I'd take it over a tool that doesn't print a CVSS number at all and so
 never gets caught disagreeing with itself. I'm writing it because "check
 the number, not the adjective" is a rule I only started following rigorously
-_after_ writing the script that caught my own tool getting it wrong three
+*after* writing the script that caught my own tool getting it wrong three
 different ways in three different rules.
 
 **Your turn:** open whatever security linter you already run, pick one

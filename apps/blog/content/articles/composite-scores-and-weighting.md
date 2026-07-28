@@ -40,7 +40,7 @@ composite = Σ ( normalize(metricᵢ) × weightᵢ )
 
 Composites exist because decisions need scalars. A loan is approved or declined; a patient is admitted or sent home. Nobody hands a decision-maker seven numbers and gets a decision back. The compression is the entire value — and the entire risk, because it deletes information and the weights decide which information dies.
 
-Two structural notes first. If you rank anything by a composite, the ranking inherits every property of the composite — [a ranking is a composite with the weights hidden](https://ofriperetz.dev/articles/ranking-vs-measuring). And normalization is not optional. Sum a decathlete's events as raw numbers — 100m in seconds (~10), long jump in metres (~8), javelin in metres (~60) — and the javelin becomes the real weight; biggest range, so it buries the sprint. That is why the decathlon converts every event to points on a published table _before_ adding. Skip it and the largest-range metric wins, and nobody voted for it.
+Two structural notes first. If you rank anything by a composite, the ranking inherits every property of the composite — [a ranking is a composite with the weights hidden](https://ofriperetz.dev/articles/ranking-vs-measuring). And normalization is not optional. Sum a decathlete's events as raw numbers — 100m in seconds (~10), long jump in metres (~8), javelin in metres (~60) — and the javelin becomes the real weight; biggest range, so it buries the sprint. That is why the decathlon converts every event to points on a published table *before* adding. Skip it and the largest-range metric wins, and nobody voted for it.
 
 ## Why Are the Weights Opinions? {#weights-are-opinions}
 
@@ -53,15 +53,15 @@ So the first two honesty requirements for publishing any composite:
 
 A credit score is the everyday example. FICO publishes exactly what goes into the number:
 
-| Component                     | Weight | Rationale                                                  |
-| ----------------------------- | ------ | ---------------------------------------------------------- |
-| Payment history               | 35%    | Past repayment is the strongest signal of future repayment |
-| Amounts owed (utilization)    | 30%    | How much of available credit is drawn predicts distress    |
-| Length of credit history      | 15%    | A longer track record is more data to trust                |
-| New credit / recent inquiries | 10%    | A burst of applications signals risk                       |
-| Credit mix                    | 10%    | Handling varied credit types shows capability              |
+| Component | Weight | Rationale |
+|---|---|---|
+| Payment history | 35% | Past repayment is the strongest signal of future repayment |
+| Amounts owed (utilization) | 30% | How much of available credit is drawn predicts distress |
+| Length of credit history | 15% | A longer track record is more data to trust |
+| New credit / recent inquiries | 10% | A burst of applications signals risk |
+| Credit mix | 10% | Handling varied credit types shows capability |
 
-The unifying principle — recent behavior outweighs age and variety — is defensible. It is also a choice. A rival score built from the _same_ credit file weights those categories differently, so one borrower reads "good" on one scale and "fair" on the other. The borrower didn't change; the editorial choices did — two objective computations, two verdicts, because two people weighted the same facts differently.
+The unifying principle — recent behavior outweighs age and variety — is defensible. It is also a choice. A rival score built from the *same* credit file weights those categories differently, so one borrower reads "good" on one scale and "fair" on the other. The borrower didn't change; the editorial choices did — two objective computations, two verdicts, because two people weighted the same facts differently.
 
 A stock index looks like one clean number — "the market," in a single line. It's really a set of choices: which companies get in, a rule that lets the biggest ones move it most, a calendar that decides when the list changes. The tidy number is the last place any of that shows. Every "overall score" runs the same trick — a scalar standing in front of the choices that built it.
 
@@ -82,13 +82,13 @@ Composite when one decision needs one axis: approve or decline, pick one option,
 - **Confusing reliability with validity.** A composite is perfectly reliable by construction — same inputs, same scalar, every time. That says nothing about whether it tracks anything you care about: [reliability and validity are different properties](https://ofriperetz.dev/articles/valid-vs-reliable-metrics), and a composite gets the first free while borrowing credibility for the second.
 - **Imputing missing dimensions.** If a dimension isn't measured yet, report the composite as n-of-k with the nulls visible. Never fill the hole with a neutral midpoint — imputing manufactures data and launders "we didn't measure it" into "it's average."
 
-One composite handles this well: the big global university rankings publish their weights — teaching, research, citations, international outlook — beside the score. Move the research weight down and teaching up, and the top of the table reshuffles with not one underlying number changed. Because the weights are public, you can run that experiment yourself and check whether the verdict survives _your_ priorities. That is the test a composite should invite — and the [benchmark where I put these exact weighting choices to work on real numbers](https://ofriperetz.dev/articles/different-metrics-for-different-package-types) is where my own weights do the same job.
+One composite handles this well: the big global university rankings publish their weights — teaching, research, citations, international outlook — beside the score. Move the research weight down and teaching up, and the top of the table reshuffles with not one underlying number changed. Because the weights are public, you can run that experiment yourself and check whether the verdict survives *your* priorities. That is the test a composite should invite — and the [benchmark where I put these exact weighting choices to work on real numbers](https://ofriperetz.dev/articles/different-metrics-for-different-package-types) is where my own weights do the same job.
 
 ## What Does an Honest Composite Look Like in the Wild? {#case-studies}
 
 Three reference implementations, all with public methodology — the bar any honest composite gets measured against:
 
-**Lighthouse.** Google publishes the weights behind its web-performance score, per metric, per version. The weights _changed_ between versions — the same page scores differently with zero change to the page. That looks like a flaw and is the discipline: versioning the metric versions the verdict — made visible instead of silently moved.
+**Lighthouse.** Google publishes the weights behind its web-performance score, per metric, per version. The weights *changed* between versions — the same page scores differently with zero change to the page. That looks like a flaw and is the discipline: versioning the metric versions the verdict — made visible instead of silently moved.
 
 **OpenSSF Scorecard.** A 0–10 composite rating an open-source project's security health across roughly 18 automated checks, methodology public. Every check, weight, and aggregation step is inspectable, so arguments about a score become arguments about the methodology — the genre done in the open.
 
@@ -102,15 +102,15 @@ Every component inside every composite rests on something more fundamental: some
 
 ## Quick Reference {#quick-reference}
 
-| Rule                                            | Why                                                                            |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| Publish components alongside the scalar         | The scalar decides; the components explain                                     |
-| Publish weights AND rationale                   | A weight without reasoning is unfalsifiable                                    |
-| Publish weight sensitivity (±50% re-rank)       | If the order flips, the ranking is a weight artifact                           |
-| Normalize before weighting                      | Otherwise the biggest-range metric silently wins                               |
-| Report missing dimensions as n-of-k             | Imputing a neutral value manufactures data                                     |
-| Version the weights                             | Changed weights = changed verdicts; readers must see which version scored them |
-| Composite only when one decision needs one axis | Dashboards can keep the seven numbers; gates can't                             |
+| Rule | Why |
+|---|---|
+| Publish components alongside the scalar | The scalar decides; the components explain |
+| Publish weights AND rationale | A weight without reasoning is unfalsifiable |
+| Publish weight sensitivity (±50% re-rank) | If the order flips, the ranking is a weight artifact |
+| Normalize before weighting | Otherwise the biggest-range metric silently wins |
+| Report missing dimensions as n-of-k | Imputing a neutral value manufactures data |
+| Version the weights | Changed weights = changed verdicts; readers must see which version scored them |
+| Composite only when one decision needs one axis | Dashboards can keep the seven numbers; gates can't |
 
 ---
 
@@ -124,16 +124,16 @@ Every component inside every composite rests on something more fundamental: some
 
 ## References
 
-- OECD / JRC European Commission (2008). _[Handbook on Constructing Composite Indicators: Methodology and User Guide](https://doi.org/10.1787/9789264043466-en)_. OECD Publishing. The authoritative methodology reference — a ten-step construction process in which normalization and sensitivity analysis are required, not optional. Free PDF from the OECD.
-- Greco, S., Ishizaka, A., Tasiou, M., & Torrisi, G. (2019). "[On the Methodological Framework of Composite Indices: A Review of the Issues of Weighting, Aggregation, and Robustness](https://doi.org/10.1007/s11205-017-1832-9)." _Social Indicators Research_, 141, 61–94. Survey of composite-indicator critiques; weight sensitivity is the recurring one.
-- Google Chrome team. _[Lighthouse performance scoring](https://developer.chrome.com/docs/lighthouse/performance/performance-scoring)_ (developer.chrome.com/docs/lighthouse/performance/performance-scoring). Per-metric weights, per version, with a public score calculator — the worked example of versioned weights.
-- OpenSSF. _[Scorecard documentation](https://github.com/ossf/scorecard)_ (github.com/ossf/scorecard). Checks, weights, and aggregation for the 0–10 composite — the transparency benchmark for a security-health score.
-- UNDP. _[Human Development Report — Technical Notes](https://hdr.undp.org/)_ (hdr.undp.org). The HDI methodology, including the 2010 shift from an arithmetic to a geometric mean — a worked example of an aggregation choice moving rankings with no change in the data.
+- OECD / JRC European Commission (2008). *[Handbook on Constructing Composite Indicators: Methodology and User Guide](https://doi.org/10.1787/9789264043466-en)*. OECD Publishing. The authoritative methodology reference — a ten-step construction process in which normalization and sensitivity analysis are required, not optional. Free PDF from the OECD.
+- Greco, S., Ishizaka, A., Tasiou, M., & Torrisi, G. (2019). "[On the Methodological Framework of Composite Indices: A Review of the Issues of Weighting, Aggregation, and Robustness](https://doi.org/10.1007/s11205-017-1832-9)." *Social Indicators Research*, 141, 61–94. Survey of composite-indicator critiques; weight sensitivity is the recurring one.
+- Google Chrome team. *[Lighthouse performance scoring](https://developer.chrome.com/docs/lighthouse/performance/performance-scoring)* (developer.chrome.com/docs/lighthouse/performance/performance-scoring). Per-metric weights, per version, with a public score calculator — the worked example of versioned weights.
+- OpenSSF. *[Scorecard documentation](https://github.com/ossf/scorecard)* (github.com/ossf/scorecard). Checks, weights, and aggregation for the 0–10 composite — the transparency benchmark for a security-health score.
+- UNDP. *[Human Development Report — Technical Notes](https://hdr.undp.org/)* (hdr.undp.org). The HDI methodology, including the 2010 shift from an arithmetic to a geometric mean — a worked example of an aggregation choice moving rankings with no change in the data.
 
 ---
 
 If this is a reference you'll want open the next time someone hands you an "overall score," bookmark it — and I publish the rest of this measurement series on [Dev.to](https://dev.to/ofri-peretz); follow there to catch the next one.
 
-_Foundations series: ← [Proxy metrics](https://ofriperetz.dev/articles/proxy-metrics) · [hub](https://ofriperetz.dev/foundations) · [Ground truth in security testing](https://ofriperetz.dev/articles/ground-truth-in-security-testing) →_
+*Foundations series: ← [Proxy metrics](https://ofriperetz.dev/articles/proxy-metrics) · [hub](https://ofriperetz.dev/foundations) · [Ground truth in security testing](https://ofriperetz.dev/articles/ground-truth-in-security-testing) →*
 
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*

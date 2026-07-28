@@ -51,10 +51,10 @@ That's **not** a knock on SonarJS — it's a **scope** result. SonarJS is one of
 
 ## Detection — `vulnerable.js` (40 vulnerabilities, 14 categories)
 
-| Config                                          | TP (of 40) | Recall | Misses |
-| ----------------------------------------------- | ---------- | ------ | ------ |
+| Config                                  | TP (of 40) | Recall | Misses |
+| --------------------------------------- | ---------- | ------ | ------ |
 | **eslint-plugin-sonarjs** (v3.0.6, recommended) | **14**     | 35.0%  | 26     |
-| Interlace security plugins (recommended)        | **40**     | 100%   | 0      |
+| Interlace security plugins (recommended)| **40**     | 100%   | 0      |
 
 SonarJS's 14 true positives came from exactly the rules it ships for
 cross-language security basics. Straight from the run's `byRule` block:
@@ -87,7 +87,7 @@ Here is one of the 26 SonarJS misses — a PostgreSQL injection that appears in 
 // Interlace pg/no-unsafe-query: FAIL (line 3)
 async function getUser(pool, userId) {
   const result = await pool.query(
-    "SELECT * FROM users WHERE id = " + userId, // ← string concat into SQL
+    'SELECT * FROM users WHERE id = ' + userId  // ← string concat into SQL
   );
   return result.rows[0];
 }
@@ -103,8 +103,8 @@ The fixed version — which both tools pass — uses parameterized queries:
 // Interlace pg/no-unsafe-query: 0 violations ✓
 async function getUser(pool, userId) {
   const result = await pool.query(
-    "SELECT * FROM users WHERE id = $1",
-    [userId], // ← parameterized, driver handles escaping
+    'SELECT * FROM users WHERE id = $1',
+    [userId]  // ← parameterized, driver handles escaping
   );
   return result.rows[0];
 }
@@ -116,10 +116,10 @@ This pattern — "SonarJS sees no issue, Interlace fires a named rule with a CWE
 
 ## False positives — `safe-patterns.js` (38 safe functions)
 
-| Config                                          | Security false positives |
-| ----------------------------------------------- | ------------------------ |
-| Interlace security plugins                      | **0** (FPR 0.0%)         |
-| **eslint-plugin-sonarjs** (v3.0.6, recommended) | **5** (FPR 13.2%)        |
+| Config                                  | Security false positives                          |
+| --------------------------------------- | ------------------------------------------------- |
+| Interlace security plugins              | **0** (FPR 0.0%)                                   |
+| **eslint-plugin-sonarjs** (v3.0.6, recommended) | **5** (FPR 13.2%)                                  |
 
 This one cut against my prior. SonarJS is usually held up as the precise tool,
 but on the safe fixture it raised **5** security [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) — from the
@@ -341,4 +341,4 @@ If SonarJS is your current security linter and it's missing the `pg` injection a
 
 ---
 
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

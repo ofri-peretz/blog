@@ -77,15 +77,10 @@ export const handler = async (event) => {
 
 ```ts
 // ✅ fetch secrets at runtime from Secrets Manager / SSM
-import {
-  GetSecretValueCommand,
-  SecretsManagerClient,
-} from "@aws-sdk/client-secrets-manager";
+import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 
 const sm = new SecretsManagerClient({});
-const secret = await sm.send(
-  new GetSecretValueCommand({ SecretId: "my-db-password" }),
-);
+const secret = await sm.send(new GetSecretValueCommand({ SecretId: "my-db-password" }));
 ```
 
 ---
@@ -124,7 +119,7 @@ const policy = {
 // ❌ no-env-logging + no-exposed-error-details (CWE-532, CWE-209)
 export const handler = async (event) => {
   try {
-    console.log("env:", process.env); // dumps credentials to CloudWatch
+    console.log("env:", process.env);   // dumps credentials to CloudWatch
     // ...
   } catch (err) {
     return {
@@ -143,16 +138,11 @@ export const handler = async (event) => {
 // ✅ log a structured message; return a generic response
 export const handler = async (event) => {
   try {
-    console.log("handler invoked", {
-      requestId: event.requestContext?.requestId,
-    });
+    console.log("handler invoked", { requestId: event.requestContext?.requestId });
     // ...
   } catch (err) {
-    console.error("handler error", { message: err.message }); // log detail
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "internal error" }),
-    }; // return generic
+    console.error("handler error", { message: err.message });   // log detail
+    return { statusCode: 500, body: JSON.stringify({ error: "internal error" }) }; // return generic
   }
 };
 ```
@@ -289,7 +279,7 @@ export default [
 | **Deploy tooling**   | Detects raw handlers, Middy middleware, and IAM policy literals (SAM / CDK / Serverless Framework / inline CloudFormation) — it reads source, so no framework lock-in |
 | **Module system**    | CommonJS — loads from both `eslint.config.js` and `eslint.config.mjs`                                                                                                 |
 | **Runtime peers**    | None — no AWS SDK or credentials needed; it lints source AST                                                                                                          |
-| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-lambda-security` port, with ESLint↔Oxlint parity gated in CI                                                 |
+| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-lambda-security` port, with ESLint↔Oxlint parity gated in CI                                                |
 
 ---
 
@@ -330,4 +320,4 @@ _Part of **The Hardened Stack** — one ESLint plugin per layer of the Node.js a
 
 ---
 
-_[eslint-plugin-lambda-security](https://www.npmjs.com/package/eslint-plugin-lambda-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*[eslint-plugin-lambda-security](https://www.npmjs.com/package/eslint-plugin-lambda-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

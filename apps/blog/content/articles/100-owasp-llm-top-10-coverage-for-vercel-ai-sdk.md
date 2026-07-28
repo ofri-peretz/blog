@@ -49,7 +49,7 @@ Every "100% OWASP LLM coverage" claim I've audited maps a timeout rule to "model
 | ------------------------------------------ | ----------------------------------------------------------------------- | --------------------------- |
 | **LLM01** Prompt Injection                 | `require-validated-prompt`, `no-dynamic-system-prompt`                  | CWE-74                      |
 | **LLM02** Sensitive Information Disclosure | `no-sensitive-in-prompt`                                                | CWE-200                     |
-| **LLM05** Improper Output Handling         | `no-unsafe-output-handling`                                             | CWE-94 / CWE-89 / CWE-79    |
+| **LLM05** Improper Output Handling         | `no-unsafe-output-handling`                                             | CWE-94 / CWE-89 / CWE-79   |
 | **LLM06** Excessive Agency                 | `require-tool-confirmation`, `require-max-steps`, `require-tool-schema` | CWE-862                     |
 | **LLM07** System Prompt Leakage            | `no-system-prompt-leak`                                                 | CWE-200                     |
 | **LLM08** Vector & Embedding Weaknesses    | `require-rag-content-validation`, `require-embedding-validation`        | CWE-74 / CWE-20             |
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
 
   const { text } = await generateText({
     model: openai("gpt-4o-mini"),
-    prompt: userMessage, // ← no validation boundary
+    prompt: userMessage,                // ← no validation boundary
     tools: {
       deleteRecord: tool({
         description: "Delete a record by ID",
@@ -196,7 +196,9 @@ export default [
 // eslint.config.cjs (CommonJS — for projects without "type": "module")
 const { configs } = require("eslint-plugin-vercel-ai-security");
 
-module.exports = [configs.recommended];
+module.exports = [
+  configs.recommended,
+];
 ```
 
 ```yaml
@@ -210,14 +212,14 @@ The plugin ships CommonJS and is consumed via ESM or CJS config depending on you
 
 ## Compatibility
 
-| Surface              | Support                                                                                              |
-| -------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Package managers** | npm, yarn, pnpm, bun                                                                                 |
-| **Node**             | `>= 18.0.0`                                                                                          |
-| **ESLint**           | `^8.21.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config only                                                 |
-| **Vercel AI SDK**    | optional peer — AST-based, lints whether or not `ai` is installed                                    |
+| Surface              | Support                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| **Package managers** | npm, yarn, pnpm, bun                                                                      |
+| **Node**             | `>= 18.0.0`                                                                               |
+| **ESLint**           | `^8.21.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config only                                     |
+| **Vercel AI SDK**    | optional peer — AST-based, lints whether or not `ai` is installed                         |
 | **Module system**    | Plugin ships CJS; config file can be ESM (`eslint.config.js` with `"type":"module"`) or CJS (`.cjs`) |
-| **Oxlint**           | flagship rule (`no-unsafe-output-handling`) wired + parity-checked; full set ESLint-first            |
+| **Oxlint**           | flagship rule (`no-unsafe-output-handling`) wired + parity-checked; full set ESLint-first |
 
 ---
 
@@ -238,4 +240,4 @@ Which OWASP LLM category are you most worried about in your Vercel AI SDK integr
 
 ---
 
-_[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

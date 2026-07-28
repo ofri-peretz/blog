@@ -32,12 +32,12 @@ _Method honesty: this is Gemini **Flash** vs Claude **Sonnet** — the comparabl
 
 ## The scorecard
 
-| Domain                      | Prompt                    | Plugin             | Gemini | Claude |
-| --------------------------- | ------------------------- | ------------------ | ------ | ------ |
-| **NestJS** service          | users + auth + admin      | `nestjs-security`  | **2**  | 6      |
-| **JWT** auth                | login + verify middleware | `jwt`              | 5      | 5      |
-| **MongoDB** data layer      | Mongoose model + search   | `mongodb-security` | 8      | 8      |
-| **General API** (injection) | import + search + reset   | `secure-coding`    | 9      | 13\*   |
+| Domain | Prompt | Plugin | Gemini | Claude |
+|---|---|---|---|---|
+| **NestJS** service | users + auth + admin | `nestjs-security` | **2** | 6 |
+| **JWT** auth | login + verify middleware | `jwt` | 5 | 5 |
+| **MongoDB** data layer | Mongoose model + search | `mongodb-security` | 8 | 8 |
+| **General API** (injection) | import + search + reset | `secure-coding` | 9 | 13\* |
 
 One Gemini win, two dead heats, one split. The frontier security gap is **smaller than the discourse suggests** — and the count is the least interesting number here.
 
@@ -53,13 +53,13 @@ In an opinionated framework, Gemini defaults to the secure idiom. Hold that thou
 
 Both wrote clean `jsonwebtoken` code: a signed login token, middleware that _verifies_ (no `jwt.decode` shortcut, no `alg: none`, no hardcoded secret — every catastrophic JWT footgun avoided by both). Then both stopped at exactly the same place:
 
-| `jwt` rule                                                                                                                 | CWE     | Gemini | Claude |
-| -------------------------------------------------------------------------------------------------------------------------- | ------- | ------ | ------ |
-| [`require-algorithm-whitelist`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/require-algorithm-whitelist) | CWE-757 | ✗      | ✗      |
-| [`require-audience-validation`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/require-audience-validation) | CWE-287 | ✗      | ✗      |
-| `require-issuer-validation`                                                                                                | CWE-287 | ✗      | ✗      |
-| `require-max-age`                                                                                                          | CWE-294 | ✗      | ✗✗     |
-| `no-sensitive-payload`                                                                                                     | CWE-359 | ✗      | —      |
+| `jwt` rule | CWE | Gemini | Claude |
+|---|---|---|---|
+| [`require-algorithm-whitelist`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/require-algorithm-whitelist) | CWE-757 | ✗ | ✗ |
+| [`require-audience-validation`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/require-audience-validation) | CWE-287 | ✗ | ✗ |
+| `require-issuer-validation` | CWE-287 | ✗ | ✗ |
+| `require-max-age` | CWE-294 | ✗ | ✗✗ |
+| `no-sensitive-payload` | CWE-359 | ✗ | — |
 
 Here's _why it survives review_: a reviewer reading `jwt.verify(token, secret)` sees a verify call and ships it. Nobody asks the next question — verifies _for whom?_ Without an `audience` option, a token your service minted for a _different_ API sails straight through. That blind spot is exactly what `require-audience-validation` encodes, and it's why both models — and most human review — walk past it. Call the round 5–5.
 
@@ -69,21 +69,21 @@ The finding that should make you check your own repo first: both models wrote th
 
 ```typescript
 // Both models, essentially:
-const results = await User.find(filter); // ships passwordHash to the caller
+const results = await User.find(filter);   // ships passwordHash to the caller
 // the fix neither wrote:
-const results = await User.find(filter).select("-passwordHash").lean();
+const results = await User.find(filter).select('-passwordHash').lean();
 ```
 
 That's `require-projection` (CWE-200) and `no-select-sensitive-fields` firing on both sides. The pleasant surprise: the prompt hands a user-supplied search object straight into a Mongoose query — a textbook `$where`/operator-injection trap — and **both models sidestepped it.** Zero `no-operator-injection`, zero `no-unsafe-where`, zero `no-unsafe-query` on either side. The frontier has internalized "don't interpolate untrusted input into a query." It just hasn't internalized "don't hand back the password column."
 
-| `mongodb-security` rule                                                                                               | CWE     | Gemini | Claude |
-| --------------------------------------------------------------------------------------------------------------------- | ------- | ------ | ------ |
-| `require-schema-validation`                                                                                           | CWE-20  | ✗✗✗    | ✗      |
-| [`require-projection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-projection) | CWE-200 | ✗      | ✗✗     |
-| `require-lean-queries`                                                                                                | CWE-400 | ✗      | ✗✗     |
-| `no-select-sensitive-fields`                                                                                          | CWE-200 | ✗      | ✗✗     |
-| `no-unbounded-find`                                                                                                   | CWE-400 | ✗      | —      |
-| `no-bypass-middleware`                                                                                                | CWE-284 | ✗      | ✗      |
+| `mongodb-security` rule | CWE | Gemini | Claude |
+|---|---|---|---|
+| `require-schema-validation` | CWE-20 | ✗✗✗ | ✗ |
+| [`require-projection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-projection) | CWE-200 | ✗ | ✗✗ |
+| `require-lean-queries` | CWE-400 | ✗ | ✗✗ |
+| `no-select-sensitive-fields` | CWE-200 | ✗ | ✗✗ |
+| `no-unbounded-find` | CWE-400 | ✗ | — |
+| `no-bypass-middleware` | CWE-284 | ✗ | ✗ |
 
 Different distribution, same total (8–8) — but one cell deserves an honest call-out, because it cuts _against_ my own headline: `require-schema-validation` fired **three times on Gemini and once on Claude**. Here, Claude was the more disciplined one — it wired up more of Mongoose's schema-level validation, where Gemini leaned on looser typing. "Gemini is frontier-grade" doesn't mean "Gemini wins every cell"; this is a cell it lost. (And yes, `require-lean-queries` is CWE-400, not classic injection — `.lean()` returns plain objects instead of hydrated Mongoose documents, and on an unbounded search that's a real memory-exhaustion lever, which is why it's scored as a resource control, not a nice-to-have.)
 
@@ -93,16 +93,12 @@ Different distribution, same total (8–8) — but one cell deserves an honest c
 
 ```typescript
 // Claude's reset flow — CWE-208, timing-unsafe:
-if (providedToken === storedToken) {
-  /* ...reset... */
-}
+if (providedToken === storedToken) { /* ...reset... */ }
 
 // The fix — hash both to a fixed length first, then compare:
-import { createHash, timingSafeEqual } from "crypto";
-const hash = (s: string) => createHash("sha256").update(s).digest();
-if (timingSafeEqual(hash(providedToken), hash(storedToken))) {
-  /* ...reset... */
-}
+import { createHash, timingSafeEqual } from 'crypto';
+const hash = (s: string) => createHash('sha256').update(s).digest();
+if (timingSafeEqual(hash(providedToken), hash(storedToken))) { /* ...reset... */ }
 // Direct timingSafeEqual(Buffer.from(a), Buffer.from(b)) throws if lengths differ,
 // leaking token length to an attacker — always normalise lengths first.
 ```
@@ -128,15 +124,15 @@ Which is the whole point of static analysis: it asks the questions your prompt d
 
 ```javascript
 // eslint.config.mjs
-import jwt from "eslint-plugin-jwt";
-import mongodbSecurity from "eslint-plugin-mongodb-security";
-import nestjsSecurity from "eslint-plugin-nestjs-security";
-import secureCoding from "eslint-plugin-secure-coding";
-import tsParser from "@typescript-eslint/parser";
+import jwt from 'eslint-plugin-jwt';
+import mongodbSecurity from 'eslint-plugin-mongodb-security';
+import nestjsSecurity from 'eslint-plugin-nestjs-security';
+import secureCoding from 'eslint-plugin-secure-coding';
+import tsParser from '@typescript-eslint/parser';
 
 export default [
   // TypeScript parser so decorators and types resolve
-  { files: ["**/*.ts"], languageOptions: { parser: tsParser } },
+  { files: ['**/*.ts'], languageOptions: { parser: tsParser } },
   // Each plugin ships a flat `recommended` preset (plugin + rules)
   jwt.configs.recommended,
   mongodbSecurity.configs.recommended,
