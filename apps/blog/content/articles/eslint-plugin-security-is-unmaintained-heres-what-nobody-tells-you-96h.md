@@ -28,7 +28,7 @@ The SQL injection that paged us at 2am had passed `eslint-plugin-security` clean
 
 The linter didn't miss this because it was broken. It missed it because it has no rule for SQL injection. It never did. **That's the gap nobody states plainly.**
 
-I ran the same fixture — 12 deliberate vulnerability classes, one JavaScript file — through `eslint-plugin-security` and through the domain plugins I've benchmarked. The incumbent with **2.4M+ weekly downloads** caught **21** issues. The domain plugins caught **46**. Same file, same engine, same run.
+I ran the same fixture — 12 deliberate vulnerability classes, one JavaScript file — through `eslint-plugin-security` (v4.0.0, on ESLint 9.39.4) and through the domain plugins I've benchmarked. The incumbent with **2.4M+ weekly downloads** (npm registry, week of 2026-07-12) caught **21** issues. The domain plugins caught **46**. Same file, same engine, same run.
 
 > "The noisy generic rule didn't just miss the bug — it trained the team to suppress the signal that would have flagged it."
 
@@ -38,9 +38,11 @@ This is not a teardown. `eslint-plugin-security` is actively maintained — 4.0.
 
 > **ESLint Security Benchmark Series** · [← Prev: I Let Claude Write 80 Functions. 65–75% Had Security Vulnerabilities.](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) · **You are here: The 21-vs-46 Floor** · [Next: The AI Hydra Problem — Fix One AI Bug, Get Two More →](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more)
 
+**Skip to:** [the 14-rule floor](#what-the-14-rules-cover-the-generic-floor) · [the gap in code](#what-a-generic-floor-cant-reach--with-code) · [the gap by domain](#the-25-finding-gap-by-domain) · [migration steps](#what-to-do-today-if-youre-using-eslint-plugin-security) · [where AI code lands](#where-ai-generated-code-lands)
+
 ## What the 14 rules cover (the generic floor)
 
-`detect-child-process`, `detect-eval-with-expression`, `detect-non-literal-require`,
+The full ruleset as of v4.0.0 (shipped February 2026): `detect-child-process`, `detect-eval-with-expression`, `detect-non-literal-require`,
 `detect-non-literal-fs-filename`, `detect-non-literal-regexp`,
 `detect-unsafe-regex`, `detect-object-injection`, `detect-possible-timing-attacks`,
 `detect-pseudoRandomBytes`, `detect-buffer-noassert`, `detect-new-buffer`,
@@ -53,27 +55,29 @@ These are real, valuable, language-level checks — command injection, eval, uns
 
 The 21-vs-46 gap is **domain depth a generic ruleset has no rule for**. The fixture and both runs are in [the 4-way benchmark](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof) — team-authored `vulnerable.js`, 12 classes, [reproducible](https://ofriperetz.dev/articles/reproducibility-vs-replicability) — so you can re-run it rather than take the number on faith.
 
-Here's what each gap archetype looks like as actual code.
+Here's what three gap archetypes look like as actual code — two straight from the fixture, and one (JWT) from a class the fixture doesn't even reach.
 
 ### Archetype 1: SQL injection (the gap that paged us)
 
 ```js
 // Vulnerable — eslint-plugin-security: no warning
-app.get('/users/:id', async (req, res) => {
-  const query = 'SELECT * FROM users WHERE id = ' + req.params.id;
-  const result = await pool.query(query);  // string-concatenated, attacker-controlled
+app.get("/users/:id", async (req, res) => {
+  const query = "SELECT * FROM users WHERE id = " + req.params.id;
+  const result = await pool.query(query); // string-concatenated, attacker-controlled
   res.json(result.rows);
 });
 ```
 
-`eslint-plugin-security` has no rule for SQL injection — it pattern-matches dangerous Node.js APIs (eval, child_process, non-literal require) but SQL is ORM/driver-specific. `eslint-plugin-pg` catches this with `no-string-concatenation` and flags the line with a [`CWE-89`](https://ofriperetz.dev/articles/cwe-taxonomy-explained) annotation.
+`eslint-plugin-security` has no rule for SQL injection — it pattern-matches dangerous Node.js APIs (eval, child_process, non-literal require) but SQL is ORM/driver-specific. `eslint-plugin-pg` catches this with [`pg/no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-query) and flags the line with a [`CWE-89`](https://ofriperetz.dev/articles/cwe-taxonomy-explained) annotation.
 
 The fix:
 
 ```js
 // Safe — parameterized query
-app.get('/users/:id', async (req, res) => {
-  const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
+app.get("/users/:id", async (req, res) => {
+  const result = await pool.query("SELECT * FROM users WHERE id = $1", [
+    req.params.id,
+  ]);
   res.json(result.rows);
 });
 ```
@@ -85,16 +89,16 @@ app.get('/users/:id', async (req, res) => {
 function verifyToken(token) {
   // Developer was being careful — pinned the algorithm list explicitly
   return jwt.verify(token, process.env.JWT_SECRET, {
-    algorithms: ['HS256', 'none']  // 'none' means: accept unsigned tokens
+    algorithms: ["HS256", "none"], // 'none' means: accept unsigned tokens
   });
 }
 ```
 
-The author had _added_ that options object on purpose. The reviewer saw an explicit `algorithms` array, read it as the secure-by-default pattern, and approved it. Nobody noticed that `'none'` in that list tells the library to accept an **unsigned** token. An attacker sets the header to `{"alg":"none"}`, drops the signature, and `verify` returns the forged payload as valid. `eslint-plugin-security` has no rule here — there is no dangerous sink, no `eval`. `eslint-plugin-jwt` flags `algorithms` arrays that include `'none'` with `jwt/no-algorithm-none`.
+The author had _added_ that options object on purpose. The reviewer saw an explicit `algorithms` array, read it as the secure-by-default pattern, and approved it. Nobody noticed that `'none'` in that list tells the library to accept an **unsigned** token. An attacker sets the header to `{"alg":"none"}`, drops the signature, and `verify` returns the forged payload as valid. There's no review heuristic for "your explicit allowlist includes the bypass value" — reviewers are trained to _reward_ explicit configuration. `eslint-plugin-security` has no rule here either: no dangerous sink, no `eval`. JWT isn't even one of the fixture's 12 classes — I'm showing it because it's the same shape of gap, live in production auth code. `eslint-plugin-jwt` flags `algorithms` arrays that include `'none'` with `jwt/no-algorithm-none`.
 
 ```js
 // Safe
-return jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+return jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
 ```
 
 ### Archetype 3: `Math.random()` for security tokens
@@ -102,28 +106,31 @@ return jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 ```js
 // Vulnerable — eslint-plugin-security: no warning
 function generateSessionToken() {
-  return Math.random().toString(36).slice(2);  // predictable, not cryptographic
+  return Math.random().toString(36).slice(2); // predictable, not cryptographic
 }
 ```
 
-`detect-pseudoRandomBytes` fires on `crypto.pseudoRandomBytes()` — a deprecated Node.js method — but not on `Math.random()`. A generic linter has no rule mapping `Math.random()` usage context to security-sensitive code paths. `eslint-plugin-node-security` catches this with `no-math-random-for-security` when the result is used in auth, token, or session contexts.
+`detect-pseudoRandomBytes` fires on `crypto.pseudoRandomBytes()` — a deprecated Node.js method — but not on `Math.random()`. `eslint-plugin-node-security` catches this with `node-security/no-math-random-crypto` (CWE-338). Honest mechanics: it's a naming heuristic, not data-flow analysis — it fires when the surrounding variable or function name reads like `token`, `secret`, `session`, `salt`, or `otp`, and stays quiet on `Math.random()` in a dice roll. The rule ships tagged medium-confidence for exactly that reason. Which is also why this one survives review without a domain rule: `Math.random()` isn't deprecated, carries no warning label, and most teams first meet this finding in an audit.
 
 ```js
 // Safe
 function generateSessionToken() {
-  return require('crypto').randomBytes(32).toString('hex');
+  return require("crypto").randomBytes(32).toString("hex");
 }
 ```
 
 ### The 25-finding gap by domain
 
-| Domain              | Missing findings | What's missing from a generic linter              | The layer that adds it                                                                                                  |
-| ------------------- | :--------------: | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **PostgreSQL**      | ~12              | SQL injection, connection leaks, COPY exploits    | [`eslint-plugin-pg`](https://eslint.interlace.tools/docs/security/plugin-pg) (13 rules)                                 |
-| **JWT / auth**      | ~6               | `alg:none`, algorithm confusion, claim validation | [`eslint-plugin-jwt`](https://eslint.interlace.tools/docs/security/plugin-jwt) (13 rules)                               |
-| **Crypto & system** | ~5               | weak hashes, ECB/static-IV, SSRF, zip-slip        | [`eslint-plugin-node-security`](https://eslint.interlace.tools/docs/security/plugin-node-security) (35 rules)           |
-| **Browser / DOM**   | ~2               | CSP, CORS, `innerHTML`, JWT-in-storage            | [`eslint-plugin-browser-security`](https://eslint.interlace.tools/docs/security/plugin-browser-security) (45 rules)     |
-| **AI / LLM**        | ~0 in fixture    | prompt injection, tool-call agency                | [`eslint-plugin-vercel-ai-security`](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security) (19 rules) |
+The delta is arithmetic: 46 − 21 = 25 findings the floor never raised. The per-class detail — which 5 of the 12 classes the floor covers, and which 7 it has **zero rules** for — is in [the full detection table](https://ofriperetz.dev/articles/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof#the-full-detection-table). An earlier version of this table carried per-domain counts like "~12" and "~6"; approximations dressed up as counts don't survive a skeptical reader, so here's the qualitative map and the exact numbers stay where they're reproducible. The 46-finding run is four plugins (versions as benchmarked, ESLint 9.39.4):
+
+| Domain gap                            | What the floor has no rule for                                     | The layer that adds it                                                                                                      |
+| ------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| **PostgreSQL / SQL**                  | SQL injection, connection leaks, COPY exploits                     | [`eslint-plugin-pg`](https://eslint.interlace.tools/docs/security/plugin-pg) (13 rules, v1.4.3)                             |
+| **Crypto & system**                   | weak hashes, ECB/static-IV, `Math.random()` tokens, SSRF, zip-slip | [`eslint-plugin-node-security`](https://eslint.interlace.tools/docs/security/plugin-node-security) (34 rules, v4.2.0)       |
+| **Serialization & injection breadth** | unsafe `deserialize()`, prototype pollution                        | [`eslint-plugin-secure-coding`](https://eslint.interlace.tools/docs/security/plugin-secure-coding) (27 rules, v3.2.0)       |
+| **Browser / DOM**                     | CSP, CORS, `innerHTML`, JWT-in-storage                             | [`eslint-plugin-browser-security`](https://eslint.interlace.tools/docs/security/plugin-browser-security) (45 rules, v1.2.3) |
+| **JWT / auth** — not in this fixture  | `alg:none`, algorithm confusion, claim validation                  | [`eslint-plugin-jwt`](https://eslint.interlace.tools/docs/security/plugin-jwt) (13 rules)                                   |
+| **AI / LLM** — not in this fixture    | prompt injection, tool-call agency                                 | [`eslint-plugin-vercel-ai-security`](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security) (19 rules)     |
 
 There's also a [**precision**](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) difference: on validated-safe code, `eslint-plugin-security` produced 5 [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) in that benchmark (`detect-object-injection` on allowlist-validated keys, `detect-non-literal-fs-filename` on path-validated reads) — it pattern-matches the sink without seeing the guard.
 
@@ -187,12 +194,12 @@ import { configs as browserSecurity } from "eslint-plugin-browser-security";
 import { configs as vercelAiSecurity } from "eslint-plugin-vercel-ai-security";
 
 export default [
-  security.configs.recommended,           // your existing floor (14 rules)
-  nodeSecurity.recommended,               // crypto, supply-chain, SSRF
-  { files: ["**/db/**"], ...pg.recommended },              // SQL depth
-  jwt.recommended,                        // auth depth
+  security.configs.recommended, // your existing floor (14 rules)
+  nodeSecurity.recommended, // crypto, supply-chain, SSRF
+  { files: ["**/db/**"], ...pg.recommended }, // SQL depth
+  jwt.recommended, // auth depth
   { files: ["**/*.{tsx,jsx}", "**/client/**"], ...browserSecurity.recommended }, // DOM/CSP
-  { files: ["**/ai/**", "**/agents/**"], ...vercelAiSecurity.recommended },      // LLM
+  { files: ["**/ai/**", "**/agents/**"], ...vercelAiSecurity.recommended }, // LLM
 ];
 ```
 
@@ -270,4 +277,4 @@ The domain layers ship the same contract:
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

@@ -19,95 +19,46 @@ author:
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
 ---
+
 We ran [madge](https://github.com/pahen/madge) — a third-party, vendor-neutral cycle detector, not my plugin — across some of the most popular open-source JavaScript projects. Here is what we found:
 
-| Project | Stars | Files analyzed | Circular dependencies |
-|---------|-------|----------------|-----------------------|
-| [Payload CMS](https://github.com/payloadcms/payload) | 33K | 675 | **508** |
-| [Next.js](https://github.com/vercel/next.js) | 131K | 14,556 | 17 |
-| [Medusa](https://github.com/medusajs/medusa) | 27K | 803 | 8 |
-| [Strapi](https://github.com/strapi/strapi) | 65K | 259 | 5 |
-| [Twenty](https://github.com/twentyhq/twenty) | 25K | 5,702 | 0 ✅ |
+| Project                                              | Stars | Files analyzed | Circular dependencies |
+| ---------------------------------------------------- | ----- | -------------- | --------------------- |
+| [Payload CMS](https://github.com/payloadcms/payload) | 33K   | 675            | **508**               |
+| [Next.js](https://github.com/vercel/next.js)         | 131K  | 14,556         | 17                    |
+| [Medusa](https://github.com/medusajs/medusa)         | 27K   | 803            | 8                     |
+| [Strapi](https://github.com/strapi/strapi)           | 65K   | 259            | 5                     |
+| [Twenty](https://github.com/twentyhq/twenty)         | 25K   | 5,702          | 0 ✅                  |
 
 Payload CMS has 508 circular dependencies in 675 TypeScript files. That is not a typo.
 
-*(Methodology: `npx madge --circular --extensions ts <path>`, default config, run 2026-05-30 against each repo's then-current `main` at the package root. Cycle counts drift as these repos and madge evolve — re-run the command to compare against the current tree.)* And nobody who works on Payload wrote a single line with the intention of creating a cycle. Every one of those 508 paths through the import graph was the result of incremental, individually reasonable decisions.
+_(Methodology: `npx madge --circular --extensions ts <path>`, default config, run 2026-05-30 against each repo's then-current `main` at the package root. Cycle counts drift as these repos and madge evolve — re-run the command to compare against the current tree.)_ And nobody who works on Payload wrote a single line with the intention of creating a cycle. Every one of those 508 paths through the import graph was the result of incremental, individually reasonable decisions.
 
 This is how circular dependencies work. They accumulate silently. The build succeeds. The tests pass. The app ships. And somewhere in that import graph, modules are pulling in code they do not need, tests are loading the entire dependency tree, and a developer is staring at an `undefined` error that only happens during initialization and disappears the moment they add a `console.log`.
 
 Circular dependencies are the silent technical debt of every large JavaScript codebase. Here is why they form, what they quietly break, and how to find all of them.
 
+**Jump to:** [Why famous projects have hundreds](#why-famous-projects-have-hundreds-of-them) · [What cycles silently break](#what-circular-dependencies-silently-break) · [How to find every one](#how-to-find-all-of-them) · [How to fix them](#how-to-fix-them)
+
 ---
 
 ## What a circular dependency actually is
 
-> **A circular dependency** exists when module A imports from module B, which imports (directly or transitively) from module A.
+> **A circular dependency** exists when module A imports from module B, which imports — directly or transitively — from module A.
 
-```typescript
-// user.service.ts
-import { formatUser } from './user.utils';
-
-// user.utils.ts
-import { UserService } from './user.service'; // ← closes the loop
-```
-
-Neither developer planned this. `user.service.ts` needed a formatter. `user.utils.ts` needed the service type for a helper function added three sprints later. Nobody saw the cycle form — they just saw two reasonable imports.
-
-This is how every circular dependency is born: through incremental, individually sensible decisions.
+Nobody plans one. `user.service.ts` needs a formatter from `user.utils.ts`; three sprints later `user.utils.ts` needs a type from `user.service.ts`, and the loop closes. Two reasonable imports, one cycle nobody saw form — the [full mechanics have their own explainer](https://ofriperetz.dev/articles/circular-dependencies-in-javascript-explained). This piece is the audit that shows how far the problem has already spread in real codebases, and how to find every cycle in yours.
 
 ---
 
-## The 3 patterns that create them in JavaScript and TypeScript
+## The 3 patterns that create them
 
-### 1. Barrel files (`index.ts` re-exports)
+Cycles come from three moves, each individually reasonable ([mechanics and before/after code for all three are in the explainer](https://ofriperetz.dev/articles/circular-dependencies-in-javascript-explained#the-3-patterns-that-create-them)):
 
-Barrel files are the biggest source of accidental cycles in TypeScript projects.
+1. **Barrel files** (`index.ts` re-exports) — the biggest source. Every file in a feature imports from `../user` for a clean path, and any utility the barrel re-exports can no longer safely import from the barrel without closing a loop.
+2. **Shared types modules** — a `types.ts` both sides of a boundary import, which quietly grows a value import back into a service. TypeScript hides this one: `import type` is erased at compile time, and many detectors (including `eslint-plugin-import/no-cycle`) skip `import type` edges entirely — so they can report **0 cycles** on a graph that is structurally circular.
+3. **Cross-feature imports** — `OrderService` reaches into `User`, `UserService` reaches into `Order`. Architecturally wrong, but it emerges one reasonable import at a time; nobody refactors the boundary, they just add the import and move on.
 
-```typescript
-// features/user/index.ts — re-exports everything in the feature
-export { UserService } from './user.service';
-export { UserRepository } from './user.repository';
-export { UserController } from './user.controller';
-export { formatUser, validateUser } from './user.utils';
-```
-
-Now every file in the `user` feature imports from `../user` (the barrel) for convenience. And any utility that the barrel re-exports cannot safely import anything else from the barrel without creating a cycle.
-
-```typescript
-// user.utils.ts
-import { UserService } from '../user'; // ← imports the barrel
-// The barrel re-exports user.utils → user.utils imports the barrel → cycle
-```
-
-Teams adopt barrel files for cleaner import paths. They inadvertently create import graphs where everything is connected to everything else.
-
-### 2. Shared types modules
-
-A `types.ts` or `interfaces.ts` file that both sides of a feature boundary import seems harmless — it only contains type definitions, after all.
-
-```typescript
-// types.ts
-import { UserService } from './user.service'; // needed for a type
-
-// user.service.ts
-import { User, UserOptions } from './types'; // and now we have a cycle
-```
-
-TypeScript makes this worse. `import type` declarations are erased at compile time — they don't exist at runtime — but the module graph your bundler or Node.js sees is determined at load time, before the TypeScript compiler's type-erasure runs. Many cycle detectors (including `eslint-plugin-import/no-cycle`) skip `import type` edges entirely, so they may report 0 cycles on a graph that has real structural issues.
-
-### 3. Cross-feature imports
-
-As a codebase grows, features start borrowing from each other. `OrderService` needs a user's address, so it imports from the `User` domain. `UserService` tracks order history, so it imports from the `Order` domain.
-
-```typescript
-// orders/order.service.ts
-import { UserAddress } from '../users/user.types';
-
-// users/user.service.ts
-import { OrderHistory } from '../orders/order.types'; // cycle complete
-```
-
-This is architecturally wrong (neither domain should own the other), but it emerges naturally as product requirements evolve. Nobody refactors the boundary; they just add the import and move on.
+Keep those three names. The audit below is just these patterns at scale.
 
 ---
 
@@ -125,74 +76,11 @@ Medusa's 8 cycles in core-flows are the cross-feature pattern: customer steps im
 
 ## What circular dependencies silently break
 
-### Bundle bloat
+A cycle costs you three things, none of which show up as an error:
 
-Circular import graphs can defeat tree-shaking. When module A and B form a cycle, bundlers must conservatively include both — along with everything they depend on — because they cannot statically prove which exports are actually used in the presence of the cycle.
-
-In practice: adding a **value import** (not a type import — those are erased at compile time) to a barrel file that is already part of a cycle can pull unexpected code into your bundle. No error. No warning. Just a larger bundle and slower load times. This is why bundle size regressions often appear with no obvious code change — the added import closed a cycle path that the bundler's tree-shaking couldn't see through.
-
-### Test isolation and speed
-
-Unit tests work by loading a module and its dependencies in isolation. Circular dependencies make isolation impossible — loading module A loads module B loads module A, pulling in the entire graph.
-
-A test for a 50-line utility function ends up loading the ORM, the authentication layer, and the HTTP client. The test suite gets slower with every feature added, and teams blame "the test framework" or "the CI machine" rather than the import graph structure.
-
-### Initialization order bugs
-
-This is the most insidious failure mode. At runtime, Node.js resolves circular dependencies by returning an **incomplete module** — an empty object or a partially initialized class — at the point of the cycle.
-
-```typescript
-// a.ts
-import { B } from './b';
-export class A {
-  method() { return new B(); }
-}
-
-// b.ts
-import { A } from './a';
-export class B {
-  // When b.ts loads, A is not yet defined — the cycle gives b.ts an empty object
-  parent = new A(); // ← undefined at module initialization time
-}
-```
-
-The result: `TypeError: A is not a constructor`. Or worse — `parent` is `undefined` silently, and the error surfaces 10 function calls later in code that has nothing to do with the import.
-
-These bugs are notoriously hard to reproduce. They appear and disappear based on load order, which can change when a new import is added anywhere in the graph. Adding a `console.log` changes the timing and the bug disappears — classic heisenbug.
-
-### CommonJS vs ESM: how the failure differs
-
-Circular imports cause the most confusing bugs when top-level code in one module references something from a circular counterpart before that counterpart has finished evaluating.
-
-**In CommonJS (`require`):** Node.js returns a partially-constructed `module.exports` for the module still being loaded. The result: you get `undefined` where you expect a class — at the top level of the file, before anything instantiates.
-
-```javascript
-// a.js
-const { B } = require('./b');
-exports.A = class A { method() { return new B(); } }
-
-// b.js — loads a.js before a.js has finished
-const { A } = require('./a'); // A is undefined — a.js hasn't exported yet
-exports.DEFAULT_B = new A(); // TypeError: A is not a constructor — at module load time
-```
-
-**In ESM (`import`):** Top-level code that references a circularly-imported value before its source module has finished evaluating throws `ReferenceError: Cannot access 'X' before initialization` — the TDZ.
-
-```typescript
-// a.ts
-import { B } from './b';
-export class A { method() { return new B(); } }
-export const DEFAULT_A = new A(); // ← top-level: runs at module load
-
-// b.ts
-import { DEFAULT_A } from './a'; // a.ts is still loading — DEFAULT_A not yet evaluated
-export class B {}
-export const USES_A = DEFAULT_A; // ReferenceError: Cannot access 'DEFAULT_A' before initialization
-```
-
-Class instantiation in method bodies is fine (lazily resolved); it is only top-level evaluation — module-scope `const`, `let`, or inline class fields that execute at class *definition* time — that breaks.
-
-The diagnostic in both cases: the error disappears when you add `console.log` or reorder imports — that changes evaluation timing just enough to hide the cycle. Teams work around it with lazy imports or `setTimeout` hacks that mask the structure problem rather than resolving it.
+- **Bundle bloat.** Cycles can defeat tree-shaking — a bundler can't prove which exports are unused across a cycle, so it conservatively keeps both modules and everything they pull in. Adding one **value** import to a barrel that's already in a cycle can quietly grow your bundle with no other code change, which is why bundle-size regressions appear with no obvious cause.
+- **Test isolation and speed.** Loading module A loads B loads A — the whole graph. A unit test for a 50-line utility ends up dragging in the ORM, the auth layer, and the HTTP client, and the suite gets slower with every feature. Teams blame "the test framework" or "the CI machine," not the import graph.
+- **Initialization-order bugs.** The insidious one. Module-init order hands one file a **partial** view of the other's exports: silently `undefined` in CommonJS, a hard `ReferenceError: Cannot access 'X' before initialization` in native ESM. The failure surfaces far from the two files that caused it, and it vanishes the moment you add a `console.log` — a heisenbug whose [full CommonJS-vs-ESM mechanics live in the explainer](https://ofriperetz.dev/articles/circular-dependencies-in-javascript-explained#what-circular-dependencies-silently-break).
 
 ---
 
@@ -210,33 +98,25 @@ There are two reasons they're still there:
 
 ## How to find all of them
 
-If you've used `eslint-plugin-import/no-cycle` and it reports 0, that may not mean your codebase is clean — it may mean the tool's defaults are hiding cycles from you. We found a specific cache bug in our own rule that caused the same behavior: [0 cycles on 14,556 files, 5 on a 33-file subset](https://dev.to/ofri-peretz/no-cycle-finds-0-cycles-in-nextjs-and-other-lies-caches-tell-you-3ld8). The number of cycles reported depends heavily on which tool you use and how it's configured.
+If you've used `eslint-plugin-import/no-cycle` and it reports 0, that may not mean your codebase is clean — it may be a [false negative](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) the tool's defaults are hiding. We found exactly that cache bug in our own rule: [0 cycles reported on 14,556 files, 5 on a 33-file subset of the same repo](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale). The number of cycles reported depends heavily on which tool you use and how it's configured.
 
 The standard `eslint-plugin-import/no-cycle` rule is battle-tested and ubiquitous — the right default for most projects. It recomputes each file's import resolution per run, so the cost compounds as a monorepo grows, and cycle detection is often the first check teams drop from CI once a repo gets large enough.
 
 > **Disclosure.** `eslint-plugin-import-next` is the plugin I maintain (part of Interlace). The madge audit numbers above come from a third-party tool on public repos; the benchmark below is mine — harness linked so you can reproduce it.
 
-`eslint-plugin-import-next` is built for scale: it persists the strongly-connected-components graph and resolution cache across the *entire* lint run instead of recomputing per file — which is what makes it both faster and deterministic. Migration is mechanical (uninstall, install, rename the `import/*` rule prefixes — covered below), not a rewrite.
+`eslint-plugin-import-next` is built for scale: it persists its resolution and strongly-connected-components cache across the _entire_ lint run instead of recomputing per file. That makes it dramatically faster and — after a [cache-poisoning bug we found and fixed](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale) — deterministic across subset and full-repo runs. Migration is mechanical (uninstall, install, rename the `import/*` rule prefixes — covered below), not a rewrite.
 
-**Benchmark: `no-cycle` rule only, synthetic corpus, M2 MacBook Pro (median of repeated runs):**
+The scale problem is real and measured. On the `no-cycle` rule alone, `eslint-plugin-import` spends **148.59s** finding cycles in a 5,000-file synthetic corpus; `eslint-plugin-import-next` does the same work in **2.71s** — **54.8× faster** (`eslint-plugin-import@2.32.0` vs `eslint-plugin-import-next@2.3.3`, measured 2026-01-02, n=3). At 1,000 files it's 27.03s → 1.05s (25.7×); at 10,000 the old plugin projects past four minutes per run. Two and a half minutes to lint 5,000 files is exactly why cycle detection is the first check teams drop from CI. The [full benchmark — error bands, the projection method, and an honest "I can't fully explain the last 2×" caveat — is in the performance write-up](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster).
 
-| Codebase size | eslint-plugin-import | eslint-plugin-import-next | Speedup |
-|---|---|---|---|
-| 1,000 files | 27ms | 1.05ms | **~26×** |
-| 5,000 files | 149ms | 2.7ms | **~55×** |
-| 10,000 files | >10 min (terminated) | ~6s | **>100×** |
+The rule also fixes a cache-poisoning bug that caused non-deterministic results: the same repo, back-to-back runs, reported different cycle counts. The fix ensures consistent results whether you lint the full repo or a subset.
 
-At 10K files in this synthetic run, `eslint-plugin-import` was terminated at an operator-imposed 10-minute cap (lower bound, not a measured completion); `import-next` finished in ~6 seconds. That gap is why cycle detection gets dropped from CI on large repos — and why import-next is built so it doesn't have to be.
-
-The rule also fixes a cache-poisoning bug that caused non-deterministic results: the same repo, back-to-back runs, reported different cycle counts. [We documented this in detail](https://dev.to/ofri-peretz/no-cycle-finds-0-cycles-in-nextjs-and-other-lies-caches-tell-you-3ld8) — the fix ensures consistent results whether you lint the full repo or a subset.
-
-| | eslint-plugin-import | eslint-plugin-import-next |
-|--|---------------------|--------------------------|
-| Battle-tested, ubiquitous | ✅ | — (newer) |
-| Drop-in compatible | ✅ | ✅ |
-| oxlint plugin entry | — | ✅ |
-| Cache-stable across subset/full runs ([details](https://dev.to/ofri-peretz/no-cycle-finds-0-cycles-in-nextjs-and-other-lies-caches-tell-you-3ld8)) | partial | ✅ |
-| Tuned for 10K+ file monorepos | — | ✅ |
+|                                      | eslint-plugin-import | eslint-plugin-import-next |
+| ------------------------------------ | -------------------- | ------------------------- |
+| Battle-tested, ubiquitous            | ✅                   | — (newer)                 |
+| Drop-in compatible                   | ✅                   | ✅                        |
+| oxlint plugin entry                  | —                    | ✅                        |
+| Cache-stable across subset/full runs | partial              | ✅                        |
+| Tuned for 10K+ file monorepos        | —                    | ✅                        |
 
 ```bash
 # Remove the old plugin first to avoid namespace conflicts
@@ -252,16 +132,16 @@ After uninstalling, rename your `import/*` rule prefixes to `import-next/*` — 
 
 ```javascript
 // eslint.config.mjs — uses 'import-next' namespace to avoid conflicts
-import importNext from 'eslint-plugin-import-next';
-import tsParser from '@typescript-eslint/parser';
+import importNext from "eslint-plugin-import-next";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js'],
+    files: ["**/*.ts", "**/*.tsx", "**/*.js"],
     languageOptions: { parser: tsParser },
-    plugins: { 'import-next': importNext },
+    plugins: { "import-next": importNext },
     rules: {
-      'import-next/no-cycle': 'error',
+      "import-next/no-cycle": "error",
     },
   },
 ];
@@ -288,54 +168,11 @@ npx oxlint src/
 
 ## How to fix them
 
-### Fix barrel file cycles: explicit imports
+Each pattern has a matching fix — [with worked before/after code in the explainer](https://ofriperetz.dev/articles/circular-dependencies-in-javascript-explained#how-to-fix-them):
 
-```typescript
-// Before (causes cycles through the barrel):
-import { UserService } from '../user';
-
-// After (direct import, no barrel in the path):
-import { UserService } from '../user/user.service';
-```
-
-This is the most impactful change for most codebases. Barrel files are a developer convenience that bundlers and linters pay the cost for.
-
-### Fix shared type cycles: extract a dedicated types layer
-
-```typescript
-// Before:
-// types.ts imports from service.ts → service.ts imports from types.ts → cycle
-
-// After:
-// domain-types.ts — no imports from your own code, only external packages
-export interface User { id: string; email: string; role: UserRole; }
-export type UserRole = 'admin' | 'user';
-
-// types.ts can import from domain-types.ts safely
-// service.ts can import from domain-types.ts safely
-// No cycle
-```
-
-The pattern: types that need to be shared across a boundary belong in a module with zero imports from your own codebase.
-
-### Fix cross-feature cycles: inversion of control
-
-```typescript
-// Before:
-// orders/order.service.ts imports from users/
-// users/user.service.ts imports from orders/
-// → architectural cycle
-
-// After: neither domain imports the other
-// orders/ defines an interface it needs:
-export interface OrderUserAddress {
-  street: string; city: string; country: string;
-}
-// users/ implements the interface in its own adapter
-// orders/ accepts the interface — no import of the User domain
-```
-
-This is a domain boundary fix. It takes more work but removes the architectural coupling that causes the cycle.
+- **Barrel cycles → direct imports.** Import `../user/user.service`, not `../user`. The single highest-impact change for most codebases; barrels are a convenience the linter and bundler pay for.
+- **Shared-type cycles → a dedicated types layer.** Put shared types in a module with **zero imports from your own code** (only external packages). Both sides import down into it; neither imports the other.
+- **Cross-feature cycles → inversion of control.** The domain that needs the dependency defines an interface; the other implements it. More work, but it removes the architectural coupling instead of hiding it.
 
 ---
 
@@ -347,17 +184,18 @@ A codebase with 50 circular dependencies usually has 3–5 that are responsible 
 
 ---
 
-If your codebase has grown past 10K files and you've never run a cycle detector, start with the subset test: run `no-cycle` on one complex subdirectory and compare to the full repo. If the subset finds more — your tool has a depth or cache issue, like the one [we found and fixed in our own rule](https://dev.to/ofri-peretz/no-cycle-finds-0-cycles-in-nextjs-and-other-lies-caches-tell-you-3ld8).
+If your codebase has grown past 10K files and you've never run a cycle detector, start with the subset test: run `no-cycle` on one complex subdirectory and compare to the full repo. If the subset finds _more_, your tool has a depth or cache issue.
 
-For context on ESLint cycle detection at scale — including a 100x speedup benchmark and the cache bug we fixed — see [Engineering the 100x Speedup: A Static Analysis Performance Report](https://dev.to/ofri-peretz/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster-1afa).
+This audit is the wide-angle view in the _Inside our linter benchmarks_ series. If your subset test comes back dirtier than your full run, the deep-dive on why is here: [a cache-poisoning bug that made our own detector report 0 cycles on 14,556 files](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale). And if `no-cycle` is commented out in your config because it's too slow, [the 54.8× performance rewrite](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster) is why it doesn't have to be.
 
-**Run `npx madge --circular --extensions ts` on your own repo and drop the number in the comments — I'll bet someone beats 508.** And what's the most surprising place you've found a cycle: the data layer, the domain layer, or somewhere you never expected? If you swap in `import-next/no-cycle` and it surfaces cycles your old config reported as 0, that's the [cache bug](https://dev.to/ofri-peretz/no-cycle-finds-0-cycles-in-nextjs-and-other-lies-caches-tell-you-3ld8) — tell me your before/after count.
+**Run `npx madge --circular --extensions ts` on your own repo and drop the number in the comments — I'll bet someone beats 508.** And what's the most surprising place you've found a cycle: the data layer, the domain layer, or somewhere you never expected? If you swap in `import-next/no-cycle` and it surfaces cycles your old config reported as 0, that's the cache bug — tell me your before/after count.
 
 ---
 
 📦 [`eslint-plugin-import-next`](https://www.npmjs.com/package/eslint-plugin-import-next) · [Rule docs](https://eslint.interlace.tools/docs/quality/plugin-import-next)
 
 <!-- markdownlint-disable MD034 -->
+
 **[⭐ Star on GitHub](https://github.com/ofri-peretz/eslint)**
 <!-- markdownlint-enable MD034 -->
 
