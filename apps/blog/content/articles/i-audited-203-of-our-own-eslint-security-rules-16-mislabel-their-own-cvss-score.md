@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score-3hgo"
+devto_id: 4250212
 title: "I Audited 203 of Our Own ESLint Security Rules. 16% Mislabel Their Own CVSS Score."
 description: "A CVSS 9.1 SSRF rule ships labeled LOW. A CVSS 9.8 JWT rule ships labeled MEDIUM. The root cause was one unvalidated string field."
 slug: "i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score"
