@@ -7,7 +7,7 @@ tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk-1bom"
 devto_id: 3114794
 published_at: "2025-12-19T06:00:22Z"
-edited_at: "2026-07-05T06:00:00Z"
+edited_at: "2026-07-19T06:00:00Z"
 cover_image: "https://ofriperetz.dev/og/cover/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk"
 social_image: "https://ofriperetz.dev/og/article/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk"
 reading_time_minutes: 9
@@ -30,7 +30,7 @@ series: "Hardening AI Agents"
 > · [All 19 rules](https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security)
 > · **OWASP LLM Top 10 (you are here)**
 
-I took a standard Vercel AI SDK chat endpoint — the exact shape a coding assistant hands you when you prompt it for "a chat route with tool use" — and ran it against all 10 OWASP LLM categories. The file compiled clean. TypeScript was green. The happy path worked. ESLint found **4 violations across 3 OWASP LLM categories before a single request was made.**
+I took a standard Vercel AI SDK chat endpoint — the exact shape a coding assistant hands you when you prompt it for "a chat route with tool use" — and ran it against all 10 OWASP LLM categories. The file compiled clean. TypeScript was green. The happy path worked. ESLint found **4 violations across 2 OWASP LLM categories before a single request was made.**
 
 > **If you're using Vercel AI SDK without these rules, you're shipping OWASP LLM Top 10 gaps that TypeScript's type system will never catch.**
 
@@ -41,6 +41,8 @@ Every "100% OWASP LLM coverage" claim I've audited maps a timeout rule to "model
 > **The web [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) for the same stack:** [I Mapped the OWASP Top 10 to ESLint Rules. 8 Hold Up. 2 Are Vendor Theater.](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules)
 > If the questionnaire asks for both, these two pieces are the paired answer.
 
+**Skip to:** [The 8 covered categories](#the-8-categories-a-rule-genuinely-catches) | [Why each survives review](#why-each-one-survives-the-security-review) | [4 findings on one handler](#what-4-findings-look-like-on-one-standard-handler) | [The 2 nobody can automate](#the-2-categories-static-analysis-cant-honestly-claim) | [Why CI beats review](#why-ci-beats-code-review-for-this-class-of-vulnerability)
+
 ---
 
 ## The 8 categories a rule genuinely catches
@@ -49,7 +51,7 @@ Every "100% OWASP LLM coverage" claim I've audited maps a timeout rule to "model
 | ------------------------------------------ | ----------------------------------------------------------------------- | --------------------------- |
 | **LLM01** Prompt Injection                 | `require-validated-prompt`, `no-dynamic-system-prompt`                  | CWE-74                      |
 | **LLM02** Sensitive Information Disclosure | `no-sensitive-in-prompt`                                                | CWE-200                     |
-| **LLM05** Improper Output Handling         | `no-unsafe-output-handling`                                             | CWE-94 / CWE-89 / CWE-79   |
+| **LLM05** Improper Output Handling         | `no-unsafe-output-handling`                                             | CWE-94 / CWE-89 / CWE-79    |
 | **LLM06** Excessive Agency                 | `require-tool-confirmation`, `require-max-steps`, `require-tool-schema` | CWE-862                     |
 | **LLM07** System Prompt Leakage            | `no-system-prompt-leak`                                                 | CWE-200                     |
 | **LLM08** Vector & Embedding Weaknesses    | `require-rag-content-validation`, `require-embedding-validation`        | CWE-74 / CWE-20             |
@@ -98,13 +100,15 @@ I took the canonical generated route — a `POST` handler doing:
 // src/app/chat/route.ts — exactly what a coding assistant emits
 import { generateText, tool } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
+import { db } from "@/lib/db";
 
 export async function POST(req: Request) {
   const { userMessage } = await req.json();
 
   const { text } = await generateText({
     model: openai("gpt-4o-mini"),
-    prompt: userMessage,                // ← no validation boundary
+    prompt: userMessage, // ← no validation boundary
     tools: {
       deleteRecord: tool({
         description: "Delete a record by ID",
@@ -196,9 +200,7 @@ export default [
 // eslint.config.cjs (CommonJS — for projects without "type": "module")
 const { configs } = require("eslint-plugin-vercel-ai-security");
 
-module.exports = [
-  configs.recommended,
-];
+module.exports = [configs.recommended];
 ```
 
 ```yaml
@@ -212,14 +214,14 @@ The plugin ships CommonJS and is consumed via ESM or CJS config depending on you
 
 ## Compatibility
 
-| Surface              | Support                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------- |
-| **Package managers** | npm, yarn, pnpm, bun                                                                      |
-| **Node**             | `>= 18.0.0`                                                                               |
-| **ESLint**           | `^8.21.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config only                                     |
-| **Vercel AI SDK**    | optional peer — AST-based, lints whether or not `ai` is installed                         |
+| Surface              | Support                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Package managers** | npm, yarn, pnpm, bun                                                                                 |
+| **Node**             | `>= 18.0.0`                                                                                          |
+| **ESLint**           | `^8.21.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config only                                                 |
+| **Vercel AI SDK**    | optional peer — AST-based, lints whether or not `ai` is installed                                    |
 | **Module system**    | Plugin ships CJS; config file can be ESM (`eslint.config.js` with `"type":"module"`) or CJS (`.cjs`) |
-| **Oxlint**           | flagship rule (`no-unsafe-output-handling`) wired + parity-checked; full set ESLint-first |
+| **Oxlint**           | flagship rule (`no-unsafe-output-handling`) wired + parity-checked; full set ESLint-first            |
 
 ---
 
@@ -236,8 +238,10 @@ The plugin ships CommonJS and is consumed via ESM or CJS config depending on you
 
 ---
 
+If you'd rather wire the whole set into CI than audit category by category, the [19-rule getting-started walkthrough](https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security) is the next stop in this series — same install, every rule turned on.
+
 Which OWASP LLM category are you most worried about in your Vercel AI SDK integration, and have you checked whether your CI catches it? The prompt-injection row (LLM01) and the unbounded-consumption row (LLM10) slip through the most in my experience — curious whether that matches yours.
 
 ---
 
-*[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

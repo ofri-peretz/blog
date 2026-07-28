@@ -57,14 +57,14 @@ where lint output stops being trustworthy and starts being decoration.
 A single line of our lint output packs in three unrelated standards. Quick
 definitions — there's a full reference for each if you need it:
 
-- **[CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained)** names *what kind* of bug it is.
+- **[CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained)** names _what kind_ of bug it is.
   `CWE-918` is SSRF; `CWE-287` is Improper Authentication. A category, not a
   verdict.
-- **[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained)** is a *computed* 0.0–10.0 score
-  from a fixed formula. It maps to four official bands: 0.1–3.9 Low, 4.0–6.9
-  Medium, 7.0–8.9 High, 9.0–10.0 Critical. The number is the primary source;
-  the band name is derived from it.
-- **[OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained)** is a *category* bucket
+- **[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained)** is a
+  _computed_ 0.0–10.0 score. Its four bands are the ruler this audit uses:
+  0.1–3.9 Low, 4.0–6.9 Medium, 7.0–8.9 High, 9.0–10.0 Critical. The number is
+  the primary source; the band name is derived from it.
+- **[OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained)** is a _category_ bucket
   (A01–A10) — an address, not a severity measurement.
 
 Only CVSS is actually a severity measurement. So when a lint rule prints a
@@ -73,7 +73,7 @@ next to it. If they disagree, the word is wrong.
 
 ## Case 1: a 9.1 that prints LOW — and the honest reason it might be fine
 
-`no-ssrf` flags HTTP calls where the URL argument's *name* looks
+`no-ssrf` flags HTTP calls where the URL argument's _name_ looks
 user-supplied (`userUrl`, `req.query.endpoint`, `targetUri`) — a classic
 [Server-Side Request Forgery](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)
 setup, the bug class behind more than one well-known cloud metadata-endpoint
@@ -96,14 +96,14 @@ attacker-influenced source. That's a real limitation — plenty of
 `userUrl`-named parameters are perfectly safe, admin-configured constants.
 A low-confidence match that could be a
 [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn)
-*does* deserve a lower-urgency label than a rule that traced the actual
+_does_ deserve a lower-urgency label than a rule that traced the actual
 [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection).
 
 The part that isn't defensible: **confidence and impact are two different
 axes, and `severity` is only supposed to encode one of them.** "How sure are
 we this is real" and "how bad is it if it's real" are independent
 questions — a low-confidence match on a 9.1-impact bug is still worth
-*more* attention than a high-confidence match on a 3.0. Collapsing both into
+_more_ attention than a high-confidence match on a 3.0. Collapsing both into
 one `LOW`/`MEDIUM`/`HIGH`/`CRITICAL` string means the reader can't tell
 which axis they're looking at, and a `grep`-based triage pass (or an
 LLM agent doing the same) will deprioritize a Critical-impact finding on the
@@ -123,8 +123,8 @@ jwt.verify(token, publicKey);
 jwt.verify(token, publicKey, { audience: "https://api.example.com" });
 ```
 
-Skip audience validation and a JWT minted for *any* service that trusts the
-same signing key gets accepted by *this* service too — a textbook confused
+Skip audience validation and a JWT minted for _any_ service that trusts the
+same signing key gets accepted by _this_ service too — a textbook confused
 deputy, [CWE-287](https://cwe.mitre.org/data/definitions/287.html),
 `cvss: 9.8`. Same story on the issuer side. Both rules print `severity:
 'MEDIUM'`.
@@ -141,7 +141,7 @@ behind a color contrast warning.
 Not every mismatch under-states. [`no-unsafe-search-path`](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack)
 — the PostgreSQL `search_path` hijacking rule I wrote up in full elsewhere —
 ships `cvss: 7.5` (High band) but prints `severity: 'CRITICAL'`, one band
-*above* its own score. I won't re-run the attack walkthrough here — the
+_above_ its own score. I won't re-run the attack walkthrough here — the
 short version, if a label disagreeing with a number bothers you as much as
 it bothers me: read that piece for the exploit, come back here for why the
 label drifted in the first place.
@@ -168,7 +168,7 @@ function enrichFromCWE(options) {
 }
 ```
 
-There's a canonical lookup table, `CWE_MAPPING`, and it's *correct* — its
+There's a canonical lookup table, `CWE_MAPPING`, and it's _correct_ — its
 entry for `CWE-918` is `{ cvss: 9.1, severity: 'CRITICAL' }`, internally
 consistent, right band. `CWE-287` maps to `{ cvss: 9.8, severity:
 'CRITICAL' }`. If every rule simply deferred to this table, none of the 33
@@ -200,8 +200,7 @@ ours included — and it'll tell you exactly where they disagree:
 
 ```ts
 // audit-severity-drift.ts — flags rules where severity doesn't match its own CVSS band
-import { readFileSync } from "node:fs";
-import { globSync } from "node:fs";
+import { readFileSync, globSync } from "node:fs";
 
 const BANDS = [
   [9.0, 10.01, "CRITICAL"],
@@ -227,7 +226,12 @@ for (const file of globSync("packages/eslint-plugin-*/src/rules/*/index.ts")) {
 ```
 
 203 rule files scanned, 33 flagged — an 84% clean rate I'd rather publish
-honestly than round up.
+honestly than round up. And that rate is itself a snapshot: the rule sources
+as they stood when this published (2026-07-06), spread across the ecosystem's
+twenty-odd independently-versioned plugins, not one pinned release. The
+article's own thesis applies to its own numbers — a printed audit is a cache
+too. Re-run the script against today's checkout and trust that count over
+mine.
 
 ## Reading a severity label like a security engineer, not a triage bot
 
@@ -241,7 +245,7 @@ write:
    behind it, not a human's word choice.
 2. **CWE tells you the shape of the bug, not how loudly to worry.** "This is
    a `CWE-918` (SSRF)" is a fact about the code. It says nothing about
-   *this instance's* severity until a CVSS vector is computed for it
+   _this instance's_ severity until a CVSS vector is computed for it
    specifically.
 3. **A low-confidence detector and a low-impact bug produce the same label
    and mean opposite things.** If a tool's docs mention "heuristic" anywhere
@@ -279,12 +283,16 @@ printing a severity word that matches their own CVSS band is a real bar,
 and I'd take it over a tool that doesn't print a CVSS number at all and so
 never gets caught disagreeing with itself. I'm writing it because "check
 the number, not the adjective" is a rule I only started following rigorously
-*after* writing the script that caught my own tool getting it wrong three
+_after_ writing the script that caught my own tool getting it wrong three
 different ways in three different rules.
 
 **Your turn:** open whatever security linter you already run, pick one
-finding, and look up its CVSS vector by hand. Does the severity word next to
-it still hold up once you've done the math yourself?
+finding, and look up its CVSS vector by hand. If the vector notation is new,
+[what a CVSS score actually measures](https://ofriperetz.dev/articles/cvss-scores-explained)
+walks the AV/AC/PR/UI fields — and why severity, exploit probability, and
+confirmed exploitation are three separate measurements with three separate
+owners. Does the severity word next to it still hold up once you've done the
+math yourself?
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if you've ever trusted a severity label more than the score behind it.
