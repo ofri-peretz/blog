@@ -14,13 +14,13 @@ cover_image: ""
 series: "Inside our linter benchmarks"
 ---
 
-Entropy-based credential detection misses a significant share of hardcoded secrets — because most secrets look like regular strings until you see their context. Here's what catches the rest.
-
 A credential scanner that reports 842 secrets in a codebase with zero hardcoded secrets isn't cautious. It's broken. Mine was, and it took a peer plugin reporting less than half my count to make me check.
+
+**Skip to:** [The 842-vs-0 gap](#the-benchmark-numbers) · [Where entropy fails](#why-teams-trust-entropy--and-where-it-breaks) · [The fix](#the-fix-structural-vs-ambiguous-with-context) · [Corpus result](#the-corpus-result) · [Why AI codegen makes it worse](#why-this-matters-more-in-the-age-of-ai-codegen) · [Three lessons](#three-lessons-for-credential-detection-rules)
 
 ## The benchmark numbers
 
-The flagship rule `secure-coding/no-hardcoded-credentials` runs alongside `eslint-plugin-no-secrets/no-secrets` on vercel/ai (the AI SDK) as part of our ILB-Flagship bench. Both rules see the same source. Findings count:
+The flagship rule `secure-coding/no-hardcoded-credentials` runs alongside `eslint-plugin-no-secrets/no-secrets` on vercel/ai (the AI SDK) as part of our ILB-Flagship bench. Both rules see the same source, same commit. Findings count (measured 2026-05-09 on vercel/ai `@4d58048`, Node v24.13.0, ESLint 9.39.4):
 
 | Rule                                            | Findings on vercel-ai |
 | :---------------------------------------------- | :-------------------: |
@@ -30,7 +30,7 @@ The flagship rule `secure-coding/no-hardcoded-credentials` runs alongside `eslin
 | Ours-only                                       |        **807**        |
 | Peer-only                                       |          344          |
 
-A 2.2× gap is the kind of number you'd want to publish — except every credential-detection rule has a [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) problem, and the _direction_ of the gap matters. We sampled the 807 ours-only findings.
+A 2.2× gap is the kind of number you'd want to publish. But a position that looks winning is the one a chess player slows down to re-check — every credential-detection rule has a [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) problem, and the _direction_ of the gap matters more than its size. So we sampled the 807 ours-only findings before believing them.
 
 The top hits looked like this:
 
@@ -70,7 +70,7 @@ function shannonEntropy(value) {
 
 If entropy ≥ 4.0 (default `tolerance`), it reports. There's an opt-out `ignoreIdentifiers` deny-list and a path-shaped string filter (`./foo`, `node:fs`, `@scope/pkg` get skipped). That's it.
 
-The model is: **high entropy ⇒ probably random ⇒ probably a credential**. It's a permissive heuristic that errs toward false positives. On vercel/ai it flagged 380 findings — including `"experimental_onLanguageModelCallStart"` (entropy 4.04, also a false positive).
+The model is: **high entropy ⇒ probably random ⇒ probably a credential**. It's a permissive heuristic that errs toward false positives. On vercel/ai it flagged 380 findings of its own, and they aren't all clean: a type name like `LanguageModelV2CallOptions` has entropy 4.03 — just over the 4.0 bar — so no-secrets reports it as a secret too.
 
 ### Where entropy fails: three cases that pass the threshold
 
@@ -92,7 +92,7 @@ const stripeKey = "sk_live_testmode1234"; // structural catch: prefix shape
 ```ts
 // Entropy: ~3.3 — scanner silent
 const dbConfig = {
-  password: "correct-horse-battery"  // context catch: property name
+  password: "correct-horse-battery", // context catch: property name
 };
 ```
 
@@ -122,7 +122,7 @@ if (/^[A-Za-z0-9_-]{32,}$/.test(value)) {
 
 That last regex is the FP source. It matches:
 
-- `experimental_onToolExecutionStart` (35 chars) ✓
+- `experimental_onToolExecutionStart` (33 chars) ✓
 - `AI_ToolCallNotFoundForApprovalError` (35 chars) ✓
 - Any TypeScript identifier 32+ chars long ✓
 
@@ -285,8 +285,8 @@ What's the most surprising credential type your team has found hardcoded — and
 
 Two more rule bugs from the same bench sweep, written up separately: [What ground truth caught that unit tests missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) (the smoke-gate piece on three more rules) and [no-cycle finds 0 cycles in next.js](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale) (DFS cache poisoning).
 
-**Foundations:** 842 findings against 0 real secrets isn't just a bad regex — it's what happens when a detector meets a codebase where the thing it hunts is rare. That statistical trap, and the full telling of this 842-FP case, live in [the base-rate problem, explained](https://ofriperetz.dev/articles/base-rate-problem-explained).
+**Foundations:** 842 findings against 0 real secrets isn't just a bad regex — it's what happens when a detector hunts something that's almost absent from the codebase. Why a rare target turns even a decent detector into a false-positive machine is the base-rate problem, and it gets the full statistical telling in [the base-rate problem, explained](https://ofriperetz.dev/articles/base-rate-problem-explained).
 
 ---
 
-*[eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/cwe-taxonomy-explained.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/cwe-taxonomy-explained.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/cwe-taxonomy-explained.jpg?v=2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/cwe-taxonomy-explained.jpg?v=2"
 devto_url: "https://dev.to/ofri-peretz/the-cwe-taxonomy-explained-a-name-is-not-a-verdict-bpl"
 devto_id: 4182372
 title: "The CWE Taxonomy, Explained: A Name Is Not a Verdict"

@@ -27,7 +27,7 @@ author:
 series: null
 ---
 
-247 ESLint rules mapped to the [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) — but most teams automate coverage for only 7 of the 10 categories. Here's which 3 categories have zero or near-zero static analysis coverage in most Node.js projects.
+247 ESLint rules mapped to the [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) — but static analysis genuinely covers only 8 of the 10 categories. The other 2 (Insecure Design, Vulnerable Components) your linter can't touch, no matter what the vendor's "100% coverage" slide says.
 
 Every "100% OWASP coverage by static analysis" slide is off by two — and the
 vendor selling it is counting on you not opening the OWASP page to check. I've
@@ -61,28 +61,30 @@ your own `node_modules`. Don't take mine — or any vendor's — on faith.)
 
 ---
 
+> **Skip to:** [The uncovered gap](#the-uncomfortable-gap-which-categories-your-linter-cant-touch) · [Where source analysis hands off](#a04-and-a06-where-source-analysis-hands-off-to-another-control) · [What a finding looks like](#what-a-finding-looks-like) · [Build your config](#build-your-config-layer-by-layer)
+
 ## The uncomfortable gap: which categories your linter can't touch
 
 Before the map, the insight most teams miss: **A04 (Insecure Design) has zero genuinely automatable ESLint rules** — it's a design problem, not a code problem. The rules listed for it in the table below (`require-secure-defaults`, `no-missing-validation-pipe`) nudge toward safer defaults, but they don't catch the actual A04 vulnerabilities: missing rate limits on money-moving endpoints, replayed workflows, trust boundaries in the wrong place. Those are architectural decisions that happen before a line of code is written.
 
 Most teams don't know this. They install a lint config, see OWASP categories in the output, and assume they're covered. The gap between "we have ESLint" and "we have OWASP coverage" is 247 rules and 2 categories — and no npm package tells you this automatically.
 
-Here's the distribution across all 10 categories (approximate, from the ecosystem at time of writing):
+Here's the rule distribution across all 10 categories — rounded to show the _shape_, not a precise ledger:
 
-| Category | Representative rule count | Coverage type |
-|---|---|---|
-| A03 Injection | ~80 rules | Full (SQL, NoSQL, DOM, LDAP, eval) |
-| A07 Auth Failures | ~40 rules | Full |
-| A02 Crypto Failures | ~35 rules | Full |
-| A05 Misconfiguration | ~30 rules | Full |
-| A01 Broken Access Control | ~25 rules | Full |
-| A08 Data Integrity | ~20 rules | Full |
-| A09 Logging Failures | ~10 rules | Full |
-| A10 SSRF | ~7 rules | Full |
-| A06 Vulnerable Components | ~5 rules | Partial (source hygiene only — not CVE graph) |
-| A04 Insecure Design | ~2 rules | Partial (defaults nudges — not design coverage) |
+| Category                  | Representative rule count | Coverage type                                   |
+| ------------------------- | ------------------------- | ----------------------------------------------- |
+| A03 Injection             | ~80 rules                 | Full (SQL, NoSQL, DOM, LDAP, eval)              |
+| A07 Auth Failures         | ~40 rules                 | Full                                            |
+| A02 Crypto Failures       | ~35 rules                 | Full                                            |
+| A05 Misconfiguration      | ~30 rules                 | Full                                            |
+| A01 Broken Access Control | ~25 rules                 | Full                                            |
+| A08 Data Integrity        | ~20 rules                 | Full                                            |
+| A09 Logging Failures      | ~10 rules                 | Full                                            |
+| A10 SSRF                  | ~7 rules                  | Full                                            |
+| A06 Vulnerable Components | ~5 rules                  | Partial (source hygiene only — not CVE graph)   |
+| A04 Insecure Design       | ~2 rules                  | Partial (defaults nudges — not design coverage) |
 
-A03 alone has more rules than A04, A06, A09, and A10 combined. If your threat model includes Insecure Design, your linter can't help — and that's the category most enterprise security questionnaires ask about first.
+Don't sum that column for a total — the counts are rounded to show the shape, and they drift every release (the title's 247 was the day-one count; these security plugins consolidated to **198 rules by v3.0.2**, measured 2026-05-30). The shape is what survives the drift: A03 alone carries more rules than A04, A06, A09, and A10 combined. If your threat model includes Insecure Design, your linter can't help — and that's the category most enterprise security questionnaires ask about first.
 
 **Slack-quotable version:** 247 ESLint rules for OWASP Top 10 — but A04 (Insecure Design) has 0 automatable rules. If your threat model includes it, your linter can't help.
 
@@ -90,9 +92,7 @@ A03 alone has more rules than A04, A06, A09, and A10 combined. If your threat mo
 
 ## Why teams don't know their coverage
 
-The most common pattern I see: a team picks up `eslint-plugin-security` (or a bundle config), sees it run in CI, and ticks the OWASP box. They never check which categories are actually covered, because nothing tells them.
-
-The gap between "we have ESLint" and "we have OWASP coverage" is 247 rules and 2 uncovered categories — and no npm package tells you this automatically. The only way to know is to do what this article does: map each rule's CWE to its OWASP category and count.
+The most common pattern I see: a team picks up `eslint-plugin-security` (or a bundle config), sees it run in CI, and ticks the OWASP box. They never check _which_ categories actually fire, because nothing tells them — the only way to know is to map each rule's CWE to its OWASP category and count.
 
 If you want to verify your own install right now, skip to the [one-liner at the bottom](#build-your-config-layer-by-layer). It counts every rule across every installed Interlace plugin — the only count that matters is the one your CI prints.
 
@@ -111,7 +111,7 @@ If you want to verify your own install right now, skip to the [one-liner at the 
 | [A07](https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/) | Authentication Failures           | `jwt`, `secure-coding`, `express-security`                    | [`no-algorithm-none`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-algorithm-none), [`no-algorithm-confusion`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/no-algorithm-confusion), [`no-insecure-cookie-options`](https://eslint.interlace.tools/docs/security/plugin-express-security/rules/no-insecure-cookie-options)                              |
 | [A08](https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/)       | Data Integrity Failures           | `secure-coding`, `node-security`                              | [`no-unsafe-deserialization`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-unsafe-deserialization), [`no-zip-slip`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-zip-slip), [`no-unsafe-dynamic-require`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-unsafe-dynamic-require)                     |
 | [A09](https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/)   | Logging Failures                  | `secure-coding`, `lambda-security`                            | [`no-pii-in-logs`](https://eslint.interlace.tools/docs/security/plugin-secure-coding/rules/no-pii-in-logs), [`no-env-logging`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-env-logging), [`no-error-swallowing`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-error-swallowing)                                             |
-| [A10](https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/)           | SSRF                              | `node-security`, `lambda-security`, `browser-security`        | [`no-ssrf`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-ssrf), [`no-user-controlled-requests`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-user-controlled-requests), [`require-url-validation`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/require-url-validation)                          |
+| [A10](https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/)     | SSRF                              | `node-security`, `lambda-security`, `browser-security`        | [`no-ssrf`](https://eslint.interlace.tools/docs/security/plugin-node-security/rules/no-ssrf), [`no-user-controlled-requests`](https://eslint.interlace.tools/docs/security/plugin-lambda-security/rules/no-user-controlled-requests), [`require-url-validation`](https://eslint.interlace.tools/docs/security/plugin-browser-security/rules/require-url-validation)                          |
 
 Each row lists representative rules, not the whole set — A03 alone spans SQL,
 NoSQL, LDAP, XPath, and DOM injection across the four plugins above, plus
@@ -328,7 +328,7 @@ it, and the code that survived review:
 - [`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — SQL injection (A03), connection leaks, the N+1 insert loop
 - [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the A05 attack (CWE-426) most teams have never heard of
 - [I let Claude write 80 functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — what these rules catch when the author is a model, not a person (65–75% had a vuln)
-- [We ranked 5 AI models by security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) — 700 functions, every model leaking 49–73%, scored by 332 of these rules
+- [We ranked 5 AI models by security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) — 700 functions, every model leaking 49–73%, all graded by these same OWASP-tagged rules
 - [OWASP LLM Top 10](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) — the AI list, mapped just as honestly (also 8 of 10)
 
 ---
@@ -348,4 +348,4 @@ Which OWASP Top 10 category are you least confident your CI covers — and have 
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

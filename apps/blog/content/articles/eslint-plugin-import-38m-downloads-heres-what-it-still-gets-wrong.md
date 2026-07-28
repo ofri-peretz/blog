@@ -7,8 +7,8 @@ tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/eslint-plugin-import-has-38m-weekly-downloads-heres-what-it-still-gets-wrong-c94"
 devto_id: 3779858
 published_at: "2026-05-29"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong.jpg?v=2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong.jpg?v=2"
 reading_time_minutes: 9
 tags:
   - "node"
@@ -22,34 +22,36 @@ series: "Inside our linter benchmarks"
 author:
 ---
 
-If anyone on your team has ever set `maxDepth` on `import/no-cycle` for CI speed, your cycle-detection results are lying to you — and the output looks identical to a clean run. Two tools can agree on "0 cycles" and both still be wrong for the same reason: we ran `eslint-plugin-import/no-cycle` against Next.js (131K stars, 14,556 source files) and got **0**; we ran our own rewrite, [`eslint-plugin-import-next`](https://eslint.interlace.tools), against the same repo and also got **0**; only [oxlint](https://oxc.rs/docs/guide/usage/linter.html) disagreed, at **17** — we traced that particular 0-vs-17 gap to edge-counting policy on type-only imports, not a detection difference, so the two ESLint-based tools' "0" holds up on that repo. The `maxDepth` failure is real, it's just not what caused that specific number — and we know because we've shipped it ourselves: the `maxDepth: 10` default that once hid a 12-hop cycle in `webpack-config.ts` was our own rewrite's bug before we fixed it.
+If anyone on your team has ever set `maxDepth` on `import/no-cycle` for CI speed, your cycle-detection results are lying to you — and the output looks identical to a clean run. Nothing in the report distinguishes "we searched the whole graph and found nothing" from "we gave up at hop 10." I know exactly how convincing that silence looks, because I've shipped it: our own rewrite of this rule, [`eslint-plugin-import-next`](https://eslint.interlace.tools), carried a `maxDepth: 10` default (compounded by a cache bug) that reported **0 cycles** across Next.js's 14,556 files while [oxlint](https://oxc.rs/docs/guide/usage/linter.html)'s independent count said **17** — a 12-hop cycle in `webpack-config.ts` sat inside that silence. The full forensic of that wrong zero lives in [its own root-cause writeup](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it); this article is about the part that applies to _your_ config, today, with the upstream plugin everyone already runs.
 
-I'm not writing a hit piece on a maintained project. `eslint-plugin-import` has 38 million weekly downloads and the gap between it and nothing is enormous. But when we audited `no-cycle`'s behavior — first in our own rewrite, then checked it against the upstream plugin — we found three consistent classes of misses: code that is objectively dangerous or broken that the plugin silently passes, none of which show up as a red CI check.
+I'm not writing a hit piece on a maintained project. The title says 38 million weekly downloads; npm's live counter says **51.3M as of 2026-07-18**. I'm leaving the title alone — undercounting the incumbent by 13 million is the kind of error I can live with. The gap between this plugin and nothing is enormous. But when we audited `no-cycle`'s behavior — first in our own rewrite, then checked it against the upstream plugin — we found three consistent classes of misses: code that is objectively dangerous or broken that the plugin silently passes, none of which show up as a red CI check.
 
 > **`no-cycle` has a `maxDepth` option, and any config that sets it below your codebase's actual cycle depth reports a clean run — with no signal that the traversal stopped early.**
 
+**Skip to:** [Miss 1 — `maxDepth`](#miss-1-a-lowered-maxdepth-silently-hides-deep-circular-imports) · [Miss 2 — `no-dynamic-require`](#miss-2-no-dynamic-require-fires-on-syntax-shape-not-risk) · [Miss 3 — `no-unresolved`](#miss-3-no-unresolved-silently-skips-path-alias-imports-including-typos) · [What catches what](#what-catches-what-eslint-plugin-import-misses) · [Reproduce it yourself](#reproduce-it-yourself)
+
 ---
 
-## Miss 1: A `maxDepth` cap on `eslint-plugin-import/no-cycle` hides deep circular imports the moment it's set below your real cycle depth
+## Miss 1: a lowered `maxDepth` silently hides deep circular imports
 
-`import/no-cycle`'s own published default is `Infinity` — full graph traversal, no silent truncation, and on that default the rule works as advertised. We checked whether popular presets quietly override it: `eslint-config-next` doesn't touch `no-cycle` at all, and `eslint-config-airbnb-base` explicitly sets `maxDepth: '∞'` — also unbounded. Neither ships the trap this miss is really about. The trap is that `maxDepth` is a documented, ordinary-looking option, and any team performance-tuning a slow CI run reaches for it first: set a cap, watch runtime drop, ship it. Nothing in the rule's output distinguishes "we searched everything and found nothing" from "we gave up at hop 10."
+`import/no-cycle`'s own published default is `Infinity` — full graph traversal, no silent truncation, and on that default the rule works as advertised. We checked whether popular presets quietly override it: `eslint-config-next` doesn't touch `no-cycle` at all, and `eslint-config-airbnb-base` explicitly sets `maxDepth: '∞'` — also unbounded. Neither ships the trap this miss is really about. The trap is that `maxDepth` is a documented, ordinary-looking option, and any team performance-tuning a slow CI run reaches for it first: set a cap, watch runtime drop, ship it — and from that moment on, the truncated run and the genuinely clean run print the same output.
 
-The Next.js 0-cycles result above isn't an example of this — with the published `Infinity` default, `eslint-plugin-import/no-cycle` and our own `import-next/no-cycle` agreed at 0, and as far as we've been able to verify, that's a correct result for both tools' edge policy (both drop `import type` edges before traversal, so type-only imports that get erased at compile time don't count as runtime cycles). The 0-vs-17 gap against oxlint is a separate, still-open question about edge-counting policy, not a depth-cap miss — we trace that comparison in the [companion root-cause writeup](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it). What *is* a real, reproducible depth-cap miss is what happens the moment anyone — not a preset, a person — sets `maxDepth` to a number lower than the codebase's actual cycle depth, which is a one-line, easy-to-justify change that plenty of teams make under CI-runtime pressure:
+The Next.js zero from the intro wasn't this miss — ours took a caching defect on top of the depth default, and the root-cause writeup linked above traces both, including why the remaining 0-vs-17 gap against oxlint comes down to edge-counting policy on `import type` edges, not detection. This miss is simpler, and entirely config-side: the moment anyone — not a preset, a person — sets `maxDepth` to a number lower than the codebase's actual cycle depth, deeper cycles vanish from the report. It's a one-line, easy-to-justify change that plenty of teams make under CI-runtime pressure:
 
 ```typescript
 // fileA.ts
-import { processUser } from './userProcessor';
+import { processUser } from "./userProcessor";
 
 // userProcessor.ts
-import { formatData } from './dataFormatter';
+import { formatData } from "./dataFormatter";
 
 // dataFormatter.ts
-import { validateSchema } from './schemaValidator';
+import { validateSchema } from "./schemaValidator";
 
 // schemaValidator.ts → ... → 8 more hops ...
 
 // fileK.ts
-import { something } from './fileA'; // ← closes the cycle
+import { something } from "./fileA"; // ← closes the cycle
 ```
 
 **What `eslint-plugin-import/no-cycle` reports:** `0 violations` whenever `maxDepth` is set anywhere in your effective config to a number lower than the cycle's actual length — 10 hops caught by a cap of 10 report nothing wrong at hop 11.
@@ -60,7 +62,7 @@ The fix isn't just "set `maxDepth: Infinity`." It's checking what your effective
 
 ```js
 // eslint.config.js — be explicit, don't trust inherited defaults
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from "eslint-plugin-import";
 
 export default [
   {
@@ -68,19 +70,19 @@ export default [
     rules: {
       // Infinity means traverse the full graph — no silent truncation.
       // If you need a performance cap, set it explicitly and document why.
-      'import/no-cycle': ['error', { maxDepth: Infinity }],
+      "import/no-cycle": ["error", { maxDepth: Infinity }],
     },
   },
 ];
 ```
 
-Run `npx eslint --print-config src/index.ts | grep -A2 no-cycle` (point it at a real source file in your project, not at `eslint.config.js` itself) before you trust any "0 cycles" result — the number that actually runs is whatever your effective config resolves to, not the plugin's own published default. If you want to see how a depth cap can produce a wrong "0" even when nobody set it intentionally, our own rewrite hit a related but distinct bug — a caching defect, not a config cap — on this same Next.js repo, [written up in full here](https://dev.to/ofri-peretz/no-cycle-finds-0-cycles-in-nextjs-and-other-lies-caches-tell-you-3ld8), with the [root-cause trace of the 0-vs-17 gap against oxlint](https://ofriperetz.dev/articles/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it) in the follow-up.
+Run `npx eslint --print-config src/index.ts | grep -A2 no-cycle` (point it at a real source file in your project, not at `eslint.config.js` itself) before you trust any "0 cycles" result — the number that actually runs is whatever your effective config resolves to, not the plugin's own published default. And if nobody set a cap and you still don't trust a clean zero: good instinct — that's what the [cache-poisoning story](https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale) is for.
 
-AI-generated barrel-file re-exports make a capped `maxDepth` worse at hiding this, not better — the same graph-blindness we measured directly [across 60 AI-generated functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), where 65-75% shipped a vulnerability the model had no way to see coming.
+AI-generated barrel-file re-exports make a capped `maxDepth` worse at hiding this, not better: assistants optimize the local diff and manufacture deep import chains no reviewer walks. It's the same failure class we measured in [our AI-codegen study](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities), where 65-75% of generated functions shipped a vulnerability that never showed in the diff.
 
 ---
 
-## Miss 2: `no-dynamic-require` fires on syntax shape, not risk, so its signal-to-noise ratio makes it unusable in a real codebase
+## Miss 2: `no-dynamic-require` fires on syntax shape, not risk
 
 `eslint-plugin-import` does ship a rule for this: `import/no-dynamic-require` flags any `require()` call with a non-literal argument. That's not the miss — the miss is that the rule has no mechanism to distinguish a safe pattern from a dangerous one, which means its real-world signal-to-noise ratio is bad enough that I've watched three separate teams turn it off entirely within a month of enabling it.
 
@@ -88,9 +90,8 @@ Here's the code `no-dynamic-require` flags, both cases, identically:
 
 ```javascript
 // Both lines below get flagged identically by import/no-dynamic-require
-const moduleName = process.env.NODE_ENV === 'production'
-  ? './prod-config'
-  : './dev-config';
+const moduleName =
+  process.env.NODE_ENV === "production" ? "./prod-config" : "./dev-config";
 
 const config = require(moduleName); // Flagged by no-dynamic-require — but this is safe
 
@@ -133,7 +134,7 @@ const config = require(moduleName);
 
 ---
 
-## Miss 3: `eslint-plugin-import/no-unresolved` silently skips path-alias imports it can't resolve, including typos
+## Miss 3: `no-unresolved` silently skips path-alias imports, including typos
 
 `eslint-plugin-import/no-unresolved` is supposed to catch imports of modules that don't exist. In practice, it has a meaningful false-negative rate on path aliases, monorepo workspaces, and TypeScript path mappings — and it's the strongest of the three misses here because the failure condition is precise and the canary test below takes ten seconds to run.
 
@@ -143,10 +144,10 @@ Try the canary against your own repo before reading further: add `import { X } f
 // tsconfig.json has: { "paths": { "@app/*": ["./src/*"] } }
 
 // This import resolves correctly at runtime (TypeScript + bundler handle it)
-import { UserService } from '@app/services/user';
+import { UserService } from "@app/services/user";
 
 // This import has a typo — 'servics' doesn't exist
-import { AuthService } from '@app/servics/auth'; // ← typo
+import { AuthService } from "@app/servics/auth"; // ← typo
 ```
 
 **What `eslint-plugin-import/no-unresolved` reports:** No violation on either import. Because `@app/*` isn't a real Node.js module path, the default resolver can't walk it, so it skips resolution entirely on both — including the one with the typo.
@@ -157,13 +158,13 @@ import { AuthService } from '@app/servics/auth'; // ← typo
 
 ```js
 // eslint.config.js — tell the resolver about your path aliases
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from "eslint-plugin-import";
 
 export default [
   {
     plugins: { import: importPlugin },
     settings: {
-      'import/resolver': {
+      "import/resolver": {
         typescript: {
           // Reads tsconfig.json path mappings — resolves @app/* correctly
           alwaysTryTypes: true,
@@ -172,7 +173,7 @@ export default [
       },
     },
     rules: {
-      'import/no-unresolved': 'error',
+      "import/no-unresolved": "error",
     },
   },
 ];
@@ -190,19 +191,21 @@ Running `eslint-plugin-import` across the repos in our [ILB benchmark suite](htt
 
 - **3 rule categories** where the plugin consistently misses what other tools catch (cycle depth after a manual `maxDepth` cap, dynamic-require noise, alias resolution)
 - **Both `eslint-config-next` and `eslint-config-airbnb-base` leave `no-cycle` at its unbounded default** (Next.js's config doesn't touch the rule at all; Airbnb's explicitly sets `maxDepth: '∞'`) — so the miss isn't a preset trap, it's what happens the moment a human lowers the cap for CI speed and nothing warns them what got sacrificed
-- Anecdotally, teams that add a `maxDepth` cap or disable `no-cycle` on large repos most often cite CI runtime, not false positives — consistent with the performance gap we measured: [at 5,000 files, `eslint-plugin-import-next` runs 54.9x faster on `no-cycle`](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster). A rule that's slow enough to cap or disable is a rule that doesn't protect you.
+- Anecdotally, teams that add a `maxDepth` cap or disable `no-cycle` on large repos most often cite CI runtime, not false positives — consistent with the performance gap we measured: [at 5,000 files, `no-cycle` runs 54.8x faster on `eslint-plugin-import-next` — 148.59s → 2.71s](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster) (`eslint-plugin-import@2.32.0` vs `import-next@2.3.3`, measured 2026-01-02, n=3). A rule that's slow enough to cap or disable is a rule that doesn't protect you.
 
 ---
 
 ## What catches what eslint-plugin-import misses
 
-| Miss | What catches it |
-|---|---|
-| Deep circular imports (a manually lowered `maxDepth`) | Explicit `maxDepth: Infinity` + `--print-config` before you trust a "0 cycles" result, or [`import-next/no-cycle`](https://eslint.interlace.tools) |
-| Dynamic `require()` noise hiding the dangerous case | Keep both `import/no-dynamic-require` and [`security/detect-non-literal-require`](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h) on, require a reason on every disable |
-| Alias resolution false negatives | `eslint-import-resolver-typescript` + explicit resolver settings |
+| Miss                                                  | What catches it                                                                                                                                                                                                                 |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deep circular imports (a manually lowered `maxDepth`) | Explicit `maxDepth: Infinity` + `--print-config` before you trust a "0 cycles" result, or [`import-next/no-cycle`](https://eslint.interlace.tools)                                                                              |
+| Dynamic `require()` noise hiding the dangerous case   | Keep both `import/no-dynamic-require` and [`security/detect-non-literal-require`](https://ofriperetz.dev/articles/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h) on, require a reason on every disable |
+| Alias resolution false negatives                      | `eslint-import-resolver-typescript` + explicit resolver settings                                                                                                                                                                |
 
-{% cta https://www.npmjs.com/package/eslint-plugin-import-next %}Install eslint-plugin-import-next{% endcta %}
+::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-import-next"}
+`npm i -D eslint-plugin-import-next` — the drop-in rewrite, if any of the three misses above is live in your repo.
+::
 
 ---
 
@@ -236,19 +239,19 @@ For the resolver miss, the canary test:
 
 ## When eslint-plugin-import is enough — and when to add a layer
 
-We rewrote this plugin's rule surface from scratch to benchmark it, which means we've now shipped our own version of every miss above at some point — the `maxDepth: 10` default that hid `webpack-config.ts`'s cycle was ours before we fixed it. 38M downloads means `eslint-plugin-import` is the default choice not because these gaps don't exist, but because they're narrow enough, and rare enough to notice, that most teams ship for years without hitting one. Download count is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics) — it measures adoption, not correctness, and adoption is exactly the kind of number that keeps looking healthy while a capped `maxDepth` reports clean.
+We rewrote this plugin's rule surface from scratch to benchmark it, which means we've now shipped our own version of every miss above at some point — the depth default that hid a 12-hop cycle was ours before we fixed it. Fifty-one million weekly downloads means `eslint-plugin-import` is the default choice not because these gaps don't exist, but because they're narrow enough, and rare enough to notice, that most teams ship for years without hitting one. Download count is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics) — it measures adoption, not correctness, and adoption is exactly the kind of number that keeps looking healthy while a capped `maxDepth` reports clean.
 
 But none of the three misses above are exotic. They show up wherever `maxDepth` gets lowered for CI speed and nobody checks what depth it's actually hiding, wherever a broad security rule gets disabled for being too noisy, and wherever ESLint runs before the type checker does. If you're using `eslint-plugin-import` as your only import safety net, it's worth knowing exactly where the net has holes — and running the canaries above takes less time than reading the rest of this sentence.
 
 ---
 
-*Run this right now: `npx eslint --print-config src/index.ts | grep -A2 no-cycle` (swap in any real source file from your project) — reply below with the `maxDepth` that comes back. If it's a finite number and you don't know who set it, that's worth an afternoon of tracing.*
+_Run this right now: `npx eslint --print-config src/index.ts | grep -A2 no-cycle` (swap in any real source file from your project) — reply below with the `maxDepth` that comes back. If it's a finite number and you don't know who set it, that's worth an afternoon of tracing._
 
 ---
 
-*Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/39642) series:*
-*← [What Ground Truth Caught That Unit Tests Missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) | [eslint-plugin-import-next: Up to 100x Faster →](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster)*
+_Part of the [Inside our linter benchmarks](https://dev.to/ofri-peretz/series/39642) series:_
+_← [What Ground Truth Caught That Unit Tests Missed](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed) | [eslint-plugin-import-next: Up to 100x Faster →](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster)_
 
 ---
 
-*[eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · More at [ofriperetz.dev](https://ofriperetz.dev) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-import-next](https://www.npmjs.com/package/eslint-plugin-import-next) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · More at [ofriperetz.dev](https://ofriperetz.dev) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

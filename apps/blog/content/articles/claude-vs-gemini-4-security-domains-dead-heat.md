@@ -20,24 +20,26 @@ author:
 
 The interesting result isn't who won. It's that across four security domains, Claude and Gemini missed **the same hardening steps** — and if you've shipped AI-generated auth middleware this year, your code almost certainly has the same gaps, and your review didn't catch them either.
 
-For the record, the scoreboard: **one Gemini win, two ties, one split — a statistical dead heat.** That's the last time the _winner_ matters in this article.
+For the record, the scoreboard: **one Gemini win, two ties, one split — a [statistical dead heat](https://ofriperetz.dev/articles/statistical-significance-p-value).** That's the last time the _winner_ matters in this article.
 
-Here's the number that should bother you more than any leaderboard: across 700 AI-generated functions scored by the rules I'm about to use, **63% shipped a vulnerability**. So "which model writes more secure code?" is mostly the wrong question — I've [run that leaderboard myself](https://dev.to/ofri-peretz/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong-5a4o) and argued it's the wrong frame. But people keep asking it, so I ran it properly — on the ESLint security plugins I wrote specifically to catch these bugs, each mapped to a CWE — to show you what actually matters.
+Here's the number that should bother you more than any leaderboard: across 700 AI-generated functions scored by the rules I'm about to use, **63% shipped a vulnerability**. So "which model writes more secure code?" is mostly the wrong question — I've [run that leaderboard myself](https://dev.to/ofri-peretz/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong-5a4o) and argued it's the wrong frame. But people keep asking it, so I ran it properly — on the ESLint security plugins I wrote specifically to catch these bugs, each mapped to a [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — to show you what actually matters.
+
+**Skip to:** [The scorecard](#the-scorecard) · [JWT round](#round-2--jwt-a-55-tie-missing-the-identical-rfc-8725-steps) · [MongoDB round](#round-3--mongodb-both-leaked-passwords-neither-got-injected) · [Injection round](#round-4--general-injection-the-count-lies) · [When the tie inverts](#the-honest-caveat-task-type-changes-everything) · [What it means](#what-this-actually-means)
 
 ## The setup
 
-Four domains, four of my plugins. For each, the _same_ feature-only prompt (no "make it secure" hint — that's how people actually use these tools), generated once by **Gemini 2.5 Flash via the Gemini CLI** and once by **Claude Sonnet 4.6 via the Claude CLI**, then linted with the domain's plugin on `recommended`.
+Four domains, four of my plugins. For each, the _same_ feature-only prompt (no "make it secure" hint — that's how people actually use these tools), generated once by **Gemini 2.5 Flash via the Gemini CLI** and once by **Claude Sonnet 4.6 via the Claude CLI**, then linted with the domain's plugin on `recommended` (both CLI runs, May 2026).
 
-_Method honesty: this is Gemini **Flash** vs Claude **Sonnet** — the comparable price/latency tier each vendor's CLI defaults to (Pro and Opus are a separate bracket; more on that below). It compares CLI tooling, system prompt included, not raw models under controlled decoding. n=1 per domain — but I re-ran the JWT round, and both models landed on 5 findings again with the same core misses, so treat these as directional with stable failure modes, not ±0 gospel._
+_Method honesty: this is Gemini **Flash** vs Claude **Sonnet** — the comparable price/latency tier each vendor's CLI defaults to (Pro and Opus are a separate bracket; more on that below). It compares CLI tooling, system prompt included, not raw models under controlled decoding. [n=1 per domain](https://ofriperetz.dev/articles/sample-size-and-statistical-power) — but I re-ran the JWT round, and both models landed on 5 findings again with the same core misses, so treat these as directional with stable failure modes, not ±0 gospel._
 
 ## The scorecard
 
-| Domain | Prompt | Plugin | Gemini | Claude |
-|---|---|---|---|---|
-| **NestJS** service | users + auth + admin | `nestjs-security` | **2** | 6 |
-| **JWT** auth | login + verify middleware | `jwt` | 5 | 5 |
-| **MongoDB** data layer | Mongoose model + search | `mongodb-security` | 8 | 8 |
-| **General API** (injection) | import + search + reset | `secure-coding` | 9 | 13\* |
+| Domain                      | Prompt                    | Plugin             | Gemini | Claude |
+| --------------------------- | ------------------------- | ------------------ | ------ | ------ |
+| **NestJS** service          | users + auth + admin      | `nestjs-security`  | **2**  | 6      |
+| **JWT** auth                | login + verify middleware | `jwt`              | 5      | 5      |
+| **MongoDB** data layer      | Mongoose model + search   | `mongodb-security` | 8      | 8      |
+| **General API** (injection) | import + search + reset   | `secure-coding`    | 9      | 13\*   |
 
 One Gemini win, two dead heats, one split. The frontier security gap is **smaller than the discourse suggests** — and the count is the least interesting number here.
 
@@ -53,13 +55,13 @@ In an opinionated framework, Gemini defaults to the secure idiom. Hold that thou
 
 Both wrote clean `jsonwebtoken` code: a signed login token, middleware that _verifies_ (no `jwt.decode` shortcut, no `alg: none`, no hardcoded secret — every catastrophic JWT footgun avoided by both). Then both stopped at exactly the same place:
 
-| `jwt` rule | CWE | Gemini | Claude |
-|---|---|---|---|
-| [`require-algorithm-whitelist`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/require-algorithm-whitelist) | CWE-757 | ✗ | ✗ |
-| [`require-audience-validation`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/require-audience-validation) | CWE-287 | ✗ | ✗ |
-| `require-issuer-validation` | CWE-287 | ✗ | ✗ |
-| `require-max-age` | CWE-294 | ✗ | ✗✗ |
-| `no-sensitive-payload` | CWE-359 | ✗ | — |
+| `jwt` rule                                                                                                                 | CWE     | Gemini | Claude |
+| -------------------------------------------------------------------------------------------------------------------------- | ------- | ------ | ------ |
+| [`require-algorithm-whitelist`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/require-algorithm-whitelist) | CWE-757 | ✗      | ✗      |
+| [`require-audience-validation`](https://eslint.interlace.tools/docs/security/plugin-jwt/rules/require-audience-validation) | CWE-287 | ✗      | ✗      |
+| `require-issuer-validation`                                                                                                | CWE-287 | ✗      | ✗      |
+| `require-max-age`                                                                                                          | CWE-294 | ✗      | ✗✗     |
+| `no-sensitive-payload`                                                                                                     | CWE-359 | ✗      | —      |
 
 Here's _why it survives review_: a reviewer reading `jwt.verify(token, secret)` sees a verify call and ships it. Nobody asks the next question — verifies _for whom?_ Without an `audience` option, a token your service minted for a _different_ API sails straight through. That blind spot is exactly what `require-audience-validation` encodes, and it's why both models — and most human review — walk past it. Call the round 5–5.
 
@@ -69,21 +71,21 @@ The finding that should make you check your own repo first: both models wrote th
 
 ```typescript
 // Both models, essentially:
-const results = await User.find(filter);   // ships passwordHash to the caller
+const results = await User.find(filter); // ships passwordHash to the caller
 // the fix neither wrote:
-const results = await User.find(filter).select('-passwordHash').lean();
+const results = await User.find(filter).select("-passwordHash").lean();
 ```
 
 That's `require-projection` (CWE-200) and `no-select-sensitive-fields` firing on both sides. The pleasant surprise: the prompt hands a user-supplied search object straight into a Mongoose query — a textbook `$where`/operator-injection trap — and **both models sidestepped it.** Zero `no-operator-injection`, zero `no-unsafe-where`, zero `no-unsafe-query` on either side. The frontier has internalized "don't interpolate untrusted input into a query." It just hasn't internalized "don't hand back the password column."
 
-| `mongodb-security` rule | CWE | Gemini | Claude |
-|---|---|---|---|
-| `require-schema-validation` | CWE-20 | ✗✗✗ | ✗ |
-| [`require-projection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-projection) | CWE-200 | ✗ | ✗✗ |
-| `require-lean-queries` | CWE-400 | ✗ | ✗✗ |
-| `no-select-sensitive-fields` | CWE-200 | ✗ | ✗✗ |
-| `no-unbounded-find` | CWE-400 | ✗ | — |
-| `no-bypass-middleware` | CWE-284 | ✗ | ✗ |
+| `mongodb-security` rule                                                                                               | CWE     | Gemini | Claude |
+| --------------------------------------------------------------------------------------------------------------------- | ------- | ------ | ------ |
+| `require-schema-validation`                                                                                           | CWE-20  | ✗✗✗    | ✗      |
+| [`require-projection`](https://eslint.interlace.tools/docs/security/plugin-mongodb-security/rules/require-projection) | CWE-200 | ✗      | ✗✗     |
+| `require-lean-queries`                                                                                                | CWE-400 | ✗      | ✗✗     |
+| `no-select-sensitive-fields`                                                                                          | CWE-200 | ✗      | ✗✗     |
+| `no-unbounded-find`                                                                                                   | CWE-400 | ✗      | —      |
+| `no-bypass-middleware`                                                                                                | CWE-284 | ✗      | ✗      |
 
 Different distribution, same total (8–8) — but one cell deserves an honest call-out, because it cuts _against_ my own headline: `require-schema-validation` fired **three times on Gemini and once on Claude**. Here, Claude was the more disciplined one — it wired up more of Mongoose's schema-level validation, where Gemini leaned on looser typing. "Gemini is frontier-grade" doesn't mean "Gemini wins every cell"; this is a cell it lost. (And yes, `require-lean-queries` is CWE-400, not classic injection — `.lean()` returns plain objects instead of hydrated Mongoose documents, and on an unbounded search that's a real memory-exhaustion lever, which is why it's scored as a resource control, not a nice-to-have.)
 
@@ -93,12 +95,16 @@ Different distribution, same total (8–8) — but one cell deserves an honest c
 
 ```typescript
 // Claude's reset flow — CWE-208, timing-unsafe:
-if (providedToken === storedToken) { /* ...reset... */ }
+if (providedToken === storedToken) {
+  /* ...reset... */
+}
 
 // The fix — hash both to a fixed length first, then compare:
-import { createHash, timingSafeEqual } from 'crypto';
-const hash = (s: string) => createHash('sha256').update(s).digest();
-if (timingSafeEqual(hash(providedToken), hash(storedToken))) { /* ...reset... */ }
+import { createHash, timingSafeEqual } from "crypto";
+const hash = (s: string) => createHash("sha256").update(s).digest();
+if (timingSafeEqual(hash(providedToken), hash(storedToken))) {
+  /* ...reset... */
+}
 // Direct timingSafeEqual(Buffer.from(a), Buffer.from(b)) throws if lengths differ,
 // leaking token length to an attacker — always normalise lengths first.
 ```
@@ -115,7 +121,7 @@ Before anyone screenshots "Gemini ties Claude on security" — that holds for _r
 
 Strip out the leaderboard and two things are left:
 
-1. **Gemini is a frontier-grade secure default.** It tied or beat Claude in three of four domains, won the framework round outright, and never shipped a high-severity injection or auth-bypass bug — no NoSQL operator injection, no `alg: none`, no `jwt.decode`-without-verify, no `eval`, no hardcoded credentials, in any domain. (The lone _introduced_ vulnerability was Claude's timing-unsafe token comparison — CWE-208. In fairness it's probably the _lower_-risk finding here: a high-entropy token compared after a DB lookup is hard to attack through network jitter, and the _latent_ gap both models share — an unpinned JWT algorithm with no `aud`/`iss` validation — is the one most appsec engineers would patch first. "Hardening" undersells it; I'm flagging it as the missing control, not as harmless.) If you're building with Gemini, you're starting from a credible security baseline.
+1. **Gemini is a frontier-grade secure default.** It tied or beat Claude in three of four domains, won the framework round outright, and never shipped a [high-severity](https://ofriperetz.dev/articles/cvss-scores-explained) injection or auth-bypass bug — no NoSQL operator injection, no `alg: none`, no `jwt.decode`-without-verify, no `eval`, no hardcoded credentials, in any domain. (The lone _introduced_ vulnerability was Claude's timing-unsafe token comparison — CWE-208. In fairness it's probably the _lower_-risk finding here: a high-entropy token compared after a DB lookup is hard to attack through network jitter, and the _latent_ gap both models share — an unpinned JWT algorithm with no `aud`/`iss` validation — is the one most appsec engineers would patch first. "Hardening" undersells it; I'm flagging it as the missing control, not as harmless.) If you're building with Gemini, you're starting from a credible security baseline.
 2. **No frontier model is security-_complete_.** The misses weren't random — they were the _same_ negative-space hardening (algorithm allowlists, audience validation, query projections, schema validation, auth) that no model infers from a feature prompt, because the prompt never named it. That gap doesn't close with a better model. It closes with a tool that checks the constraints you didn't write down.
 
 Which is the whole point of static analysis: it asks the questions your prompt didn't.
@@ -124,15 +130,15 @@ Which is the whole point of static analysis: it asks the questions your prompt d
 
 ```javascript
 // eslint.config.mjs
-import jwt from 'eslint-plugin-jwt';
-import mongodbSecurity from 'eslint-plugin-mongodb-security';
-import nestjsSecurity from 'eslint-plugin-nestjs-security';
-import secureCoding from 'eslint-plugin-secure-coding';
-import tsParser from '@typescript-eslint/parser';
+import jwt from "eslint-plugin-jwt";
+import mongodbSecurity from "eslint-plugin-mongodb-security";
+import nestjsSecurity from "eslint-plugin-nestjs-security";
+import secureCoding from "eslint-plugin-secure-coding";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
   // TypeScript parser so decorators and types resolve
-  { files: ['**/*.ts'], languageOptions: { parser: tsParser } },
+  { files: ["**/*.ts"], languageOptions: { parser: tsParser } },
   // Each plugin ships a flat `recommended` preset (plugin + rules)
   jwt.configs.recommended,
   mongodbSecurity.configs.recommended,

@@ -13,7 +13,7 @@ social_image: "https://ofriperetz.dev/og/article/database-connection-leak-produc
 reading_time_minutes: 9
 tags:
   - "node"
-  - "database"
+  - "eslint"
   - "devsecops"
   - "security"
 reactions: 0
@@ -36,9 +36,9 @@ At 3:02 AM, PagerDuty fired. API response time had climbed to 18 seconds. Then t
 FATAL: too many connections for role "app_user"
 ```
 
-We had a 100-connection pool and normal traffic. 47 minutes later — after ruling out a Postgres config change, a traffic spike, and a memory leak in the wrong service — we had the root cause: **3 lines of code that every code review had approved.**
+We had a 100-connection pool and normal traffic. 47 minutes later — after ruling out a Postgres config change, a traffic spike, and a memory leak in the wrong service — we had the root cause: **3 lines of code that every code review had approved, running quietly in production for months.**
 
-A single missing `client.release()` in the catch path is enough to exhaust a 10-connection pool under production load — and TypeScript won't catch it.
+A single missing `client.release()` is enough to exhaust a 10-connection pool under production load — and TypeScript won't catch it.
 
 ## The leak
 
@@ -75,13 +75,16 @@ connects, it queries, it returns the rows. Every line that's present does the
 right thing. The bug is a line that **isn't there** — and a diff shows you what
 was added, not what was forgotten.
 
-There's a subtler reason too. The leak isn't in the happy path — it's in the
-`finally`-less catch path. Reviewers trusted that `pool.connect()` borrows a
-client and the query uses it. What they missed: `pool.connect()` can succeed
-(checking out a client) and then `client.query()` can throw — and if
-`client.release()` isn't in a `finally` block, that client is gone permanently.
-The leak happens on the error path that reviewers rarely exercise mentally.
-That's the structural omission: a `finally` that was never written.
+There's a subtler reason too — and it's the one that outlives even a careful
+reviewer. The function above leaks on _every_ call: the release was never
+written at all. But picture the disciplined fix — someone adds
+`client.release()` right after the query, before the `return`. The happy path is
+now spotless. Then `client.query()` throws — a constraint violation, a dropped
+socket, a statement timeout — and control jumps straight over that release to
+the caller. The client is gone, this time only when a query fails under load:
+the one condition your tests never simulate. A `release()` that isn't in a
+`finally` is one that runs precisely when you didn't need the guarantee — which
+is why the fix below is a `finally`, not a line pasted before `return`.
 
 It also passed every test. A leak doesn't fail the first request, or the
 hundredth. It fails the _N-thousandth_ concurrent checkout, after the pool is
@@ -117,8 +120,12 @@ docker run -d --name pg-leak -e POSTGRES_PASSWORD=demo -e POSTGRES_DB=demo \
 // leak.js — the exact bug, in a loop. pool max = 10.
 const { Pool } = require("pg");
 const pool = new Pool({
-  host: "localhost", port: 55432, user: "postgres",
-  password: "demo", database: "demo", max: 10,
+  host: "localhost",
+  port: 55432,
+  user: "postgres",
+  password: "demo",
+  database: "demo",
+  max: 10,
   connectionTimeoutMillis: 0, // default: wait forever (no timeout)
 });
 
@@ -178,8 +185,8 @@ async function getUserOrders(userId) {
 }
 ```
 
-The `finally` is the key: if `client.query()` throws, the catch path still
-executes `client.release()` before the error propagates. Without it, the error
+The `finally` is the key: if `client.query()` throws, the `finally` block still
+runs `client.release()` before the error propagates. Without it, the throwing
 path leaks the client permanently.
 
 Better still — a single-shot query doesn't need a manual checkout at all.
@@ -231,7 +238,7 @@ leak.js
 > identifier; the OWASP label is a secondary cross-reference.
 
 > **What it actually checks — and what it doesn't.** The rule is deliberately
-> AST-structural: it finds `const client = await pool.connect()` and flags it
+> AST-structural — a [structural heuristic, not taint tracking](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) — it finds `const client = await pool.connect()` and flags it
 > when **no `client.release()` call references that client anywhere in scope** —
 > the overwhelmingly common leak (the release that was simply never written). It
 > does _not_ prove your release runs on every branch or sits in a `finally` —
@@ -398,4 +405,4 @@ Have you ever traced a production incident to a resource leak that passed all yo
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
