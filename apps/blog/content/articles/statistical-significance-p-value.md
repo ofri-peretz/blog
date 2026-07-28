@@ -38,7 +38,7 @@ Formally: p = P(data this extreme | null is true). The conditioning only runs on
 
 The question is domain-blind: it reads identically for two drugs on the same trial, two spam filters on the same mailbox, or two blackjack systems over the same shoe.
 
-The 0.05 threshold is a convention, not physics — Fisher proposed it in _Statistical Methods for Research Workers_ (1925) as a convenient working line, and it stuck. Nothing in the world changes between p = 0.049 and p = 0.051. Declare the threshold before the test; report the actual value either way.
+The 0.05 threshold is a convention, not physics — Fisher proposed it in *Statistical Methods for Research Workers* (1925) as a convenient working line, and it stuck. Nothing in the world changes between p = 0.049 and p = 0.051. Declare the threshold before the test; report the actual value either way.
 
 ## What a p-Value Does Not Mean {#what-p-does-not-mean}
 
@@ -50,7 +50,7 @@ The list of things a p-value is not is longer than the list of things it is. Gre
 
 **And p > 0.05 does not prove there is no difference.** This is the misconception this article exists to kill. Non-significant means this data, at this sample size, could not distinguish the difference from noise. Absence of evidence is not evidence of absence — whether the test could even have detected a real effect is a question of [sample size and statistical power](https://ofriperetz.dev/articles/sample-size-and-statistical-power). A drug trial that reports p = 0.20 has not proven the drug useless; it failed to separate drug from placebo at the size it was run.
 
-The misuse got bad enough that the American Statistical Association issued a formal position statement on a single statistical method (Wasserstein & Lazar, 2016), and one journal — _Basic and Applied Social Psychology_ — banned p-values outright in 2015. When a field's own body has to publish "here is what our most-used tool does not mean," the problem is structural.
+The misuse got bad enough that the American Statistical Association issued a formal position statement on a single statistical method (Wasserstein & Lazar, 2016), and one journal — *Basic and Applied Social Psychology* — banned p-values outright in 2015. When a field's own body has to publish "here is what our most-used tool does not mean," the problem is structural.
 
 ## The χ² Test: Three Variants, One Null Result {#the-chi-squared-case}
 
@@ -62,15 +62,15 @@ Publishing that is less noble than it sounds — the temptation runs the other w
 
 ## Comparing Two Tools on the Same Cases {#comparing-tools-on-the-same-corpus}
 
-The three-variant comparison used independent groups: each session belongs to one variant. Head-to-head evaluations are a different shape: two tools scored on the _same_ items — say two screening tests read on the same 200 patients, test A flagging 30 and test B 24. That is paired data, and an independent-samples χ² is the wrong test. McNemar's (1947) is the right one: ignore every patient the two tests agree on and look only at the disagreement cells — b = patients A caught and B missed, c = the reverse. The statistic is (b−c)²/(b+c), one degree of freedom, critical value 3.841.
+The three-variant comparison used independent groups: each session belongs to one variant. Head-to-head evaluations are a different shape: two tools scored on the *same* items — say two screening tests read on the same 200 patients, test A flagging 30 and test B 24. That is paired data, and an independent-samples χ² is the wrong test. McNemar's (1947) is the right one: ignore every patient the two tests agree on and look only at the disagreement cells — b = patients A caught and B missed, c = the reverse. The statistic is (b−c)²/(b+c), one degree of freedom, critical value 3.841.
 
-Say the disagreements split b = 12, c = 6. McNemar's statistic is (12−6)²/(12+6) = 36/18 = 2.0 — under 3.841. "Test A significantly beats test B" is unsupportable, even though 30 flags versus 24 looks decisive: the totals never answer, only the disagreements do. Flip it — if every disagreement points one way, b = 26, c = 0, the statistic is 26²/26 = 26, significant under any test. That is a gap, not noise. The b and c counts come straight from per-item [confusion-matrix bookkeeping](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn), and this is the exact test any head-to-head leaderboard owes you before claiming one entrant _significantly_ beats its neighbor rather than merely outscoring it — [worked on a real corpus here](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark).
+Say the disagreements split b = 12, c = 6. McNemar's statistic is (12−6)²/(12+6) = 36/18 = 2.0 — under 3.841. "Test A significantly beats test B" is unsupportable, even though 30 flags versus 24 looks decisive: the totals never answer, only the disagreements do. Flip it — if every disagreement points one way, b = 26, c = 0, the statistic is 26²/26 = 26, significant under any test. That is a gap, not noise. The b and c counts come straight from per-item [confusion-matrix bookkeeping](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn), and this is the exact test any head-to-head leaderboard owes you before claiming one entrant *significantly* beats its neighbor rather than merely outscoring it — [worked on a real corpus here](https://ofriperetz.dev/articles/eslint-security-fn-fp-benchmark).
 
 ## When Not to Run a Significance Test {#when-not-to-test}
 
 Every significance test assumes a sampling story: the data is a random draw from some population, and the test models the noise sampling introduces. Without a sampling story, a p-value is theater.
 
-A complete census has no sampling story. A quality inspector who tests every one of the 40 units in a fixed production batch and finds 4 defective has measured _that batch_ exactly — 4 of 40, no test needed. Wrap it in a p-value and you are answering a question nobody asked, because the batch was not a random draw from anything. What the exact count does not license is a leap to "4% of all units ever" — how far a fixed sample generalizes is a power question, not a significance one.
+A complete census has no sampling story. A quality inspector who tests every one of the 40 units in a fixed production batch and finds 4 defective has measured *that batch* exactly — 4 of 40, no test needed. Wrap it in a p-value and you are answering a question nobody asked, because the batch was not a random draw from anything. What the exact count does not license is a leap to "4% of all units ever" — how far a fixed sample generalizes is a power question, not a significance one.
 
 The checkout test earned its p-value because a genuine random process exists: each visitor is a draw from the stream of future visitors, and rerunning it returns different people. The rule of thumb: if you cannot name the population your data samples from, do not reach for a p-value. Report the exact number and its scope, and let it be what it is.
 
@@ -82,33 +82,33 @@ A p-value is a narrow tool with one honest job: stopping you from selling noise 
 
 ## Quick Reference {#quick-reference}
 
-| You want to claim                                   | Right move                                                 | Wrong move                                    |
-| --------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------- |
-| "The difference between independent groups is real" | χ² on the contingency table; declare α before testing      | Eyeballing raw counts                         |
-| "Tool A beats tool B on the same items"             | McNemar's test on the disagreement cells (b, c)            | Independent-samples χ² on the totals          |
-| "p > 0.05, so they are equal"                       | Say "not distinguishable at this sample size"; check power | Claiming proof of no difference               |
-| "p < 0.05, so it matters"                           | Report effect size alongside p                             | Treating significance as importance           |
-| "We measured every unit in a fixed batch"           | Report the exact number and its scope; no test             | Wrapping a complete census in a p-value       |
-| "Variant C beats A and B" (three-way test)          | 3×2 χ², df = 2: 1.10 < 5.991 → publish the null            | Slicing the data until something crosses 0.05 |
+| You want to claim | Right move | Wrong move |
+|---|---|---|
+| "The difference between independent groups is real" | χ² on the contingency table; declare α before testing | Eyeballing raw counts |
+| "Tool A beats tool B on the same items" | McNemar's test on the disagreement cells (b, c) | Independent-samples χ² on the totals |
+| "p > 0.05, so they are equal" | Say "not distinguishable at this sample size"; check power | Claiming proof of no difference |
+| "p < 0.05, so it matters" | Report effect size alongside p | Treating significance as importance |
+| "We measured every unit in a fixed batch" | Report the exact number and its scope; no test | Wrapping a complete census in a p-value |
+| "Variant C beats A and B" (three-way test) | 3×2 χ², df = 2: 1.10 < 5.991 → publish the null | Slicing the data until something crosses 0.05 |
 
-_If this is the kind of page you will want open mid-argument, bookmark it — and [follow me on Dev.to](https://dev.to/ofri-peretz) to catch the next one in the series._
+*If this is the kind of page you will want open mid-argument, bookmark it — and [follow me on Dev.to](https://dev.to/ofri-peretz) to catch the next one in the series.*
 
 ---
 
 ## References
 
-Wasserstein, R. L., & Lazar, N. A. (2016). [The ASA Statement on p-Values: Context, Process, and Purpose](https://doi.org/10.1080/00031305.2016.1154108). _The American Statistician_, 70(2), 129–133. Six principles from the field's own professional body; principle 2 — "p-values do not measure the probability that the studied hypothesis is true" — is the direction-of-conditioning error in one line.
+Wasserstein, R. L., & Lazar, N. A. (2016). [The ASA Statement on p-Values: Context, Process, and Purpose](https://doi.org/10.1080/00031305.2016.1154108). *The American Statistician*, 70(2), 129–133. Six principles from the field's own professional body; principle 2 — "p-values do not measure the probability that the studied hypothesis is true" — is the direction-of-conditioning error in one line.
 
-Greenland, S., Senn, S. J., Rothman, K. J., Carlin, J. B., Poole, C., Goodman, S. N., & Altman, D. G. (2016). [Statistical tests, P values, confidence intervals, and power: a guide to misinterpretations](https://doi.org/10.1007/s10654-016-0149-3). _European Journal of Epidemiology_, 31, 337–350. The catalog of 25 misinterpretations. Read it before reviewing anything with a p in it.
+Greenland, S., Senn, S. J., Rothman, K. J., Carlin, J. B., Poole, C., Goodman, S. N., & Altman, D. G. (2016). [Statistical tests, P values, confidence intervals, and power: a guide to misinterpretations](https://doi.org/10.1007/s10654-016-0149-3). *European Journal of Epidemiology*, 31, 337–350. The catalog of 25 misinterpretations. Read it before reviewing anything with a p in it.
 
-Fisher, R. A. (1925). _Statistical Methods for Research Workers_. Oliver & Boyd. Where the 0.05 convention comes from — notable for how loosely Fisher himself held the line that later hardened into dogma.
+Fisher, R. A. (1925). *Statistical Methods for Research Workers*. Oliver & Boyd. Where the 0.05 convention comes from — notable for how loosely Fisher himself held the line that later hardened into dogma.
 
-McNemar, Q. (1947). [Note on the sampling error of the difference between correlated proportions or percentages](https://doi.org/10.1007/BF02295996). _Psychometrika_, 12(2), 153–157. The paired-proportions test — the correct tool whenever two systems are scored on the same items.
+McNemar, Q. (1947). [Note on the sampling error of the difference between correlated proportions or percentages](https://doi.org/10.1007/BF02295996). *Psychometrika*, 12(2), 153–157. The paired-proportions test — the correct tool whenever two systems are scored on the same items.
 
-Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). [The extent and consequences of p-hacking in science](https://doi.org/10.1371/journal.pbio.1002106). _PLOS Biology_, 13(3), e1002106. Text-mined p-value distributions across disciplines; the empirical case that selective analysis is widespread, and why pre-declared tests and published nulls matter.
+Head, M. L., Holman, L., Lanfear, R., Kahn, A. T., & Jennions, M. D. (2015). [The extent and consequences of p-hacking in science](https://doi.org/10.1371/journal.pbio.1002106). *PLOS Biology*, 13(3), e1002106. Text-mined p-value distributions across disciplines; the empirical case that selective analysis is widespread, and why pre-declared tests and published nulls matter.
 
 ---
 
-_Foundations series: ← [Sample size & power](https://ofriperetz.dev/articles/sample-size-and-statistical-power) · [hub](https://ofriperetz.dev/foundations) · [Ranking vs measuring](https://ofriperetz.dev/articles/ranking-vs-measuring) →_
+*Foundations series: ← [Sample size & power](https://ofriperetz.dev/articles/sample-size-and-statistical-power) · [hub](https://ofriperetz.dev/foundations) · [Ranking vs measuring](https://ofriperetz.dev/articles/ranking-vs-measuring) →*
 
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*

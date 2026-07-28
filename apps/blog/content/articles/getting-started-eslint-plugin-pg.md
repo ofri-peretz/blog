@@ -105,7 +105,7 @@ await client.query(`COPY staging FROM '${req.body.filePath}'`);
 ```ts
 // ✅ validate against an allow-list of permitted paths, or use COPY FROM STDIN
 const ALLOWED_DIRS = ["/var/app/imports/"];
-if (!ALLOWED_DIRS.some((dir) => filePath.startsWith(dir))) {
+if (!ALLOWED_DIRS.some(dir => filePath.startsWith(dir))) {
   throw new Error("Disallowed import path");
 }
 await client.query("COPY staging FROM $1", [filePath]); // Note: COPY FROM STDIN avoids filesystem exposure entirely
@@ -259,4 +259,4 @@ Run `configs.recommended` against your oldest `pg` service — the one written b
 
 ---
 
-_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*

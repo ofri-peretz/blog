@@ -54,7 +54,7 @@ This is the shape of browser security debt: **it looks identical to correct code
 
 **`eslint-plugin-browser-security` is 45 rules for that surface** — every one pinned to a [CWE](https://ofriperetz.dev/articles/cwe-taxonomy-explained), firing in CI before the code ships. The rest of this article is what those findings actually look like, how they survive review, and how to add the guard.
 
-> _A static linter catches the dangerous pattern the moment it enters the codebase — not after the pentest, not after the postmortem._
+> *A static linter catches the dangerous pattern the moment it enters the codebase — not after the pentest, not after the postmortem.*
 
 ---
 
@@ -219,10 +219,10 @@ secrets](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
 
 Two rules in the table address credentials leaking through URLs, and both carry CWEs that are easy to confuse with adjacent weakness classes:
 
-| Rule                             | Correct CWE | What it catches                                                                                                            |
-| -------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Rule                             | Correct CWE | What it catches |
+| -------------------------------- | ----------- | --------------- |
 | `no-credentials-in-query-params` | CWE-598     | API keys, tokens, passwords passed as query string parameters — visible in server logs, browser history, `Referer` headers |
-| `no-password-in-url`             | CWE-598     | Password values embedded in the URL itself — same exposure path                                                            |
+| `no-password-in-url`             | CWE-598     | Password values embedded in the URL itself — same exposure path |
 
 CWE-598 is "Use of GET Request Method With Sensitive Query Strings." Credentials in a URL are not hard-coded credentials (CWE-798, which is secrets baked into source at compile time) — they are credentials exposed through an insecure transmission path. The distinction matters when you're triaging against a CVE database or writing a security report: filing the wrong CWE causes the finding to get deprioritized or dismissed.
 
@@ -233,7 +233,7 @@ fetch(`https://api.example.com/data?api_key=${apiKey}`);
 
 // ✅ send credentials in the Authorization header
 fetch("https://api.example.com/data", {
-  headers: { Authorization: `Bearer ${apiKey}` },
+  headers: { Authorization: `Bearer ${apiKey}` }
 });
 ```
 
@@ -483,7 +483,7 @@ What's the most dangerous DOM manipulation pattern you've shipped that a reviewe
 
 ---
 
-_[eslint-plugin-browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+*[eslint-plugin-browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
 
 ---
 
@@ -499,5 +499,5 @@ client-side layer.
 **The Hardened Stack series** — guarding one request end to end:
 
 ← _Issuing side:_ [eslint-plugin-jwt — the server that signs the token](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)
-· **You are here:** the browser that stores it ·
+ · **You are here:** the browser that stores it ·
 _Next:_ [What 12 seconds of ESLint found in an inherited NestJS codebase](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities) →
