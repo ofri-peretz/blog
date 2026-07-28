@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -113,14 +114,17 @@ export default async function ArticlePage(props: PageProps) {
             data-slot="article-cover"
             className="mb-8 overflow-hidden rounded-lg border border-border"
           >
-            <img
+            {/* next/image, not <img>: routes through Vercel's optimizer so the
+                cover is served as AVIF/WebP at the viewer's width. Measured on a
+                real cover: 245 KB PNG → 43 KB AVIF. `priority` keeps it eager —
+                this is the LCP element. */}
+            <Image
               src={fm.cover_image}
               alt=""
               width={1000}
               height={420}
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
+              priority
+              sizes="(max-width: 768px) 100vw, 768px"
               className="w-full object-cover"
             />
           </div>

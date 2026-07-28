@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import * as React from "react";
 import {
   Heart,
@@ -239,19 +240,17 @@ function CoverImage({
 }) {
   if (imageUrl) {
     return (
-      <img
+      // next/image serves AVIF/WebP at the tile's real width instead of
+      // shipping the full-size cover to a thumbnail. `fill` because the
+      // parent is already sized; `priority` still marks above-fold tiles.
+      <Image
         src={imageUrl}
         alt=""
-        width={1000}
-        height={420}
-        loading={priority ? "eager" : "lazy"}
-        // `fetchpriority` is the lowercase DOM attr name; React 19 normalizes
-        // either casing, but lowercase is the canonical HTML form and avoids
-        // hydration mismatches across SSR/CSR.
-        fetchPriority={priority ? "high" : "auto"}
-        decoding="async"
+        fill
+        priority={priority}
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         className={cn(
-          "h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105",
+          "object-cover object-center transition-transform duration-500 group-hover:scale-105",
           className,
         )}
       />

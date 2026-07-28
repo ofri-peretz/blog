@@ -7,8 +7,8 @@ tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-was-happy-eslint-found-6-security-holes-51nj"
 devto_id: 3775020
 published_at: "2026-05-29"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/vy002e9l20wx9h7nutzq.png"
-social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/vy002e9l20wx9h7nutzq.png"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-wrote-nestjs-service-eslint-found-6-security-holes.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-wrote-nestjs-service-eslint-found-6-security-holes.jpg"
 reading_time_minutes: 10
 tags:
   - "ai"

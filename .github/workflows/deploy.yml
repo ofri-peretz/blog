@@ -1,17 +1,13 @@
 name: Deploy production
 
-# Build + deploy entirely on GitHub Actions (free/unlimited on public repos),
-# so we never spend Vercel build minutes or preview-deploy quota. Vercel only
-# receives the *prebuilt* output. With `github.enabled: false` in vercel.json,
-# Vercel's GitHub app no longer auto-builds, previews, or posts PR statuses —
-# this workflow is the sole production-deploy path.
+# The only path from `main` to ofriperetz.dev.
 #
-# Gated: the deploy steps run only after build + test + lint pass, so a broken
-# visualization or missing artifact fails CI before anything ships.
+# Build and test run here on GitHub Actions (free on public repos); Vercel
+# receives only the prebuilt output. `github.enabled: false` in vercel.json
+# keeps Vercel's own GitHub app from building or previewing anything.
 #
-# Required secrets: VERCEL_ORG_ID, VERCEL_PROJECT_ID (repo-level) and
-# VERCEL_TOKEN (scoped to the `production` GitHub environment, so no other
-# job or workflow can read it).
+# Secrets: VERCEL_ORG_ID + VERCEL_PROJECT_ID (repo-level), VERCEL_TOKEN
+# (scoped to the `production` environment so nothing else can read it).
 
 on:
   push:
@@ -22,60 +18,185 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+env:
+  APEX: ofriperetz.dev
+  SITE_URL: https://ofriperetz.dev
+  VERCEL_CLI_VERSION: 54.20.1
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Cap the job so a wedged `vercel build`/upload fails fast instead of
-    # hanging up to GitHub's 6h default (observed a ~25min stall before a
-    # production auth error surfaced).
-    timeout-minutes: 35
+    timeout-minutes: 20
     environment:
       name: production
-      url: https://ofriperetz.dev
+      url: https://ofriperetz.dev  # must be a literal; env is not available here
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # ── Setup ────────────────────────────────────────────────────────────
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - run: npm install --no-audit --no-fund --include=optional
+          # v7 auto-caches when package.json declares a packageManager, then
+          # hard-fails on the missing lockfile this repo deliberately does not
+          # commit. The Restore npm cache step below covers ~/.npm instead,
+          # keyed on manifests rather than a lockfile.
+          package-manager-cache: false
 
-      # ── Gates (must pass before deploy) ──────────────────────────────
-      # Same order as ci.yml: build first, so a compile error surfaces as a
-      # named Build failure instead of later inside `vercel build`.
-      - name: Build
-        run: npm run build
+      # The lockfile is intentionally uncommitted (exact versions come from
+      # .npmrc) so linux never inherits darwin native bindings — which rules
+      # out setup-node's lockfile-keyed cache, but not caching the npm
+      # download dir. Keyed on the manifests that decide what gets installed.
+      - name: Restore npm cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package.json', 'apps/*/package.json', '.npmrc') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --include=optional
+
+      # ── Gates: nothing ships unless these pass ───────────────────────────
       - name: Test
         run: npm run test
-      - name: Lint (eslint + oxlint)
+
+      - name: Lint
         run: npm run lint
 
-      # ── Build on GHA, deploy prebuilt output to Vercel production ─────
-      # Pinned: a fresh `vercel@latest` resolve on every deploy would let a
-      # breaking or compromised release silently change deploy behavior.
-      # This is the only workflow that installs the Vercel CLI.
+      # ── Build ────────────────────────────────────────────────────────────
+      # Only `vercel build` runs: it produces .vercel/output AND fails on the
+      # same compile errors `npm run build` would catch, so running both just
+      # built the app twice. CI already gates build on the PR.
       - name: Install Vercel CLI
-        run: npm i -g vercel@54.20.1
-      # Run the Vercel CLI from the repo root: the project's Root Directory
-      # setting is apps/blog and the CLI resolves it relative to the CWD, so
-      # running inside apps/blog doubled the path (apps/blog/apps/blog).
-      # --token is passed explicitly on every call — the CLI does not read a
-      # VERCEL_TOKEN env var.
+        run: npm i -g vercel@${{ env.VERCEL_CLI_VERSION }}
+
+      # Must run from the repo root: the project's Root Directory is apps/blog
+      # and the CLI resolves it relative to CWD (running inside apps/blog gives
+      # apps/blog/apps/blog). --token is explicit; the CLI ignores the env var.
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - name: Build + deploy prebuilt to production
-        # Explicit promote (2026-07-19): production deployments were completing
-        # Ready WITHOUT taking ofriperetz.dev — an opaque promotion pin that
-        # survived autoAssignCustomDomains=true and lastRollbackTarget=null
-        # (see agents/footprint/incident-ledger.md, "production apex was
-        # PINNED"). Waiting for Ready and promoting explicitly makes
-        # main -> apex deterministic regardless of platform pin state.
-        # (--no-wait removed: promote 422s on a not-yet-ready deployment.)
+
+      - name: Build
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ env.SITE_URL }}
+
+      # ── Deploy ───────────────────────────────────────────────────────────
+      # Two separate flags, both needed — conflating them cost several runs:
+      #   --skip-domain  disables auto-aliasing (we alias ourselves below)
+      #   --no-wait      returns as soon as the deployment is queued
+      # Without --no-wait the CLI blocks on "Running Checks…", which never
+      # resolve here: ssoProtection (all_except_custom_domains) puts every
+      # *.vercel.app URL behind an SSO redirect the checks cannot get past.
+      # That hung ten deploys. Since we no longer wait, the next step polls
+      # for READY itself before promoting.
+      - name: Deploy
+        id: deploy
+        timeout-minutes: 8
         run: |
-          NEXT_PUBLIC_SITE_URL=https://ofriperetz.dev vercel build --prod --token="$VERCEL_TOKEN"
-          URL=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
-          echo "deployed: $URL"
-          vercel promote "$URL" --yes --token="$VERCEL_TOKEN"
+          set -euo pipefail
+          # Snapshot what the apex serves now, so the verify step can prove it
+          # actually moved rather than guessing.
+          echo "apex_build_id=$(curl -sf "https://$APEX/_next/BUILD_ID" || true)" >> "$GITHUB_OUTPUT"
+
+          url=$(vercel deploy --prebuilt --prod --skip-domain --no-wait --token="$VERCEL_TOKEN" | tail -1)
+          [ -n "$url" ] || { echo "::error::vercel deploy returned no URL"; exit 1; }
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "deployed: $url"
+
+      # The apex has a promotion pin that has silently swallowed promotes
+      # before (see incident-ledger.md). `alias set` is a different API path,
+      # so try it when promote does not take.
+      - name: Promote to apex
+        timeout-minutes: 5
+        env:
+          # Via env, never inlined into the script: `${{ }}` is substituted as
+          # text before bash parses the line, so a value containing a quote
+          # would break out of it (CWE-78).
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          # --no-wait means the deployment may still be building. Poll for
+          # READY (its own state, not the checks) before promoting.
+          # Poll the REST API, not `vercel inspect`: the CLI prints an
+          # ANSI-coloured, title-case "status  ● Ready" line that is fragile to
+          # parse (an earlier grep for /READY/ matched nothing and every poll
+          # read "unknown"). readyState is a plain uppercase enum.
+          # 24 x 10s = 240s, inside this step's 5m budget.
+          # Strip any trailing slash first: on "https://host/" a bare
+          # ${URL##*/} would yield an empty id and every poll would 4xx.
+          id="${URL%/}"; id="${id##*/}"
+          [ -n "$id" ] || { echo "::error::could not derive deployment id from '$URL'"; exit 1; }
+          state=""
+          for _ in $(seq 1 24); do
+            state=$(curl -sf -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v13/deployments/${id}?teamId=${VERCEL_ORG_ID}" \
+              | python3 -c 'import sys,json;print(json.load(sys.stdin).get("readyState",""))' 2>/dev/null || true)
+            echo "  deployment state: ${state:-unknown}"
+            case "$state" in
+              READY) break ;;
+              ERROR|CANCELED) echo "::error::deployment ended in $state"; exit 1 ;;
+            esac
+            sleep 10
+          done
+
+          # Never promote something that never reached READY — falling through
+          # would alias the apex to a half-built deployment.
+          if [ "$state" != "READY" ]; then
+            echo "::error::$URL stuck in '${state:-unknown}' after 240s; not promoting."
+            exit 1
+          fi
+
+          vercel promote "$URL" --yes --token="$VERCEL_TOKEN" \
+            || vercel alias set "$URL" "$APEX" --token="$VERCEL_TOKEN" \
+            || echo "promote and alias both failed — the verify step decides"
+
+      # A green promote has historically meant nothing: deployments reached
+      # Ready while the apex kept serving a six-day-old build. So check.
+      #
+      # 30s, not minutes. An alias swap is a routing change that either took
+      # or did not — it does not "warm up". Waiting longer only delays a
+      # failure we already know how to act on.
+      #
+      # The deployment URL sits behind SSO (ssoProtection covers every
+      # *.vercel.app host), so its BUILD_ID is unreadable from CI. Compare the
+      # apex against itself instead: capture before promote, expect it to
+      # change after. Same signal, no protected URL involved.
+      - name: Verify apex serves this build
+        timeout-minutes: 2
+        env:
+          BEFORE: ${{ steps.deploy.outputs.apex_build_id }}
+        run: |
+          set -euo pipefail
+          echo "apex build id before deploy: ${BEFORE:-<unreadable>}"
+
+          # If BEFORE was unreadable (apex down, first deploy, BUILD_ID not
+          # exposed) a changed id proves nothing — any non-empty value would
+          # "differ" from empty. Fall back to asserting the apex is simply
+          # serving, and say so, rather than reporting a verification we did
+          # not actually perform.
+          for _ in $(seq 1 6); do
+            now=$(curl -sf "https://$APEX/_next/BUILD_ID" || true)
+            if [ -n "$now" ]; then
+              if [ -z "$BEFORE" ]; then
+                echo "apex is up (build $now) — no pre-deploy id to compare, promotion UNVERIFIED"
+                exit 0
+              fi
+              if [ "$now" != "$BEFORE" ]; then
+                echo "apex verified: build id moved $BEFORE -> $now"
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+
+          echo "::error::https://$APEX still serves build '${before:-unknown}' after promote."
+          echo "::error::The apex is pinned. Promote manually in the Vercel dashboard"
+          echo "::error::(Project → Deployments), then re-run this workflow."
+          exit 1

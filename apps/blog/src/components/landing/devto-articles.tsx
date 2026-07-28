@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -88,18 +89,18 @@ export function DevToArticles({
                   className="group flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:bg-muted/40"
                 >
                   {cover ? (
-                    // Raw <img> matches the article page (next.config has
-                    // no remotePatterns for dev.to media). 16:9 keeps CLS=0.
+                    // next/image: dev.to media hosts are allowlisted in
+                    // next.config remotePatterns. 16:9 keeps CLS=0.
                     <div
                       data-slot="article-card-cover"
-                      className="aspect-video w-full overflow-hidden bg-muted"
+                      className="relative aspect-video w-full overflow-hidden bg-muted"
                     >
-                      <img
+                      <Image
                         src={cover}
                         alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                       />
                     </div>
                   ) : (

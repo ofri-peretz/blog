@@ -1,12 +1,13 @@
 ---
 devto_url: "https://dev.to/ofri-peretz/the-false-positive-tax-a-11-tpfp-analysis-of-eslint-plugin-security-1kkg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-security-fn-fp-benchmark.jpg"
 devto_id: 3241882
 title: "1.5M Weekly Downloads, 1 False Alarm per Real Bug: the eslint-plugin-security False-Positive Tax"
 description: "The most-installed security linter on npm flags one safe pattern for every real vulnerability it catches — a 1:1 true-positive-to-false-positive ratio at 27.5% recall. Six plugins benchmarked side-by-side, with the false-positive code samples that train teams to ignore the tool."
 slug: "eslint-security-fn-fp-benchmark"
 published: true
 date: 2026-02-08
-cover_image: https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7f2bcys47t9v6chwuj00.png
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-security-fn-fp-benchmark.jpg"
 tags:
   - "security"
   - "eslint"
