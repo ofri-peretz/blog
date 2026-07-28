@@ -1,16 +1,16 @@
 ---
-title: "PostgreSQL Injection in Node.js: 4 Patterns That Pass Code Review (and the Rules That Don't Let Them)"
-description: "SQL injection (CVSS 9.8), search_path schema hijacking (CVSS 9.5), COPY FROM filesystem access (CWE-73), and pool connection leaks — four node-postgres vulnerabilities that survive review every time, and the 13 ESLint rules that catch them before CI goes green."
+title: "PostgreSQL Injection in Node.js: 4 Patterns That Pass Code Review, and the 13 Rules That Catch Them"
+description: "SQL injection (CVSS 9.8), search_path schema hijacking (CVSS 7.5), COPY FROM filesystem access (CVSS 9.5), and pool connection leaks (CWE-404) — four node-postgres patterns that survive review every time, and the 13 ESLint rules in eslint-plugin-pg v1.4.6 that turn all four into CI errors. Install, config, and what each finding means."
 slug: "getting-started-eslint-plugin-pg"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg"
 tier: "TUTORIAL"
 devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43pj"
 devto_id: 3138840
 published_at: "2025-12-31T18:45:40Z"
-edited_at: "2026-01-11T10:21:52Z"
+edited_at: "2026-07-28T00:00:00Z"
 cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-pg"
 social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-pg"
-reading_time_minutes: 10
+reading_time_minutes: 12
 tags:
   - "security"
   - "node"
@@ -24,9 +24,35 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-> **Every SQL injection vulnerability that reached production had passing tests and an approved PR.** The bug was never the code that looked suspicious — it was the code that looked fine.
+> **Four `pg` patterns that pass code review every time.** One dev dependency turns all four into CI errors. Here is the sixty-second install, then each pattern, why it survives review, and the rule that stops it.
 
-`node-postgres` (`pg`) is a thin, honest driver. It hands you a connection and runs whatever SQL you give it, including the SQL you should never have built. Here are four patterns that pass code review consistently, why each one survives, and the ESLint rule that catches it before your CI goes green.
+`node-postgres` (`pg`) is a thin, honest driver. It hands you a connection and runs whatever SQL you give it, including the SQL you should never have built. It has no opinion about the difference — which means the opinion has to live somewhere else. Your linter is the cheapest place to put it.
+
+---
+
+## Install it first (60 seconds)
+
+```bash
+npm install --save-dev eslint-plugin-pg
+```
+
+Flat config (`eslint.config.js`):
+
+```js
+import { configs } from "eslint-plugin-pg";
+
+export default [
+  configs.recommended, // all 13 rules
+];
+```
+
+Run it:
+
+```bash
+npx eslint .
+```
+
+That is the entire setup. Everything below is what the 13 rules are actually for.
 
 ---
 
@@ -50,20 +76,28 @@ pool.query("SELECT * FROM users WHERE email = $1", [req.query.email]);
 pool.query("SELECT * FROM users WHERE id = $1", [userId]);
 ```
 
-`no-unsafe-query` flags string concatenation and interpolated template literals in `query()` calls. Parameterized queries (`$1`, `$2`) send values over the wire separately from the statement, so they can never change its structure.
+`no-unsafe-query` flags string concatenation and interpolated template literals in `query()` calls. Parameterized queries (`$1`, `$2`) send values over the wire separately from the statement, so they can never change its structure. The rule ships tagged [CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained) with a [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) base score of 9.8 (v1.4.6).
 
-This is also the rule that earns its keep against AI-generated code. In [my benchmark across five frontier models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), the database category was the bloodiest: Gemini 2.5 Pro shipped a vulnerability in **96%** of its database functions, Sonnet in **71%**. The template-literal form isn't an edge case — it's the modal answer. The model learned from the same public code that ships these bugs.
+It also catches the split-line form, which is the one that actually reaches production:
 
-> **Share this:** `node-postgres` won't parameterize your queries for you. One template literal is all it takes for a CVSS 9.8 SQL injection to pass code review with a green CI.
+```ts
+// ❌ still flagged — the taint is tracked across the assignment
+const sql = "SELECT * FROM users WHERE id = " + userId;
+await client.query(sql);
+```
+
+That is [taint tracking](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) across the assignment, not a pattern match on the `query()` argument — a generic "no string concatenation" rule cannot follow the variable, so it misses exactly the version a reviewer misses.
+
+This is also the rule that earns its keep against AI-generated code. In [my five-model benchmark](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) (700 generated functions, run 2026-02-09), the database category was the bloodiest: Gemini 2.5 Pro shipped a flagged pattern in **96%** of its database functions, Claude Sonnet 4.5 in **71%**. Caveat worth stating: that 96% counts hardening rules like `no-select-all` alongside the real injection sinks, and [counting sinks only collapses it toward Sonnet's 71%](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain). Either way, the template-literal form is the modal answer, not an edge case — the models learned from the same public code that ships these bugs.
 
 ---
 
-## Pattern 2: Dynamic `SET search_path` (CVSS 9.5, CWE-426)
+## Pattern 2: Dynamic `SET search_path` (CVSS 7.5, CWE-426)
 
 **The vulnerable code:**
 
 ```ts
-// ❌ no-unsafe-search-path (CWE-426, CVSS 9.5, CRITICAL)
+// ❌ no-unsafe-search-path (CWE-426, CVSS 7.5) — prints CRITICAL, see below
 await client.query(`SET search_path TO tenant_${tenantId}`);
 ```
 
@@ -87,14 +121,16 @@ await client.query(format("SET search_path TO %I", schema));
 
 `no-unsafe-search-path` ([CWE-426](https://ofriperetz.dev/articles/cwe-taxonomy-explained)) makes the dynamic form a CI error. The durable fix is to remove the dynamic value: a static `search_path`, an allow-listed schema, or fully qualified names like `schema.accounts`.
 
+You will notice something the moment this rule fires: it prints `CRITICAL` next to a base score of 7.5, which is the High band. [My own audit of 203 rules caught that](https://ofriperetz.dev/articles/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score) — 16% of our severity words had drifted from their scores, in both directions, and this is one of them. Fix filed, not yet shipped. So: gate CI on the numeric score, never on the severity word. Advice worth taking from a linter that just failed its own spelling test.
+
 ---
 
-## Pattern 3: `COPY FROM` with untrusted path (CWE-73)
+## Pattern 3: `COPY FROM` with untrusted path (CVSS 9.5, CWE-73)
 
 **The vulnerable code:**
 
 ```ts
-// ❌ no-unsafe-copy-from (CWE-73)
+// ❌ no-unsafe-copy-from (CWE-73, CVSS 9.5)
 await client.query(`COPY staging FROM '${req.body.filePath}'`);
 ```
 
@@ -103,15 +139,26 @@ await client.query(`COPY staging FROM '${req.body.filePath}'`);
 **The ESLint rule:**
 
 ```ts
-// ✅ validate against an allow-list of permitted paths, or use COPY FROM STDIN
-const ALLOWED_DIRS = ["/var/app/imports/"];
-if (!ALLOWED_DIRS.some(dir => filePath.startsWith(dir))) {
-  throw new Error("Disallowed import path");
-}
-await client.query("COPY staging FROM $1", [filePath]); // Note: COPY FROM STDIN avoids filesystem exposure entirely
+// ✅ COPY FROM STDIN — the client streams the bytes, the server
+//    never touches its own filesystem
+import { from as copyFrom } from "pg-copy-streams";
+import { createReadStream } from "node:fs";
+import { resolve } from "node:path";
+import { pipeline } from "node:stream/promises";
+
+const IMPORT_DIR = "/var/app/imports/";
+const filePath = resolve(IMPORT_DIR, req.body.fileName); // resolve first
+if (!filePath.startsWith(IMPORT_DIR)) throw new Error("Disallowed import path");
+
+await pipeline(
+  createReadStream(filePath),
+  client.query(copyFrom("COPY staging FROM STDIN")),
+);
 ```
 
-`no-unsafe-copy-from` (CWE-73) flags dynamic path values in `COPY FROM` statements. The safest fix is `COPY FROM STDIN`, which streams data from the client rather than reading server-side files.
+Two details bite people here. `COPY` is a utility statement, so it takes no bind parameters at all — `COPY staging FROM $1` is a syntax error, the same trap as `SET search_path = $1` in Pattern 2, and the same reason people fall back to interpolation. And resolve the path _before_ comparing it: a raw `filePath.startsWith(dir)` check happily accepts `/var/app/imports/../../etc/passwd`.
+
+`no-unsafe-copy-from` (CWE-73, CVSS 9.5) flags dynamic path values in `COPY FROM`. `STDIN` is the durable fix because it moves the read to the client, where the file paths are yours.
 
 ---
 
@@ -135,13 +182,11 @@ try {
 **The ESLint rule:**
 
 ```ts
-// ✅ release in finally — always runs regardless of success or failure
+// ✅ release in finally — runs on return, on throw, on every branch
 const client = await pool.connect();
 try {
   const result = await client.query("SELECT ...");
   return result.rows;
-} catch (err) {
-  throw err;
 } finally {
   client.release(); // guaranteed
 }
@@ -155,33 +200,23 @@ return result.rows;
 
 ---
 
-## Here's the guard that catches all of this in CI
+## Picking a preset, and reading the output
 
-One install. `configs.recommended` enables all 13 rules:
-
-```bash
-npm install --save-dev eslint-plugin-pg
-```
-
-Flat config (`eslint.config.js`):
+Three presets ship, and the one you want depends on whether you are adopting or gating:
 
 ```js
 import { configs } from "eslint-plugin-pg";
 
 export default [
-  configs.recommended, // all 13 rules
-  // configs.flagship,  // just no-unsafe-query
-  // configs.strict,    // all 13, max severity
+  configs.recommended, // all 13 rules — 9 error, 4 warn
+  // configs.flagship,  // just no-unsafe-query — the CI-gate subset
+  // configs.strict,    // all 13 as errors
 ];
 ```
 
-Run it:
+Before you wire this into a pipeline: `recommended` sets the four quality rules (`check-query-params`, `no-select-all`, `prefer-pool-query`, `no-batch-insert-loop`) to `warn`, so they surface without failing a build that only blocks on errors. A first run on an old service should not be a wall. Switch to `strict` when you want them to gate.
 
-```bash
-npx eslint .
-```
-
-Findings carry the CWE, OWASP category, [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained), and fix:
+Findings carry the CWE, [OWASP](https://ofriperetz.dev/articles/owasp-top-10-explained) category, [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained), and fix:
 
 ```text
 src/users.ts
@@ -191,7 +226,7 @@ src/users.ts
 
 ---
 
-## The full rule set (all 13, CWE-tagged)
+## The full rule set (all 13, v1.4.6, CWE-tagged)
 
 | Rule                        | Catches                                    | CWE      |
 | --------------------------- | ------------------------------------------ | -------- |
@@ -226,16 +261,17 @@ src/users.ts
 
 ## What it does — and doesn't — see
 
-- **Source patterns, not the database.** It flags interpolated SQL, dynamic `SET search_path`, and missing `release()`. It can't see your actual schema, your `GRANT`s, or whether a tenant value is _really_ attacker-controlled — it errs toward flagging dynamic SQL so you make the call explicitly.
+- **Source patterns, not the database.** It flags interpolated SQL, dynamic `SET search_path`, and missing `release()`. It can't see your actual schema, your `GRANT`s, or whether a tenant value is _really_ attacker-controlled.
+- **It errs toward flagging dynamic SQL.** A deliberate trade: it buys [recall](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) with the occasional [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) on a value you know is safe. A missed injection ships; a wrong flag costs thirty seconds and an `eslint-disable` line with a reason on it. Budget for a handful on the first run of an old codebase.
 - **Pair it with the database's own defenses.** Least-privilege roles, `REVOKE CREATE ON SCHEMA public`, and qualified names are the runtime half; the linter ensures the source half never regresses.
 
 ---
 
 ## Where this fits in the broader picture
 
-For the deeper injection taxonomy — concat, identifiers, and the `IN (...)` trap — see [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint). For where static analysis fits into the broader security workflow across an onboarding sprint, see [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
+For where static analysis fits into the broader security workflow across an onboarding sprint, see [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
-Generic security linters flag `eval` and obvious string-built SQL, but they don't know what a `Pool`, a `client.release()`, or `SET search_path` _is_. `eslint-plugin-pg` is the dedicated node-postgres layer — injection, the `search_path` resolution attack, the `COPY FROM` filesystem path, and the connection-lifecycle bugs that cause outages — each finding tagged with a CWE and CVSS.
+Generic security linters flag `eval` and obvious string-built SQL, but they don't know what a `Pool`, a `client.release()`, or `SET search_path` _is_ — that gap between a general-purpose linter and a driver-aware one is [the whole static-analysis-versus-linting question](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) in miniature. `eslint-plugin-pg` is the dedicated node-postgres layer — injection, the `search_path` resolution attack, the `COPY FROM` filesystem path, and the connection-lifecycle bugs that cause outages — each finding tagged with a CWE and CVSS.
 
 This is the install-and-config entry point for the **Postgres Security Protocol** series. Each rule here has a deep-dive companion:
 
@@ -251,12 +287,14 @@ This is the install-and-config entry point for the **Postgres Security Protocol*
 - 📖 [Full rule docs (per-rule CWE + examples)](https://eslint.interlace.tools/docs/security/plugin-pg/rules)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
 
-Run `configs.recommended` against your oldest `pg` service — the one written before the team had conventions — and one of these 13 will almost certainly fire. **Have you ever had a SQL injection close call in a `pg` codebase — a query that got as far as staging before someone caught it? What pattern was it?** Drop it in the comments.
+Run `configs.recommended` against your oldest `pg` service — the one written before the team had conventions — and one of these 13 will almost certainly fire. That is the good outcome: the patterns were already there, and now they have names, scores, and line numbers. Fix the errors, read the warnings, ship. Then read [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) for the layer underneath this one — the identifier case and the `IN (...)` trap that survive a naive parameterization pass.
 
-::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub if your `pg` code matches any of the above.
+**Have you ever had a SQL injection close call in a `pg` codebase — a query that got as far as staging before someone caught it? What pattern was it?** Drop it in the comments.
+
+::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-pg"}
+📦 `npm install --save-dev eslint-plugin-pg` — 13 rules, one dev dependency.
 ::
 
 ---
 
-*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

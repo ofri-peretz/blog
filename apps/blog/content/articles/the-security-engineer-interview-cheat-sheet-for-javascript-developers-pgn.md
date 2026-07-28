@@ -1,5 +1,5 @@
 ---
-title: "13 Security Questions Every JS Interview Asks — and Why Reciting Them Won't Stop You Shipping the Bug"
+title: "13 Security Questions Every JS Interview Asks — and the 9 ESLint Rules That Answer Them in CI"
 description: "The 13 security concepts that come up in senior JavaScript/Node interviews — SQLi, XSS, CSRF, JWT, prototype pollution, ReDoS, timing attacks — each with the bad-vs-good code, the CWE, and the exact ESLint rule that stops your AI assistant (and you) from shipping the bad version anyway."
 slug: "the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn"
 canonical_url: "https://ofriperetz.dev/articles/the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn"
@@ -27,36 +27,35 @@ author:
 series: null
 ---
 
-I've interviewed 50+ backend and full-stack engineers across these 13 questions, and the pattern is
-relentless: **the candidates who define these vulnerabilities flawlessly are the
-same people whose PRs I later flag for the exact bug they just defined.** Security
-questions show up in almost every loop now — even for roles that aren't labeled
-"security" — and they all test recall. None of them test the thing that
-actually ships the bug: what your editor autocompletes at 5pm on a Friday.
+I've run 50+ backend and full-stack loops across these 13 questions, and the pattern doesn't
+break: **the candidates who define these vulnerabilities flawlessly are the same people whose
+PRs I later flag for the exact bug they just defined.** Security questions are in almost every
+loop now — even for roles nobody labels "security" — and every one of them tests recall. None
+of them test the thing that actually ships the bug: what your editor autocompletes at 5pm on a
+Friday.
 
-Here's the proof, from my own AI benchmark: in a [700-function benchmark I ran across 5 AI
-models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
-Claude Opus generated vulnerable JWT code **7 out of 7 times** — leaking
-sensitive data into the token payload on every single run. A candidate who can
-recite the `algorithm: none` bypass cold will still merge that diff, because the
-model wrote it and the diff looked clean. Reciting the answer and *not shipping
-the bug* are two different skills, and interviews only test the first one.
+That gap is [Goodhart's law](https://ofriperetz.dev/articles/goodharts-law-explained) doing its
+usual work — the moment "can define SQL injection" became the thing a loop scores, it stopped
+being evidence of "won't ship SQL injection." Here's the measurement, from my own benchmark:
+across [700 AI-generated functions from 5 models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong),
+**Claude Opus 4.6** put sensitive user data in the JWT payload on **7 runs out of 7**. Ask any
+assistant to "query the user by id" and you'll often get string-interpolated SQL — the same
+[CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained) the candidate aced an hour
+earlier. A model has read every Stack Overflow answer, including the wrong ones, and it holds
+no opinion about which one it pastes.
 
-It's gotten worse with AI in the loop, and the failure mode is usually an omission, not a wrong line. Most of what I flag in AI-generated PRs isn't bad code — it's a missing guard: the absent `httpOnly` flag, the rate limiter nobody added, the CSP header that was never sent. You can't spot an omission by reading a diff; there's nothing red to react to. Ask Copilot or Claude to "query the user
-by id" and you'll often get string-interpolated SQL — the same [CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained) the
-candidate aced an hour earlier. The model has read every Stack Overflow answer,
-including the wrong ones, and it has no opinion about which it pastes.
+This is, unavoidably, a cheat sheet — 13 questions, definitions, code, CWEs, same shape as
+every other one. What makes it different: **9 of the 13 map to an ESLint rule you can add to CI
+today.** Not "be careful about this" — a rule that fails the build when the bad version ships,
+whether a human or an assistant wrote it. The other 4 get a weaker kind of rule — presence
+checks rather than bug detection — and I'll say which and why. Three of the nine — timing
+attacks, the JWT `algorithm: none` bypass, and prototype pollution (§6, §7, §8) — are the ones
+I've watched trip up engineers with a decade of experience, because the vulnerable line reads
+as _more_ correct than the fix, not less.
 
-This is, unavoidably, a cheat sheet — 13 questions, definitions, code, CWEs, same shape as every other one. Here's what makes it different: **every question here maps to an ESLint rule you can add to CI *today***. Not "be careful about this" — a rule that fails the build when the bad version ships, whether a human or an AI wrote it. 9 of the 13 questions below are covered by automated ESLint rules; that's the gap they close: each one asserts the guard *should* be there and fails when it isn't. The other 4 require human judgment only (and I'll tell you which ones and why). You leave this article knowing not just what to say in the room, but what to add to your `eslint.config.mjs` so neither you nor your assistant can merge the wrong answer.
-
-So here are the **13 questions** that come up the most — each with the answer in
-one breath, the bad-vs-good code, the CWE, why senior engineers still get it wrong in production (across the 50+ loops I mentioned above), and the part most cheat-sheets skip:
-**the ESLint rule that fails CI when you (or your assistant) ship the bad
-version anyway.** Three of these — timing attacks, prototype pollution, and the JWT `algorithm: none` bypass (§6, §8, §7) — are the ones I've watched trip up engineers with a decade of experience, because the vulnerable line reads as *more* correct than the fix, not less.
-
-The best answer to "how do you stay current?" isn't "I read CVEs." It's "I
-encode the answer to every one of these into a rule, so neither I nor an AI can
-merge the wrong version." This is how.
+The best answer to "how do you stay current?" isn't "I read CVEs." It's "I encode the answer to
+every one of these into a rule, so neither I nor an assistant can merge the wrong version."
+This is how.
 
 ---
 
@@ -90,9 +89,9 @@ element.textContent = userInput; // ✅
 
 **CWE-79.** Enforced by `browser-security/no-innerhtml`.
 
-The `innerHTML` line almost always started life rendering a *trusted* string — a hard-coded template, an icon, a bit of formatted markup. It passed review because at the time the input genuinely was safe. Then a feature landed that routed user content through the same helper, and the assignment itself never changed. The diff that introduces the vulnerability touches the *caller*, not the `innerHTML` line — so a reviewer staring at the dangerous line sees code that's been stable for a year and has no reason to flag it.
+The `innerHTML` line almost always started life rendering a _trusted_ string — a hard-coded template, an icon, a bit of formatted markup. It passed review because at the time the input genuinely was safe. Then a feature landed that routed user content through the same helper, and the assignment itself never changed. The diff that introduces the vulnerability touches the _caller_, not the `innerHTML` line — so a reviewer staring at the dangerous line sees code that's been stable for a year and has no reason to flag it.
 
-**ESLint automation:** `browser-security/no-innerhtml` flags the sink regardless of when the [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) arrived. It doesn't matter if the string was trusted last year. The full rule set for this surface is in [Your Frontend Stores JWTs in localStorage and Posts to '*'](https://ofriperetz.dev/articles/getting-started-eslint-plugin-browser-security).
+**ESLint automation:** `browser-security/no-innerhtml` flags the sink regardless of when the [taint](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) arrived. It doesn't matter if the string was trusted last year. The full rule set for this surface is in [Your Frontend Stores JWTs in localStorage and Posts to '\*'](https://ofriperetz.dev/articles/getting-started-eslint-plugin-browser-security).
 
 ### 3. Password storage
 
@@ -133,11 +132,12 @@ Browsers isolate by origin (scheme + host + port). The controlled relaxations ar
 CORS, `postMessage`, and (legacy) JSONP — and an over-broad CORS policy
 re-opens everything (**CWE-942**).
 
-No rule picks the policy for you — the origin list is a design decision, not a syntax check. But the misconfiguration it enables is: `browser-security/no-permissive-cors` catches the `Access-Control-Allow-Origin: *` wildcard that's the most common mistake.
+No rule picks the policy for you — the origin list is a design decision, not a syntax check. The misconfiguration it enables is enforceable, though: `browser-security/no-permissive-cors` catches the `Access-Control-Allow-Origin: *` wildcard that's the most common mistake. The review question that covers the rest is "which origins does this endpoint need to serve, and does the config allow anything wider than that list?" — a reflected `Origin` header counts as wider.
 
-**The review question that substitutes for a lint rule here:** "which origins does this endpoint need to serve, and does the CORS config allow anything wider than that list?" If the answer is `*` or a reflected `Origin` header, you've found the gap before it ships.
-
-**If you can answer "what's the difference between CORS and the Same-Origin Policy, and when does CORS not help you?" with a working code example, you understand JavaScript security better than 80% of the candidates we interview.**
+**The follow-up that separates recall from understanding:** _when does CORS not help you?_ CORS
+is enforced by the browser, for the browser — it protects your users' tabs, not your server. A
+`curl`, a mobile client, or a server-side proxy ignores the header entirely. If an endpoint has
+to be safe, it needs authorization; a CORS policy is not a substitute for one.
 
 ### 6. Timing attacks
 
@@ -146,13 +146,16 @@ A `===` comparison on two secrets returns faster the sooner the bytes diverge �
 ```javascript
 if (userToken === secretToken) {
 } // ❌ leaks via comparison time
-if (a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))) {
+if (
+  a.length === b.length &&
+  crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
+) {
 } // ✅ constant-time (length check first — timingSafeEqual throws on mismatched lengths)
 ```
 
 **CWE-208.** Enforced by `node-security/no-timing-unsafe-compare`.
 
-I flagged this exact line in a webhook-signature check last year, and the author pushed back — reasonably. The `===` version was *more* readable than my `timingSafeEqual` suggestion, passed every test in the suite, and had shipped for two years with zero incidents. I couldn't point to a single failing test to justify the change; the only argument I had was "an attacker measuring response time byte-by-byte," which sounds theoretical until you're the one explaining the CVE. Timing leaks don't show up in unit tests. A reviewer has no red flag to react to; the bug is in how long the line takes, not in what it returns.
+I flagged this exact line in a webhook-signature check last year, and the author pushed back — reasonably. The `===` version was _more_ readable than my `timingSafeEqual` suggestion, passed every test in the suite, and had shipped for two years with zero incidents. I couldn't point to a single failing test to justify the change; the only argument I had was "an attacker measuring response time byte-by-byte," which sounds theoretical until you're the one explaining the CVE. Timing leaks don't show up in unit tests. A reviewer has no red flag to react to; the bug is in how long the line takes, not in what it returns.
 
 **ESLint automation:** `node-security/no-timing-unsafe-compare` knows the operands are secrets and flags the variable-time compare the eye reads as fine.
 
@@ -162,11 +165,11 @@ Verify the signature, check `exp`, never accept `algorithm: "none"`, and store i
 an `httpOnly` cookie — **not** `localStorage`. **CWE-347** for the `none` bypass
 (`jwt/no-algorithm-none`); the storage mistake is `browser-security/no-jwt-in-storage`.
 
-The `algorithm: none` bypass is a one-line change to the JWT header that most verify-then-trust code waves through without error — it's [a one-line auth bypass that most verify-then-trust code misses entirely](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g). In my AI benchmark, Claude Opus generated vulnerable JWT code 7/7 times — not missing the rule, but actively generating the misconfiguration.
+The `algorithm: none` bypass is a one-line change to the JWT header that most verify-then-trust code waves through without error — it's [a one-line auth bypass that most verify-then-trust code misses entirely](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g). In the 700-function benchmark, Claude Opus 4.6 didn't miss a guard here — it _generated_ the misconfiguration, putting sensitive user data in the payload 7 runs out of 7.
 
-Fixing `algorithm: none` doesn't close the adjacent bug that surprises engineers who think they're done: the **HS256/RS256 confusion attack**. If your verifier accepts either algorithm and you sign with RS256 (asymmetric — public key is, well, public), an attacker can forge a token by signing it with HS256 *using your public key as the HMAC secret*. The verifier checks the signature with the same public key, sees a valid HMAC, and trusts a token you never issued. The fix is the same allowlist discipline as `algorithm: none` — pin one algorithm per verifier — but it's a different bug, and "I fixed the none bypass" is not the same sentence as "I fixed the algorithm confusion."
+Fixing `algorithm: none` doesn't close the adjacent bug that surprises engineers who think they're done: the **HS256/RS256 confusion attack**. If your verifier accepts either algorithm and you sign with RS256 (asymmetric — public key is, well, public), an attacker can forge a token by signing it with HS256 _using your public key as the HMAC secret_. The verifier checks the signature with the same public key, sees a valid HMAC, and trusts a token you never issued. The fix is the same allowlist discipline as `algorithm: none` — pin one algorithm per verifier — but it's a different bug, and "I fixed the none bypass" is not the same sentence as "I fixed the algorithm confusion."
 
-**ESLint automation:** Two rules cover the storage and none-bypass failure modes — `jwt/no-algorithm-none` for the bypass and `browser-security/no-jwt-in-storage` for the storage mistake. The full rule set, including algorithm-pinning checks, is in [jsonwebtoken Will Verify a Token Signed With algorithm: none](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt).
+**ESLint automation:** four rules, four distinct failure modes — `jwt/no-algorithm-none` for the bypass, `jwt/no-algorithm-confusion` and `jwt/require-algorithm-whitelist` for the HS256/RS256 forgery, and `browser-security/no-jwt-in-storage` for the storage mistake. One detail worth knowing: `jwt/no-sensitive-payload` — the rule that flags exactly what Opus 4.6 did 7/7 — ships as a `warn`, not an `error`, which is why the `--max-warnings 0` line further down isn't optional. Full rule set: [jsonwebtoken Will Verify a Token Signed With algorithm: none](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt).
 
 ---
 
@@ -199,7 +202,7 @@ A missing CSP is a **CWE-693** protection-mechanism failure, and that's the CWE
 
 The CSP header is set in middleware — nowhere near the route handler, the component, or the line where an XSS payload would actually fire. It's the kind of control that's invisible in a feature diff, which is exactly why it's easy to skip when a team is heads-down on shipping.
 
-**ESLint automation:** `browser-security/require-csp-headers` flags the absence, and `browser-security/no-unsafe-inline-csp` flags the `'unsafe-inline'` that defeats the policy you did ship. This is why the "9 automated" count below doesn't include CSP as a tenth: both rules check for the *presence* of a config value, not a vulnerable code pattern — a real, useful automation, but a different tier than "this specific line is the bug."
+**ESLint automation:** `browser-security/require-csp-headers` flags the absence, and `browser-security/no-unsafe-inline-csp` flags the `'unsafe-inline'` that defeats the policy you did ship. This is why CSP isn't one of the nine: both rules check for the _presence_ of a config value, not a vulnerable code pattern — a real, useful automation, but a different tier than "this specific line is the bug."
 
 ### 10. ReDoS
 
@@ -228,9 +231,7 @@ A nested quantifier like `(a+)+` has exponentially many ways to match a failing 
 
 Nobody ships MFA or session rotation because a linter told them to — that part is architecture, full stop. But the enforceable slice is real: `express-security/require-rate-limiting` catches the missing rate limiter. On a login route that gap is **CWE-307** (excessive authentication attempts); the rule's general finding is **CWE-770** (no limit on resource allocation).
 
-**The review question that substitutes for a lint rule here:** "who owns the rate limit on this specific route — is it named in a code comment or a ticket, or is it assumed?" Rate limiting dies in the gap between "the app team" and "the infra team," where each assumes the other covered it. It surfaces the first time a credential-stuffing run shows up in the logs, which is the worst possible time to discover the assumption was wrong.
-
-**ESLint automation (partial):** `express-security/require-rate-limiting` covers the login route gap. MFA, session management, and token rotation require architectural review.
+**The review question the rule can't ask for you:** "who owns the rate limit on this specific route — is it named in a code comment or a ticket, or is it assumed?" Rate limiting dies in the gap between "the app team" and "the infra team," where each assumes the other covered it. It surfaces the first time a credential-stuffing run shows up in the logs, which is the worst possible time to discover the assumption was wrong. MFA, session management, and token rotation stay architectural review.
 
 ### 12. Secrets management
 
@@ -239,7 +240,7 @@ in production; nothing in code or git history; a rotation policy. **CWE-798.**
 
 Hardcoded secrets rarely look like secrets in a diff — they look like a test credential, a placeholder value, or a string that "will be replaced before production." The commit lands, the string gets copied to staging as a shortcut, and the rotation that was supposed to happen "before prod" never gets scheduled because nothing broke.
 
-**ESLint automation:** `secure-coding/no-hardcoded-credentials` is the backstop. Entropy scoring doesn't cut it on its own — see [No Hardcoded Credentials: Why Entropy Isn't Enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough) for why pattern-only detection misses real secrets, and [Hardcoded Secrets + AI Agents](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix) for the compounding problem when an AI agent is the one committing the leak. Like CSP, this doesn't add a 10th row to the table below: the rule catches literal strings that *look* like secrets, not the process failure (a real credential rotated into a "temporary" env var and never rotated out) that causes most leaks in practice.
+**ESLint automation:** `secure-coding/no-hardcoded-credentials` is the backstop. Entropy scoring doesn't cut it on its own — see [No Hardcoded Credentials: Why Entropy Isn't Enough](https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough) for why pattern-only detection misses real secrets, and [Hardcoded Secrets + AI Agents](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix) for the compounding problem when an AI agent is the one committing the leak. Like CSP, this doesn't join the nine: the rule catches literal strings that _look_ like secrets, not the process failure (a real credential rotated into a "temporary" env var and never rotated out) that causes most leaks in practice.
 
 ### 13. Securing a REST API
 
@@ -254,21 +255,33 @@ Of all 13, this is the one where the hard part isn't code at all — the RBAC/AB
 
 ---
 
-## Quick-reference: the 9 with automated ESLint rules
+## Quick-reference: the 9 questions a rule answers for you
 
-| Vulnerability      | Prevention            | CWE                                                          | Enforced by                               |
-| ------------------ | --------------------- | ------------------------------------------------------------ | ----------------------------------------- |
-| SQL Injection      | Parameterized queries | [CWE-89](https://cwe.mitre.org/data/definitions/89.html)     | `pg/no-unsafe-query`                      |
-| XSS                | Output encoding       | [CWE-79](https://cwe.mitre.org/data/definitions/79.html)     | `browser-security/no-innerhtml`           |
-| Timing attack      | `timingSafeEqual`     | [CWE-208](https://cwe.mitre.org/data/definitions/208.html)   | `node-security/no-timing-unsafe-compare`  |
-| Weak password hash | bcrypt / argon2       | [CWE-327](https://cwe.mitre.org/data/definitions/327.html)   | `node-security/no-weak-hash-algorithm`    |
-| Prototype poll.    | `Object.create(null)` | [CWE-1321](https://cwe.mitre.org/data/definitions/1321.html) | `secure-coding/detect-object-injection`   |
-| ReDoS              | Linear-time regex     | [CWE-1333](https://cwe.mitre.org/data/definitions/1333.html) | `secure-coding/no-redos-vulnerable-regex` |
-| JWT `none` bypass  | Allowlist algorithms  | [CWE-347](https://cwe.mitre.org/data/definitions/347.html)   | `jwt/no-algorithm-none`                   |
-| JWT in storage     | `httpOnly` cookie     | [CWE-922](https://cwe.mitre.org/data/definitions/922.html)   | `browser-security/no-jwt-in-storage`      |
-| CSRF               | Synchronizer tokens   | [CWE-352](https://cwe.mitre.org/data/definitions/352.html)   | `express-security/require-csrf-protection` |
+| Vulnerability       | Prevention            | CWE                                                          | Enforced by                                |
+| ------------------- | --------------------- | ------------------------------------------------------------ | ------------------------------------------ |
+| SQL Injection       | Parameterized queries | [CWE-89](https://cwe.mitre.org/data/definitions/89.html)     | `pg/no-unsafe-query`                       |
+| XSS                 | Output encoding       | [CWE-79](https://cwe.mitre.org/data/definitions/79.html)     | `browser-security/no-innerhtml`            |
+| Timing attack       | `timingSafeEqual`     | [CWE-208](https://cwe.mitre.org/data/definitions/208.html)   | `node-security/no-timing-unsafe-compare`   |
+| Weak password hash  | bcrypt / argon2       | [CWE-327](https://cwe.mitre.org/data/definitions/327.html)   | `node-security/no-weak-hash-algorithm`     |
+| Prototype pollution | `Object.create(null)` | [CWE-1321](https://cwe.mitre.org/data/definitions/1321.html) | `secure-coding/detect-object-injection`    |
+| ReDoS               | Linear-time regex     | [CWE-1333](https://cwe.mitre.org/data/definitions/1333.html) | `secure-coding/no-redos-vulnerable-regex`  |
+| JWT `none` bypass   | Allowlist algorithms  | [CWE-347](https://cwe.mitre.org/data/definitions/347.html)   | `jwt/no-algorithm-none`                    |
+| JWT in storage      | `httpOnly` cookie     | [CWE-922](https://cwe.mitre.org/data/definitions/922.html)   | `browser-security/no-jwt-in-storage`       |
+| Permissive CORS     | Explicit origin list  | [CWE-942](https://cwe.mitre.org/data/definitions/942.html)   | `browser-security/no-permissive-cors`      |
+| CSRF                | Synchronizer tokens   | [CWE-352](https://cwe.mitre.org/data/definitions/352.html)   | `express-security/require-csrf-protection` |
 
-CSRF appears above because `require-csrf-protection` catches the missing-token case on a route — but the *architectural* decision that introduces CSRF risk (adding a cookie session where there wasn't one) isn't something a rule can flag. The 4 topics where automation only covers part of the surface: Same-Origin Policy + CORS architecture, CSRF's cookie-session design decisions, authentication system design, and REST API authorization models.
+Ten rules, nine questions — JWT needs two. Every row names a **CWE class**, which is _what_ the
+bug is, not how bad it is: the same CWE-89 is a
+[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) 5.3 on an internal read-only
+report and a 9.8 on a public auth endpoint. Rules classify; your context scores.
+
+The remaining four questions — CSP (§9), secrets (§12), authentication design (§11), REST
+authorization (§13) — do have rules, but a weaker kind: they check that a config value is
+_present_ (`require-csp-headers`, `require-helmet`, `require-rate-limiting`) or that a string
+_looks_ like a secret. Worth having, all of them. They just can't say "this specific line is the
+bug," which is the bar the ten above clear. And the architecture underneath them — which origins
+to allow, what your RBAC model is, when a JSON API quietly became CSRF-able — is nobody's lint
+rule.
 
 ---
 
@@ -280,46 +293,52 @@ and the secure rewrites — but the vulnerable versions outnumber the rewrites b
 wide margin. The model has no internal security reviewer; it generates the most statistically likely completion, which is the version most developers shipped.
 
 Across a [benchmark of 700 AI-generated functions across 5 models](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain),
-every model reproduced at least one of the 13 bug classes on this list. And [choosing a different plugin alone shifts your detection rate significantly](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared). The rule is the correction signal the model never got during training.
+every model reproduced at least one of the 13 bug classes on this list. Which plugin you install
+moves your numbers more than which model you use: on the same 40-vulnerability corpus,
+`eslint-plugin-security` v2.1.1 scores **50.0%
+[precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) / 27.5%
+recall** while the Interlace ecosystem v3.0.2 scores **100% / 100%** (measured 2026-05-30 on
+Node v24.12.0 / ESLint 9.39.2; the v2.1.1 numbers were measured on ESLint 8.57.0). That second
+figure comes from fixtures I wrote myself, which is exactly why they're public —
+[ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing) nobody else
+can inspect is an assertion, and a perfect score on your own corpus is a regression test
+wearing a benchmark's clothes. The less flattering view, across
+[17 plugins](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared), is
+the one worth reading. Either way: the rule is the correction signal the model never got during
+training.
 
-Before you start an onboarding audit on an unfamiliar codebase, [the 30-minute security audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) runs exactly these rules as a structured triage — it tells you where to look first.
-
-Here's the experiment that reframed this whole list for me. Take the 13 bad-vs-good
-snippets above, throw away the good halves, and ask a coding assistant to "fix" or
-"refactor" or "add a feature to" the bad ones. A meaningful share come back still
-vulnerable — sometimes the model even re-introduces the exact pattern you removed,
-because it's optimizing for "looks like working code," not "passes a security
-review." I went through this in detail with an 80-function run in
-[I Let Claude Write 80 Functions — 65-75% Had Security Vulnerabilities](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-(remediation only landed 50-54% of the time when I fed the findings back), and the
-follow-on problem — fixing one finding only to spawn the next — in
+Here's the experiment that reframed this list for me. Take the 13 bad-vs-good snippets above,
+throw away the good halves, and ask an assistant to "fix" the bad ones. Some come back still
+vulnerable — sometimes carrying the exact pattern you just removed, because the model optimizes
+for "looks like working code," not "passes a security review." The 80-function version of that
+run is in [I Let Claude Write 80 Functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities):
+feeding the findings back produced a correct fix only **50-54%** of the time. The follow-on
+problem — one fix spawning the next finding — is
 [The AI Hydra Problem](https://ofriperetz.dev/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more).
 
 And before you assume this is a "bad model" problem you can solve by switching
-vendors: it isn't. When I ran the same 20 prompts across Claude *and* Gemini —
+vendors: it isn't. When I ran the same 20 prompts across Claude _and_ Gemini —
 [700 functions, 5 models](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) —
-every model landed between a **49% and 73% vulnerability rate**, and the rankings
-inverted by category. Claude Opus wrote insecure JWTs 7/7 (question #7 here);
-Gemini 2.5 Flash wrote them perfectly 0/7 — but Flash lost other categories Claude
-won. There is no model you can pick that gets this list right by default. The rule
-doesn't care which model — or which human — typed the diff; it fails the same CWE
-the same way every time.
+every model landed between a **49% and 73% vulnerability rate** (Claude Haiku 4.5 lowest,
+Gemini 2.5 Pro highest), and the rankings inverted by category. Claude Opus 4.6 wrote insecure
+JWTs 7/7 (question #7 here). Gemini 2.5 Flash drew **zero flags, 0/7**, on the identical prompt
+— and that turned out to be a
+[false negative](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) in my own
+ruleset, not clean code: Flash signed the entire `user` object _and_ fell back to a hardcoded
+secret, one level deeper than the rule was looking. There is no model you can pick that gets
+this list right by default, and no ruleset that catches everything. The rule doesn't care which
+model — or which human — typed the diff; it fails the same CWE the same way every time.
 
-There's a deeper reason the interview format misses these. Every question above
-is phrased as *"what's wrong with this code?"* — a commission bug, a line that's
-present and incorrect. But most of what I flag in AI-generated PRs is the
-opposite: an *omission*. The missing rate limiter on the login route. The absent
-`httpOnly` flag. The CSP header that was never sent. The model didn't write the
-wrong thing — it just never wrote the guard, because the prompt never asked for
-it. You can't spot an omission by reviewing the diff; there's nothing red to
-react to. That's exactly the negative space a rule lives in: it asserts the guard
-*should* be there and fails when it isn't.
+There's a deeper reason the interview format misses these. Every question above is phrased as
+_"what's wrong with this code?"_ — a commission bug, a line that's present and incorrect. But
+most of what I flag in AI-generated PRs is the opposite: an _omission_. The missing rate limiter
+on the login route. The absent `httpOnly` flag. The CSP header that was never sent. The model
+didn't write the wrong thing — it just never wrote the guard, because the prompt never asked for
+one. You can't spot an omission by reading a diff; there's nothing red to react to.
 
-The interview tests whether *you* know the answer. It can't test whether your
-editor's autocomplete does — and it definitely can't test for the line nobody
-wrote. That's the gap a rule closes: it sits between the generated diff and
-`main` and fails the build on the same CWE the interview asked about — every
-time, for every author, human or model.
+That negative space is where a rule lives. It asserts the guard _should_ be there and fails when
+it isn't — sitting between the generated diff and `main`, failing the build on the same CWE the
+interview asked about, every time, for every author, human or model.
 
 ## The "great" answer: enforce it, don't memorize it
 
@@ -356,17 +375,24 @@ export default [
 ];
 ```
 
-| Surface              | Support                                                    |
-| -------------------- | ---------------------------------------------------------- |
-| **Package managers** | npm, yarn, pnpm, bun                                       |
-| **Node**             | `>= 18.0.0`                                                |
-| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config             |
+| Surface              | Support                                                                  |
+| -------------------- | ------------------------------------------------------------------------ |
+| **Package managers** | npm, yarn, pnpm, bun                                                     |
+| **Node**             | `>= 18.0.0`                                                              |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                           |
 | **Module system**    | ESM — `eslint.config.mjs`, or `eslint.config.js` with `"type": "module"` |
-| **Oxlint**           | flagship rules wired via the `interlace-*` ports, CI-gated |
+| **Oxlint**           | flagship rules wired via the `interlace-*` ports, CI-gated               |
 
-For the full OWASP picture (and the two categories [static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) honestly
-can't reach), see
-[the OWASP Top 10 mapping](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules).
+Six layers at once will surface findings you disagree with. When one does, that's a
+[false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) _for your
+codebase_ — turn that rule off for that path, not the plugin. Disabling a whole layer to
+silence one rule is how a lint config ends up catching nothing while still appearing in
+`package.json`.
+
+For the full [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) picture
+(and the two categories [static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting)
+honestly can't reach), see
+[our mapping of 247 ESLint rules onto it](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules).
 
 **← previous in this security-on-the-Node-stack series:** [The 30-Minute Security Audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) · **next →** [I Inherited a NestJS Codebase](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 
@@ -384,19 +410,23 @@ can't reach), see
 
 ## Links
 
-- 📦 [eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
+- 📦 [eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) · [express-security](https://www.npmjs.com/package/eslint-plugin-express-security)
 - 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint) — every rule above, with its fixtures and its failures
 
 ---
 
-Which JavaScript security interview question has stumped you most recently — and was it something your ESLint config would have caught in CI? For me it
-was the `md5` password hash hiding behind an "it was already imported." Tell me
-yours in the comments; I'm collecting the failure modes the cheat-sheets never
-mention.
+Which JavaScript security interview question has stumped you most recently — and would your
+ESLint config have caught it in CI? Mine was the `md5` password hash from §3, the one I
+approved in about four seconds. Tell me yours in the comments; I'm collecting the failure modes
+the cheat-sheets never mention.
 
-::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub if you'd rather enforce this list than memorize it for the next interview.
+If you want to watch this list meet a codebase that never asked for it, that's the next one:
+[I Inherited a NestJS Codebase — the First Lint Run Found 6 Vulnerabilities](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities).
+Six of the classes above, in someone else's repo, on day one.
+
+::dev-to-cta{url="https://eslint.interlace.tools"}
+📦 `npm install` the layers your stack uses — per-rule CWE mapping, config, and the ESLint + Oxlint wiring for all 20 plugins.
 ::
 
 ---
@@ -408,4 +438,5 @@ reliability, and performance on the Node.js stack.
 [ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz) · [Twitter/X](https://x.com/ofriperetzdev)
 
 ---
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
