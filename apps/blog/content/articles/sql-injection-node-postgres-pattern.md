@@ -10,7 +10,7 @@ published_at: "2025-12-31T05:50:50Z"
 edited_at: "2026-01-11T10:22:01Z"
 cover_image: "https://ofriperetz.dev/og/cover/sql-injection-node-postgres-pattern"
 social_image: "https://ofriperetz.dev/og/article/sql-injection-node-postgres-pattern"
-reading_time_minutes: 8
+reading_time_minutes: 9
 tags:
   - "security"
   - "node"
@@ -24,19 +24,32 @@ author:
 series: "Postgres Security Protocol"
 ---
 
-The single most common Node.js security vulnerability in our corpus: string concatenation in a PostgreSQL query. It's been in the [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) for 15 years. Your linter can catch it today. Most don't.
+Every query in the service was timing out, and the SQL was flawless. No string
+concatenation anywhere, every value bound to a `$1`, exactly the way the security
+checklist says. The data layer had fallen over regardless — in a way that has
+nothing to do with injection. It took me most of a night to find, and it's
+failure mode #3 below.
 
-Ask a backend engineer how the database layer fails and you'll hear "SQL
-injection." It's real, it's [CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained), and it's _one of four_ structural ways a
-node-postgres data layer breaks in production. The other three — identifier
-hijacking, connection-pool exhaustion, insecure transport — don't make the OWASP
-headlines, but they page you at 3 AM all the same.
+String concatenation in a PostgreSQL query is still tied for the largest single
+category in our benchmark corpus — 4 of 40 fixtures, all
+[CWE-89](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — and it has been
+in the [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) for
+15 years. You don't need a
+[SAST scan](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting)
+to find it; an ESLint rule catches it on save. Most teams still don't run one.
 
-And the database has become worse than a coin-flip in AI-generated code.
-**Gemini 2.5 Pro shipped a flagged query in 96% of the database functions I
-asked it for** — and even the _cleanest_ generator I tested still hit 39%, after
-I ran 700 AI-written functions through these exact rules and broke the results
-down by security domain ([the full per-domain breakdown is
+But ask a backend engineer how the database layer fails and "SQL injection" is
+the whole answer — when it's _one of four_ structural ways a node-postgres data
+layer breaks in production. The other three — identifier hijacking,
+connection-pool exhaustion, insecure transport — never make the OWASP headlines,
+and they page you at 3 AM all the same.
+
+The database has also become worse than a coin-flip in AI-generated code.
+**Gemini 2.5 Pro shipped a flagged query in 96% of the database functions I asked
+it for** — and even the _cleanest_ generator I tested still hit 39%, after I ran
+700 AI-written functions through these exact rules and broke the results down by
+security domain (five models, snapshot dated 2026-02-09; [the full per-domain
+breakdown is
 here](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)).
 Whether the next data-layer bug is yours or your assistant's, it's the same four
 shapes — so here's the map.
@@ -45,9 +58,8 @@ Only the first one looks dangerous. The other three survive code review because
 **each line is correct in isolation** — a missing `client.release()`, one
 `rejectUnauthorized: false`, a `SET search_path` that interpolates a variable.
 Nobody approved a vulnerability; they approved lines that each read as fine —
-which is also exactly why an AI assistant hands you these on request (more on
-that at the end). Each is a **structural** pattern with a dedicated rule in
-`eslint-plugin-pg`. Here's the threat model and the rule that closes it.
+which is also why an AI assistant hands you these on request (more on that at the
+end). Each one is structural, and each has a dedicated rule in `eslint-plugin-pg`.
 
 | #   | Failure mode              | What an attacker (or load) controls   | The pg rule                 | CWE     |
 | --- | ------------------------- | ------------------------------------- | --------------------------- | ------- |
@@ -56,10 +68,10 @@ that at the end). Each is a **structural** pattern with a dedicated rule in
 | 3   | Connection **exhaustion** | a leaked pool client → pool empties   | `no-missing-client-release` | CWE-404 |
 | 4   | Insecure **transport**    | TLS turned off to the database        | `no-insecure-ssl`           | CWE-319 |
 
-This article covers **5 vulnerable patterns** in the `pg` ecosystem. **4** are
-closed by parameterized queries alone. **1** — the identifier injection class —
-requires an additional ESLint rule to catch, because it looks syntactically clean
-to a parameterization linter but isn't.
+Six concrete patterns follow, across those four classes. Parameterized queries
+close **three** of them — all inside class 1. The other **three** each need a
+different fix: identifier escaping, a `finally` block, a CA bundle. That gap is
+why this is a threat map and not a "just use `$1`" reminder.
 
 All four rules ship in one plugin — `npm i -D eslint-plugin-pg` now if you want
 to lint along ([config is below](#one-config-turns-on-all-four)); otherwise read
@@ -77,12 +89,9 @@ survives review.
 **Pattern 1a: `pool.query` with concatenation**
 
 ```js
-// ❌ textbook SQL injection — also in 30% of Node.js PostgreSQL code we audit
-pool.query('SELECT * FROM users WHERE id = ' + userId);
+// ❌ textbook SQL injection — CWE-89, one of the most-fixtured classes in our corpus
+pool.query("SELECT * FROM users WHERE id = " + userId);
 ```
-
-`pool.query('SELECT * FROM users WHERE id = ' + userId)` is a textbook SQL
-injection. It's also in 30% of Node.js PostgreSQL code we audit.
 
 **Why it survives review:** the variable is clearly named `userId`, which makes
 it feel type-safe even when it's a string. Dynamic WHERE clauses look like
@@ -93,7 +102,9 @@ name, not the type contract.
 
 ```js
 const client = await pool.connect();
-client.query(`SELECT * FROM orders WHERE customer_id = ${customerId} AND status = '${status}'`); // ❌
+client.query(
+  `SELECT * FROM orders WHERE customer_id = ${customerId} AND status = '${status}'`,
+); // ❌
 ```
 
 **Why it survives review:** template literals read as declarative — they _look_
@@ -120,12 +131,15 @@ to actually use bind parameters, the tag reads as protection it isn't providing.
 
 ```js
 // ✅ pool.query — single-shot, no client acquire needed
-pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+pool.query("SELECT * FROM users WHERE id = $1", [userId]);
 
 // ✅ client.query — explicit client, bound parameters
 const client = await pool.connect();
 try {
-  await client.query('SELECT * FROM orders WHERE customer_id = $1 AND status = $2', [customerId, status]);
+  await client.query(
+    "SELECT * FROM orders WHERE customer_id = $1 AND status = $2",
+    [customerId, status],
+  );
 } finally {
   client.release();
 }
@@ -140,10 +154,15 @@ src/users.js
              Fix: Use parameterized queries ($1, $2) instead of string concatenation.
 ```
 
-(The ESLint CLI also appends the rule's doc URL to the `Fix:` line; it's trimmed
-here for width.) The rule fires on `+`-concatenation, `${…}` template
-expressions, and cross-line [tainted](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) variables in `.query()` calls — the full
-taxonomy is in
+Read that finding line left to right and it tells you what to do with it: the
+CWE identifies the bug class, `A03-Injection` is the OWASP bucket, `9.8` is the
+[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) severity, and the
+bracketed tags are the compliance frameworks that care. (The ESLint CLI also
+appends the rule's doc URL to the `Fix:` line; it's trimmed here for width.)
+
+The rule fires on `+`-concatenation, `${…}` template expressions, and cross-line
+[tainted](https://ofriperetz.dev/articles/taint-vs-heuristic-detection) variables
+in `.query()` calls — the full taxonomy is in
 [Three SQL Injection Patterns That Still Ship](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint).
 
 ## 2. Identifier hijacking — `no-unsafe-search-path` (CWE-426)
@@ -170,8 +189,8 @@ author clearly knew the parameterization rule. The gap is that identifiers and
 values have different escaping contracts, and almost nobody is taught the second
 one.
 
-This is also the **one pattern in this article that parameterized queries cannot
-close** — it requires an ESLint rule (`no-unsafe-search-path`) specifically
+This is the one **injection** pattern in this article that parameterized queries
+cannot close — it needs a dedicated rule (`no-unsafe-search-path`) precisely
 because the fix isn't a bind parameter. It's identifier-escaping (`pg-format`'s
 `%I`) or an allow-list:
 
@@ -192,6 +211,15 @@ src/tenant.js
 Note the CWE flips to **CWE-426 (Untrusted Search Path)** — a different bug class
 from CWE-89, which is exactly why a generic "SQL injection" rule misses it: the
 query string is _parameterized-clean_, the danger is the identifier.
+
+Now look closer at that same line: it prints `CVSS:7.5` _and_ the word
+`CRITICAL`, and those disagree — 7.5 sits in the High band (7.0–8.9). The
+mislabel is mine. When I audited our own 203 security rules,
+[33 of them — 16% — printed a severity word their own CVSS score doesn't
+support](https://ofriperetz.dev/articles/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score);
+the cause is a metadata helper that forwards the score but not the severity. The
+fix is filed, not shipped. Gate your CI on the number, not the adjective — mine
+included.
 
 ## 3. Connection exhaustion — `no-missing-client-release` (CWE-404)
 
@@ -216,21 +244,19 @@ src/orders.js
 
 Note this one fires under the **⚡ reliability** icon, not the 🔒 security one —
 `no-missing-client-release` is CWE-404 (resource exhaustion), a denial-of-service
-shape, not an injection. The CWE is the signal to read here, not the OWASP label:
-CWE-404 has no clean home in the OWASP Top 10, so the formatter slots it under
-the plugin's catch-all bucket — a good reminder to gate on the precise
-CWE/[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained),
-not the broad OWASP category.
+shape, not an injection. Read the CWE, not the OWASP label: CWE-404 has no clean
+home in the OWASP Top 10, so the formatter slots it under the plugin's catch-all
+bucket. Same lesson as the section above, different field.
 
-I have shipped this exact line. Early in my career I wrote a reporting endpoint
-that did `const client = await pool.connect()`, ran one query, returned the rows
-— no `finally`, no `release()`. It passed code review, passed CI, and ran clean
-for weeks. Then a scheduled job hammered that endpoint, the 20-connection pool
-drained, and _every_ query in the service started timing out — including health
-checks, so the orchestrator started cycling pods, which made it worse. The fix
-was one line in a `finally`; finding it took the better part of a night staring
-at `pg_stat_activity` watching idle connections never come back. This rule is the
-test I wish that PR had.
+This is the timeout from the top of the article, and the line was mine. Early in
+my career I wrote a reporting endpoint that called `pool.connect()`, ran one
+query, and returned the rows — no `finally`, no `release()`. It passed code
+review, passed CI, and ran clean for weeks. Then a scheduled job hammered that
+endpoint, the 20-connection pool drained, and _every_ query in the service
+started timing out — including health checks, so the orchestrator started
+cycling pods, which made it worse. The fix was one line in a `finally`; finding
+it took the better part of a night staring at `pg_stat_activity` watching idle
+connections that never came back. This rule is the test I wish that PR had.
 
 **Why it survives review:** it passes every test. One request acquires one
 client, runs one query, returns the right rows — green checkmark. The leak only
@@ -266,15 +292,14 @@ cert locally, set `rejectUnauthorized: false` to unblock themselves, the
 connection worked, and the line stayed. By the time it reaches review it reads as
 intentional TLS config — `ssl` is even _set_, so the reviewer pattern-matches
 "good, they enabled SSL" and never reads the nested flag that quietly turns
-verification back off. The dev-fix that outlives the dev environment is one of
-the most common ways insecure transport reaches production.
+verification back off. A dev-fix that outlives the dev environment.
 
 ---
 
 ## Your AI assistant reintroduces all four
 
-Here's why this threat map matters more in 2026 than it did in 2020: the model
-writing your data layer learned from the same code these rules flag.
+This threat map matters more in 2026 than it did in 2020 for one reason: the
+model writing your data layer learned from the same code these rules flag.
 
 Ask Claude, Gemini, or Copilot for "a node-postgres repository function with a
 tenant-scoped query" and watch which of the four it hands you. In my own runs the
@@ -288,33 +313,47 @@ three patterns that survive human review — because they survived human review 
 its training set too.
 
 That's not a vibe; it's measured. I ran 700 AI-generated functions across five
-models (Claude Haiku/Sonnet/Opus, Gemini 2.5 Flash/Pro) through these rules and
-[broke the results down by security
+models (Opus 4.6, Sonnet 4.5, Haiku 4.5, Gemini 2.5 Flash, Gemini 2.5 Pro —
+snapshot dated 2026-02-09) through these rules and [broke the results down by
+security
 domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
 **Database is the domain where senior-looking code hides the most bugs** — even
 the cleanest generator (Haiku) still wrote a flagged query 39% of the time, and
-Gemini 2.5 Pro hit 96%. Here's the twist that proves this article's whole thesis:
-Gemini Pro's database code is the _most_ vulnerable precisely because it's the most
-senior-looking — it ships the connection pool, the env-var credentials, the
-column enumeration, all the signals a reviewer is trained to trust, and the
-`pg/no-select-all` and injection findings ride in underneath. Production-shaped
-code earns trust it hasn't proven yet. A human reviewer pattern-matches "this
-person knows what they're doing" and waves it through; the lint rule reads the
-AST and doesn't care how senior the code looks. (Same prompt, different model,
-different blind spots: [Claude got 6 NestJS findings where Gemini got
+Gemini 2.5 Pro hit 96%. And Gemini Pro's database code is the _most_ flagged
+precisely because it's the most senior-looking: it ships the connection pool, the
+env-var credentials, the column enumeration, all the signals a reviewer is
+trained to trust, and the `pg/no-select-all` and injection findings ride in
+underneath. Production-shaped code earns trust it hasn't proven yet. A human
+reviewer pattern-matches "this person knows what they're doing" and waves it
+through; the lint rule reads the AST and doesn't care how senior the code looks.
+(Same prompt, different model, different blind spots: [Claude got 6 NestJS
+findings where Gemini got
 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors)
 — which is exactly why you gate on the rule, not the model.)
 
-This is the part I want you to actually try, because it's reproducible on your
-machine in five minutes: generate a data-access function, paste it into a file
-the config below lints, and read the findings. The rule output is the
+One caveat I owe you, since I wrote the rules doing the counting: that 96% counts
+every flag, and two of the rules behind it (`pg/no-select-all`,
+`pg/prefer-pool-query`) are hardening rules, not injection sinks. Count only true
+sinks and Gemini Pro's number falls toward Sonnet's 71%. A flag is not
+automatically a [true
+positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn), and one
+flagged function means something different in a domain where 96% of functions
+trip a rule than in a domain where 21% do — that's the [base
+rate](https://ofriperetz.dev/articles/base-rate-problem-explained) doing the work,
+not the model. The direction holds either way; the headline number is softer than
+it looks.
+
+Try it yourself — you can
+[reproduce](https://ofriperetz.dev/articles/reproducibility-vs-replicability)
+this in five minutes, the finding if not my exact percentages (model outputs
+drift week to week). Generate a data-access function, paste it into a file the
+config below lints, read the findings. The rule output is the
 [ground truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing)
-the model's confidence isn't. I've run this experiment at scale on
-AI-generated code — [I let Claude write 80 functions and 65–75% had a security
-vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities)
-— and the data layer is where the quiet ones cluster. The same lint gate that
-catches your colleague's 3 AM leak catches the model's, with no extra work:
-human review doesn't scale to code you didn't write, but a CI rule does.
+the model's confidence isn't — and at larger scale, [65–75% of the functions I
+asked Claude for carried a
+vulnerability](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities),
+with the data layer holding the quiet ones. Human review doesn't scale to code
+you didn't write. A CI rule does.
 
 ## One config turns on all four
 
@@ -352,17 +391,33 @@ The rules are AST-based, so the only thing the glob controls is _where_ they run
 - run: npx eslint . --max-warnings 0
 ```
 
+`configs.recommended` sets the nine security and resource rules to `error` — the
+four in this article among them — and the four quality rules (`no-select-all`,
+`prefer-pool-query`, `check-query-params`, `no-batch-insert-loop`) to `warn`, so
+`--max-warnings 0` gates all 13. Drop that flag if you want only the errors to
+block the build on day one.
+
+Worth knowing what you're installing. On our 40-vulnerability benchmark corpus,
+the Interlace rule set these four ship in scored 40 true positives, 0 false
+positives, 0 false negatives — 100%
+[precision and recall](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis)
+(v3.0.2, ESLint 9.39.2, Node v24.12.0, measured 2026-05-30). Now the
+uncomfortable half: I wrote both the rules and that corpus, so a perfect score on
+it is a regression test wearing a benchmark's clothes. Run it against your own
+repository — that's the only number that decides anything.
+
 ---
 
 ## Compatibility
 
 | Surface              | Support                                                                               |
 | -------------------- | ------------------------------------------------------------------------------------- |
+| **Plugin version**   | `eslint-plugin-pg@1.4.7`, 13 rules (npm latest, checked 2026-07-28)                   |
 | **Package managers** | npm, yarn, pnpm, bun                                                                  |
 | **Node**             | `>= 18.0.0`                                                                           |
-| **ESLint**           | `^8.0.0 \|\| ^9.0.0`, flat config                                                     |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                        |
 | **`pg` driver**      | peer `^6 \|\| ^7 \|\| ^8`; AST-based, lints regardless of installed version           |
-| **Module system**    | ESM or CommonJS flat config (`eslint.config.mjs`, `.js`, or `.cjs`)                    |
+| **Module system**    | plugin is CommonJS; loads from `eslint.config.js`, `.mjs`, or `.cjs`                  |
 | **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-pg` port, parity-gated in CI |
 
 ---
@@ -397,11 +452,19 @@ What's the most creative SQL injection you've seen in a Node.js codebase — the
 one that wasn't `SELECT * FROM ... + userInput` but was still injectable? Drop it
 in the comments.
 
-::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star on GitHub if your data layer fails any of these four ways — or if a lint
-rule would have saved you a 3 AM page.
+If you read one more thing after this, make it
+[The Connection Leak That Exhausted Our Pool](https://ofriperetz.dev/articles/database-connection-leak-production-outage)
+— the same failure mode at production scale: a 100-connection pool, a 3:02 AM
+pager, and three lines every code review had approved. Four is a short enough
+list to close for good, and not one of the four needs a security team to close
+it — each needs a rule that stays awake after the reviewer stops reading.
+
+::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-pg"}
+📦 `npm i -D eslint-plugin-pg` — four rules for the four ways a node-postgres
+data layer fails. Point them at your `db/` folder and see which one is already
+live in your codebase.
 ::
 
 ---
 
-*[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)*
+_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
