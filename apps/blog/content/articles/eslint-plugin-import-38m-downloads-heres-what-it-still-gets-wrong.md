@@ -7,8 +7,8 @@ tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/eslint-plugin-import-has-38m-weekly-downloads-heres-what-it-still-gets-wrong-c94"
 devto_id: 3779858
 published_at: "2026-05-29"
-cover_image: ""
-social_image: ""
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong.jpg?v=2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-import-38m-downloads-heres-what-it-still-gets-wrong.jpg?v=2"
 reading_time_minutes: 9
 tags:
   - "node"

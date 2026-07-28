@@ -36,10 +36,17 @@ function captureShortLinkClick(
   request: Request,
   capture: ShortLinkClickProps,
 ): void {
-  const apiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  if (!apiKey) return;
+  // Server route handlers read env at RUNTIME, and NEXT_PUBLIC_POSTHOG_KEY has
+  // been empty in the deployed runtime env (NEXT_PUBLIC_* is build-inlined into
+  // the browser bundle, but a server route handler can't use that — it needs the
+  // runtime value). Fall back to the public project key so /go/ analytics fire
+  // regardless; a real env value still wins. `||` (not `??`) so an empty string
+  // — which is exactly how it was deployed — also falls back.
+  const apiKey =
+    process.env.NEXT_PUBLIC_POSTHOG_KEY ||
+    "phc_vNTTtpj4s6nXGJ5pnnXxHey6WBjHJWnytQ4Zv6HeDTT3";
   const host =
-    process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+    process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
   const refererOrigin = refererToOrigin(request.headers.get("referer"));
   const body = { api_key: apiKey, ...buildClickEventBody(capture, refererOrigin) };
 

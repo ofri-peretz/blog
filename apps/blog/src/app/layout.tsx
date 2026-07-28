@@ -65,6 +65,16 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* PostHog is the only cross-origin runtime dependency: fonts are
+            self-hosted by next/font, and article covers now go through
+            /_next/image (same-origin) rather than being fetched from dev.to
+            by the browser. Warming the TLS handshake here saves ~100-300ms
+            on the analytics request without blocking render. */}
+        <link rel="preconnect" href="https://us-assets.i.posthog.com" />
+        <link rel="preconnect" href="https://us.i.posthog.com" />
+        <link rel="dns-prefetch" href="https://us.i.posthog.com" />
+      </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <StructuredData />
         <PostHogProvider app="blog">

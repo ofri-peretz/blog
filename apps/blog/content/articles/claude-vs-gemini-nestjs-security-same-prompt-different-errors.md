@@ -7,8 +7,8 @@ tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-and-gemini-one-got-6-security-errors-heres-what-both-1fnf"
 devto_id: 3781266
 published_at: "2026-05-30"
-cover_image: ""
-social_image: ""
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-nestjs-security-same-prompt-different-errors.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-nestjs-security-same-prompt-different-errors.jpg"
 reading_time_minutes: 9
 tags:
   - "ai"

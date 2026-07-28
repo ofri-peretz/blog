@@ -1,4 +1,6 @@
 ---
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/ground-truth-in-security-testing.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/ground-truth-in-security-testing.jpg"
 devto_url: "https://dev.to/ofri-peretz/ground-truth-in-security-testing-who-decides-whats-vulnerable-3oek"
 devto_id: 4182373
 title: "Ground Truth in Security Testing: Who Decides What's Vulnerable?"

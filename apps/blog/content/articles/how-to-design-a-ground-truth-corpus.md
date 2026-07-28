@@ -1,4 +1,8 @@
 ---
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus.jpg"
+devto_url: "https://dev.to/ofri-peretz/fixtures-first-rules-second-how-to-design-a-ground-truth-corpus-1g05"
+devto_id: 4183784
 title: "Fixtures First, Rules Second: How to Design a Ground-Truth Corpus"
 description: "Building the 40-fixture corpus behind the Interlace security benchmarks meant making 40 judgment calls. The full design discipline: category selection, edge-case labeling, version pinning, corpus lifecycle, robustness checks — and Fixture Cards, a per-fixture documentation standard."
 slug: "how-to-design-a-ground-truth-corpus"

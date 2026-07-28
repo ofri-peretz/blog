@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/i-benchmarked-17-eslint-security-plugins-
 devto_id: 3241881
 published_at: "2026-05-25T14:27:23Z"
 edited_at: "2026-05-25T14:27:23Z"
-cover_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7f2bcys47t9v6chwuj00.png"
-social_image: "https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7f2bcys47t9v6chwuj00.png"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-17-eslint-security-plugins-compared.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-17-eslint-security-plugins-compared.jpg"
 reading_time_minutes: 12
 tags:
   - "security"

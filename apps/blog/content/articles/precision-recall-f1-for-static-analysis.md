@@ -1,6 +1,8 @@
 ---
 devto_url: "https://dev.to/ofri-peretz/precision-recall-and-f1-for-static-analysis-same-score-opposite-tools-53ib"
 devto_id: 4182392
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/precision-recall-f1-for-static-analysis.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/precision-recall-f1-for-static-analysis.jpg"
 title: "Precision, Recall, and F1 for Static Analysis: Same Score, Opposite Tools"
 description: "A tool with 100% recall and 2% precision and a tool with 2% recall and 100% precision score the same F1: 3.9%. One number cannot tell you which failure mode you're buying. Definitions, the security asymmetry, F-beta, and a worked example with two static-analysis tools that share a precision score and behave nothing alike."
 slug: "precision-recall-f1-for-static-analysis"
