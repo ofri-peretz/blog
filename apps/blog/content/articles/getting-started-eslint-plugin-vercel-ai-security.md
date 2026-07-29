@@ -202,7 +202,7 @@ const { text } = await generateText({
 });
 ```
 
-**If you are on AI SDK v5 or later, type this instead:** `stopWhen: stepCountIs(5)` replaced `maxSteps`, and `maxOutputTokens` replaced `maxTokens`. Both `require-max-steps` and `require-max-tokens` still key on the v4 names as of v1.3.7, so on a v5+ codebase they flag calls that are already correctly bounded. Write the real option, silence those two rules for that file, and keep the other 17 — a rule that is behind a rename is a [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) you can see coming, which is the cheap kind.
+**If you are on AI SDK v5 or later, type this instead:** `stopWhen: stepCountIs(5)` replaced `maxSteps`, and `maxOutputTokens` replaced `maxTokens`. As of `1.4.0` both `require-max-steps` and `require-max-tokens` accept the v5+ names, so write the real option and the rules stay quiet. On `1.3.7` and earlier they key only on the v4 names and flag calls that are already correctly bounded — upgrade, or silence those two rules for that file and keep the other 17. A rule that is behind a rename is a [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) you can see coming, which is the cheap kind: it took a version bump, not a rewrite.
 
 ---
 
@@ -316,9 +316,9 @@ One friction point worth ten minutes of your life: ESLint 10 needs Node `^20.19 
 **Two honest caveats**, both re-checked against the run above:
 
 1. `require-tool-confirmation` only inspects inline tool object literals. Tools authored with the SDK's `tool()` helper, or lifted into a variable, are skipped. Inline the definition so the rule can see it, or gate those tools by hand.
-2. `no-unsafe-output-handling` follows the model-output binding into `eval` and `innerHTML`, but its SQL check matches on the interpolated text: ``db.query(`... ${result.text}`)`` fires, ``db.query(`... ${text}`)`` from a destructured call does not. Keep the output reachable as `result.text`, or parameterize the query and stop thinking about it.
+2. `no-unsafe-output-handling` follows the model-output binding into `eval` and `innerHTML`, but on `1.3.7` its SQL check matched the interpolated *text*: ``db.query(`... ${result.text}`)`` fires, ``db.query(`... ${text}`)`` from a destructured call does not. **Fixed in `1.4.0`** — the SQL check now walks the template's `${...}` expressions and the operands of a `+` chain and tests each value, so both shapes fire. On `1.3.7` and earlier, keep the output reachable as `result.text` — or parameterize the query and stop thinking about it, which is the better answer on every version.
 
-Both are misses, not noise — these rules stay quiet rather than guess, which is the [precision-over-recall](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) side of a trade every detector makes, and the right side for a rule that blocks merges. I wrote both rules and still found the second gap by re-running my own scan for this update, which is the argument for [shipping the reproduce command](https://ofriperetz.dev/articles/reproducibility-vs-replicability) rather than a screenshot of a green terminal.
+Both are misses, not noise — these rules stay quiet rather than guess, which is the [precision-over-recall](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) side of a trade every detector makes, and the right side for a rule that blocks merges. I wrote both rules and still found the second gap by re-running my own scan for this update — and then fixed it, which is the argument for [shipping the reproduce command](https://ofriperetz.dev/articles/reproducibility-vs-replicability) rather than a screenshot of a green terminal. A caveat you can reproduce is a caveat someone can close.
 
 ---
 
@@ -330,7 +330,7 @@ Both are misses, not noise — these rules stay quiet rather than guess, which i
 | **Node**             | Plugin: `>= 18.0.0`. But ESLint 10 itself needs `^20.19 \|\| ^22.13 \|\| >=24` — on Node 18, stay on ESLint 8 or 9.                                                             |
 | **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                                                                                                                  |
 | **Module system**    | CommonJS — loads from `eslint.config.js` (via `import` or `require`) and `eslint.config.mjs`                                                                                    |
-| **Vercel AI SDK**    | Optional peer — rules are AST-based. v5+ renamed `maxTokens` → `maxOutputTokens` and `maxSteps` → `stopWhen: stepCountIs(n)`; both rules still key on the v4 names as of 1.3.7. |
+| **Vercel AI SDK**    | Optional peer — rules are AST-based. v5+ renamed `maxTokens` → `maxOutputTokens` and replaced `maxSteps` with `stopWhen: stepCountIs(n)`. As of `1.4.0` both rules accept the v5+ names (v4 names still work); `1.3.7` and earlier key only on the v4 names and false-positive on a v5+ codebase. |
 | **Oxlint**           | `no-unsafe-output-handling` is wired into our Oxlint config and parity-checked in CI. Full 19-rule set runs on ESLint.                                                          |
 
 ---
