@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/securing-ai-agents-in-the-vercel-ai-sdk-4
 devto_id: 3116469
 published_at: "2025-12-20T00:03:08Z"
 edited_at: "2026-02-05T05:33:12Z"
-cover_image: "https://ofriperetz.dev/og/cover/securing-ai-agents-in-the-vercel-ai-sdk"
-social_image: "https://ofriperetz.dev/og/article/securing-ai-agents-in-the-vercel-ai-sdk"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/securing-ai-agents-in-the-vercel-ai-sdk.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/securing-ai-agents-in-the-vercel-ai-sdk-og.jpg"
 reading_time_minutes: 8
 tags:
   - "ai"

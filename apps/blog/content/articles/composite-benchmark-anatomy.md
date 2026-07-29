@@ -1,5 +1,5 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy-og.jpg"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy.jpg"
 devto_url: "https://dev.to/ofri-peretz/25-of-my-benchmark-verdict-is-an-opinion-heres-the-anatomy-294d"
 devto_id: 4183788

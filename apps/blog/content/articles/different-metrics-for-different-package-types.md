@@ -1,5 +1,5 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for-different-package-types.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for-different-package-types-og.jpg"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for-different-package-types.jpg"
 devto_url: "https://dev.to/ofri-peretz/i-maintain-23-benchmark-suites-across-my-own-packages-only-1-of-the-serverless-ones-has-real-54fp"
 title: "I Maintain 23 Benchmark Suites Across My Own Packages. Only 1 of the Serverless Ones Has Real Numbers Yet."

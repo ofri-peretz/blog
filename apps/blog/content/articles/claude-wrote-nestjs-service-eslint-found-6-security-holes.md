@@ -8,7 +8,7 @@ devto_url: "https://dev.to/ofri-peretz/claude-wrote-a-nestjs-service-typescript-
 devto_id: 3775020
 published_at: "2026-05-29"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-wrote-nestjs-service-eslint-found-6-security-holes.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-wrote-nestjs-service-eslint-found-6-security-holes.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-wrote-nestjs-service-eslint-found-6-security-holes-og.jpg"
 reading_time_minutes: 10
 tags:
   - "ai"

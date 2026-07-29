@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/the-ai-hydra-problem-fix-one-ai-bug-get-t
 devto_id: 3241678
 published_at: "2026-02-08T17:05:28Z"
 edited_at: "2026-02-08T17:16:17Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-ai-hydra-problem.png?v=2"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-ai-hydra-problem.png?v=2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-ai-hydra-problem-fix-one-ai-bug-get-two-more.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-ai-hydra-problem-fix-one-ai-bug-get-two-more-og.jpg"
 reading_time_minutes: 12
 tags:
   - "ai"

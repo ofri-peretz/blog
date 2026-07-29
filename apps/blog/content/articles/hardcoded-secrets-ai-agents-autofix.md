@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/hardcoded-secrets-the-1-vulnerability-ai-
 devto_id: 3137474
 published_at: "2025-12-31T05:39:36Z"
 edited_at: "2026-07-28T00:00:00Z"
-cover_image: "https://ofriperetz.dev/og/cover/hardcoded-secrets-ai-agents-autofix"
-social_image: "https://ofriperetz.dev/og/article/hardcoded-secrets-ai-agents-autofix"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/hardcoded-secrets-ai-agents-autofix.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/hardcoded-secrets-ai-agents-autofix-og.jpg"
 reading_time_minutes: 7
 tags:
   - "ai"

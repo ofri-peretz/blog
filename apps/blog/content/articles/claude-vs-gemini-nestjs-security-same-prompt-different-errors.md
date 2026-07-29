@@ -8,7 +8,7 @@ devto_url: "https://dev.to/ofri-peretz/i-ran-the-same-nestjs-prompt-on-claude-an
 devto_id: 3781266
 published_at: "2026-05-30"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-nestjs-security-same-prompt-different-errors.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-nestjs-security-same-prompt-different-errors.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-nestjs-security-same-prompt-different-errors-og.jpg"
 reading_time_minutes: 9
 tags:
   - "ai"

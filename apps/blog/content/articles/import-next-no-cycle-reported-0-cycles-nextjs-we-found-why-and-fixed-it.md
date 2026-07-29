@@ -8,7 +8,7 @@ devto_url: "https://dev.to/ofri-peretz/import-nextno-cycle-reported-0-cycles-on-
 devto_id: 3779911
 published_at: "2026-05-29"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/import-next-no-cycle-reported-0-cycles-nextjs-we-found-why-and-fixed-it-og.jpg"
 reading_time_minutes: 9
 tags:
   - "javascript"

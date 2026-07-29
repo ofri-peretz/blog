@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/why-eslint-plugin-import-slow-fix.png"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/why-eslint-plugin-import-slow-fix.png"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/why-eslint-plugin-import-takes-45-seconds-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/why-eslint-plugin-import-takes-45-seconds.jpg"
 title: "Why eslint-plugin-import Takes 58 Seconds on 10,000 Files — And Where the Time Actually Goes"
 description: "A lint-performance post-mortem with the result JSON attached: 58.67s vs 11.26s on 10,000 files, and 148.59s vs 2.71s for no-cycle alone at 5,000 (eslint-plugin-import 2.32.0 vs eslint-plugin-import-next 2.3.3, measured 2026-01-02). What I can prove about the cause, and what I can't."
 slug: "why-eslint-plugin-import-takes-45-seconds"
