@@ -13,6 +13,7 @@
 // ponytail: one Chrome launch, one tab, reused across the whole matrix. Setting
 // device metrics is far cheaper than a browser or page per case.
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // Defaults to the deployed site. A local run passes BASE explicitly — the
@@ -40,9 +41,25 @@ const ROUTES = (
   process.env.ROUTES ?? "/,/articles,/npm,/scorecard,/foundations"
 ).split(",");
 
-const CHROME =
-  process.env.CHROME ??
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+// Probe rather than assume: the previous macOS-only default failed with a bare
+// ENOENT for anyone on Linux, including a runner invoking this without CHROME.
+const CHROME_CANDIDATES = [
+  process.env.CHROME,
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].filter(Boolean);
+const CHROME = CHROME_CANDIDATES.find((p) => existsSync(p));
+if (!CHROME) {
+  console.error(
+    "No Chrome found. Set CHROME=/path/to/chrome. Looked in:\n  " +
+      CHROME_CANDIDATES.join("\n  "),
+  );
+  process.exit(2);
+}
 const PORT = 9333;
 
 // ── The audit, executed inside the page ────────────────────────────────────
@@ -261,7 +278,23 @@ function send(ws, method, params = {}, sessionId) {
 }
 
 async function main() {
-  const chrome = spawn(
+  // Every exit path below must reach chrome.kill(); an orphan holds PORT and
+  // the next run's /json/version probe then attaches to the WRONG browser.
+  let chrome;
+  let ws;
+  try {
+    return await run();
+  } finally {
+    try {
+      ws?.close();
+    } catch {
+      /* already closed */
+    }
+    chrome?.kill();
+  }
+
+  async function run() {
+  chrome = spawn(
     CHROME,
     [
       "--headless=new",
@@ -288,12 +321,9 @@ async function main() {
     }
     await sleep(100);
   }
-  if (!wsUrl) {
-    chrome.kill();
-    throw new Error("Chrome did not expose a debugging endpoint");
-  }
+  if (!wsUrl) throw new Error("Chrome did not expose a debugging endpoint");
 
-  const ws = new WebSocket(wsUrl);
+  ws = new WebSocket(wsUrl);
   await new Promise((res, rej) => {
     ws.addEventListener("open", res, { once: true });
     ws.addEventListener("error", rej, { once: true });
@@ -348,9 +378,8 @@ async function main() {
     }
   }
 
-  ws.close();
-  chrome.kill();
   return results;
+  }
 }
 
 const results = await main();

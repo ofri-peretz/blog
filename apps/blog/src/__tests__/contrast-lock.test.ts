@@ -45,21 +45,44 @@ function oklchToRgb(L: number, C: number, Hdeg: number): RGB {
   }) as RGB;
 }
 
-function parseColor(raw: string): RGB | null {
+/** Parsed colour plus its alpha. Alpha is CAPTURED, never assumed to be 1:
+ *  a token written `oklch(L C H / 0.5)` that is silently read as opaque would
+ *  report a contrast ratio the user never sees — the exact class of silent
+ *  wrongness this file exists to catch. */
+function parseColorAlpha(raw: string): { rgb: RGB; alpha: number } | null {
   const s = raw.trim();
   const ok = s.match(
-    /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*[\d.]+)?\s*\)$/,
+    /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/,
   );
   if (ok) {
     const L = ok[1].endsWith("%") ? parseFloat(ok[1]) / 100 : parseFloat(ok[1]);
-    return oklchToRgb(L, parseFloat(ok[2]), parseFloat(ok[3]));
+    const a = ok[4]
+      ? ok[4].endsWith("%")
+        ? parseFloat(ok[4]) / 100
+        : parseFloat(ok[4])
+      : 1;
+    return { rgb: oklchToRgb(L, parseFloat(ok[2]), parseFloat(ok[3])), alpha: a };
   }
-  const hex = s.match(/^#([0-9a-f]{6})$/i);
-  if (hex) {
-    const n = parseInt(hex[1], 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const hex8 = s.match(/^#([0-9a-f]{6})([0-9a-f]{2})$/i);
+  if (hex8) {
+    const n = parseInt(hex8[1], 16);
+    return {
+      rgb: [(n >> 16) & 255, (n >> 8) & 255, n & 255],
+      alpha: parseInt(hex8[2], 16) / 255,
+    };
+  }
+  const h = s.match(/^#([0-9a-f]{6})$/i);
+  if (h) {
+    const n = parseInt(h[1], 16);
+    return { rgb: [(n >> 16) & 255, (n >> 8) & 255, n & 255], alpha: 1 };
   }
   return null;
+}
+
+function parseColor(raw: string): RGB | null {
+  const s = raw.trim();
+  const parsed = parseColorAlpha(s);
+  return parsed ? parsed.rgb : null;
 }
 
 const lin = (v: number) => {
@@ -78,8 +101,13 @@ const composite = (fg: RGB, bg: RGB, alpha: number): RGB =>
 
 // ── token extraction ───────────────────────────────────────────────────────
 function block(selector: string): Record<string, string> {
+  // `[^}]*` rather than `[\s\S]*?\n\}`: the old form required a newline
+  // immediately before the closing brace, so a formatter collapsing the last
+  // declaration onto the brace line would make this return {} — and the tests
+  // would then pass VACUOUSLY. Declarations never contain `}`, so this is both
+  // simpler and formatting-proof.
   const re = new RegExp(
-    `${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([\\s\\S]*?)\\n\\}`,
+    `${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([^}]*)\\}`,
   );
   const m = CSS.match(re);
   if (!m) return {};
@@ -165,9 +193,27 @@ function usedTints(): Array<{ token: string; alpha: number }> {
 }
 
 describe("WCAG AA contrast — design tokens", () => {
-  it("parses both theme blocks", () => {
-    expect(Object.keys(ROOT).length).toBeGreaterThan(10);
-    expect(Object.keys(DARK).length).toBeGreaterThan(5);
+  // Guards against a VACUOUS pass. A count check is not enough: if `.dark`
+  // failed to parse, ROOT alone still satisfied both counts and every
+  // assertion below would trivially pass while testing one theme. Naming the
+  // tokens means a parse failure surfaces as a parse failure.
+  it("parses both theme blocks, with the tokens the assertions depend on", () => {
+    for (const [name, block] of [
+      ["ROOT", ROOT],
+      ["DARK", DARK],
+    ] as const) {
+      for (const token of [
+        "--background",
+        "--foreground",
+        "--muted",
+        "--muted-foreground",
+        "--primary",
+      ]) {
+        expect(block[token], `${name} is missing ${token}`).toBeDefined();
+      }
+    }
+    // The two themes must actually differ, or one selector matched the other.
+    expect(DARK["--background"]).not.toEqual(ROOT["--background"]);
   });
 
   it.each(THEMES)("%s: every semantic pair clears AA", (themeName, scope) => {
