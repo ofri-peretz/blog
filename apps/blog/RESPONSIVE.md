@@ -62,10 +62,20 @@ npm run audit:layout       # real browser, against production
 npm run audit:layout:local # real browser, against localhost:3000
 ```
 
-The audit drives the Chrome already installed on the machine over CDP, using
-node's built-in `WebSocket` (node ≥ 22). No Playwright, no puppeteer, nothing to
-install. One browser launch is reused across the whole matrix, which is why 30
-route×viewport combinations take ~30s rather than minutes.
+The audit drives Chrome with `playwright-core` — the driver *without* bundled
+browsers, so nothing is downloaded: it reuses the Chrome already installed
+(`channel: "chrome"`, or `CHROME` for an explicit path, which is how CI pins
+`/usr/bin/google-chrome`). One browser is reused across the whole matrix, which
+is why 168 combinations take ~2 minutes rather than many.
+
+This started as a hand-rolled CDP client, to avoid a dependency. That was the
+wrong call and it is worth recording why: it was 394 lines of plumbing around
+232 lines of audit logic, and **every bug it shipped was in the plumbing** —
+missing sandbox flags, a six-second startup race that made the gate flaky
+(green twice, red once, on identical code), a Chrome process leaked on any
+throw, and a profile directory leaked every run. Process lifecycle was not
+complexity avoided; it was the hard part taken on. `browser.close()` now does
+what four commits of hand-rolled teardown could not.
 
 It reports four classes, and exits non-zero on any of them:
 
