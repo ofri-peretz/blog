@@ -58,8 +58,8 @@ Supabase exports `dynamic = "force-dynamic"`; the fetchers still wrap reads in
 
 ```bash
 npm test                  # static rules + contrast, ~2s
-npm run audit:layout      # real browser, against localhost:3000
-npm run audit:layout:prod # real browser, against production
+npm run audit:layout       # real browser, against production
+npm run audit:layout:local # real browser, against localhost:3000
 ```
 
 The audit drives the Chrome already installed on the machine over CDP, using

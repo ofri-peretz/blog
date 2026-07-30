@@ -15,7 +15,7 @@
     "publish:devto": "node scripts/publish-to-devto.mjs",
     "deploy": "NEXT_PUBLIC_SITE_URL=https://ofriperetz.dev vercel build --prod && vercel deploy --prebuilt --prod",
     "audit:layout": "node scripts/layout-audit.mjs",
-    "audit:layout:prod": "BASE=https://ofriperetz.dev node scripts/layout-audit.mjs"
+    "audit:layout:local": "BASE=http://localhost:3000 node scripts/layout-audit.mjs"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-beta.6",

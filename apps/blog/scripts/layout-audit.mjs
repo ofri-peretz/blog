@@ -3,8 +3,8 @@
 // a viewport matrix. Drives the Chrome that is already installed, over CDP,
 // using node's built-in WebSocket — no Playwright, no puppeteer, no install.
 //
-//   node scripts/layout-audit.mjs                      # against localhost:3000
-//   BASE=https://ofriperetz.dev node scripts/layout-audit.mjs
+//   node scripts/layout-audit.mjs                       # against production
+//   BASE=http://localhost:3000 node scripts/layout-audit.mjs   # local dev
 //   node scripts/layout-audit.mjs --json               # machine-readable
 //
 // Requires node >= 22 (global WebSocket). Exit code 1 if any violation is found,
@@ -15,7 +15,10 @@
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 
-const BASE = process.env.BASE ?? "http://localhost:3000";
+// Defaults to the deployed site. A local run passes BASE explicitly — the
+// default deliberately carries no plaintext-http literal, which the security
+// lint (correctly) treats as a smell in shipped source.
+const BASE = process.env.BASE ?? "https://ofriperetz.dev";
 const JSON_OUT = process.argv.includes("--json");
 
 // Widths chosen for where layout actually breaks, not for device marketing
