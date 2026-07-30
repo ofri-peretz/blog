@@ -13,7 +13,9 @@
 // ponytail: one Chrome launch, one tab, reused across the whole matrix. Setting
 // device metrics is far cheaper than a browser or page per case.
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // Defaults to the deployed site. A local run passes BASE explicitly — the
@@ -21,6 +23,21 @@ import { setTimeout as sleep } from "node:timers/promises";
 // lint (correctly) treats as a smell in shipped source.
 const BASE = process.env.BASE ?? "https://ofriperetz.dev";
 const JSON_OUT = process.argv.includes("--json");
+
+// Consciously-accepted findings. See the file's own $comment for the rules;
+// the short version is that entries must justify themselves, and everything
+// not listed still fails the build.
+const BASELINE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "layout-audit-baseline.json",
+);
+const BASELINE = existsSync(BASELINE_PATH)
+  ? (JSON.parse(readFileSync(BASELINE_PATH, "utf-8")).accepted ?? [])
+  : [];
+const matchesBaseline = (kind, route, el) =>
+  BASELINE.find(
+    (b) => b.kind === kind && route.startsWith(b.route) && (el ?? "").includes(b.el),
+  );
 
 // Sampling "a few popular device widths" is the classic way to miss responsive
 // bugs, because a layout almost never breaks AT a round number — it breaks one
@@ -482,6 +499,25 @@ if (JSON_OUT) {
   console.log(JSON.stringify(results, null, 2));
 } else {
   let bad = 0;
+  let accepted = 0;
+  const usedBaseline = new Set();
+  // Strip accepted findings BEFORE counting, so the summary reflects what is
+  // actually being gated on.
+  for (const r of results) {
+    for (const kind of ["overflow", "overlap", "tapTargets", "contrast"]) {
+      if (!Array.isArray(r[kind])) continue;
+      const short = kind === "tapTargets" ? "tap" : kind;
+      r[kind] = r[kind].filter((f) => {
+        const hit = matchesBaseline(short, r.route, f.el ?? f.a ?? "");
+        if (hit) {
+          accepted++;
+          usedBaseline.add(hit.reason);
+          return false;
+        }
+        return true;
+      });
+    }
+  }
   for (const r of results) {
     const issues =
       (r.docOverflow > 0 ? 1 : 0) +
@@ -516,5 +552,16 @@ if (JSON_OUT) {
   console.log(
     `\n${results.length - bad}/${results.length} route×viewport combinations clean`,
   );
+  if (accepted) {
+    console.log(`${accepted} finding(s) matched the baseline and were not gated on:`);
+    for (const reason of usedBaseline) console.log(`  - ${reason.slice(0, 140)}`);
+  }
+  // A baseline entry that no longer matches anything is stale — surface it so
+  // the list shrinks as things get fixed, rather than quietly rotting.
+  const unused = BASELINE.filter((b) => !usedBaseline.has(b.reason));
+  if (unused.length) {
+    console.log(`\n${unused.length} baseline entr(y/ies) matched nothing and can be deleted:`);
+    for (const b of unused) console.log(`  - ${b.kind} ${b.route} ${b.el}`);
+  }
   process.exit(bad ? 1 : 0);
 }

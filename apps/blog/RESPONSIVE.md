@@ -131,3 +131,27 @@ a `getBoundingClientRect()` spanning every line it touches, so two ordinary
 links in one paragraph "overlapped" while their rendered text never came close.
 Overlap now compares `getClientRects()` — the per-line boxes a reader and a
 finger actually meet.
+
+## The baseline
+
+`scripts/layout-audit-baseline.json` lists findings that are known, understood
+and consciously accepted. Anything not listed still fails the build.
+
+This exists because the alternative is worse in both directions. A gate that is
+permanently red gets ignored, and then it protects nothing — the same reason
+the `whitespace-nowrap` rule was deleted. But an allowlist with no stated
+reason is that failure wearing a hat, so every entry must say **why** it is
+accepted and **what would make it removable**, and the audit prints those
+reasons on every run rather than hiding the count.
+
+It also reports entries that matched nothing, so the list shrinks as things get
+fixed instead of quietly rotting.
+
+Two entries today, both judgement calls rather than defects:
+
+- a Shiki `github-light` token measures 3.49:1 on 14px code text. The colour is
+  theme data from the highlighter, not our CSS, so fixing it means choosing a
+  different theme — a decision about how code reads.
+- links that are the entire content of a prose table cell render 18px tall.
+  SC 2.5.8 exempts links inside a sentence; a table cell containing only a link
+  is arguably not one. Fixing it means restyling markdown tables site-wide.
