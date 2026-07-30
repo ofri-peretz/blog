@@ -38,7 +38,7 @@ export function InstallSnippet({ packageName, className }: InstallSnippetProps) 
         type="button"
         onClick={handleCopy}
         aria-label={copied ? "Copied" : "Copy install command"}
-        className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         {copied ? (
           <Check className="size-3.5" aria-hidden />

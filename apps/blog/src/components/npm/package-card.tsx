@@ -63,7 +63,7 @@ export function PackageCard({ pkg }: { pkg: PackageCardData }) {
             href={npmUrlFor(pkg.name)}
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex items-center gap-1 font-mono text-sm font-semibold hover:underline"
+            className="group inline-flex min-h-6 items-center gap-1 font-mono text-sm font-semibold hover:underline"
             aria-label={`Open ${pkg.name} on npm`}
           >
             <span className="truncate">{pkg.name}</span>
@@ -76,7 +76,7 @@ export function PackageCard({ pkg }: { pkg: PackageCardData }) {
             href={githubUrlFor(pkg.name)}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
             aria-label={`Source for ${pkg.name} on GitHub`}
           >
             <GitHubMark className="size-4" />
