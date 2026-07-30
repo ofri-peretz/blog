@@ -302,13 +302,22 @@ async function main() {
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-gpu",
+      // CI containers run as root with a tiny /dev/shm; without these two
+      // Chrome exits immediately and the only symptom is the debugging port
+      // never opening. Harmless locally.
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
       "--hide-scrollbars", // otherwise the scrollbar itself eats ~15px and fakes overflow
       "--force-prefers-reduced-motion", // animations must not race the measurement
       "--user-data-dir=/tmp/layout-audit-profile",
       "about:blank",
     ],
-    { stdio: "ignore" },
+    { stdio: ["ignore", "ignore", "pipe"] },
   );
+  let chromeErr = "";
+  chrome.stderr?.on("data", (d) => {
+    chromeErr += d.toString();
+  });
 
   let wsUrl;
   for (let i = 0; i < 60; i++) {
@@ -321,7 +330,12 @@ async function main() {
     }
     await sleep(100);
   }
-  if (!wsUrl) throw new Error("Chrome did not expose a debugging endpoint");
+  if (!wsUrl) {
+    throw new Error(
+      `Chrome (${CHROME}) never opened its debugging port.\n` +
+        `Chrome said:\n${chromeErr.trim() || "(nothing on stderr)"}`,
+    );
+  }
 
   ws = new WebSocket(wsUrl);
   await new Promise((res, rej) => {
