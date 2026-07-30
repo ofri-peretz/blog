@@ -4,8 +4,8 @@ devto_id: 4183795
 title: "We Were Wrong About sls remove"
 description: "Our loudest serverless claim — 'ghost billing after sls remove' — failed our own E2E run. The trap is real, but it lives on a different path entirely. The full story of re-scoping a claim in public, and why the narrower version came out stronger."
 slug: "we-were-wrong-about-sls-remove"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-were-wrong-about-sls-remove-og.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-were-wrong-about-sls-remove.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-were-wrong-about-sls-remove-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-were-wrong-about-sls-remove.jpg?v=b2"
 published: true
 date: 2026-07-19
 tags:

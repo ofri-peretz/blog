@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus-og.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/fixtures-first-rules-second-how-to-design-a-ground-truth-corpus-1g05"
 devto_id: 4183784
 title: "Fixtures First, Rules Second: How to Design a Ground-Truth Corpus"

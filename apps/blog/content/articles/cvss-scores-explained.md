@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/cvss-scores-explained-og.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/cvss-scores-explained.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/cvss-scores-explained-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/cvss-scores-explained.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/cvss-scores-explained-the-number-measures-severity-not-risk-4k6i"
 devto_id: 4182369
 title: "CVSS Scores Explained: The Number Measures Severity, Not Risk"

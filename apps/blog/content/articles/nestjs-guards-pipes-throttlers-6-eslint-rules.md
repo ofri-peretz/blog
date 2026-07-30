@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-nestjs
 devto_id: 3144090
 published_at: "2026-01-02T19:28:48Z"
 edited_at: "2026-07-28T00:00:00Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/nestjs-guards-pipes-throttlers-6-eslint-rules.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/nestjs-guards-pipes-throttlers-6-eslint-rules-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/nestjs-guards-pipes-throttlers-6-eslint-rules.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/nestjs-guards-pipes-throttlers-6-eslint-rules-og.jpg?v=b2"
 reading_time_minutes: 12
 tags:
   - "security"

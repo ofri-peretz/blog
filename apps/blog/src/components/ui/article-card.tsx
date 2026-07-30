@@ -250,10 +250,10 @@ function CoverImage({
         priority={priority}
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         className={cn(
-          // object-left, not object-center: covers are 1000x420 (2.38:1) and
-          // every tile is narrower, so `cover` crops the sides. The mark and
-          // the hero word both sit in the left third — centring cuts the two
-          // things that identify the article.
+          // The container is aspect-[1000/420], so nothing should crop. This
+          // stays as a safety net: if a cover ever ships at another ratio,
+          // losing the right edge beats losing the mark and the hero word,
+          // which both sit in the left third.
           "object-cover object-left transition-transform duration-500 group-hover:scale-105",
           className,
         )}
@@ -360,8 +360,12 @@ function StackBody({
 }: BodyProps) {
   return (
     <>
-      {/* Cover (or gradient title fallback) — edge-to-edge top of the card. */}
-      <div className="relative h-44 w-full shrink-0 overflow-hidden">
+      {/* Cover (or gradient title fallback) — edge-to-edge top of the card.
+          aspect-[1000/420], not a fixed h-44: covers are rendered at exactly
+          1000x420 (2.38:1) and h-44 made this box 1.72:1, so `cover` cropped
+          28% off the right — enough to turn a "noisy rules" hero into "noisy
+          ru". Matching the source ratio shows the whole cover instead. */}
+      <div className="relative aspect-[1000/420] w-full shrink-0 overflow-hidden">
         <CoverImage imageUrl={imageUrl} title={title} priority={priority} />
         {sourceLabel ? <SourceChip label={sourceLabel} /> : null}
       </div>

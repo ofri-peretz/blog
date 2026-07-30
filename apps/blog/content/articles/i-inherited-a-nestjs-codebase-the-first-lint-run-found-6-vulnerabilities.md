@@ -7,8 +7,8 @@ tier: "T3"
 devto_url: "https://dev.to/ofri-peretz/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-55ma"
 devto_id: 3769186
 published_at: "2026-05-28"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities-og.jpg?v=b2"
 reading_time_minutes: 8
 tags:
   - "security"

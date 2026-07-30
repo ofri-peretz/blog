@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-crypto
 devto_id: 3143570
 published_at: "2026-01-02T15:15:04Z"
 edited_at: "2026-02-03T04:59:37Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-node-security.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-node-security-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-node-security.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-node-security-og.jpg?v=b2"
 reading_time_minutes: 10
 tags:
   - "security"

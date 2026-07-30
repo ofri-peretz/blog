@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/transaction-race-conditions-why-begin-on-
 devto_id: 3138993
 published_at: "2025-12-31T21:38:13Z"
 edited_at: "2026-01-11T10:21:47Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/transaction-race-conditions-begin-on-pool.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/transaction-race-conditions-begin-on-pool-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/transaction-race-conditions-begin-on-pool.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/transaction-race-conditions-begin-on-pool-og.jpg?v=b2"
 reading_time_minutes: 8
 tags:
   - "node"
