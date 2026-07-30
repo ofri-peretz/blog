@@ -7,9 +7,15 @@
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* 0.556 measured 4.35:1 on --muted, under the 4.5 AA floor for body text
+     (WCAG 1.4.3). It passed on --background (4.74) which is why it survived —
+     secondary text is routinely placed on bg-muted, so both surfaces count. */
+  --muted-foreground: oklch(0.54 0 0);
+  /* --border stays low-contrast: it draws decorative dividers and card edges,
+     which 1.4.11 does not cover. --input is different — it is the boundary
+     that identifies a form control, so it needs 3:1 (was 1.26:1). */
   --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --input: oklch(0.64 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --accent: oklch(0.97 0 0);
@@ -56,7 +62,7 @@
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
+  --input: oklch(0.5 0 0); /* 3.30:1 on --background (was 1.31:1) */
   --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --accent: oklch(0.269 0 0);
