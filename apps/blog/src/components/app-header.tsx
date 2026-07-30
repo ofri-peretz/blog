@@ -40,12 +40,12 @@ export function AppHeader({
           className="flex items-center gap-2 text-sm font-semibold tracking-tight hover:text-foreground/80"
         >
           <Image
-            src="/ofri-profile.webp"
+            src="/interlace-mark.svg"
             alt=""
             width={28}
             height={28}
             priority
-            className="size-7 rounded-full border border-border object-cover"
+            className="size-7"
           />
           ofri peretz
         </Link>
