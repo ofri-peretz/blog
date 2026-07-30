@@ -1,22 +1,26 @@
 #!/usr/bin/env node
 // Real-layout audit: overflow, overlap, tap targets and colour contrast, across
-// a viewport matrix. Drives the Chrome that is already installed, over CDP,
-// using node's built-in WebSocket — no Playwright, no puppeteer, no install.
+// a viewport x route x colour-scheme matrix.
 //
-//   node scripts/layout-audit.mjs                       # against production
-//   BASE=http://localhost:3000 node scripts/layout-audit.mjs   # local dev
-//   node scripts/layout-audit.mjs --json               # machine-readable
+//   npm run audit:layout          # against production
+//   npm run audit:layout:local    # against localhost:3000
+//   node scripts/layout-audit.mjs --json
 //
-// Requires node >= 22 (global WebSocket). Exit code 1 if any violation is found,
-// so CI can gate on it.
+// Exit code 1 on any violation not listed in layout-audit-baseline.json, so CI
+// can gate on it.
 //
-// ponytail: one Chrome launch, one tab, reused across the whole matrix. Setting
-// device metrics is far cheaper than a browser or page per case.
-import { spawn } from "node:child_process";
+// Driven by playwright-core. The first version of this script spoke CDP
+// directly to avoid a dependency — 394 lines of plumbing around 232 lines of
+// actual audit logic, and every bug it shipped was in the plumbing: missing
+// sandbox flags, a six-second startup race that made the gate flaky, a Chrome
+// process leaked on any throw, and a profile directory leaked every run.
+// Process lifecycle was not complexity avoided, it was the hard part taken on.
+// playwright-core owns all of it; `channel: "chrome"` reuses the Chrome that is
+// already installed, so nothing is downloaded.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { setTimeout as sleep } from "node:timers/promises";
+import { chromium } from "playwright-core";
 
 // Defaults to the deployed site. A local run passes BASE explicitly — the
 // default deliberately carries no plaintext-http literal, which the security
@@ -24,7 +28,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 const BASE = process.env.BASE ?? "https://ofriperetz.dev";
 const JSON_OUT = process.argv.includes("--json");
 
-// Consciously-accepted findings. See the file's own $comment for the rules;
+// Consciously-accepted findings. See that file's own $comment for the rules;
 // the short version is that entries must justify themselves, and everything
 // not listed still fails the build.
 const BASELINE_PATH = path.join(
@@ -36,9 +40,8 @@ const BASELINE = existsSync(BASELINE_PATH)
   : [];
 // `label()` emits "tag[.class][#id]", so an unanchored substring test is
 // catastrophically broad: b.el "a" matched button.action, nav, article,
-// textarea and any class containing an "a". That silenced nearly every tap
-// finding on the route instead of the one case it was written for. Match the
-// TAG exactly, at a boundary, and require the declared context too.
+// textarea and any class containing an "a". Match the TAG at a boundary, and
+// require the declared context too.
 const tagMatches = (label, tag) =>
   label === tag ||
   label.startsWith(`${tag}.`) ||
@@ -50,29 +53,24 @@ const matchesBaseline = (kind, route, finding) =>
       b.kind === kind &&
       route.startsWith(b.route) &&
       tagMatches(finding.el ?? finding.a ?? "", b.el) &&
-      // A baseline entry without a ctx would be a route-wide silencer.
+      // An entry without a ctx would be a route-wide silencer.
       Boolean(b.ctx) &&
       finding.ctx === b.ctx,
   );
 
 // Sampling "a few popular device widths" is the classic way to miss responsive
 // bugs, because a layout almost never breaks AT a round number — it breaks one
-// pixel either side of a breakpoint, where a grid drops a column or a `hidden
-// sm:flex` swaps in. So the matrix is built FROM the breakpoints this codebase
-// actually uses (sm/md/lg/xl = 640/768/1024/1280 — `sm:` alone appears 49
-// times), testing each boundary and the pixel below it.
+// pixel either side of a breakpoint, where a grid drops a column or a
+// `hidden sm:flex` swaps in. So the matrix is built FROM the breakpoints this
+// codebase actually uses (`sm:` alone appears 49 times), testing each boundary
+// and the pixel below it.
 //
-// The narrow end is sampled by device because below `sm` there are no
-// breakpoints left to straddle: 320 is the narrowest viewport worth
-// supporting, 360 the most common Android, 390 a modern iPhone, 414 a "plus".
-// 1920 catches anything assuming a max container.
-//
-// Heights are deliberately short so "below the fold" never hides an overflow.
+// Below `sm` there are no breakpoints left to straddle, so the narrow end is
+// sampled by device. 1920 catches anything assuming a max container. Heights
+// are deliberately short so "below the fold" never hides an overflow.
 const BREAKPOINTS = [640, 768, 1024, 1280]; // Tailwind sm, md, lg, xl
 const VIEWPORTS = [
   ...[320, 360, 390, 414].map((w) => ({ w, h: 720 })),
-  // Each breakpoint and the pixel below it: the two layouts either side of
-  // every switch the code can make.
   ...BREAKPOINTS.flatMap((b) => [
     { w: b - 1, h: 800 },
     { w: b, h: 800 },
@@ -83,41 +81,15 @@ const VIEWPORTS = [
 const ROUTES = (
   process.env.ROUTES ??
   // An article page is the longest and densest layout here (prose, code
-  // blocks, tables, a cover) and was the obvious omission from the first
-  // matrix — the routes that LIST articles were covered, the one that renders
-  // one was not.
+  // blocks, tables, a cover).
   "/,/articles,/articles/getting-started-eslint-plugin-mongodb-security,/npm,/scorecard,/foundations"
 ).split(",");
 
-// AA has to hold in BOTH themes, and only one was ever measured. The tokens are
-// checked in both by contrast-lock.test.ts, but rendered contrast can differ
-// from token contrast wherever a component hardcodes or composites.
+// AA has to hold in BOTH themes. The tokens are checked in both by
+// contrast-lock.test.ts, but rendered contrast can differ from token contrast
+// wherever a component hardcodes or composites.
 const SCHEMES = (process.env.SCHEMES ?? "dark,light").split(",");
 
-// Probe rather than assume: the previous macOS-only default failed with a bare
-// ENOENT for anyone on Linux, including a runner invoking this without CHROME.
-const CHROME_CANDIDATES = [
-  process.env.CHROME,
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "/Applications/Chromium.app/Contents/MacOS/Chromium",
-  "/usr/bin/google-chrome",
-  "/usr/bin/google-chrome-stable",
-  "/usr/bin/chromium",
-  "/usr/bin/chromium-browser",
-].filter(Boolean);
-const CHROME = CHROME_CANDIDATES.find((p) => existsSync(p));
-if (!CHROME) {
-  console.error(
-    "No Chrome found. Set CHROME=/path/to/chrome. Looked in:\n  " +
-      CHROME_CANDIDATES.join("\n  "),
-  );
-  process.exit(2);
-}
-const PORT = 9333;
-
-// ── The audit, executed inside the page ────────────────────────────────────
-// Kept as a single self-contained function: it is stringified and evaluated in
-// the page, so it cannot close over anything from this module.
 const AUDIT_FN = function auditPage() {
   const vw = document.documentElement.clientWidth;
   // Report the theme the DOM actually adopted. If the emulation never reached
@@ -352,171 +324,67 @@ const AUDIT_FN = function auditPage() {
   return { vw, docOverflow, ...out };
 };
 
-// ── CDP plumbing ───────────────────────────────────────────────────────────
-let msgId = 0;
-function send(ws, method, params = {}, sessionId) {
-  const id = ++msgId;
-  return new Promise((resolve, reject) => {
-    const onMsg = (ev) => {
-      let m;
-      try {
-        m = JSON.parse(ev.data);
-      } catch {
-        return;
-      }
-      if (m.id !== id) return;
-      ws.removeEventListener("message", onMsg);
-      m.error ? reject(new Error(`${method}: ${m.error.message}`)) : resolve(m.result);
-    };
-    ws.addEventListener("message", onMsg);
-    ws.send(JSON.stringify({ id, method, params, sessionId }));
-  });
-}
+// ── Driver ─────────────────────────────────────────────────────────────────
+// One browser, one page, reused across the matrix: setting the viewport is far
+// cheaper than a browser or context per case.
+const browser = await chromium.launch({
+  // Reuse the installed Chrome rather than downloading one. CHROME still wins
+  // if set, which is how CI pins /usr/bin/google-chrome.
+  ...(process.env.CHROME
+    ? { executablePath: process.env.CHROME }
+    : { channel: "chrome" }),
+  // CI containers run as root with a small /dev/shm; without these Chrome
+  // exits immediately. Harmless locally.
+  args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars"],
+});
 
-async function main() {
-  // Every exit path below must reach chrome.kill(); an orphan holds PORT and
-  // the next run's /json/version probe then attaches to the WRONG browser.
-  let chrome;
-  let ws;
-  try {
-    return await run();
-  } finally {
-    try {
-      ws?.close();
-    } catch {
-      /* already closed */
-    }
-    chrome?.kill();
-  }
-
-  async function run() {
-  chrome = spawn(
-    CHROME,
-    [
-      "--headless=new",
-      `--remote-debugging-port=${PORT}`,
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-gpu",
-      // CI containers run as root with a tiny /dev/shm; without these two
-      // Chrome exits immediately and the only symptom is the debugging port
-      // never opening. Harmless locally.
-      "--no-sandbox",
-      "--disable-dev-shm-usage",
-      "--hide-scrollbars", // otherwise the scrollbar itself eats ~15px and fakes overflow
-      "--force-prefers-reduced-motion", // animations must not race the measurement
-      "--user-data-dir=/tmp/layout-audit-profile",
-      "about:blank",
-    ],
-    { stdio: ["ignore", "ignore", "pipe"] },
-  );
-  let chromeErr = "";
-  chrome.stderr?.on("data", (d) => {
-    chromeErr += d.toString();
-  });
-
-  let wsUrl;
-  for (let i = 0; i < 60; i++) {
-    try {
-      const r = await fetch(`http://127.0.0.1:${PORT}/json/version`);
-      wsUrl = (await r.json()).webSocketDebuggerUrl;
-      if (wsUrl) break;
-    } catch {
-      /* not up yet */
-    }
-    await sleep(100);
-  }
-  if (!wsUrl) {
-    throw new Error(
-      `Chrome (${CHROME}) never opened its debugging port.\n` +
-        `Chrome said:\n${chromeErr.trim() || "(nothing on stderr)"}`,
-    );
-  }
-
-  ws = new WebSocket(wsUrl);
-  await new Promise((res, rej) => {
-    ws.addEventListener("open", res, { once: true });
-    ws.addEventListener("error", rej, { once: true });
-  });
-
-  const { targetId } = await send(ws, "Target.createTarget", { url: "about:blank" });
-  const { sessionId } = await send(ws, "Target.attachToTarget", {
-    targetId,
-    flatten: true,
-  });
-  await send(ws, "Page.enable", {}, sessionId);
-  await send(ws, "Runtime.enable", {}, sessionId);
-
-  const results = [];
+const results = [];
+try {
   for (const scheme of SCHEMES) {
-    await send(
-      ws,
-      "Emulation.setEmulatedMedia",
-      { features: [{ name: "prefers-color-scheme", value: scheme }] },
-      sessionId,
-    );
-    for (const route of ROUTES) {
-      for (const vp of VIEWPORTS) {
-        await send(
-          ws,
-          "Emulation.setDeviceMetricsOverride",
-          { width: vp.w, height: vp.h, deviceScaleFactor: 1, mobile: vp.w < 768 },
-          sessionId,
-        );
-        const loaded = new Promise((res) => {
-          const on = (ev) => {
-            const m = JSON.parse(ev.data);
-            if (m.method === "Page.loadEventFired" && m.sessionId === sessionId) {
-              ws.removeEventListener("message", on);
-              res();
+    const context = await browser.newContext({
+      colorScheme: scheme,
+      reducedMotion: "reduce", // animations must not race the measurement
+    });
+    const page = await context.newPage();
+    try {
+      for (const route of ROUTES) {
+        for (const vp of VIEWPORTS) {
+          await page.setViewportSize({ width: vp.w, height: vp.h });
+          try {
+            await page.goto(BASE + route, {
+              waitUntil: "load",
+              timeout: 30000,
+            });
+            await page.waitForTimeout(400); // let webfonts settle
+            const value = await page.evaluate(AUDIT_FN);
+            // Assert, do not merely record. If the colour-scheme override ever
+            // stopped reaching the app, every "light" pass would silently
+            // re-measure dark and the matrix would double in cost while
+            // proving nothing.
+            if (value.renderedTheme && value.renderedTheme !== scheme) {
+              results.push({
+                route,
+                vp: vp.w,
+                scheme,
+                error: `theme emulation did not take: asked for "${scheme}", DOM rendered "${value.renderedTheme}"`,
+              });
+              continue;
             }
-          };
-          ws.addEventListener("message", on);
-        });
-        await send(ws, "Page.navigate", { url: BASE + route }, sessionId);
-        await Promise.race([loaded, sleep(15000)]);
-        await sleep(500); // let fonts settle; layout shifts after webfont swap
-
-        const { result, exceptionDetails } = await send(
-          ws,
-          "Runtime.evaluate",
-          {
-            expression: `(${AUDIT_FN.toString()})()`,
-            returnByValue: true,
-            awaitPromise: false,
-          },
-          sessionId,
-        );
-        if (exceptionDetails) {
-          results.push({ route, vp: vp.w, scheme, error: exceptionDetails.text });
-          continue;
+            results.push({ route, vp: vp.w, scheme, ...value });
+          } catch (err) {
+            results.push({ route, vp: vp.w, scheme, error: String(err).slice(0, 200) });
+          }
         }
-        const value = result.value;
-        // Assert, do not merely record. If setEmulatedMedia never reaches the
-        // app — say it reads localStorage instead of the media query — every
-        // "light" iteration would silently re-measure dark, and the matrix would
-        // double in cost while proving exactly nothing.
-        if (value.renderedTheme && value.renderedTheme !== scheme) {
-          results.push({
-            route,
-            vp: vp.w,
-            scheme,
-            error:
-              `theme emulation did not take: asked for "${scheme}", ` +
-              `DOM rendered "${value.renderedTheme}"`,
-          });
-          continue;
-        }
-        results.push({ route, vp: vp.w, scheme, ...value });
       }
+    } finally {
+      await context.close();
     }
   }
-
-  return results;
-  }
+} finally {
+  // Closes the process AND removes the profile directory. Both were hand-rolled
+  // before, and both leaked.
+  await browser.close();
 }
-
-const results = await main();
 
 if (JSON_OUT) {
   console.log(JSON.stringify(results, null, 2));
