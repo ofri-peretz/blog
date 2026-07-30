@@ -59,8 +59,12 @@ const getCachedLifetimePerPackage = unstable_cache(
     const out: Record<string, number> = {};
     if (plugins.length === 0) return out;
 
+    // Throws rather than returning {} for the same reason as
+    // getCachedPluginsDailyRaw: a cached failure outlives the deployment.
     const client = getClient();
-    if (!client) return out;
+    if (!client) {
+      throw new Error("[npm-page-data] Supabase env missing");
+    }
 
     const idToName = new Map(plugins.map((p) => [p.pluginId, p.name]));
     const { data, error } = await client
@@ -68,8 +72,7 @@ const getCachedLifetimePerPackage = unstable_cache(
       .select("plugin_id, alltime_total")
       .in("plugin_id", plugins.map((p) => p.pluginId));
     if (error) {
-      console.error("[npm-page-data] npm_alltime_downloads:", error.message);
-      return out;
+      throw new Error(`[npm-page-data] npm_alltime_downloads: ${error.message}`);
     }
 
     for (const row of data ?? []) {
@@ -84,6 +87,18 @@ const getCachedLifetimePerPackage = unstable_cache(
 
 // Composed: per-package data ready to render.
 export async function getNpmPagePackages(): Promise<NpmPagePackage[]> {
+  try {
+    return await loadNpmPagePackages();
+  } catch (err) {
+    // Degrade for THIS request only. The rejected promise above was never
+    // cached, so the next request retries against a healthy Supabase instead
+    // of serving a cached failure for the next twelve hours.
+    console.error("[npm-page-data]", err);
+    return [];
+  }
+}
+
+async function loadNpmPagePackages(): Promise<NpmPagePackage[]> {
   const { plugins, daily: dailyEntries } = await getCachedPluginsDailyRaw();
   const daily = new Map(dailyEntries);
   if (plugins.length === 0) return [];

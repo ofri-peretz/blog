@@ -14,7 +14,19 @@
 import { getCachedPluginsWithDailyData } from "@/lib/supabase-data";
 
 export async function GET() {
-  const packages = await getCachedPluginsWithDailyData();
+  let packages: Awaited<ReturnType<typeof getCachedPluginsWithDailyData>>;
+  try {
+    packages = await getCachedPluginsWithDailyData();
+  } catch (err) {
+    // 503, not a 200 with an empty array: an empty 200 is indistinguishable
+    // from "this account publishes nothing", which is how the same failure
+    // went unnoticed on /npm for days.
+    console.error("[api/npm-stats]", err);
+    return Response.json(
+      { error: "upstream unavailable" },
+      { status: 503, headers: { "cache-control": "no-store" } },
+    );
+  }
   const totalDownloads = packages.reduce((sum, p) => sum + p.downloads, 0);
   return Response.json({
     updatedAt: new Date().toISOString().split("T")[0],

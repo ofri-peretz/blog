@@ -260,9 +260,18 @@ export interface PluginsDailyRaw {
 
 export const getCachedPluginsDailyRaw = unstable_cache(
   async (): Promise<PluginsDailyRaw> => {
-    const empty: PluginsDailyRaw = { plugins: [], daily: [] };
+    // THROW, never return empty. unstable_cache stores whatever this resolves
+    // to, and Vercel's Data Cache outlives the deployment — so returning [] on
+    // a transient Supabase blip cached that blip for 12h AND survived every
+    // redeploy. /npm served "No package data available" for days on healthy
+    // data; only revalidateTag('ratchet') cleared it. A rejected promise is not
+    // cached, so the next request simply retries. Callers catch and degrade.
     const client = getClient();
-    if (!client) return empty;
+    if (!client) {
+      throw new Error(
+        "[supabase-data] SUPABASE_URL / SUPABASE_ANON_KEY missing — refusing to cache an empty result",
+      );
+    }
 
     // Window: last 30 days. Hard floor at 2025-11-30 (METRICS_START_DATE in
     // the old bundled-JSON route — keeps the chart's x-axis stable).
@@ -275,8 +284,7 @@ export const getCachedPluginsDailyRaw = unstable_cache(
       .from("plugins")
       .select("id, name, slug, category, description");
     if (pErr || !plugins) {
-      console.error("[supabase-data] plugins:", pErr?.message);
-      return empty;
+      throw new Error(`[supabase-data] plugins: ${pErr?.message ?? "no rows"}`);
     }
 
     const { data: daily, error: dErr } = await client
@@ -285,8 +293,9 @@ export const getCachedPluginsDailyRaw = unstable_cache(
       .gte("observed_on", windowStart)
       .order("observed_on", { ascending: true });
     if (dErr) {
-      console.error("[supabase-data] v_plugin_daily:", dErr.message);
-      return { plugins, daily: [] };
+      // Also a throw: caching plugins-with-no-daily zeroes every sparkline and
+      // every downloads30d, which the /npm filter then reads as "no signal".
+      throw new Error(`[supabase-data] v_plugin_daily: ${dErr.message}`);
     }
 
     const byPlugin = new Map<
