@@ -22,24 +22,44 @@ import { setTimeout as sleep } from "node:timers/promises";
 const BASE = process.env.BASE ?? "https://ofriperetz.dev";
 const JSON_OUT = process.argv.includes("--json");
 
-// Widths chosen for where layout actually breaks, not for device marketing
-// names: 320 is the narrowest viewport still worth supporting (iPhone SE in
-// landscape-split / older Androids), 360 the most common Android, 390 modern
-// iPhone, 768 the iPad portrait / tablet boundary, 1024 the small-laptop and
-// common tablet-landscape, 1440 a large desktop. Heights are deliberately
-// short so that "below the fold" never hides an overflow.
+// Sampling "a few popular device widths" is the classic way to miss responsive
+// bugs, because a layout almost never breaks AT a round number — it breaks one
+// pixel either side of a breakpoint, where a grid drops a column or a `hidden
+// sm:flex` swaps in. So the matrix is built FROM the breakpoints this codebase
+// actually uses (sm/md/lg/xl = 640/768/1024/1280 — `sm:` alone appears 49
+// times), testing each boundary and the pixel below it.
+//
+// The narrow end is sampled by device because below `sm` there are no
+// breakpoints left to straddle: 320 is the narrowest viewport worth
+// supporting, 360 the most common Android, 390 a modern iPhone, 414 a "plus".
+// 1920 catches anything assuming a max container.
+//
+// Heights are deliberately short so "below the fold" never hides an overflow.
+const BREAKPOINTS = [640, 768, 1024, 1280]; // Tailwind sm, md, lg, xl
 const VIEWPORTS = [
-  { w: 320, h: 720 },
-  { w: 360, h: 740 },
-  { w: 390, h: 844 },
-  { w: 768, h: 900 },
-  { w: 1024, h: 800 },
-  { w: 1440, h: 900 },
+  ...[320, 360, 390, 414].map((w) => ({ w, h: 720 })),
+  // Each breakpoint and the pixel below it: the two layouts either side of
+  // every switch the code can make.
+  ...BREAKPOINTS.flatMap((b) => [
+    { w: b - 1, h: 800 },
+    { w: b, h: 800 },
+  ]),
+  ...[1440, 1920].map((w) => ({ w, h: 900 })),
 ];
 
 const ROUTES = (
-  process.env.ROUTES ?? "/,/articles,/npm,/scorecard,/foundations"
+  process.env.ROUTES ??
+  // An article page is the longest and densest layout here (prose, code
+  // blocks, tables, a cover) and was the obvious omission from the first
+  // matrix — the routes that LIST articles were covered, the one that renders
+  // one was not.
+  "/,/articles,/articles/getting-started-eslint-plugin-mongodb-security,/npm,/scorecard,/foundations"
 ).split(",");
+
+// AA has to hold in BOTH themes, and only one was ever measured. The tokens are
+// checked in both by contrast-lock.test.ts, but rendered contrast can differ
+// from token contrast wherever a component hardcodes or composites.
+const SCHEMES = (process.env.SCHEMES ?? "dark,light").split(",");
 
 // Probe rather than assume: the previous macOS-only default failed with a bare
 // ENOENT for anyone on Linux, including a runner invoking this without CHROME.
@@ -67,7 +87,13 @@ const PORT = 9333;
 // the page, so it cannot close over anything from this module.
 const AUDIT_FN = function auditPage() {
   const vw = document.documentElement.clientWidth;
-  const out = { overflow: [], overlap: [], tapTargets: [], contrast: [] };
+  // Report the theme the DOM actually adopted. If the emulation never reached
+  // the app, every "light" run would really be a second dark run and the
+  // matrix would double in cost while proving nothing.
+  const renderedTheme = document.documentElement.classList.contains("dark")
+    ? "dark"
+    : "light";
+  const out = { renderedTheme, overflow: [], overlap: [], tapTargets: [], contrast: [] };
 
   const label = (el) => {
     const cls =
@@ -132,20 +158,29 @@ const AUDIT_FN = function auditPage() {
     if (!el.textContent?.trim() && !el.matches("input,select,textarea")) continue;
     boxes.push({ el, r });
   }
+  // Compare PER-LINE rects, not the bounding box. An inline link that wraps
+  // has a getBoundingClientRect() spanning every line it touches, so two
+  // ordinary links in the same paragraph "overlap" while their rendered text
+  // never comes close. getClientRects() returns the actual line boxes, which
+  // is what a reader — and a finger — actually meets.
+  const overlaps = (ra, rb) => {
+    const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+    const oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+    return ox > 2 && oy > 2 ? ox * oy : 0; // 2px absorbs rounding and borders
+  };
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
       const a = boxes[i];
       const b = boxes[j];
       if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
-      const ox = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
-      const oy = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
-      // 2px of tolerance absorbs sub-pixel rounding and 1px borders.
-      if (ox > 2 && oy > 2) {
-        out.overlap.push({
-          a: label(a.el),
-          b: label(b.el),
-          area: Math.round(ox * oy),
-        });
+      // Cheap reject on the union boxes before the O(lines²) comparison.
+      if (!overlaps(a.r, b.r)) continue;
+      let area = 0;
+      for (const ra of a.el.getClientRects()) {
+        for (const rb of b.el.getClientRects()) area = Math.max(area, overlaps(ra, rb));
+      }
+      if (area > 0) {
+        out.overlap.push({ a: label(a.el), b: label(b.el), area: Math.round(area) });
       }
     }
   }
@@ -180,11 +215,32 @@ const AUDIT_FN = function auditPage() {
   // until an opaque colour is found, compositing any translucent layers on the
   // way. That composite step is the one axe-style checks usually get right and
   // hand-rolled ones get wrong: `bg-primary/10` is not `--primary`.
+  // Do NOT regex colour strings. getComputedStyle now returns lab(), oklch(),
+  // color(srgb ...) and friends depending on how the author wrote them — this
+  // site's body background computes to `lab(2.75 0 0)`. A regex that only knew
+  // rgb() silently returned null, effectiveBg then found no opaque ancestor,
+  // fell back to WHITE, and every text node on a dark page measured ~1:1. That
+  // produced 2,450 phantom violations and would have hidden real ones.
+  //
+  // Canvas is the browser's own parser: fillStyle accepts any CSS colour and
+  // getImageData hands back sRGB bytes plus real alpha.
+  const _cv = document.createElement("canvas");
+  _cv.width = _cv.height = 1;
+  const _ctx = _cv.getContext("2d", { willReadFrequently: true });
   const parse = (c) => {
-    const m = c.match(/rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?/);
-    return m
-      ? [Number(m[1]), Number(m[2]), Number(m[3]), m[4] === undefined ? 1 : Number(m[4])]
-      : null;
+    if (!c || c === "transparent") return [0, 0, 0, 0];
+    // fillStyle silently keeps its previous value when handed something it
+    // cannot parse, so prime it with a sentinel and check that it moved.
+    _ctx.fillStyle = "#000000";
+    _ctx.fillStyle = c;
+    const accepted = _ctx.fillStyle;
+    _ctx.fillStyle = "#ffffff";
+    _ctx.fillStyle = c;
+    if (_ctx.fillStyle !== accepted) return null; // unparseable
+    _ctx.clearRect(0, 0, 1, 1);
+    _ctx.fillRect(0, 0, 1, 1);
+    const d = _ctx.getImageData(0, 0, 1, 1).data;
+    return [d[0], d[1], d[2], d[3] / 255];
   };
   const over = (fg, bg) => {
     const a = fg[3];
@@ -352,43 +408,67 @@ async function main() {
   await send(ws, "Runtime.enable", {}, sessionId);
 
   const results = [];
-  for (const route of ROUTES) {
-    for (const vp of VIEWPORTS) {
-      await send(
-        ws,
-        "Emulation.setDeviceMetricsOverride",
-        { width: vp.w, height: vp.h, deviceScaleFactor: 1, mobile: vp.w < 768 },
-        sessionId,
-      );
-      const loaded = new Promise((res) => {
-        const on = (ev) => {
-          const m = JSON.parse(ev.data);
-          if (m.method === "Page.loadEventFired" && m.sessionId === sessionId) {
-            ws.removeEventListener("message", on);
-            res();
-          }
-        };
-        ws.addEventListener("message", on);
-      });
-      await send(ws, "Page.navigate", { url: BASE + route }, sessionId);
-      await Promise.race([loaded, sleep(15000)]);
-      await sleep(500); // let fonts settle; layout shifts after webfont swap
+  for (const scheme of SCHEMES) {
+    await send(
+      ws,
+      "Emulation.setEmulatedMedia",
+      { features: [{ name: "prefers-color-scheme", value: scheme }] },
+      sessionId,
+    );
+    for (const route of ROUTES) {
+      for (const vp of VIEWPORTS) {
+        await send(
+          ws,
+          "Emulation.setDeviceMetricsOverride",
+          { width: vp.w, height: vp.h, deviceScaleFactor: 1, mobile: vp.w < 768 },
+          sessionId,
+        );
+        const loaded = new Promise((res) => {
+          const on = (ev) => {
+            const m = JSON.parse(ev.data);
+            if (m.method === "Page.loadEventFired" && m.sessionId === sessionId) {
+              ws.removeEventListener("message", on);
+              res();
+            }
+          };
+          ws.addEventListener("message", on);
+        });
+        await send(ws, "Page.navigate", { url: BASE + route }, sessionId);
+        await Promise.race([loaded, sleep(15000)]);
+        await sleep(500); // let fonts settle; layout shifts after webfont swap
 
-      const { result, exceptionDetails } = await send(
-        ws,
-        "Runtime.evaluate",
-        {
-          expression: `(${AUDIT_FN.toString()})()`,
-          returnByValue: true,
-          awaitPromise: false,
-        },
-        sessionId,
-      );
-      if (exceptionDetails) {
-        results.push({ route, vp: vp.w, error: exceptionDetails.text });
-        continue;
+        const { result, exceptionDetails } = await send(
+          ws,
+          "Runtime.evaluate",
+          {
+            expression: `(${AUDIT_FN.toString()})()`,
+            returnByValue: true,
+            awaitPromise: false,
+          },
+          sessionId,
+        );
+        if (exceptionDetails) {
+          results.push({ route, vp: vp.w, scheme, error: exceptionDetails.text });
+          continue;
+        }
+        const value = result.value;
+        // Assert, do not merely record. If setEmulatedMedia never reaches the
+        // app — say it reads localStorage instead of the media query — every
+        // "light" iteration would silently re-measure dark, and the matrix would
+        // double in cost while proving exactly nothing.
+        if (value.renderedTheme && value.renderedTheme !== scheme) {
+          results.push({
+            route,
+            vp: vp.w,
+            scheme,
+            error:
+              `theme emulation did not take: asked for "${scheme}", ` +
+              `DOM rendered "${value.renderedTheme}"`,
+          });
+          continue;
+        }
+        results.push({ route, vp: vp.w, scheme, ...value });
       }
-      results.push({ route, vp: vp.w, ...result.value });
     }
   }
 
@@ -410,16 +490,16 @@ if (JSON_OUT) {
       (r.tapTargets?.length ?? 0) +
       (r.contrast?.length ?? 0);
     if (r.error) {
-      console.log(`✗ ${r.route} @${r.vp}  ERROR ${r.error}`);
+      console.log(`✗ ${r.route} @${r.vp} ${r.scheme}  ERROR ${r.error}`);
       bad++;
       continue;
     }
     if (!issues) {
-      console.log(`✓ ${r.route} @${r.vp}`);
+      console.log(`✓ ${r.route} @${r.vp} ${r.scheme}`);
       continue;
     }
     bad++;
-    console.log(`✗ ${r.route} @${r.vp}`);
+    console.log(`✗ ${r.route} @${r.vp} ${r.scheme}`);
     if (r.docOverflow > 0)
       console.log(`    document scrolls sideways by ${r.docOverflow}px`);
     for (const o of r.overflow.slice(0, 4))
