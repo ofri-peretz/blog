@@ -113,7 +113,15 @@ if (!CHROME) {
   );
   process.exit(2);
 }
-const PORT = 9333;
+const PORT = Number(process.env.CDP_PORT ?? 9333);
+// Unique per process: a leftover profile lock makes Chrome exit silently, and
+// the only symptom is a port that never opens.
+const PROFILE_DIR = `/tmp/layout-audit-${process.pid}`;
+// A cold CI runner can take well over the 6s the first version allowed, which
+// made the whole gate flaky — it passed twice and then failed on identical
+// code. Wait properly, and notice if Chrome dies rather than waiting out the
+// full timeout on a process that is already gone.
+const STARTUP_TIMEOUT_MS = Number(process.env.CHROME_TIMEOUT_MS ?? 60000);
 
 // ── The audit, executed inside the page ────────────────────────────────────
 // Kept as a single self-contained function: it is stringified and evaluated in
@@ -405,7 +413,7 @@ async function main() {
       "--disable-dev-shm-usage",
       "--hide-scrollbars", // otherwise the scrollbar itself eats ~15px and fakes overflow
       "--force-prefers-reduced-motion", // animations must not race the measurement
-      "--user-data-dir=/tmp/layout-audit-profile",
+      `--user-data-dir=${PROFILE_DIR}`,
       "about:blank",
     ],
     { stdio: ["ignore", "ignore", "pipe"] },
@@ -416,7 +424,13 @@ async function main() {
   });
 
   let wsUrl;
-  for (let i = 0; i < 60; i++) {
+  let exited = null;
+  chrome.on("exit", (code, signal) => {
+    exited = `exit code ${code}${signal ? ` (${signal})` : ""}`;
+  });
+  const deadline = Date.now() + STARTUP_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (exited) break; // no point waiting on a process that is gone
     try {
       const r = await fetch(`http://127.0.0.1:${PORT}/json/version`);
       wsUrl = (await r.json()).webSocketDebuggerUrl;
@@ -424,12 +438,14 @@ async function main() {
     } catch {
       /* not up yet */
     }
-    await sleep(100);
+    await sleep(250);
   }
   if (!wsUrl) {
     throw new Error(
-      `Chrome (${CHROME}) never opened its debugging port.\n` +
-        `Chrome said:\n${chromeErr.trim() || "(nothing on stderr)"}`,
+      `Chrome (${CHROME}) never opened its debugging port on ${PORT} ` +
+        `within ${STARTUP_TIMEOUT_MS}ms.\n` +
+        (exited ? `The process ${exited}.\n` : "The process was still running.\n") +
+        `stderr:\n${chromeErr.trim() || "(empty)"}`,
     );
   }
 
