@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/100-owasp-llm-top-10-coverage-for-vercel-
 devto_id: 3114794
 published_at: "2025-12-19T06:00:22Z"
 edited_at: "2026-07-19T06:00:00Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk-og.jpg?v=b2"
 reading_time_minutes: 9
 tags:
   - "ai"

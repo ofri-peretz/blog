@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/the-n1-insert-loop-that-slowed-our-api-to
 devto_id: 3144119
 published_at: "2026-01-02T20:06:27Z"
 edited_at: "2026-07-28T00:00:00Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/n-plus-1-insert-loop-api-performance.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/n-plus-1-insert-loop-api-performance-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/n-plus-1-insert-loop-api-performance.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/n-plus-1-insert-loop-api-performance-og.jpg?v=b2"
 reading_time_minutes: 8
 tags:
   - "node"

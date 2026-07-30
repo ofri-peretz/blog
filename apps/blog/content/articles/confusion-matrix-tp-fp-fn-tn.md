@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/confusion-matrix-tp-fp-fn-tn-og.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/confusion-matrix-tp-fp-fn-tn.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/confusion-matrix-tp-fp-fn-tn-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/confusion-matrix-tp-fp-fn-tn.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/the-confusion-matrix-what-tp-fp-fn-and-tn-actually-mean-1h32"
 devto_id: 4182366
 title: "The Confusion Matrix: What TP, FP, FN, and TN Actually Mean"

@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-jwt-4l
 devto_id: 3143580
 published_at: "2026-01-02T15:17:19Z"
 edited_at: "2026-07-28T00:00:00Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-jwt.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-jwt-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-jwt.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-jwt-og.jpg?v=b2"
 reading_time_minutes: 12
 tags:
   - "security"

@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-vercel
 devto_id: 3139002
 published_at: "2025-12-31T21:49:06Z"
 edited_at: "2026-01-11T10:21:46Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-vercel-ai-security.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-vercel-ai-security-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-vercel-ai-security.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-vercel-ai-security-og.jpg?v=b2"
 reading_time_minutes: 11
 tags:
   - "ai"

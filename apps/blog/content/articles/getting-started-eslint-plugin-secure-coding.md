@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-secure
 devto_id: 3138988
 published_at: "2025-12-31T21:31:41Z"
 edited_at: "2026-07-28T00:00:00Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-secure-coding.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-secure-coding-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-secure-coding.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-secure-coding-og.jpg?v=b2"
 reading_time_minutes: 12
 tags:
   - "security"

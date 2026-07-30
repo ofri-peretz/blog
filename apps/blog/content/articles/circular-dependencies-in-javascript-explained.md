@@ -1,7 +1,7 @@
 ---
 devto_url: "https://dev.to/ofri-peretz/what-are-circular-dependencies-in-javascript-and-why-they-break-things-51jd"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/circular-dependencies-in-javascript-explained-og.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/circular-dependencies-in-javascript-explained.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/circular-dependencies-in-javascript-explained-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/circular-dependencies-in-javascript-explained.jpg?v=b2"
 title: "The Bug That Passes Every Toolchain Check: Circular Dependencies in JavaScript"
 description: "Circular dependencies compile cleanly, pass tests, and ship to production. Here are the 3 patterns that create them, what Node.js, webpack, Rollup, and esbuild actually do with them, and how to stop them before they compound."
 slug: "circular-dependencies-in-javascript-explained"

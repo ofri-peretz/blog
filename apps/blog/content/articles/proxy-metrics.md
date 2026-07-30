@@ -4,8 +4,8 @@ devto_id: 4182397
 title: "Proxy Metrics: The Number You Optimize Is Not the Thing You Want"
 description: "GDP is not prosperity, price is not value, a test score is not learning. Every dashboard number stands in for a construct it can't fully measure — the discipline is knowing each gap and pairing every proxy with the counter-metric that catches its gaming."
 slug: "proxy-metrics"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/proxy-metrics-og.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/proxy-metrics.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/proxy-metrics-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/proxy-metrics.jpg?v=b2"
 published: true
 date: 2026-07-17
 tags:

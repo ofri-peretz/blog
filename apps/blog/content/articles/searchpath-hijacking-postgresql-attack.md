@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/searchpath-hijacking-the-postgresql-attac
 devto_id: 3144104
 published_at: "2026-01-02T19:49:31Z"
 edited_at: "2026-07-20T00:00:00Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/searchpath-hijacking-postgresql-attack.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/searchpath-hijacking-postgresql-attack-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/searchpath-hijacking-postgresql-attack.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/searchpath-hijacking-postgresql-attack-og.jpg?v=b2"
 reading_time_minutes: 9
 tags:
   - "security"

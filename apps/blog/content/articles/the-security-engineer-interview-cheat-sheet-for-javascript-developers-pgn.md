@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/the-security-engineer-interview-cheat-she
 devto_id: 3137519
 published_at: "2025-12-31T06:10:16Z"
 edited_at: "2026-02-05T05:33:13Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-security-engineer-interview-cheat-sheet-for-javascript-developers-pgn-og.jpg?v=b2"
 reading_time_minutes: 9
 tags:
   - "security"

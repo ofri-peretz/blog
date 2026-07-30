@@ -6,8 +6,8 @@ description: "A reproducible benchmark: @microsoft/eslint-plugin-sdl (17 rules, 
 slug: "benchmark-microsoft-sdl-vs-interlace"
 published: true
 date: 2026-02-08
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-microsoft-sdl-vs-interlace.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-microsoft-sdl-vs-interlace-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-microsoft-sdl-vs-interlace.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-microsoft-sdl-vs-interlace-og.jpg?v=b2"
 tags:
   - "security"
   - "eslint"

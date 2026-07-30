@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/mapping-your-codebase-to-owasp-top-10-wit
 devto_id: 3138808
 published_at: "2025-12-31T18:15:25Z"
 edited_at: "2026-02-05T04:58:59Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules-og.jpg?v=b2"
 reading_time_minutes: 8
 tags:
   - "security"

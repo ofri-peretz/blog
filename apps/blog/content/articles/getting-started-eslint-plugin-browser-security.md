@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-browse
 devto_id: 3143592
 published_at: "2026-01-02T15:20:36Z"
 edited_at: "2026-01-11T10:21:38Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-browser-security.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-browser-security-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-browser-security.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-browser-security-og.jpg?v=b2"
 reading_time_minutes: 9
 tags:
   - "security"

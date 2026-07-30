@@ -1,5 +1,5 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/what-ground-truth-caught-that-unit-tests-missed-og.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/what-ground-truth-caught-that-unit-tests-missed-og.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/what-ground-truth-caught-that-unit-tests-missed-3-real-bugs-in-9-flagship-lint-rules-o0b"
 devto_id: 3667300
 title: "2 of 3 bugs a 5KB corpus caught were the exact shapes AI writes by default"
@@ -12,7 +12,7 @@ tags:
   - "eslint"
 canonical_url: "https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed"
 tier: "T3"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/what-ground-truth-caught-that-unit-tests-missed.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/what-ground-truth-caught-that-unit-tests-missed.jpg?v=b2"
 series: "Inside our linter benchmarks"
 ---
 

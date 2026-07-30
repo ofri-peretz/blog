@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/abandoned-incumbent-map-og.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/abandoned-incumbent-map.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/abandoned-incumbent-map-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/abandoned-incumbent-map.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/142076-weekly-downloads-zero-releases-since-2021-is-the-niche-defended-4hko"
 devto_id: 4183799
 title: "142,076 Weekly Downloads. Zero Releases Since 2021. Is the Niche Defended?"

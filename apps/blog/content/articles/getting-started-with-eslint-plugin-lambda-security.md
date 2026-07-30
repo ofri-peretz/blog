@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-lambda
 devto_id: 3144087
 published_at: "2026-01-02T19:26:45Z"
 edited_at: "2026-07-28T00:00:00Z"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-lambda-security.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-lambda-security-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-lambda-security.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-lambda-security-og.jpg?v=b2"
 reading_time_minutes: 12
 tags:
   - "security"
