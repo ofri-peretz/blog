@@ -206,7 +206,7 @@ jobs:
       #
       # Drives the runner's preinstalled Chrome over CDP with node's built-in
       # WebSocket (node 24 via .nvmrc). No Playwright, nothing to install.
-      - name: Audit layout + contrast (6 viewports x 5 routes)
+      - name: Audit layout + contrast (14 widths x 6 routes x 2 themes)
         timeout-minutes: 5
         env:
           BASE: https://ofriperetz.dev
