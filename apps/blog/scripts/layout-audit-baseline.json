@@ -1,0 +1,32 @@
+{
+  "$comment": [
+    "Findings that are known, understood and consciously accepted \u2014 NOT a place",
+    "to silence inconvenient results. A gate that is permanently red gets",
+    "ignored, and then it protects nothing; a gate with an unexplained allowlist",
+    "is the same failure wearing a hat. Every entry states why, and what would",
+    "make it removable.",
+    "",
+    "Anything NOT matched here still fails the build. The audit also reports",
+    "entries that no longer match anything, so the list shrinks as things are",
+    "fixed instead of quietly rotting.",
+    "Every entry MUST declare a ctx (the nearest structural ancestor of the finding). Without one an entry silences a whole route, which is how the first version of this file accidentally hid nearly every tap finding on /articles/."
+  ],
+  "accepted": [
+    {
+      "kind": "contrast",
+      "route": "/articles/",
+      "el": "span",
+      "reason": "Shiki github-light token colour #e36209 measures 3.49:1 on 14px code text. The colour is theme DATA supplied by the highlighter, not our CSS, so fixing it means choosing a different Shiki theme \u2014 a design decision about how code reads, not a bug fix.",
+      "removeWhen": "the highlighting theme is replaced with an AA-safe pair",
+      "ctx": "code"
+    },
+    {
+      "kind": "tap",
+      "route": "/articles/",
+      "el": "a",
+      "reason": "Links that are the entire content of a prose table cell render 18px tall. WCAG 2.2 SC 2.5.8 exempts links inside a sentence or block of text; a table cell containing only a link is arguably not one, so this is a genuine judgement call rather than a clear pass or fail. Fixing it means restyling markdown tables site-wide.",
+      "removeWhen": "prose table cells give their links a 24px target",
+      "ctx": "td"
+    }
+  ]
+}
