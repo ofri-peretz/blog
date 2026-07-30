@@ -50,8 +50,22 @@ export function AppHeader({
             focusable="false"
           >
             <g transform="rotate(-30 50 50)">
-              <rect x="8" y="20" width="66" height="28" rx="14" fill="#f4794a" />
-              <rect x="26" y="52" width="66" height="28" rx="14" fill="#0d9460" />
+              <rect
+                x="8"
+                y="20"
+                width="66"
+                height="28"
+                rx="14"
+                className="fill-brand-orange"
+              />
+              <rect
+                x="26"
+                y="52"
+                width="66"
+                height="28"
+                rx="14"
+                className="fill-brand-green"
+              />
             </g>
           </svg>
           ofri peretz

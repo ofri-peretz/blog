@@ -17,24 +17,36 @@
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --radius: 0.625rem;
-  /* Brand accents — every literal must be a token (COLOR_PHILOSOPHY). */
-  --brand-snappy: oklch(0.59 0.21 280);
-  /* Chart palette — replaces ad-hoc oklch() literals in charts/*.tsx. */
-  --chart-1: oklch(0.62 0.16 264);
-  --chart-2: oklch(0.7 0.18 60);
-  --chart-3: oklch(0.6 0.18 145);
-  --chart-4: oklch(0.62 0.16 320);
-  --chart-5: oklch(0.55 0.18 30);
+  /* Brand accents — every literal must be a token (COLOR_PHILOSOPHY).
+     Orange + green are the Interlace mark, shared with all 78 article covers.
+     These light-mode values are the cover hexes darkened to clear AA-text on
+     white: #f4794a measures 2.73:1 there, so it is a dark-mode-only colour.
+     Same hue family, so the two themes read as one brand. */
+  --brand-orange: oklch(0.547 0.146 44.7); /* #b34e16 — 5.23:1 on white */
+  --brand-green: oklch(0.522 0.114 160); /* #0d7d52 — 5.16:1 on white */
+  /* Was indigo (hue 280), inherited from the pre-Next.js site. Aliased rather
+     than removed so existing consumers repoint without an edit. */
+  --brand-snappy: var(--brand-orange);
+  /* Chart palette — replaces ad-hoc oklch() literals in charts/*.tsx.
+     Leads with the brand pair, so the first two series on any chart are the
+     same orange and green as the header mark; 3-5 exist only to stay
+     distinguishable from those two and from each other. The var()s
+     re-resolve per theme, so chart-1/2 need no .dark override. */
+  --chart-1: var(--brand-orange);
+  --chart-2: var(--brand-green);
+  --chart-3: oklch(0.62 0.16 264);
+  --chart-4: oklch(0.7 0.18 60);
+  --chart-5: oklch(0.62 0.16 320);
   /* Decorative-primitive tokens — replace baked-in hex defaults inside
      ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
-  --beam-from: oklch(0.75 0.18 65);
-  --beam-to: oklch(0.55 0.25 295);
+  --beam-from: var(--brand-orange);
+  --beam-to: var(--brand-green);
   /* Meteor trail palette — Nuxt blog-old port. Hex source `#e9d5ff`
      (purple-lavender at ~89% lightness) → oklch(0.89 0.07 308). Fade
      stop is 50% alpha, glow rim is ~31% alpha. */
-  --meteor-trail: oklch(0.89 0.07 308);
-  --meteor-trail-fade: oklch(0.89 0.07 308 / 0.5);
-  --meteor-glow: oklch(0.89 0.07 308 / 0.31);
+  --meteor-trail: oklch(0.89 0.07 45);
+  --meteor-trail-fade: oklch(0.89 0.07 45 / 0.5);
+  --meteor-glow: oklch(0.89 0.07 45 / 0.31);
   --particles-default: oklch(0.985 0 0);
 }
 
@@ -51,23 +63,26 @@
   --accent-foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
-  /* AA-safe lift for the indigo brand on a near-black surface. */
-  --brand-snappy: oklch(0.72 0.18 280);
-  --chart-1: oklch(0.72 0.17 264);
-  --chart-2: oklch(0.78 0.18 60);
-  --chart-3: oklch(0.7 0.18 145);
-  --chart-4: oklch(0.7 0.16 320);
-  --chart-5: oklch(0.65 0.18 30);
+  /* On a near-black surface the cover hexes are used verbatim: #f4794a is
+     7.24:1 and #0d9460 is 5.11:1, so a header mark and an article cover on
+     the same dark page are the identical colour. */
+  --brand-orange: oklch(0.71 0.163 40.8); /* #f4794a */
+  --brand-green: oklch(0.589 0.132 159.4); /* #0d9460 */
+  --brand-snappy: var(--brand-orange);
+  /* chart-1/2 inherit the brand var()s from :root and re-resolve here. */
+  --chart-3: oklch(0.72 0.17 264);
+  --chart-4: oklch(0.78 0.18 60);
+  --chart-5: oklch(0.7 0.16 320);
   /* Decorative-primitive tokens — dark-mode tuning. The meteor trail
      reads as the same purple-lavender at ~89% lightness in both themes
      (the Nuxt source did not tint differently per theme); only the glow
      is lifted slightly in dark mode to keep the head visible against
      the cosmic gradient. */
   --beam-from: oklch(0.8 0.18 65);
-  --beam-to: oklch(0.62 0.22 295);
-  --meteor-trail: oklch(0.89 0.07 308);
-  --meteor-trail-fade: oklch(0.89 0.07 308 / 0.5);
-  --meteor-glow: oklch(0.89 0.07 308 / 0.4);
+  --beam-to: var(--brand-green);
+  --meteor-trail: oklch(0.89 0.07 45);
+  --meteor-trail-fade: oklch(0.89 0.07 45 / 0.5);
+  --meteor-glow: oklch(0.89 0.07 45 / 0.4);
   --particles-default: oklch(0.985 0 0);
 }
 
@@ -84,6 +99,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-green: var(--brand-green);
   --color-brand-snappy: var(--brand-snappy);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
