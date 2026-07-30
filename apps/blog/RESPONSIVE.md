@@ -15,7 +15,7 @@ So the strategy is split by what each tool can actually know:
 | | catches | cost | when |
 |---|---|---|---|
 | **Static rules** (vitest) | *causes* it can name | ~2s, whole suite | every commit |
-| **Browser audit** (CDP) | *outcomes*, measured | ~30s, 30 combinations | pre-merge / CI |
+| **Browser audit** (CDP) | *outcomes*, measured | ~2.5 min, 168 combinations | post-deploy |
 
 Statics are fast but blind to layout. The browser is slow but sees the truth.
 Neither alone is enough, and using either for the other's job produces noise.
@@ -81,12 +81,27 @@ It reports four classes, and exits non-zero on any of them:
 
 ## Widths
 
-`320, 360, 390, 768, 1024, 1440`
+`320, 360, 390, 414, 639, 640, 767, 768, 1023, 1024, 1279, 1280, 1440, 1920`
+× 6 routes × light and dark = **168 combinations, ~2.5 min**.
 
-Chosen for where layout breaks, not for device marketing names: 320 is the
-narrowest worth supporting, 360 the most common Android, 390 a modern iPhone,
-768 the tablet-portrait boundary, 1024 small-laptop and tablet-landscape, 1440 a
-large desktop. Heights are deliberately short so nothing hides below the fold.
+Sampling "a few popular device widths" is the classic way to miss responsive
+bugs, because a layout almost never breaks AT a round number — it breaks one
+pixel either side of a breakpoint, where a grid drops a column or a
+`hidden sm:flex` swaps in. So the matrix is derived FROM the breakpoints this
+codebase uses (`sm`/`md`/`lg`/`xl` = 640/768/1024/1280), testing **each
+boundary and the pixel below it**. The first version of this matrix tested six
+device widths and never touched 640 at all — despite `sm:` being the most-used
+prefix in the codebase, at 49 occurrences.
+
+Below `sm` there is no breakpoint left to straddle, so the narrow end is
+sampled by device: 320 the narrowest worth supporting, 360 the most common
+Android, 390 a modern iPhone, 414 a "plus". 1920 catches anything assuming a
+max container. Heights are short so nothing hides below the fold.
+
+Both colour schemes run because rendered contrast can differ from token
+contrast wherever a component hardcodes or composites. The audit asserts the
+DOM actually adopted the emulated scheme — otherwise a "light" pass would
+silently be a second dark pass, doubling the runtime while proving nothing.
 
 ## What is deliberately not enforced statically
 
@@ -96,3 +111,23 @@ labels, badges, metric captions) while the browser audit measured zero overflow
 everywhere. Whether text overflows depends on the text, the font and the
 container, none of which exist without layout. A rule that is wrong ten times
 out of ten gets disabled, and then it protects nothing.
+
+## Two ways this audit was wrong, and how it was caught
+
+Both were found by challenging a passing result rather than trusting it. A
+green gate that measures the wrong thing is worse than no gate.
+
+**Colours were parsed with a regex.** `getComputedStyle` returns whatever
+syntax resolves — this site's body background computes to `lab(2.75 0 0)`. A
+regex that only knew `rgb()` returned null, the background walk then found no
+opaque ancestor, fell back to **white**, and every text node on a dark page
+measured ~1:1. That is 2,450 phantom violations, and it would equally have
+hidden real ones. Colours are now normalised through a 1×1 canvas — the
+browser's own parser — which handles `lab()`, `oklch()`, `color()` and the
+rest, and returns true alpha.
+
+**Overlap compared bounding boxes.** An inline link that wraps across lines has
+a `getBoundingClientRect()` spanning every line it touches, so two ordinary
+links in one paragraph "overlapped" while their rendered text never came close.
+Overlap now compares `getClientRects()` — the per-line boxes a reader and a
+finger actually meet.

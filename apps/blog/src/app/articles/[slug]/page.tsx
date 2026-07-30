@@ -105,7 +105,7 @@ export default async function ArticlePage(props: PageProps) {
           aria-label="Breadcrumb"
           className="mb-6 text-sm text-muted-foreground"
         >
-          <Link href="/articles" className="hover:text-foreground">
+          <Link href="/articles" className="inline-flex min-h-6 items-center hover:text-foreground">
             ← All articles
           </Link>
         </nav>
