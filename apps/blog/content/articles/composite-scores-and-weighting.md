@@ -1,7 +1,7 @@
 ---
 devto_url: "https://dev.to/ofri-peretz/composite-scores-and-weighting-your-overall-score-is-an-editorial-570g"
 devto_id: 4182368
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-scores-and-weighting.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-scores-and-weighting-og.jpg"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-scores-and-weighting.jpg"
 title: "Composite Scores and Weighting: Your 'Overall Score' Is an Editorial"
 description: "An index looks like a measurement of 'the market.' It's a composite — a committee picks the members, a rule sets the weights, a calendar sets the rebalance. Editorial choices dressed as a number. Every overall score works this way; the honest ones publish the weights, the rationale, and what happens when the weights move."

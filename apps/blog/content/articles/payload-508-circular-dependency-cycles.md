@@ -2,6 +2,8 @@
 title: "Payload CMS Has 508 Circular Dependencies. Next.js Has 17. Here's Why They Form in Every Large JS Codebase."
 description: "Circular dependencies accumulate silently in every large JavaScript codebase. Payload has 508, Next.js has 17, Strapi has 5. They bloat your bundle, slow your tests, and cause mysterious undefined errors at runtime that disappear when you add a console.log. Here is why they form and how to find them all."
 slug: "payload-508-circular-dependency-cycles"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/payload-508-circular-dependency-cycles-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/payload-508-circular-dependency-cycles.jpg"
 published: true
 date: "2026-05-30"
 tags:

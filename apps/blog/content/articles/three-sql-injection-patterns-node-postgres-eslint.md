@@ -7,8 +7,8 @@ tier: "TOPIC"
 devto_url: "https://dev.to/ofri-peretz/three-sql-injection-patterns-that-still-ship-in-nodejs-and-the-linter-that-catches-them-onb"
 devto_id: 3787090
 published_at: null
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/three-sql-injection-patterns-node-postgres-eslint.png"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/three-sql-injection-patterns-node-postgres-eslint.png"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/three-sql-injection-patterns-node-postgres-eslint.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/three-sql-injection-patterns-node-postgres-eslint-og.jpg"
 reading_time_minutes: 8
 tags:
   - "security"

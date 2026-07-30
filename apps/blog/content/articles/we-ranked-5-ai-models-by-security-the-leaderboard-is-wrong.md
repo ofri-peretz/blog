@@ -9,7 +9,7 @@ tier: "T3"
 published_at: "2026-02-11T08:14:59Z"
 edited_at: "2026-07-05T08:00:00Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong.jpg"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong-og.jpg"
 reading_time_minutes: 10
 tags:
   - "ai"

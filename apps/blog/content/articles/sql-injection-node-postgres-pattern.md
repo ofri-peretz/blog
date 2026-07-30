@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/sql-injection-in-node-postgres-the-patter
 devto_id: 3137480
 published_at: "2025-12-31T05:50:50Z"
 edited_at: "2026-01-11T10:22:01Z"
-cover_image: "https://ofriperetz.dev/og/cover/sql-injection-node-postgres-pattern"
-social_image: "https://ofriperetz.dev/og/article/sql-injection-node-postgres-pattern"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/sql-injection-node-postgres-pattern.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/sql-injection-node-postgres-pattern-og.jpg"
 reading_time_minutes: 9
 tags:
   - "security"

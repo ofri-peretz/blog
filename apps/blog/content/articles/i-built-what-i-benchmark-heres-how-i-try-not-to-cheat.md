@@ -1,5 +1,5 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat-og.jpg"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat.jpg"
 devto_url: "https://dev.to/ofri-peretz/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat-3k3n"
 title: "I Built What I Benchmark. Here's How I Try Not to Cheat."

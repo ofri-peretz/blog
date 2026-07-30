@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-pg-43p
 devto_id: 3138840
 published_at: "2025-12-31T18:45:40Z"
 edited_at: "2026-07-28T00:00:00Z"
-cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-pg"
-social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-pg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-pg.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-pg-og.jpg"
 reading_time_minutes: 12
 tags:
   - "security"

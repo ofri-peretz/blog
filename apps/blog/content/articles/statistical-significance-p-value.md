@@ -4,6 +4,8 @@ devto_id: 4182383
 title: "Statistical Significance and p-Values: What p > 0.05 Actually Means"
 description: "p > 0.05 — the line of output that separates a real finding from a lucky one. What a p-value actually means, the three ways it gets misread, and when running a significance test is the wrong move entirely."
 slug: "statistical-significance-p-value"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/statistical-significance-p-value-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/statistical-significance-p-value.jpg"
 published: true
 date: 2026-07-17
 tags:

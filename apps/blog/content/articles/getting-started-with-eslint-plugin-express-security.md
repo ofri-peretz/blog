@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-expres
 devto_id: 3144099
 published_at: "2026-01-02T19:40:18Z"
 edited_at: "2026-02-05T05:33:03Z"
-cover_image: "https://ofriperetz.dev/og/cover/getting-started-with-eslint-plugin-express-security"
-social_image: "https://ofriperetz.dev/og/article/getting-started-with-eslint-plugin-express-security"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-express-security.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-express-security-og.jpg"
 reading_time_minutes: 10
 tags:
   - "security"

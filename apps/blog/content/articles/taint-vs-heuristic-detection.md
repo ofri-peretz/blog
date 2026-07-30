@@ -4,6 +4,8 @@ devto_id: 4182384
 title: "Taint vs. Heuristic Detection: The Difference Between a Proof and a Hunch"
 description: "A linter flags fetch(userUrl) because of the variable's name — it has never seen the data. Taint analysis hands you a proven path; a heuristic hands you a resemblance. Confusing those two confidence levels is how a CVSS 9.1 ends up printed as LOW."
 slug: "taint-vs-heuristic-detection"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/taint-vs-heuristic-detection-og.jpg"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/taint-vs-heuristic-detection.jpg"
 published: true
 date: 2026-07-17
 tags:
