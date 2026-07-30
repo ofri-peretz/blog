@@ -138,8 +138,8 @@ export const BackgroundBeamsWithCollision = ({
         // Theme-aware background gradient
         // Light mode: Clean white to neutral gradient
         "bg-gradient-to-b from-white to-neutral-100",
-        // Dark mode: Deep purple to dark gradient for cosmic feel
-        "dark:from-neutral-950 dark:via-purple-950/20 dark:to-neutral-900",
+        // Dark mode: a warm brand wash rather than the inherited purple
+        "dark:from-neutral-950 dark:via-brand-orange/8 dark:to-neutral-900",
         containerClassName,
       )}
       // Performance: CSS containment to reduce layout thrashing
@@ -168,7 +168,6 @@ export const BackgroundBeamsWithCollision = ({
           !hideCollisionSurface && [
             // Light mode: Subtle neutral with soft shadow
             "bg-neutral-100",
-            // Dark mode: Darker surface with purple tint
             "dark:bg-neutral-900/50",
           ],
         )}
@@ -284,10 +283,9 @@ const CollisionMechanism = React.forwardRef<
         className={cn(
           // Base beam styling
           "absolute left-0 top-20 m-auto h-14 w-px rounded-full",
-          // Light mode: Indigo/purple gradient beam
-          "bg-gradient-to-t from-indigo-500 via-purple-500 to-transparent",
-          // Dark mode: Brighter, more vibrant beam
-          "dark:from-cyan-400 dark:via-purple-400 dark:to-transparent",
+          // Brand beam. No dark: variant needed — --brand-* already resolves
+          // per theme, so one class covers both.
+          "bg-gradient-to-t from-brand-orange via-brand-green to-transparent",
           beamOptions.className,
         )}
       />
@@ -343,10 +341,7 @@ const Explosion = ({ ...props }: React.HTMLProps<HTMLDivElement>) => {
         transition={{ duration: 1.5, ease: "easeOut" }}
         className={cn(
           "absolute -inset-x-10 top-0 m-auto h-2 w-10 rounded-full blur-sm",
-          // Light mode: Indigo glow
-          "bg-gradient-to-r from-transparent via-indigo-500 to-transparent",
-          // Dark mode: Cyan/purple glow
-          "dark:via-cyan-400",
+          "bg-gradient-to-r from-transparent via-brand-orange to-transparent",
         )}
       />
 
@@ -366,10 +361,7 @@ const Explosion = ({ ...props }: React.HTMLProps<HTMLDivElement>) => {
           }}
           className={cn(
             "absolute h-1 w-1 rounded-full",
-            // Light mode: Indigo/purple particles
-            "bg-gradient-to-b from-indigo-500 to-purple-500",
-            // Dark mode: Cyan/purple particles
-            "dark:from-cyan-400 dark:to-purple-400",
+            "bg-gradient-to-b from-brand-orange to-brand-green",
           )}
         />
       ))}

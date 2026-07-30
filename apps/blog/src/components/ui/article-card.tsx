@@ -250,14 +250,18 @@ function CoverImage({
         priority={priority}
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         className={cn(
-          "object-cover object-center transition-transform duration-500 group-hover:scale-105",
+          // object-left, not object-center: covers are 1000x420 (2.38:1) and
+          // every tile is narrower, so `cover` crops the sides. The mark and
+          // the hero word both sit in the left third — centring cuts the two
+          // things that identify the article.
+          "object-cover object-left transition-transform duration-500 group-hover:scale-105",
           className,
         )}
       />
     );
   }
   return (
-    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-violet-900 via-slate-800 to-fuchsia-900 p-6">
+    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-brand-orange/25 via-neutral-900 to-brand-green/25 p-6">
       <span
         className={cn(
           "line-clamp-3 text-center leading-snug font-semibold text-white/80",

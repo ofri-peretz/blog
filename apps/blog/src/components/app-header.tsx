@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 import { MobileNav } from "./mobile-nav";
@@ -39,14 +38,36 @@ export function AppHeader({
           href="/"
           className="flex items-center gap-2 text-sm font-semibold tracking-tight hover:text-foreground/80"
         >
-          <Image
-            src="/ofri-profile.webp"
-            alt=""
-            width={28}
-            height={28}
-            priority
-            className="size-7 rounded-full border border-border object-cover"
-          />
+          {/* Inline, not next/image: the optimizer pipes every local src through
+              /_next/image, which rejects SVG with a 400 unless dangerouslyAllowSVG
+              is enabled. Inlining also drops a request for a 28px mark. Geometry is
+              identical to render-cover.sh, so the header and all 78 covers share
+              one shape. */}
+          <svg
+            viewBox="0 0 100 100"
+            className="size-7 shrink-0"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <g transform="rotate(-30 50 50)">
+              <rect
+                x="8"
+                y="20"
+                width="66"
+                height="28"
+                rx="14"
+                className="fill-brand-orange"
+              />
+              <rect
+                x="26"
+                y="52"
+                width="66"
+                height="28"
+                rx="14"
+                className="fill-brand-green"
+              />
+            </g>
+          </svg>
           ofri peretz
         </Link>
         <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">
