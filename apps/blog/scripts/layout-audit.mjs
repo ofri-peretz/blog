@@ -409,51 +409,67 @@ async function main() {
 
   const results = [];
   for (const scheme of SCHEMES) {
-  await send(
-    ws,
-    "Emulation.setEmulatedMedia",
-    { features: [{ name: "prefers-color-scheme", value: scheme }] },
-    sessionId,
-  );
-  for (const route of ROUTES) {
-    for (const vp of VIEWPORTS) {
-      await send(
-        ws,
-        "Emulation.setDeviceMetricsOverride",
-        { width: vp.w, height: vp.h, deviceScaleFactor: 1, mobile: vp.w < 768 },
-        sessionId,
-      );
-      const loaded = new Promise((res) => {
-        const on = (ev) => {
-          const m = JSON.parse(ev.data);
-          if (m.method === "Page.loadEventFired" && m.sessionId === sessionId) {
-            ws.removeEventListener("message", on);
-            res();
-          }
-        };
-        ws.addEventListener("message", on);
-      });
-      await send(ws, "Page.navigate", { url: BASE + route }, sessionId);
-      await Promise.race([loaded, sleep(15000)]);
-      await sleep(500); // let fonts settle; layout shifts after webfont swap
+    await send(
+      ws,
+      "Emulation.setEmulatedMedia",
+      { features: [{ name: "prefers-color-scheme", value: scheme }] },
+      sessionId,
+    );
+    for (const route of ROUTES) {
+      for (const vp of VIEWPORTS) {
+        await send(
+          ws,
+          "Emulation.setDeviceMetricsOverride",
+          { width: vp.w, height: vp.h, deviceScaleFactor: 1, mobile: vp.w < 768 },
+          sessionId,
+        );
+        const loaded = new Promise((res) => {
+          const on = (ev) => {
+            const m = JSON.parse(ev.data);
+            if (m.method === "Page.loadEventFired" && m.sessionId === sessionId) {
+              ws.removeEventListener("message", on);
+              res();
+            }
+          };
+          ws.addEventListener("message", on);
+        });
+        await send(ws, "Page.navigate", { url: BASE + route }, sessionId);
+        await Promise.race([loaded, sleep(15000)]);
+        await sleep(500); // let fonts settle; layout shifts after webfont swap
 
-      const { result, exceptionDetails } = await send(
-        ws,
-        "Runtime.evaluate",
-        {
-          expression: `(${AUDIT_FN.toString()})()`,
-          returnByValue: true,
-          awaitPromise: false,
-        },
-        sessionId,
-      );
-      if (exceptionDetails) {
-        results.push({ route, vp: vp.w, scheme, error: exceptionDetails.text });
-        continue;
+        const { result, exceptionDetails } = await send(
+          ws,
+          "Runtime.evaluate",
+          {
+            expression: `(${AUDIT_FN.toString()})()`,
+            returnByValue: true,
+            awaitPromise: false,
+          },
+          sessionId,
+        );
+        if (exceptionDetails) {
+          results.push({ route, vp: vp.w, scheme, error: exceptionDetails.text });
+          continue;
+        }
+        const value = result.value;
+        // Assert, do not merely record. If setEmulatedMedia never reaches the
+        // app — say it reads localStorage instead of the media query — every
+        // "light" iteration would silently re-measure dark, and the matrix would
+        // double in cost while proving exactly nothing.
+        if (value.renderedTheme && value.renderedTheme !== scheme) {
+          results.push({
+            route,
+            vp: vp.w,
+            scheme,
+            error:
+              `theme emulation did not take: asked for "${scheme}", ` +
+              `DOM rendered "${value.renderedTheme}"`,
+          });
+          continue;
+        }
+        results.push({ route, vp: vp.w, scheme, ...value });
       }
-      results.push({ route, vp: vp.w, scheme, ...result.value });
     }
-  }
   }
 
   return results;
