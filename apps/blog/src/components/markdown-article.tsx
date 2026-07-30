@@ -11,6 +11,7 @@ import rehypeSanitize, {
   type Options as SanitizeOptions,
 } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
+import type { Root, RootContent } from "hast";
 import { preprocessMarkdown } from "@/lib/markdown";
 import { cn } from "@/lib/utils";
 
@@ -73,18 +74,16 @@ const sanitizeSchema: SanitizeOptions = {
  * Six lines is cheaper than that risk.
  */
 function rehypeScrollableTables() {
-  return (tree: { children?: unknown[] }) => {
-    const walk = (node: {
-      tagName?: string;
-      properties?: Record<string, unknown>;
-      children?: unknown[];
-    }) => {
-      if (node.tagName === "table") {
+  return (tree: Root) => {
+    const walk = (node: Root | RootContent): void => {
+      if (node.type === "element" && node.tagName === "table") {
         node.properties = { ...(node.properties ?? {}), tabIndex: 0 };
       }
-      for (const child of node.children ?? []) walk(child as typeof node);
+      if ("children" in node) {
+        for (const child of node.children) walk(child);
+      }
     };
-    walk(tree as Parameters<typeof walk>[0]);
+    walk(tree);
   };
 }
 
