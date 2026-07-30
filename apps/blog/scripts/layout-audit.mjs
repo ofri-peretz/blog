@@ -80,9 +80,28 @@ const VIEWPORTS = [
 
 const ROUTES = (
   process.env.ROUTES ??
-  // An article page is the longest and densest layout here (prose, code
-  // blocks, tables, a cover).
-  "/,/articles,/articles/getting-started-eslint-plugin-mongodb-security,/npm,/scorecard,/foundations"
+  // Article routes are chosen by MEASURED worst-case content, not taste. The
+  // first version of this matrix tested one arbitrary slug and reported
+  // 168/168 clean — while a table on another article was pushing the whole
+  // document 53px sideways at 320px wide. 72 of 78 articles carry a table, so
+  // one sample proved almost nothing.
+  //
+  // These four are the extremes across the corpus:
+  //   owasp-top-10  longest unbroken token (380 chars) + a wide table
+  //   benchmark-17  most table rows (117)
+  //   secure-coding most code blocks (23)
+  //   vercel-ai     longest title (154 chars)
+  [
+    "/",
+    "/articles",
+    "/npm",
+    "/scorecard",
+    "/foundations",
+    "/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules",
+    "/articles/benchmark-17-eslint-security-plugins-compared",
+    "/articles/getting-started-eslint-plugin-secure-coding",
+    "/articles/vercel-ai-sdk-prompt-injection-vulnerability",
+  ].join(",")
 ).split(",");
 
 // AA has to hold in BOTH themes. The tokens are checked in both by

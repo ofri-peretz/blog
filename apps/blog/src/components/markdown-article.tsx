@@ -55,6 +55,39 @@ const sanitizeSchema: SanitizeOptions = {
   ],
 };
 
+/**
+ * Makes prose tables keyboard-scrollable.
+ *
+ * 72 of 78 articles contain a markdown table, and a wide one used to push the
+ * whole DOCUMENT sideways on narrow viewports — measured at 320px, the page
+ * scrolled 53px. The CSS half of the fix lives in globals.css (`display:block`
+ * + `overflow-x:auto`, which keeps the column grid intact); this half supplies
+ * the part CSS cannot: a scroll container that is not focusable is unreachable
+ * by keyboard, which is WCAG 2.1.1 (Level A).
+ *
+ * Runs AFTER rehypeSanitize deliberately — like rehypeSlug and rehypeShiki
+ * above — because this is our own generated markup, not article input.
+ *
+ * The visitor is inline rather than unist-util-visit: that package is only a
+ * TRANSITIVE dependency here, so importing it would break on a dependency bump.
+ * Six lines is cheaper than that risk.
+ */
+function rehypeScrollableTables() {
+  return (tree: { children?: unknown[] }) => {
+    const walk = (node: {
+      tagName?: string;
+      properties?: Record<string, unknown>;
+      children?: unknown[];
+    }) => {
+      if (node.tagName === "table") {
+        node.properties = { ...(node.properties ?? {}), tabIndex: 0 };
+      }
+      for (const child of node.children ?? []) walk(child as typeof node);
+    };
+    walk(tree as Parameters<typeof walk>[0]);
+  };
+}
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -72,6 +105,7 @@ const processor = unified()
   .use(rehypeShiki, {
     themes: { light: "github-light", dark: "github-dark" },
   })
+  .use(rehypeScrollableTables)
   .use(rehypeStringify);
 
 export async function MarkdownArticle({
