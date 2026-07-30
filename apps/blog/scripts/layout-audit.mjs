@@ -34,9 +34,25 @@ const BASELINE_PATH = path.join(
 const BASELINE = existsSync(BASELINE_PATH)
   ? (JSON.parse(readFileSync(BASELINE_PATH, "utf-8")).accepted ?? [])
   : [];
-const matchesBaseline = (kind, route, el) =>
+// `label()` emits "tag[.class][#id]", so an unanchored substring test is
+// catastrophically broad: b.el "a" matched button.action, nav, article,
+// textarea and any class containing an "a". That silenced nearly every tap
+// finding on the route instead of the one case it was written for. Match the
+// TAG exactly, at a boundary, and require the declared context too.
+const tagMatches = (label, tag) =>
+  label === tag ||
+  label.startsWith(`${tag}.`) ||
+  label.startsWith(`${tag}#`) ||
+  label.startsWith(`${tag}[`);
+const matchesBaseline = (kind, route, finding) =>
   BASELINE.find(
-    (b) => b.kind === kind && route.startsWith(b.route) && (el ?? "").includes(b.el),
+    (b) =>
+      b.kind === kind &&
+      route.startsWith(b.route) &&
+      tagMatches(finding.el ?? finding.a ?? "", b.el) &&
+      // A baseline entry without a ctx would be a route-wide silencer.
+      Boolean(b.ctx) &&
+      finding.ctx === b.ctx,
   );
 
 // Sampling "a few popular device widths" is the classic way to miss responsive
@@ -220,8 +236,13 @@ const AUDIT_FN = function auditPage() {
     // Inline links inside a paragraph are explicitly exempt in SC 2.5.8.
     if (el.tagName === "A" && el.closest("p,li")) continue;
     if (r.width < 24 || r.height < 24) {
+      // ctx = the nearest structural ancestor. Without it a baseline entry can
+      // only say "some <a> on this route", which is indistinguishable from
+      // "all of them".
+      const ctxEl = el.closest("td,th,nav,header,footer,figure,pre");
       out.tapTargets.push({
         el: label(el),
+        ctx: ctxEl ? ctxEl.tagName.toLowerCase() : "",
         size: `${Math.round(r.width)}x${Math.round(r.height)}`,
       });
     }
@@ -316,8 +337,10 @@ const AUDIT_FN = function auditPage() {
     const need = large ? 3 : 4.5;
     const got = ratio(fg, bg);
     if (got < need) {
+      const ctxEl2 = el.closest("pre,code,td,th,nav,header,footer");
       out.contrast.push({
         el: label(el),
+        ctx: ctxEl2 ? ctxEl2.tagName.toLowerCase() : "",
         text: text.slice(0, 34),
         got: Math.round(got * 100) / 100,
         need,
@@ -508,7 +531,7 @@ if (JSON_OUT) {
       if (!Array.isArray(r[kind])) continue;
       const short = kind === "tapTargets" ? "tap" : kind;
       r[kind] = r[kind].filter((f) => {
-        const hit = matchesBaseline(short, r.route, f.el ?? f.a ?? "");
+        const hit = matchesBaseline(short, r.route, f);
         if (hit) {
           accepted++;
           usedBaseline.add(hit.reason);
