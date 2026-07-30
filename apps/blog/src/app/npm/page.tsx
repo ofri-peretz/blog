@@ -8,7 +8,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PackageCard } from "@/components/npm/package-card";
 import { getNpmPagePackages } from "@/lib/npm-page-data";
 
-export const revalidate = 43200; // 12h — matches the unified cache policy
+// force-dynamic, NOT revalidate: the build runs in GitHub Actions, where
+// SUPABASE_URL / SUPABASE_ANON_KEY are not available — `vercel pull` cannot
+// read them back because they are Sensitive-type vars, so the build log says
+// "SUPABASE_URL / SUPABASE_ANON_KEY missing" every time. Prerendering
+// therefore baked an EMPTY page and `revalidate` served it for the next 12
+// hours, which is why /npm kept showing "No package data available" against
+// perfectly healthy data. /scorecard reads the same source and has always
+// been correct precisely because it is force-dynamic.
+//
+// This is not a caching regression: getNpmPagePackages still wraps its reads
+// in unstable_cache with a 12h TTL, so the render is cheap and Supabase is
+// still hit at most twice a day. Only the HTML stops being built ahead of
+// time, at build, without credentials.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "npm packages — Ofri Peretz",

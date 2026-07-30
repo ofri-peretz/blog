@@ -40,7 +40,10 @@ export function AppFooter({
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                // See app-header: 24px min target, WCAG 2.2 SC 2.5.8 (AA).
+                // These are standalone nav links, not links inside a sentence,
+                // so the inline-text exception does not apply to them.
+                className="inline-flex min-h-6 items-center text-muted-foreground transition-colors hover:text-foreground"
               >
                 {link.label}
               </Link>
