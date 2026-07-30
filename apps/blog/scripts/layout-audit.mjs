@@ -327,15 +327,43 @@ const AUDIT_FN = function auditPage() {
 // ── Driver ─────────────────────────────────────────────────────────────────
 // One browser, one page, reused across the matrix: setting the viewport is far
 // cheaper than a browser or context per case.
+// Probe explicitly rather than relying on channel:"chrome" alone. That channel
+// asks for Google Chrome SPECIFICALLY, so a machine carrying only Chromium
+// would fail with a library error instead of a useful one — the previous
+// version searched these paths and said where it had looked, and losing that
+// was a regression.
+// An explicit CHROME must be honoured or fail loudly. Letting it fall through
+// to the next candidate would silently audit a DIFFERENT browser than the one
+// the operator asked for, which is worse than not starting.
+if (process.env.CHROME && !existsSync(process.env.CHROME)) {
+  console.error(`CHROME=${process.env.CHROME} does not exist.`);
+  process.exit(2);
+}
+const CHROME_CANDIDATES = [
+  process.env.CHROME,
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].filter(Boolean);
+const executablePath = CHROME_CANDIDATES.find((c) => existsSync(c));
+
 const browser = await chromium.launch({
-  // Reuse the installed Chrome rather than downloading one. CHROME still wins
-  // if set, which is how CI pins /usr/bin/google-chrome.
-  ...(process.env.CHROME
-    ? { executablePath: process.env.CHROME }
-    : { channel: "chrome" }),
+  // An explicit path when we found one; otherwise let playwright-core look for
+  // an installed Chrome itself, and report where WE looked if that fails too.
+  ...(executablePath ? { executablePath } : { channel: "chrome" }),
   // CI containers run as root with a small /dev/shm; without these Chrome
   // exits immediately. Harmless locally.
   args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars"],
+}).catch((err) => {
+  console.error(
+    `Could not launch Chrome.\n${err.message}\n\n` +
+      `Set CHROME=/path/to/chrome. Looked in:\n  ` +
+      CHROME_CANDIDATES.join("\n  "),
+  );
+  process.exit(2);
 });
 
 const results = [];
