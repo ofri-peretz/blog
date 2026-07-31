@@ -14,10 +14,12 @@
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 import numbers from "@/data/interlace-numbers.json";
 
-const PROJECT_ROOT = process.cwd();
+// Anchor to this file, not process.cwd() — same convention as
+// interlace-floor-lock.test.ts.
+const PROJECT_ROOT = resolve(__dirname, "../..");
 
 // Every surface that makes an ecosystem plugin/rule count claim.
 const COVERED_SURFACES = [
