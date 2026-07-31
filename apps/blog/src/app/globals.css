@@ -234,7 +234,11 @@ body {
 .prose :where(td, th) > :where(a):only-child {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  /* 24x24, not 24 tall: SC 2.5.8 sizes BOTH axes, and min-height alone left a
+     short link measuring 8x24. */
   min-height: 24px;
+  min-width: 24px;
 }
 
 /* github-dark's comment colour is #6A737D, which measures 3.05:1 on the theme's
