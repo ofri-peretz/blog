@@ -11,7 +11,6 @@ import rehypeSanitize, {
   type Options as SanitizeOptions,
 } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
-import type { Root, RootContent } from "hast";
 import { preprocessMarkdown } from "@/lib/markdown";
 import { cn } from "@/lib/utils";
 
@@ -73,17 +72,28 @@ const sanitizeSchema: SanitizeOptions = {
  * TRANSITIVE dependency here, so importing it would break on a dependency bump.
  * Six lines is cheaper than that risk.
  */
+type HastLike = {
+  type?: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: HastLike[];
+};
+
 function rehypeScrollableTables() {
-  return (tree: Root) => {
-    const walk = (node: Root | RootContent): void => {
+  // The tree parameter is `unknown` on purpose. Both `hast` and `unist` are
+  // SPECS, not npm packages — their @types packages merely declare the module,
+  // so tsc resolves an import and every import resolver correctly cannot. A
+  // parameter typed `unknown` is assignable to one typed Node by
+  // contravariance, so unified's Plugin overload is satisfied with no import
+  // at all, and the two fields actually touched are narrowed locally.
+  return (tree: unknown) => {
+    const walk = (node: HastLike): void => {
       if (node.type === "element" && node.tagName === "table") {
         node.properties = { ...(node.properties ?? {}), tabIndex: 0 };
       }
-      if ("children" in node) {
-        for (const child of node.children) walk(child);
-      }
+      for (const child of node.children ?? []) walk(child);
     };
-    walk(tree);
+    walk(tree as HastLike);
   };
 }
 
