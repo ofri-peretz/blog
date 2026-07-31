@@ -202,3 +202,37 @@ body {
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* Shiki dual-theme activation.
+   rehypeShiki is configured with { light: github-light, dark: github-dark },
+   which emits the LIGHT theme as real declarations and the dark one only as
+   custom properties:
+
+     background-color:#fff; color:#24292e;
+     --shiki-dark-bg:#24292e; --shiki-dark:#e1e4e8
+
+   Custom properties do nothing on their own. Without the rule below, every one
+   of the 62 articles with a code block rendered a WHITE code block on a dark
+   page — and its light-theme token colours against white, which is where the
+   3.49:1 the audit kept reporting came from.
+
+   !important is required: Shiki writes the light theme as inline style, which
+   outranks any class. */
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+/* Links that are the whole content of a prose table cell are standalone
+   targets, not links inside a sentence, so the WCAG 2.2 SC 2.5.8 inline
+   exception does not cover them. They rendered 18px tall; 24px is the AA
+   minimum. inline-flex keeps them on the cell's text baseline. */
+.prose :where(td, th) > :where(a):only-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
