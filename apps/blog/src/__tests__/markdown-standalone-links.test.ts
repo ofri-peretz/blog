@@ -10,14 +10,24 @@
 // counts ELEMENT siblings and ignores text, so `<p>Read <strong><a>x</a></strong>
 // now</p>` matches `strong:only-child` — a selector-based rule would inflate a
 // link sitting in the middle of a sentence. The plugin sees the text nodes.
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { renderMarkdown } from "@/components/markdown-article";
 
 const render = (md: string) => renderMarkdown(md);
 
+// The unified processor lazy-loads Shiki's highlighter (WASM + both themes) on
+// first use. On a cold CI runner that alone can exceed vitest's 5s default —
+// it landed on whichever test ran first and failed it as a timeout. Pay the
+// cost once here, with its own budget, so the tests time only themselves.
+beforeAll(async () => {
+  await render("warm-up");
+}, 30000);
+
 describe("standalone-link marking", () => {
   it("marks a link that is a table cell's whole content", async () => {
-    const html = await render("| Cat |\n| --- |\n| [A01](https://example.com) |");
+    const html = await render(
+      "| Cat |\n| --- |\n| [A01](https://example.com) |",
+    );
     expect(html).toContain("standalone-link");
   });
 
