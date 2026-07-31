@@ -28,6 +28,11 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     alternates: {
       canonical: fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`,
     },
+    // Social cards want the 1200x630 OG ratio: prefer social_image (the
+    // authored /cdn/blog-cover-image/<slug>-og.jpg), fall back to the
+    // 1000x420 dev.to cover, then the site-wide /og card. The legacy
+    // Satori routes (/og/article, /og/cover) are retired — authored
+    // covers are canonical.
     openGraph: {
       title: fm.title,
       description: fm.description,
@@ -35,15 +40,21 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       publishedTime: fm.published_at,
       modifiedTime: modified,
       tags: fm.tags,
-      // Social cards want the 1200x630 OG ratio: prefer social_image
-      // (/og/article), fall back to the 1000x420 dev.to cover, then the route.
-      images: [fm.social_image ?? fm.cover_image ?? `/og/article/${slug}`],
+      images: [
+        fm.social_image ??
+          fm.cover_image ??
+          `/og?title=${encodeURIComponent(fm.title)}&description=${encodeURIComponent(fm.description)}`,
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: fm.title,
       description: fm.description,
-      images: [fm.social_image ?? fm.cover_image ?? `/og/article/${slug}`],
+      images: [
+        fm.social_image ??
+          fm.cover_image ??
+          `/og?title=${encodeURIComponent(fm.title)}&description=${encodeURIComponent(fm.description)}`,
+      ],
     },
   };
 }
@@ -67,7 +78,7 @@ export default async function ArticlePage(props: PageProps) {
   const image =
     fm.social_image ??
     fm.cover_image ??
-    `https://ofriperetz.dev/og/article/${slug}`;
+    `https://ofriperetz.dev/og?title=${encodeURIComponent(fm.title)}&description=${encodeURIComponent(fm.description)}`;
 
   const blogPostingSchema = {
     "@context": "https://schema.org",
