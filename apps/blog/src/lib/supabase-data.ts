@@ -51,14 +51,34 @@ const TAG_SHORT_LINKS = "short-links";
 const getClient = cache((): SupabaseClient | null => {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    console.warn(
-      "[supabase-data] SUPABASE_URL / SUPABASE_ANON_KEY missing — falling back to empty results",
-    );
-    return null;
-  }
+  if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
 });
+
+/**
+ * A client, or a throw — never a silent empty result.
+ *
+ * Every fetcher below runs inside unstable_cache, and Vercel's Data Cache
+ * outlives the deployment. Returning [] / null / 0 when the client is missing
+ * therefore CACHES that emptiness for the full TTL and across redeploys. That
+ * is exactly how /npm served "No package data available" for days against
+ * healthy data: the production build runs in GitHub Actions, where
+ * SUPABASE_URL / SUPABASE_ANON_KEY are Sensitive-type vars that `vercel pull`
+ * cannot read back, so prerendering baked an empty page.
+ *
+ * A rejected promise is never cached, so the next request simply retries.
+ * Callers decide how to degrade — and they degrade for one request, not twelve
+ * hours.
+ */
+function requireClient(what: string): SupabaseClient {
+  const client = getClient();
+  if (!client) {
+    throw new Error(
+      `[supabase-data] ${what}: SUPABASE_URL / SUPABASE_ANON_KEY missing — refusing to cache an empty result`,
+    );
+  }
+  return client;
+}
 
 // ─── Types matching the v_* view rows ────────────────────────────────
 
@@ -106,13 +126,9 @@ export interface EcosystemLatestRow {
 
 export const getCachedPluginLatest = unstable_cache(
   async (): Promise<PluginLatestRow[]> => {
-    const client = getClient();
-    if (!client) return [];
+    const client = requireClient("v_plugin_latest");
     const { data, error } = await client.from("v_plugin_latest").select("*");
-    if (error) {
-      console.error("[supabase-data] v_plugin_latest:", error.message);
-      return [];
-    }
+    if (error) throw new Error(`[supabase-data] v_plugin_latest: ${error.message}`);
     return (data as PluginLatestRow[]) ?? [];
   },
   ["v_plugin_latest"],
@@ -121,13 +137,9 @@ export const getCachedPluginLatest = unstable_cache(
 
 export const getCachedCreatorLatest = unstable_cache(
   async (): Promise<CreatorLatestRow[]> => {
-    const client = getClient();
-    if (!client) return [];
+    const client = requireClient("v_creator_latest");
     const { data, error } = await client.from("v_creator_latest").select("*");
-    if (error) {
-      console.error("[supabase-data] v_creator_latest:", error.message);
-      return [];
-    }
+    if (error) throw new Error(`[supabase-data] v_creator_latest: ${error.message}`);
     return (data as CreatorLatestRow[]) ?? [];
   },
   ["v_creator_latest"],
@@ -136,18 +148,15 @@ export const getCachedCreatorLatest = unstable_cache(
 
 export const getCachedEcosystemLatest = unstable_cache(
   async (): Promise<EcosystemLatestRow | null> => {
-    const client = getClient();
-    if (!client) return null;
+    const client = requireClient("v_ecosystem_latest");
     const { data, error } = await client
       .from("v_ecosystem_latest")
       .select("*")
       .order("observed_on", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) {
-      console.error("[supabase-data] v_ecosystem_latest:", error.message);
-      return null;
-    }
+    if (error)
+      throw new Error(`[supabase-data] v_ecosystem_latest: ${error.message}`);
     return (data as EcosystemLatestRow | null) ?? null;
   },
   ["v_ecosystem_latest"],
@@ -200,16 +209,15 @@ export const getCachedCreatorsByPlatform = unstable_cache(
 
 export const getCachedNpmAlltimeTotal = unstable_cache(
   async (): Promise<number> => {
-    const client = getClient();
-    if (!client) return 0;
+    const client = requireClient("v_npm_alltime_ecosystem");
     const { data, error } = await client
       .from("v_npm_alltime_ecosystem")
       .select("ecosystem_alltime")
       .maybeSingle();
-    if (error) {
-      console.error("[supabase-data] v_npm_alltime_ecosystem:", error.message);
-      return 0;
-    }
+    if (error)
+      throw new Error(
+        `[supabase-data] v_npm_alltime_ecosystem: ${error.message}`,
+      );
     return (data?.ecosystem_alltime as number | null) ?? 0;
   },
   ["v_npm_alltime_ecosystem"],
@@ -359,19 +367,19 @@ export const getCachedPluginsWithDailyData = unstable_cache(
 
 export const getCachedShortLinks = unstable_cache(
   async (): Promise<ShortLinkRow[]> => {
-    const client = getClient();
-    if (!client) return [];
+    const client = requireClient("short_links");
     const { data, error } = await client
       .from("short_links")
       .select(
         "key, kind, destination, platforms, campaign, tags, active, created_at, expires_at, note",
       );
-    if (error) {
-      // Table missing / RLS misconfig degrades to "no overrides": every
-      // /go/<slug> still 302s to its derived default. Never a 500.
-      console.error("[supabase-data] short_links:", error.message);
-      return [];
-    }
+    // Degrading to "no overrides" is still the right BEHAVIOUR for /go/ — every
+    // /go/<slug> should 302 to its derived default rather than 500. But that
+    // decision belongs at the route, not here: returning [] from inside
+    // unstable_cache stores the failure for twelve hours, so a transient blip
+    // silently disables every override until the tag is revalidated. The route
+    // catches this and falls back for that request only.
+    if (error) throw new Error(`[supabase-data] short_links: ${error.message}`);
     return (data as ShortLinkRow[]) ?? [];
   },
   ["short_links"],

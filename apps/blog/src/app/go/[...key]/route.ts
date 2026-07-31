@@ -76,7 +76,18 @@ export async function GET(
 
   // Whole-table cached read (tag 'short-links'); a closure turns it into
   // the sync lookup the pure resolver expects.
-  const rows = await getCachedShortLinks();
+  //
+  // Degrading to "no overrides" is the right behaviour — every /go/<slug> still
+  // 302s to its derived default, never a 500. The catch lives HERE rather than
+  // in the fetcher because returning [] from inside unstable_cache caches the
+  // failure for twelve hours and across redeploys, silently disabling every
+  // override. Failing per-request means the next visitor gets the real table.
+  let rows: Awaited<ReturnType<typeof getCachedShortLinks>> = [];
+  try {
+    rows = await getCachedShortLinks();
+  } catch (err) {
+    console.error("[go] short_links unavailable, using derived defaults:", err);
+  }
   const resolution = resolveGoDestination({
     keyParts: keyParts ?? [],
     utmSource: url.searchParams.get("utm_source"),
