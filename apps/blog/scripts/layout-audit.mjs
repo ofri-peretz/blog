@@ -533,16 +533,16 @@ if (JSON_OUT) {
       (r.tapTargets?.length ?? 0) +
       (r.contrast?.length ?? 0);
     if (r.error) {
-      console.log(`✗ ${r.route} @${r.vp}${r.zoom ? `@${r.zoom}%` : ""} ${r.scheme}  ERROR ${r.error}`);
+      console.log(`✗ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}  ERROR ${r.error}`);
       bad++;
       continue;
     }
     if (!issues) {
-      console.log(`✓ ${r.route} @${r.vp}${r.zoom ? `@${r.zoom}% text` : ""} ${r.scheme}`);
+      console.log(`✓ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}`);
       continue;
     }
     bad++;
-    console.log(`✗ ${r.route} @${r.vp}${r.zoom ? `@${r.zoom}% text` : ""} ${r.scheme}`);
+    console.log(`✗ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}`);
     if (r.docOverflow > 0)
       console.log(`    document scrolls sideways by ${r.docOverflow}px`);
     for (const o of r.overflow.slice(0, 4))
