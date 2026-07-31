@@ -33,10 +33,18 @@ export function AppHeader({
       )}
       {...rest}
     >
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      {/* min-h-14 rather than h-14, plus a gap: at 200% text (WCAG 1.4.4) every
+          rem-sized control doubles — the 36px nav trigger becomes 72px — and a
+          fixed-height row with nothing to give pushed the header 27px past a
+          320px viewport. A minimum height leaves the normal case identical
+          while letting the row grow when the text does. */}
+      <div className="mx-auto flex min-h-14 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="flex items-center gap-2 text-sm font-semibold tracking-tight hover:text-foreground/80"
+          // min-w-0 + truncate: the wordmark is the one part of this row that
+          // can yield. Without min-w-0 a flex child refuses to shrink below its
+          // content, so the controls to its right get pushed off-screen instead.
+          className="flex min-w-0 items-center gap-2 truncate text-sm font-semibold tracking-tight hover:text-foreground/80"
         >
           {/* Inline, not next/image: the optimizer pipes every local src through
               /_next/image, which rejects SVG with a 400 unless dangerouslyAllowSVG
