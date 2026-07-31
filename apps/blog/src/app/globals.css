@@ -231,7 +231,7 @@ body {
    targets, not links inside a sentence, so the WCAG 2.2 SC 2.5.8 inline
    exception does not cover them. They rendered 18px tall; 24px is the AA
    minimum. inline-flex keeps them on the cell's text baseline. */
-.prose :where(td, th) > :where(a):only-child {
+.prose :where(td, th, li, dd) > :where(a):only-child {
   display: inline-flex;
   align-items: center;
   justify-content: center;
