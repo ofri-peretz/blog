@@ -234,10 +234,14 @@ const AUDIT_FN = function auditPage() {
     // The spec's actual test is whether non-target text shares the line, so
     // that is what is checked: does the parent hold text beyond this link.
     if (el.tagName === "A") {
-      const parent = el.parentElement;
-      const parentText = parent ? parent.textContent.trim() : "";
+      // Compare against the nearest BLOCK ancestor, not the immediate parent.
+      // `<p>text <strong><a>link</a></strong> more text</p>` has a parent whose
+      // text is exactly the link, yet the link is plainly inline in a sentence
+      // and exempt. The block is what shares a line-box with it.
+      const block = el.closest("p,li,td,th,dd,dt,figcaption,blockquote,h1,h2,h3,h4,h5,h6");
+      const blockText = block ? block.textContent.trim() : "";
       const ownText = el.textContent.trim();
-      if (parentText && parentText !== ownText) continue;
+      if (blockText && blockText !== ownText) continue;
     }
     if (r.width < 24 || r.height < 24) {
       // ctx = the nearest structural ancestor. Without it a baseline entry can
