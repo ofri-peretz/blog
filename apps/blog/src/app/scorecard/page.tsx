@@ -343,7 +343,7 @@ export default function ScorecardPage() {
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <li>
             <a
-              className="underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex min-h-6 items-center underline-offset-4 hover:text-foreground hover:underline"
               href="https://www.npmjs.com/~ofriperetz"
               target="_blank"
               rel="noopener noreferrer"
@@ -353,7 +353,7 @@ export default function ScorecardPage() {
           </li>
           <li>
             <a
-              className="underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex min-h-6 items-center underline-offset-4 hover:text-foreground hover:underline"
               href="https://github.com/ofri-peretz"
               target="_blank"
               rel="noopener noreferrer"
@@ -363,7 +363,7 @@ export default function ScorecardPage() {
           </li>
           <li>
             <a
-              className="underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex min-h-6 items-center underline-offset-4 hover:text-foreground hover:underline"
               href="https://codecov.io/gh/ofri-peretz/eslint"
               target="_blank"
               rel="noopener noreferrer"
@@ -373,7 +373,7 @@ export default function ScorecardPage() {
           </li>
           <li>
             <a
-              className="underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex min-h-6 items-center underline-offset-4 hover:text-foreground hover:underline"
               href="https://dev.to/ofri-peretz"
               target="_blank"
               rel="noopener noreferrer"

@@ -255,8 +255,12 @@ body {
    the same burnt-orange family GitHub uses for this token class.
 
    The light theme is written as a real `color` declaration rather than a
-   custom property, so the selector matches that. */
-.shiki span[style*="color:#E36209"],
-.shiki span[style*="color:#e36209"] {
+   custom property, so the selector matches that.
+
+   Scoped to :root:not(.dark) deliberately. Unscoped, this !important rule also
+   outranked the dark-theme activation above it — #bc4c00 on #24292e is 2.91:1,
+   so "fixing" light contrast broke dark contrast worse than the original. */
+:root:not(.dark) .shiki span[style*="color:#E36209"],
+:root:not(.dark) .shiki span[style*="color:#e36209"] {
   color: #bc4c00 !important;
 }
