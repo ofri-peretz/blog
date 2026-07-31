@@ -27,6 +27,7 @@ const COVERED_SURFACES = [
   "src/components/landing/about.tsx",
   "src/components/landing/featured-project.tsx",
   "src/components/landing/faq.tsx",
+  "src/components/landing/work-experience.tsx",
   "src/components/structured-data.tsx",
   "src/app/og/route.tsx",
 ];
