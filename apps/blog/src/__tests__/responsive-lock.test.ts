@@ -121,6 +121,40 @@ describe("responsive + data-freshness structural rules", () => {
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
+  /**
+   * The other half of the /npm bug. Every fetcher in supabase-data.ts runs
+   * inside unstable_cache, and Vercel's Data Cache outlives the deployment —
+   * so returning [] / null / 0 on a failure CACHES that failure for the full
+   * TTL and across redeploys. A transient blip becomes twelve silent hours.
+   *
+   * Callers must decide how to degrade, because they degrade for one request.
+   */
+  it("no Supabase fetcher returns an empty result instead of throwing", () => {
+    const file = path.join(SRC, "lib", "supabase-data.ts");
+    if (!existsSync(file)) return;
+    const offenders: string[] = [];
+    readFileSync(file, "utf-8")
+      .split("\n")
+      .forEach((line, i) => {
+        // `if (!client) return []` / `return null` / `return 0` — the shape
+        // that silently caches "there is no data".
+        if (/if\s*\(!client\)\s*return\b/.test(line)) {
+          offenders.push(
+            `${rel(file)}:${i + 1} returns empty when the client is missing — ` +
+              `use requireClient(), which throws, so the failure is not cached.`,
+          );
+        }
+        // `if (error) { ... return [] }` inside a cached fetcher.
+        if (/^\s*console\.error\("\[supabase-data\]/.test(line)) {
+          offenders.push(
+            `${rel(file)}:${i + 1} logs a query error and continues — throw ` +
+              `instead, so unstable_cache does not store the failure.`,
+          );
+        }
+      });
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
   // DELIBERATELY NOT TESTED HERE: horizontal overflow.
   //
   // The obvious static rule — flag `whitespace-nowrap` without an escape hatch

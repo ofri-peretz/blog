@@ -64,12 +64,28 @@ export async function GET(): Promise<Response> {
     console.warn("[homepage-stats] github source unavailable:", err);
   }
 
-  const [creators, ecosystem, plugins, npmAlltimeTotal] = await Promise.all([
-    getCachedCreatorsByPlatform(),
-    getCachedEcosystemLatest(),
-    getCachedPluginLatest(),
-    getCachedNpmAlltimeTotal(),
-  ]);
+  // These fetchers now throw rather than returning empty, so a blip is not
+  // cached for twelve hours. Answer 503 instead of a 200 full of zeros: "0
+  // downloads, 0 stars" is indistinguishable from a genuinely quiet month, and
+  // that ambiguity is how /npm's outage stayed invisible for days.
+  let creators: Awaited<ReturnType<typeof getCachedCreatorsByPlatform>>;
+  let ecosystem: Awaited<ReturnType<typeof getCachedEcosystemLatest>>;
+  let plugins: Awaited<ReturnType<typeof getCachedPluginLatest>>;
+  let npmAlltimeTotal: Awaited<ReturnType<typeof getCachedNpmAlltimeTotal>>;
+  try {
+    [creators, ecosystem, plugins, npmAlltimeTotal] = await Promise.all([
+      getCachedCreatorsByPlatform(),
+      getCachedEcosystemLatest(),
+      getCachedPluginLatest(),
+      getCachedNpmAlltimeTotal(),
+    ]);
+  } catch (err) {
+    console.error("[homepage-stats]", err);
+    return Response.json(
+      { error: "upstream unavailable" },
+      { status: 503, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   // The fetcher only logs on a query error, not on an empty-but-successful
   // read (e.g. v_npm_alltime_ecosystem has no rows yet because the daily
