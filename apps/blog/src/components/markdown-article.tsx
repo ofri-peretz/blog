@@ -55,23 +55,6 @@ const sanitizeSchema: SanitizeOptions = {
   ],
 };
 
-/**
- * Makes prose tables keyboard-scrollable.
- *
- * 72 of 78 articles contain a markdown table, and a wide one used to push the
- * whole DOCUMENT sideways on narrow viewports — measured at 320px, the page
- * scrolled 53px. The CSS half of the fix lives in globals.css (`display:block`
- * + `overflow-x:auto`, which keeps the column grid intact); this half supplies
- * the part CSS cannot: a scroll container that is not focusable is unreachable
- * by keyboard, which is WCAG 2.1.1 (Level A).
- *
- * Runs AFTER rehypeSanitize deliberately — like rehypeSlug and rehypeShiki
- * above — because this is our own generated markup, not article input.
- *
- * The visitor is inline rather than unist-util-visit: that package is only a
- * TRANSITIVE dependency here, so importing it would break on a dependency bump.
- * Six lines is cheaper than that risk.
- */
 const BLOCKS = new Set(["p", "li", "td", "th", "dd", "dt", "figcaption"]);
 const INLINE_WRAPPERS = new Set(["strong", "em", "b", "i", "code"]);
 
@@ -112,6 +95,38 @@ function rehypeScrollableTables() {
     const walk = (node: HastLike): void => {
       const children = node.children;
       if (!children) return;
+
+      // A link is a STANDALONE target only when it is the block's entire
+      // content. CSS cannot express that: `:only-child` counts ELEMENT
+      // siblings and ignores text, so `<p>Read <strong><a>x</a></strong> now</p>`
+      // matches `strong:only-child` and a genuinely inline link would be
+      // inflated mid-sentence. Here the text nodes are visible, so the test is
+      // exact. Marked links get 24x24 in globals.css (WCAG 2.2 SC 2.5.8).
+      if (BLOCKS.has(node.tagName ?? "")) {
+        const meaningful = children.filter(
+          (c) => c.type !== "text" || (c.value ?? "").trim() !== "",
+        );
+        if (meaningful.length === 1) {
+          let candidate = meaningful[0];
+          if (
+            candidate.type === "element" &&
+            INLINE_WRAPPERS.has(candidate.tagName ?? "")
+          ) {
+            const inner = (candidate.children ?? []).filter(
+              (c) => c.type !== "text" || (c.value ?? "").trim() !== "",
+            );
+            if (inner.length === 1) candidate = inner[0];
+          }
+          if (candidate.type === "element" && candidate.tagName === "a") {
+            const props = (candidate.properties ??= {});
+            const existing = props.className;
+            props.className = Array.isArray(existing)
+              ? [...existing, "standalone-link"]
+              : ["standalone-link"];
+          }
+        }
+      }
+
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
         if (child.type === "element" && child.tagName === "table") {
@@ -156,15 +171,19 @@ const processor = unified()
   .use(rehypeScrollableTables)
   .use(rehypeStringify);
 
+/** The markdown -> HTML pipeline, exported so the rendering rules it applies
+ *  can be tested without rendering a React server component. */
+export async function renderMarkdown(body: string): Promise<string> {
+  return String(await processor.process(preprocessMarkdown(body)));
+}
+
 export async function MarkdownArticle({
   body,
   className,
   "data-testid": testId,
   ...rest
 }: MarkdownArticleProps) {
-  const processed = preprocessMarkdown(body);
-  const file = await processor.process(processed);
-  const html = String(file);
+  const html = await renderMarkdown(body);
 
   return (
     <article
