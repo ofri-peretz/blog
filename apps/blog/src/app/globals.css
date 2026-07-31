@@ -236,3 +236,16 @@ body {
   align-items: center;
   min-height: 24px;
 }
+
+/* github-dark's comment colour is #6A737D, which measures 3.05:1 on the theme's
+   own #24292e background — below the 4.5 AA floor for 14px text, and the last
+   contrast failure on the site. #8b949e is 4.77:1 and is GitHub's own
+   dark-mode comment colour, so the theme still reads as itself.
+
+   Targeting the inline custom property is deliberate: Shiki writes
+   `--shiki-dark:#6A737D` per span, so this lifts exactly the comment token and
+   nothing else. The light theme needs no equivalent — its comment measures
+   4.82:1 on white and already passes. */
+.dark .shiki span[style*="--shiki-dark:#6A737D"] {
+  color: #8b949e !important;
+}
