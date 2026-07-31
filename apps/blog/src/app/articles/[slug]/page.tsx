@@ -43,7 +43,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       images: [
         fm.social_image ??
           fm.cover_image ??
-          `/og?title=${encodeURIComponent(fm.title)}`,
+          `/og?title=${encodeURIComponent(fm.title)}&description=${encodeURIComponent(fm.description)}`,
       ],
     },
     twitter: {
@@ -53,7 +53,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
       images: [
         fm.social_image ??
           fm.cover_image ??
-          `/og?title=${encodeURIComponent(fm.title)}`,
+          `/og?title=${encodeURIComponent(fm.title)}&description=${encodeURIComponent(fm.description)}`,
       ],
     },
   };
@@ -78,7 +78,7 @@ export default async function ArticlePage(props: PageProps) {
   const image =
     fm.social_image ??
     fm.cover_image ??
-    `https://ofriperetz.dev/og?title=${encodeURIComponent(fm.title)}`;
+    `https://ofriperetz.dev/og?title=${encodeURIComponent(fm.title)}&description=${encodeURIComponent(fm.description)}`;
 
   const blogPostingSchema = {
     "@context": "https://schema.org",
