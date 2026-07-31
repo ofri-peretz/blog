@@ -117,7 +117,13 @@ const AUDIT_FN = function auditPage() {
   const renderedTheme = document.documentElement.classList.contains("dark")
     ? "dark"
     : "light";
-  const out = { renderedTheme, overflow: [], overlap: [], tapTargets: [], contrast: [] };
+  const out = {
+    renderedTheme,
+    overflow: [],
+    overlap: [],
+    tapTargets: [],
+    contrast: [],
+  };
 
   const label = (el) => {
     const cls =
@@ -166,7 +172,8 @@ const AUDIT_FN = function auditPage() {
   const inFlow = (el) => {
     for (let p = el; p && p !== document.body; p = p.parentElement) {
       const pos = getComputedStyle(p).position;
-      if (pos === "absolute" || pos === "fixed" || pos === "sticky") return false;
+      if (pos === "absolute" || pos === "fixed" || pos === "sticky")
+        return false;
     }
     return true;
   };
@@ -179,7 +186,8 @@ const AUDIT_FN = function auditPage() {
     if (!inFlow(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) continue;
-    if (!el.textContent?.trim() && !el.matches("input,select,textarea")) continue;
+    if (!el.textContent?.trim() && !el.matches("input,select,textarea"))
+      continue;
     boxes.push({ el, r });
   }
   // Compare PER-LINE rects, not the bounding box. An inline link that wraps
@@ -201,10 +209,15 @@ const AUDIT_FN = function auditPage() {
       if (!overlaps(a.r, b.r)) continue;
       let area = 0;
       for (const ra of a.el.getClientRects()) {
-        for (const rb of b.el.getClientRects()) area = Math.max(area, overlaps(ra, rb));
+        for (const rb of b.el.getClientRects())
+          area = Math.max(area, overlaps(ra, rb));
       }
       if (area > 0) {
-        out.overlap.push({ a: label(a.el), b: label(b.el), area: Math.round(area) });
+        out.overlap.push({
+          a: label(a.el),
+          b: label(b.el),
+          area: Math.round(area),
+        });
       }
     }
   }
@@ -234,7 +247,20 @@ const AUDIT_FN = function auditPage() {
     // The spec's actual test is whether non-target text shares the line, so
     // that is what is checked: does the parent hold text beyond this link.
     if (el.tagName === "A") {
-      const parent = el.parentElement;
+      // The text that can "share the line" belongs to the nearest BLOCK
+      // ancestor, not the direct parent. In
+      // `<p>…are <strong><a>false positives</a></strong> — noise…</p>` the
+      // parent is a <strong> whose text IS the link's text, but the link is
+      // as inline as any other word in that sentence. Climb through inline
+      // formatting wrappers before comparing.
+      let parent = el.parentElement;
+      while (
+        parent &&
+        parent !== document.body &&
+        getComputedStyle(parent).display === "inline"
+      ) {
+        parent = parent.parentElement;
+      }
       const parentText = parent ? parent.textContent.trim() : "";
       const ownText = el.textContent.trim();
       if (parentText && parentText !== ownText) continue;
@@ -297,7 +323,8 @@ const AUDIT_FN = function auditPage() {
     v /= 255;
     return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   };
-  const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+  const lum = (c) =>
+    0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
   const ratio = (f, b) => {
     const [hi, lo] = [lum(f), lum(b)].sort((x, y) => y - x);
     return (hi + 0.05) / (lo + 0.05);
@@ -323,7 +350,11 @@ const AUDIT_FN = function auditPage() {
     const el = n.parentElement;
     if (!el) continue;
     const cs = getComputedStyle(el);
-    if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0")
+    if (
+      cs.display === "none" ||
+      cs.visibility === "hidden" ||
+      cs.opacity === "0"
+    )
       continue;
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
@@ -382,21 +413,23 @@ const CHROME_CANDIDATES = [
 ].filter(Boolean);
 const executablePath = CHROME_CANDIDATES.find((c) => existsSync(c));
 
-const browser = await chromium.launch({
-  // An explicit path when we found one; otherwise let playwright-core look for
-  // an installed Chrome itself, and report where WE looked if that fails too.
-  ...(executablePath ? { executablePath } : { channel: "chrome" }),
-  // CI containers run as root with a small /dev/shm; without these Chrome
-  // exits immediately. Harmless locally.
-  args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars"],
-}).catch((err) => {
-  console.error(
-    `Could not launch Chrome.\n${err.message}\n\n` +
-      `Set CHROME=/path/to/chrome. Looked in:\n  ` +
-      CHROME_CANDIDATES.join("\n  "),
-  );
-  process.exit(2);
-});
+const browser = await chromium
+  .launch({
+    // An explicit path when we found one; otherwise let playwright-core look for
+    // an installed Chrome itself, and report where WE looked if that fails too.
+    ...(executablePath ? { executablePath } : { channel: "chrome" }),
+    // CI containers run as root with a small /dev/shm; without these Chrome
+    // exits immediately. Harmless locally.
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars"],
+  })
+  .catch((err) => {
+    console.error(
+      `Could not launch Chrome.\n${err.message}\n\n` +
+        `Set CHROME=/path/to/chrome. Looked in:\n  ` +
+        CHROME_CANDIDATES.join("\n  "),
+    );
+    process.exit(2);
+  });
 
 const results = [];
 try {
@@ -432,7 +465,12 @@ try {
             }
             results.push({ route, vp: vp.w, scheme, ...value });
           } catch (err) {
-            results.push({ route, vp: vp.w, scheme, error: String(err).slice(0, 200) });
+            results.push({
+              route,
+              vp: vp.w,
+              scheme,
+              error: String(err).slice(0, 200),
+            });
           }
         }
       }
@@ -504,14 +542,19 @@ if (JSON_OUT) {
     `\n${results.length - bad}/${results.length} route×viewport combinations clean`,
   );
   if (accepted) {
-    console.log(`${accepted} finding(s) matched the baseline and were not gated on:`);
-    for (const reason of usedBaseline) console.log(`  - ${reason.slice(0, 140)}`);
+    console.log(
+      `${accepted} finding(s) matched the baseline and were not gated on:`,
+    );
+    for (const reason of usedBaseline)
+      console.log(`  - ${reason.slice(0, 140)}`);
   }
   // A baseline entry that no longer matches anything is stale — surface it so
   // the list shrinks as things get fixed, rather than quietly rotting.
   const unused = BASELINE.filter((b) => !usedBaseline.has(b.reason));
   if (unused.length) {
-    console.log(`\n${unused.length} baseline entr(y/ies) matched nothing and can be deleted:`);
+    console.log(
+      `\n${unused.length} baseline entr(y/ies) matched nothing and can be deleted:`,
+    );
     for (const b of unused) console.log(`  - ${b.kind} ${b.route} ${b.el}`);
   }
   process.exit(bad ? 1 : 0);

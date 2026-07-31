@@ -84,6 +84,66 @@ type HastLike = {
 };
 
 /**
+ * Tags links that are a block's ENTIRE content with `standalone-link`, so
+ * globals.css can give them the 24x24 minimum WCAG 2.2 SC 2.5.8 requires.
+ *
+ * A link that is the whole content of a `<td>`, `<li>` or `<p>` is a
+ * standalone target — nothing shares its line box, so the SC 2.5.8 "inline"
+ * exception does not cover it, and prose line-height renders it 18-21px tall.
+ * The CSS rule (`.prose a.standalone-link`) has carried the fix since the
+ * `:only-child` selector was retired; this plugin is the half that decides
+ * WHICH links are standalone, because CSS cannot express "no non-whitespace
+ * text siblings" or "behind exactly one inline wrapper".
+ *
+ * Requiring an only child at BOTH steps is what keeps a genuinely inline
+ * `<p>Read <strong><a>this</a></strong> now</p>` from matching and being
+ * inflated mid-sentence.
+ *
+ * Runs AFTER rehypeSanitize deliberately, like rehypeScrollableTables: this
+ * is our own generated markup, not article input.
+ */
+function rehypeStandaloneLinks() {
+  const significant = (children: HastLike[] | undefined): HastLike[] =>
+    (children ?? []).filter(
+      (c) => !(c.type === "text" && !(c.value ?? "").trim()),
+    );
+  const tag = (a: HastLike): void => {
+    const props = (a.properties ??= {});
+    const cls = props.className;
+    props.className = Array.isArray(cls)
+      ? [...cls, "standalone-link"]
+      : cls
+        ? [String(cls), "standalone-link"]
+        : ["standalone-link"];
+  };
+  const isEl = (n: HastLike, names: Set<string> | string): boolean =>
+    n.type === "element" &&
+    (typeof names === "string"
+      ? n.tagName === names
+      : names.has(n.tagName ?? ""));
+  return (tree: unknown) => {
+    const walk = (node: HastLike): void => {
+      for (const child of node.children ?? []) {
+        if (isEl(child, BLOCKS)) {
+          const kids = significant(child.children);
+          if (kids.length === 1) {
+            const only = kids[0];
+            if (isEl(only, "a")) {
+              tag(only);
+            } else if (isEl(only, INLINE_WRAPPERS)) {
+              const inner = significant(only.children);
+              if (inner.length === 1 && isEl(inner[0], "a")) tag(inner[0]);
+            }
+          }
+        }
+        walk(child);
+      }
+    };
+    walk(tree as HastLike);
+  };
+}
+
+/**
  * Wraps prose tables in a scrollable, keyboard-reachable container.
  *
  * 72 of 78 articles carry a markdown table, and a wide one used to push the
@@ -153,6 +213,7 @@ const processor = unified()
   .use(rehypeShiki, {
     themes: { light: "github-light", dark: "github-dark" },
   })
+  .use(rehypeStandaloneLinks)
   .use(rehypeScrollableTables)
   .use(rehypeStringify);
 
