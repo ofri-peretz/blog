@@ -187,3 +187,18 @@ body {
 .bg-gradient-radial {
   background-image: radial-gradient(var(--tw-gradient-stops));
 }
+
+
+/* Prose tables must not drag the page sideways. 72 of 78 articles carry one,
+   and a wide table overflowed the document by 53px at 320px — the whole page
+   scrolled horizontally.
+
+   The scroll lives on a WRAPPER (added by rehypeScrollableTables), not on the
+   table. Putting `display:block` on the table itself also works visually, and
+   even keeps the column grid, but WebKit then drops the implicit role="table"
+   from the accessibility tree — VoiceOver loses header associations and table
+   navigation. That is a WCAG 1.3.1 regression traded for a layout fix. */
+.prose-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}

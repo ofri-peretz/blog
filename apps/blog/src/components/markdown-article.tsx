@@ -55,6 +55,83 @@ const sanitizeSchema: SanitizeOptions = {
   ],
 };
 
+/**
+ * Makes prose tables keyboard-scrollable.
+ *
+ * 72 of 78 articles contain a markdown table, and a wide one used to push the
+ * whole DOCUMENT sideways on narrow viewports — measured at 320px, the page
+ * scrolled 53px. The CSS half of the fix lives in globals.css (`display:block`
+ * + `overflow-x:auto`, which keeps the column grid intact); this half supplies
+ * the part CSS cannot: a scroll container that is not focusable is unreachable
+ * by keyboard, which is WCAG 2.1.1 (Level A).
+ *
+ * Runs AFTER rehypeSanitize deliberately — like rehypeSlug and rehypeShiki
+ * above — because this is our own generated markup, not article input.
+ *
+ * The visitor is inline rather than unist-util-visit: that package is only a
+ * TRANSITIVE dependency here, so importing it would break on a dependency bump.
+ * Six lines is cheaper than that risk.
+ */
+type HastLike = {
+  type?: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: HastLike[];
+};
+
+/**
+ * Wraps prose tables in a scrollable, keyboard-reachable container.
+ *
+ * 72 of 78 articles carry a markdown table, and a wide one used to push the
+ * whole DOCUMENT sideways — measured at 320px, the page scrolled 53px.
+ *
+ * The tempting fix is `display:block; overflow-x:auto` on the table itself.
+ * It works visually — the column grid even survives — but in WebKit it strips
+ * the implicit `role="table"` from the accessibility tree, so VoiceOver
+ * announces a plain block and loses header associations, row/column counts and
+ * table navigation. That trades a visual bug for a WCAG 1.3.1 one.
+ *
+ * Wrapping keeps the table a table. The wrapper carries tabIndex so keyboard
+ * users can actually reach the scroll (WCAG 2.1.1), and a labelled region role
+ * so its purpose is announced.
+ *
+ * Runs AFTER rehypeSanitize deliberately, like rehypeSlug and rehypeShiki:
+ * this is our own generated markup, not article input.
+ */
+function rehypeScrollableTables() {
+  // The parameter is `unknown` on purpose. Both `hast` and `unist` are SPECS,
+  // not npm packages — their @types packages merely declare the module, so tsc
+  // resolves such an import and every import resolver correctly cannot. An
+  // `unknown` parameter satisfies unified's Plugin overload by contravariance
+  // with no import at all.
+  return (tree: unknown) => {
+    const walk = (node: HastLike): void => {
+      const children = node.children;
+      if (!children) return;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child.type === "element" && child.tagName === "table") {
+          children[i] = {
+            type: "element",
+            tagName: "div",
+            properties: {
+              className: ["prose-table-scroll"],
+              tabIndex: 0,
+              role: "region",
+              "aria-label": "Table, scrollable",
+            },
+            children: [child],
+          };
+          walk(child);
+          continue;
+        }
+        walk(child);
+      }
+    };
+    walk(tree as HastLike);
+  };
+}
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -72,6 +149,7 @@ const processor = unified()
   .use(rehypeShiki, {
     themes: { light: "github-light", dark: "github-dark" },
   })
+  .use(rehypeScrollableTables)
   .use(rehypeStringify);
 
 export async function MarkdownArticle({
