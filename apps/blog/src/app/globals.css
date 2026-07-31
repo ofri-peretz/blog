@@ -249,3 +249,14 @@ body {
 .dark .shiki span[style*="--shiki-dark:#6A737D"] {
   color: #8b949e !important;
 }
+
+/* github-light's #e36209 (constants, some variables) measures 3.49:1 on white
+   — below the 4.5 AA floor for 14px code text. #bc4c00 is 5.03:1 and stays in
+   the same burnt-orange family GitHub uses for this token class.
+
+   The light theme is written as a real `color` declaration rather than a
+   custom property, so the selector matches that. */
+.shiki span[style*="color:#E36209"],
+.shiki span[style*="color:#e36209"] {
+  color: #bc4c00 !important;
+}
