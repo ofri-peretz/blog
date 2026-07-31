@@ -119,10 +119,17 @@ function rehypeScrollableTables() {
           }
           if (candidate.type === "element" && candidate.tagName === "a") {
             const props = (candidate.properties ??= {});
+            // hast permits className as an array OR a space-separated string.
+            // The array-only branch silently dropped a string value, so any
+            // class another plugin had set would vanish.
             const existing = props.className;
-            props.className = Array.isArray(existing)
-              ? [...existing, "standalone-link"]
-              : ["standalone-link"];
+            const prior = Array.isArray(existing)
+              ? existing.map(String)
+              : typeof existing === "string"
+                ? existing.split(/\s+/).filter(Boolean)
+                : [];
+            if (!prior.includes("standalone-link")) prior.push("standalone-link");
+            props.className = prior;
           }
         }
       }
