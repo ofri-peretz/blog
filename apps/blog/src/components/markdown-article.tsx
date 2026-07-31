@@ -110,11 +110,9 @@ function rehypeStandaloneLinks() {
   const tag = (a: HastLike): void => {
     const props = (a.properties ??= {});
     const cls = props.className;
-    props.className = Array.isArray(cls)
-      ? [...cls, "standalone-link"]
-      : cls
-        ? [String(cls), "standalone-link"]
-        : ["standalone-link"];
+    const existing = Array.isArray(cls) ? cls : cls ? [String(cls)] : [];
+    if (!existing.includes("standalone-link"))
+      props.className = [...existing, "standalone-link"];
   };
   const isEl = (n: HastLike, names: Set<string> | string): boolean =>
     n.type === "element" &&
