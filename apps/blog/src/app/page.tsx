@@ -14,6 +14,7 @@ import { DevToArticles } from "@/components/landing/devto-articles";
 import { ImpactMetricsBlock } from "@/components/landing/impact-metrics-block";
 import { FloatingToc } from "@/components/floating-toc";
 import { getAllArticles } from "@/lib/source";
+import numbers from "@/data/interlace-numbers.json";
 
 const TOC_ITEMS = [
   { id: "impact", label: "Impact" },
@@ -106,8 +107,8 @@ export default async function HomePage() {
             >
               Interlace ESLint Ecosystem
             </Link>{" "}
-            — 332+ security rules across 18 specialized plugins, designed for
-            the AI/Agentic era.
+            — {numbers.rules.total} rules across {numbers.plugins.total}{" "}
+            specialized plugins, designed for the AI/Agentic era.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link

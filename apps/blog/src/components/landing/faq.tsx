@@ -1,6 +1,7 @@
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
+import numbers from "@/data/interlace-numbers.json";
 
 interface FaqItem {
   q: string;
@@ -10,7 +11,7 @@ interface FaqItem {
 const FAQ: FaqItem[] = [
   {
     q: "What is the Interlace ESLint Ecosystem?",
-    a: "A collection of 18+ production-ready ESLint plugins designed for the AI/Agentic era. LLM-optimized error messages empower both human developers and AI coding assistants to catch and fix security vulnerabilities automatically.",
+    a: `A collection of ${numbers.plugins.total} production-ready ESLint plugins designed for the AI/Agentic era. LLM-optimized error messages empower both human developers and AI coding assistants to catch and fix security vulnerabilities automatically.`,
   },
   {
     q: "Why AI-native ESLint plugins?",

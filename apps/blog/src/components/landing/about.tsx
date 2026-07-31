@@ -2,6 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
+import numbers from "@/data/interlace-numbers.json";
 
 interface AboutProps extends React.HTMLAttributes<HTMLElement> {
   /** Stable selector for E2E tests; consumer provides — no default. */
@@ -55,8 +56,9 @@ export function About({
             >
               Interlace ESLint Ecosystem
             </a>{" "}
-            — 18 specialized plugins, 332+ rules, covering OWASP Top 10, LLM
-            Security, and database hardening. Built for the agentic era.
+            — {numbers.plugins.total} specialized plugins,{" "}
+            {numbers.rules.total} rules, covering OWASP Top 10, LLM Security,
+            and database hardening. Built for the agentic era.
           </p>
         </div>
       </Container>
