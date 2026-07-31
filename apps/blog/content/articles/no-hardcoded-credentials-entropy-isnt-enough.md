@@ -10,8 +10,8 @@ tags:
 canonical_url: "https://ofriperetz.dev/articles/no-hardcoded-credentials-entropy-isnt-enough"
 devto_id: 3954428
 tier: "T3"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-hardcoded-credentials-entropy-isnt-enough.jpg?v=b2"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-hardcoded-credentials-entropy-isnt-enough-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-hardcoded-credentials-entropy-isnt-enough.jpg?v=b3"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-hardcoded-credentials-entropy-isnt-enough-og.jpg?v=b3"
 series: "Inside our linter benchmarks"
 ---
 

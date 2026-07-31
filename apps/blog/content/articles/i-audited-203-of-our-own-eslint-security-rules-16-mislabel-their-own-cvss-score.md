@@ -10,8 +10,8 @@ tier: "T3"
 # devto_id: (fill after publishing)
 published: true
 published_at: "2026-07-06"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score.jpg?v=b2"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score.jpg?v=b3"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-audited-203-of-our-own-eslint-security-rules-16-mislabel-their-own-cvss-score-og.jpg?v=b3"
 reading_time_minutes: 9
 tags:
   - "security"
