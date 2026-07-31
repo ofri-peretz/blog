@@ -233,11 +233,21 @@ const AUDIT_FN = function auditPage() {
     //
     // The spec's actual test is whether non-target text shares the line, so
     // that is what is checked: does the parent hold text beyond this link.
+    // SC 2.5.8's "Inline" exception: a target in a sentence, or whose size is
+    // otherwise constrained by the line-height of surrounding non-target text.
+    //
+    // Compare against the nearest BLOCK ancestor, not the immediate parent.
+    // `<p>Any warnings on these patterns are <em><a>false positives</a></em></p>`
+    // has a parent (<em>) whose text is exactly the link's, so a parent-based
+    // test calls it standalone — while it is plainly inline in a sentence. The
+    // block is what shares a line box with it, so the block is what decides.
     if (el.tagName === "A") {
-      const parent = el.parentElement;
-      const parentText = parent ? parent.textContent.trim() : "";
+      const block = el.closest(
+        "p,li,td,th,dd,dt,figcaption,blockquote,h1,h2,h3,h4,h5,h6",
+      );
+      const blockText = block ? block.textContent.trim() : "";
       const ownText = el.textContent.trim();
-      if (parentText && parentText !== ownText) continue;
+      if (blockText && blockText !== ownText) continue;
     }
     if (r.width < 24 || r.height < 24) {
       // ctx = the nearest structural ancestor. Without it a baseline entry can
