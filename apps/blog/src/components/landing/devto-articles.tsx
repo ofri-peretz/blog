@@ -64,7 +64,7 @@ export function DevToArticles({
           </div>
           <Link
             href="/articles"
-            className="inline-flex min-h-6 items-center text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-6 min-w-6 items-center justify-center text-sm text-muted-foreground hover:text-foreground"
           >
             View all →
           </Link>

@@ -105,7 +105,7 @@ export default async function ArticlePage(props: PageProps) {
           aria-label="Breadcrumb"
           className="mb-6 text-sm text-muted-foreground"
         >
-          <Link href="/articles" className="inline-flex min-h-6 items-center hover:text-foreground">
+          <Link href="/articles" className="inline-flex min-h-6 min-w-6 items-center justify-center hover:text-foreground">
             ← All articles
           </Link>
         </nav>
@@ -170,7 +170,7 @@ export default async function ArticlePage(props: PageProps) {
                   <li key={tag}>
                     <Link
                       href={`/articles?tag=${encodeURIComponent(tag)}`}
-                      className="inline-block rounded bg-muted px-2 py-0.5 text-xs hover:bg-muted/70"
+                      className="inline-flex min-h-6 min-w-6 items-center justify-center rounded bg-muted px-2 text-xs hover:bg-muted/70"
                     >
                       #{tag}
                     </Link>

@@ -79,7 +79,7 @@ export function AppHeader({
               // under the 24x24 CSS px minimum in WCAG 2.2 SC 2.5.8 (AA).
               // The nav row is already items-center, so the extra height is
               // absorbed and nothing moves.
-              className="inline-flex min-h-6 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex min-h-6 min-w-6 items-center justify-center text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
             </Link>
