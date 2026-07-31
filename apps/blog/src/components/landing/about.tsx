@@ -39,7 +39,7 @@ export function About({
             Building products that matter
           </h2>
         </div>
-        <div className="mt-6 grid gap-6 text-muted-foreground sm:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-6 text-muted-foreground sm:grid-cols-2">
           <p>
             Engineering Leader with a decade of experience shipping production
             JavaScript at scale. Currently focused on{" "}

@@ -69,7 +69,7 @@ export function DevToArticles({
             View all →
           </Link>
         </div>
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {articles.map((article) => {
             const reactions =
               article.frontmatter.reactions !== undefined &&

@@ -340,7 +340,7 @@ export default function ScorecardPage() {
 
       <footer className="border-t pt-8 text-sm text-muted-foreground">
         <p className="mb-3 font-medium">Where the numbers come from</p>
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <li>
             <a
               className="inline-flex min-h-6 min-w-6 items-center justify-center underline-offset-4 hover:text-foreground hover:underline"
