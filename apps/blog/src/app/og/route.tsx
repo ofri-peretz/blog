@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
+import numbers from "@/data/interlace-numbers.json";
 
 export const runtime = "edge";
 export const contentType = "image/png";
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     params.title ?? "Ofri Peretz — Engineering Leader & Open Source Creator";
   const description =
     params.description ??
-    "Architect of the Interlace ESLint Ecosystem. 332+ security rules across 18 specialized plugins.";
+    `Architect of the Interlace ESLint Ecosystem. ${numbers.rules.total} rules across ${numbers.plugins.total} specialized plugins.`;
   const badge =
     params.pageType === "articles"
       ? "Articles"

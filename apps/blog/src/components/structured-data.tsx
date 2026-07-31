@@ -1,3 +1,5 @@
+import numbers from "@/data/interlace-numbers.json";
+
 const SITE_URL = "https://ofriperetz.dev";
 
 const personSchema = {
@@ -52,7 +54,7 @@ const ecosystemSchema = {
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Cross-platform",
   description:
-    "A collection of 18+ production-ready ESLint plugins with 332 security rules designed for the AI/Agentic era.",
+    `A collection of ${numbers.plugins.total} production-ready ESLint plugins with ${numbers.rules.total} rules designed for the AI/Agentic era.`,
   author: { "@type": "Person", name: "Ofri Peretz", url: SITE_URL },
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   url: "https://github.com/ofri-peretz/eslint",
