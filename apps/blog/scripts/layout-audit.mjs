@@ -224,8 +224,21 @@ const AUDIT_FN = function auditPage() {
     if (isScreenReaderOnly(cs)) continue;
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
-    // Inline links inside a paragraph are explicitly exempt in SC 2.5.8.
-    if (el.tagName === "A" && el.closest("p,li")) continue;
+    // SC 2.5.8's "Inline" exception: a target in a sentence, or whose size is
+    // otherwise constrained by the line-height of surrounding non-target text.
+    // This was previously approximated as "inside a p or li", which is both too
+    // narrow and too crude — it missed comma-separated links inside a table
+    // cell, which are as inline as anything in a paragraph, and it would have
+    // exempted a lone link that is a paragraph's only content.
+    //
+    // The spec's actual test is whether non-target text shares the line, so
+    // that is what is checked: does the parent hold text beyond this link.
+    if (el.tagName === "A") {
+      const parent = el.parentElement;
+      const parentText = parent ? parent.textContent.trim() : "";
+      const ownText = el.textContent.trim();
+      if (parentText && parentText !== ownText) continue;
+    }
     if (r.width < 24 || r.height < 24) {
       // ctx = the nearest structural ancestor. Without it a baseline entry can
       // only say "some <a> on this route", which is indistinguishable from
