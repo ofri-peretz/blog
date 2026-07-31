@@ -72,11 +72,15 @@ const sanitizeSchema: SanitizeOptions = {
  * TRANSITIVE dependency here, so importing it would break on a dependency bump.
  * Six lines is cheaper than that risk.
  */
+const BLOCKS = new Set(["p", "li", "td", "th", "dd", "dt", "figcaption"]);
+const INLINE_WRAPPERS = new Set(["strong", "em", "b", "i", "code"]);
+
 type HastLike = {
   type?: string;
   tagName?: string;
   properties?: Record<string, unknown>;
   children?: HastLike[];
+  value?: string;
 };
 
 /**
