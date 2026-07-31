@@ -115,6 +115,23 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Retired Satori OG routes (a drifted second implementation of the
+      // brand — no mark, hand-drawn card). The authored covers under
+      // /cdn/blog-cover-image/ are canonical: <slug>.jpg is the 1000x420
+      // dev.to ratio (/og/cover's job), <slug>-og.jpg the 1200x630 social
+      // ratio (/og/article's job). Every published slug has both files, so
+      // external caches and social scrapers holding old URLs land on the
+      // real cover instead of a 404.
+      {
+        source: "/og/cover/:slug",
+        destination: "/cdn/blog-cover-image/:slug.jpg",
+        permanent: true,
+      },
+      {
+        source: "/og/article/:slug",
+        destination: "/cdn/blog-cover-image/:slug-og.jpg",
+        permanent: true,
+      },
       // Legacy Nuxt route — the Projects section now lives on the homepage.
       // Preserve the URL for inbound links and bookmarks.
       { source: "/projects", destination: "/#projects", permanent: true },
