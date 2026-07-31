@@ -24,16 +24,19 @@ if (data.schemaVersion !== 1) {
 }
 // Refuse to write a malformed or internally inconsistent manifest — a bad
 // upstream generate should fail here, not at the next CI run.
-for (const group of ["plugins", "rules"]) {
-  const g = data[group];
-  const pillars = ["security", "quality", "react"];
+for (const [label, g] of [
+  ["plugins", data.plugins],
+  ["rules", data.rules],
+]) {
   const ok =
     g &&
     Number.isInteger(g.total) &&
-    pillars.every((k) => Number.isInteger(g[k])) &&
-    pillars.reduce((sum, k) => sum + g[k], 0) === g.total;
+    Number.isInteger(g.security) &&
+    Number.isInteger(g.quality) &&
+    Number.isInteger(g.react) &&
+    g.security + g.quality + g.react === g.total;
   if (!ok) {
-    console.error(`Manifest "${group}" block is missing or inconsistent`);
+    console.error(`Manifest "${label}" block is missing or inconsistent`);
     process.exit(1);
   }
 }
