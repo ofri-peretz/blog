@@ -231,14 +231,7 @@ body {
    targets, not links inside a sentence, so the WCAG 2.2 SC 2.5.8 inline
    exception does not cover them. They rendered 18px tall; 24px is the AA
    minimum. inline-flex keeps them on the cell's text baseline. */
-.prose :where(p, li, td, th, dd) > :where(a):only-child,
-/* Same case through a single inline wrapper: `<p><strong><a>…</a></strong></p>`
-   is a standalone CTA, not a link in a sentence. Requiring BOTH :only-child
-   steps is what keeps `<p>Read <strong><a>this</a></strong> now</p>` — which is
-   genuinely inline and exempt — from matching. */
-.prose :where(p, li, td, th, dd)
-  > :where(strong, em, b, i):only-child
-  > :where(a):only-child {
+.prose a.standalone-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
