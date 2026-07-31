@@ -79,19 +79,54 @@ type HastLike = {
   children?: HastLike[];
 };
 
+/**
+ * Wraps prose tables in a scrollable, keyboard-reachable container.
+ *
+ * 72 of 78 articles carry a markdown table, and a wide one used to push the
+ * whole DOCUMENT sideways — measured at 320px, the page scrolled 53px.
+ *
+ * The tempting fix is `display:block; overflow-x:auto` on the table itself.
+ * It works visually — the column grid even survives — but in WebKit it strips
+ * the implicit `role="table"` from the accessibility tree, so VoiceOver
+ * announces a plain block and loses header associations, row/column counts and
+ * table navigation. That trades a visual bug for a WCAG 1.3.1 one.
+ *
+ * Wrapping keeps the table a table. The wrapper carries tabIndex so keyboard
+ * users can actually reach the scroll (WCAG 2.1.1), and a labelled region role
+ * so its purpose is announced.
+ *
+ * Runs AFTER rehypeSanitize deliberately, like rehypeSlug and rehypeShiki:
+ * this is our own generated markup, not article input.
+ */
 function rehypeScrollableTables() {
-  // The tree parameter is `unknown` on purpose. Both `hast` and `unist` are
-  // SPECS, not npm packages — their @types packages merely declare the module,
-  // so tsc resolves an import and every import resolver correctly cannot. A
-  // parameter typed `unknown` is assignable to one typed Node by
-  // contravariance, so unified's Plugin overload is satisfied with no import
-  // at all, and the two fields actually touched are narrowed locally.
+  // The parameter is `unknown` on purpose. Both `hast` and `unist` are SPECS,
+  // not npm packages — their @types packages merely declare the module, so tsc
+  // resolves such an import and every import resolver correctly cannot. An
+  // `unknown` parameter satisfies unified's Plugin overload by contravariance
+  // with no import at all.
   return (tree: unknown) => {
     const walk = (node: HastLike): void => {
-      if (node.type === "element" && node.tagName === "table") {
-        node.properties = { ...(node.properties ?? {}), tabIndex: 0 };
+      const children = node.children;
+      if (!children) return;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child.type === "element" && child.tagName === "table") {
+          children[i] = {
+            type: "element",
+            tagName: "div",
+            properties: {
+              className: ["prose-table-scroll"],
+              tabIndex: 0,
+              role: "region",
+              "aria-label": "Table, scrollable",
+            },
+            children: [child],
+          };
+          walk(child);
+          continue;
+        }
+        walk(child);
       }
-      for (const child of node.children ?? []) walk(child);
     };
     walk(tree as HastLike);
   };

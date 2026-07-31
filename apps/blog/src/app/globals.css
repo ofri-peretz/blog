@@ -188,18 +188,17 @@ body {
   background-image: radial-gradient(var(--tw-gradient-stops));
 }
 
-/* Prose tables must not drag the page sideways.
-   72 of 78 articles carry a markdown table, and a wide one overflowed the
-   document by 53px at 320px wide — the whole page scrolled horizontally, which
-   the layout audit counts as an unconditional failure.
 
-   `display:block` on the table is the responsive-table idiom; it was verified
-   in a real browser that the column grid survives it (thead and tbody cell
-   offsets stay identical), which is the usual objection to this approach.
-   markdown-article.tsx adds tabIndex so the scroll container is reachable by
-   keyboard — WCAG 2.1.1. */
-.prose :where(table):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
-  display: block;
+/* Prose tables must not drag the page sideways. 72 of 78 articles carry one,
+   and a wide table overflowed the document by 53px at 320px — the whole page
+   scrolled horizontally.
+
+   The scroll lives on a WRAPPER (added by rehypeScrollableTables), not on the
+   table. Putting `display:block` on the table itself also works visually, and
+   even keeps the column grid, but WebKit then drops the implicit role="table"
+   from the accessibility tree — VoiceOver loses header associations and table
+   navigation. That is a WCAG 1.3.1 regression traded for a layout fix. */
+.prose-table-scroll {
   max-width: 100%;
   overflow-x: auto;
 }
