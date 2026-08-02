@@ -313,6 +313,16 @@ describe("transformBodyForDevto", () => {
     expect(out).toContain("const css = '{#not-an-anchor}';");
   });
 
+  // A double-backtick span is how markdown writes inline code that itself
+  // contains a backtick; a single-backtick guard would end the span early and
+  // eat the brace inside.
+  it("preserves {#...} inside multi-backtick code spans", () => {
+    const body = "Prose ``a {#id}`` and ```b {#id2}``` stay, {#gone} goes.";
+    expect(transformBodyForDevto(body, SLUG)).toBe(
+      "Prose ``a {#id}`` and ```b {#id2}``` stay, goes.",
+    );
+  });
+
   it("leaves fenced code blocks byte-identical", () => {
     const body = [
       "Before [link](/articles/target).",

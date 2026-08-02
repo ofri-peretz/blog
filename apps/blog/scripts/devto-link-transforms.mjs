@@ -46,7 +46,12 @@ const HEADING_ANCHOR_REGEX = /^(#{1,6}\s.*?)\s*\{#[^}]+\}\s*$/;
 // The leading alternation is load-bearing, not decoration: an INLINE CODE SPAN is
 // matched first and handed back untouched, so a CSS example like `a {#id}` — which
 // is prose about braces, not an anchor — survives. Without it this eats those too.
-const INLINE_ANCHOR_REGEX = /(`[^`]*`)|[ \t]*\{#[a-zA-Z0-9_-]+\}/g;
+//
+// `(`+)…\1` matches a span by its OPENING backtick run and requires the same run
+// to close it, so ``code {#x}`` (the double-backtick form markdown uses when the
+// code itself contains a backtick) is protected too — a single-backtick pattern
+// would end the span at the first ` and strip the anchor inside.
+const INLINE_ANCHOR_REGEX = /(`+)[\s\S]*?\1|[ \t]*\{#[a-zA-Z0-9_-]+\}/g;
 
 /** The blog-only "**Skip to:**" jump-nav line (dead on dev.to — no heading ids). */
 const SKIP_TO_REGEX = /^\s*\*\*Skip to:\*\*/;
@@ -261,7 +266,9 @@ export function transformBodyForDevto(body, articleSlug) {
     // (the old heading-only branch returned early and skipped that).
     const stripped = line
       .replace(HEADING_ANCHOR_REGEX, "$1")
-      .replace(INLINE_ANCHOR_REGEX, (match, codeSpan) => codeSpan ?? "");
+      .replace(INLINE_ANCHOR_REGEX, (match) =>
+        match.startsWith("`") ? match : "",
+      );
     // Route every inline link through /go/.
     out.push(
       stripped.replace(INLINE_LINK_REGEX, (match, linkUrl, title) => {
