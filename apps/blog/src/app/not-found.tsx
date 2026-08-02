@@ -7,7 +7,10 @@ import { BrandMark } from "@/components/brand-mark";
 export const metadata: Metadata = {
   title: "Page not found",
   description: "The page you're looking for doesn't exist on ofriperetz.dev.",
-  robots: { index: false, follow: false },
+  // noindex: a 404 has no content worth ranking. follow stays TRUE so crawlers
+  // still traverse the recovery links below — noindex,nofollow would strand
+  // them on a dead end.
+  robots: { index: false, follow: true },
 };
 
 export default function NotFound() {
