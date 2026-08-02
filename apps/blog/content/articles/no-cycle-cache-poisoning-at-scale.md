@@ -11,8 +11,8 @@ tags:
   - "eslint"
 canonical_url: "https://ofriperetz.dev/articles/no-cycle-cache-poisoning-at-scale"
 tier: "T3"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-cycle-cache-poisoning-at-scale.jpg?v=b2"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-cycle-cache-poisoning-at-scale-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-cycle-cache-poisoning-at-scale.jpg?v=b3"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-cycle-cache-poisoning-at-scale-og.jpg?v=b3"
 series: "Inside our linter benchmarks"
 ---
 
