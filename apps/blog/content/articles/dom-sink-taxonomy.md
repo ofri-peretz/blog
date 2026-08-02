@@ -10,7 +10,7 @@ tags:
   - "ai"
   - "webdev"
   - "security"
-  - "javascript"
+  - "eslint"
 canonical_url: https://ofriperetz.dev/articles/dom-sink-taxonomy
 reading_time_minutes: 6
 tier: "T1"
@@ -19,26 +19,26 @@ author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627
   title: Security Engineering Leader
-overall_score: 9
+overall_score: 9.2
 reviews:
   discovery & hook: 9.5
-  discovery & hook_why: "**Swap `#javascript` → `#eslint`.** Tags are `ai / webdev / security / javascript` — the core `#ai #security` pairing is proven and `#staticanalysis` is correctly absent, but `#javascript` is the generic filler here. ..."
-  technical: 8.5
-  technical_why: "**WebSocket → CWE-346 is the one loose mapping.** The article groups `postMessage` and WebSocket together as \"the two that have an origin to validate\" and files both under CWE-346 (Origin Validation Error). That's cle..."
-  quality: 8.9
-  quality_why: "Anchor the opening in a dated, concrete incident. \"I have reviewed the same line... and caught it once\" is your sharpest, best sentence — and it's your only unmoored one. The corpus winners carry \"40K lines / 2 years ..."
-  practitioner: 9
-  practitioner_why: "The opening is composite, not dated. \"I have reviewed the same line of code, written five different ways, and caught it once\" carries the right reflex but reads as an aggregate memory. This is the single thing standin..."
+  discovery & hook_why: "The opening is the single thing between this and an unarguable 9.5+ ceiling: \"I have reviewed the same line of code, written five different ways, and caught it once.\" It's the sharpest sentence in the piece and the on..."
+  technical: 9.5
+  technical_why: "Name the CWE view when you state the hierarchy. \"CWE-345 under CWE-693\" and \"CWE-79 under CWE-74\" are correct in **CWE-1000 (Research Concepts)**, but CWE-345's parentage is organized differently in CWE-699 (Developme..."
+  quality: 9
+  quality_why: "**Ground the opening in one dated, real incident.** \"I have reviewed the same line of code, written five different ways, and caught it once\" is the sharpest line in the piece and its only unmoored one — it reads as a ..."
+  practitioner: 9.2
+  practitioner_why: "Ground the opening in one real, dated incident. \"I have reviewed the same line of code, written five different ways, and caught it once\" is the strongest sentence in the piece and the only unmoored one — it's a compos..."
   linkability: 8.8
-  linkability_why: "**Add ecosystem URLs — the single largest real gap for this axis.** This is a browser DOM-XSS taxonomy that explicitly says \"what a linter *can* do is match the source and the sink inside one handler,\" yet never point..."
+  linkability_why: "**Add ecosystem URLs — the single largest gap on this axis.** The piece explicitly says \"what a linter *can* do is match source and sink inside one handler,\" yet never links the linter that does it. The relevant packa..."
   abstraction: 9.5
-  abstraction_why: "**Give the CWE chain its own deep-linkable anchor.** The line \"the chain is CWE-693 → CWE-345 → CWE-346, and it runs alongside CWE-79\" is the single most citable claim in the piece — a T2 benchmark on XSS-rule precisi..."
+  abstraction_why: "**Close the upward half of the dependency contract.** The downward links are complete and correctly placed (taint tracking → `taint-vs-heuristic-detection`, the linting/SAST boundary → `static-analysis-vs-sast-vs-lint..."
   checklist: 10
-  checklist_why: "None required for tier-scope compliance. (Scope is clean; any prose/technical notes belong to the other reviewers, not this gate.)"
-  challenge: 8
-  challenge_why: "**Add the one experiment that lifts BOTH axes at once.** This is one measured test away from Gemini XPRIZE eligibility (open through Aug 17, 2026; $2M; needs a Gemini model + security/correctness eval + original bench..."
-  voice & agenda: 9
-  voice & agenda_why: "The opening beat is strong but non-specific. \"I have reviewed the same line of code... and caught it once\" carries the blunder-check reflex, but T1 permits a life-palette or universal-observation anchor that's slightl..."
+  checklist_why: "This is a T1 article (security/static-analysis vocabulary, domain-general) — confirmed by both the `tier: \"T1\"` frontmatter and the content: it centers a repeatable DOM-XSS *source/sink taxonomy* (genre 2, methodology..."
+  challenge: 8.3
+  challenge_why: "**Axis 2 — add one ecosystem URL; this is the biggest real gap.** The article's own thesis line is \"what a linter *can* do is match source and sink inside one handler,\" yet it never links the linter. That's a self-inf..."
+  voice & agenda: 9.2
+  voice & agenda_why: "Ground the opening beat. \"I have reviewed the same line of code, written five different ways, and caught it once\" is the sharpest sentence in the piece and its only unmoored one — it reads as a composite memory, not a..."
 ---
 I have reviewed the same line of code, written five different ways, and caught it once.
 
@@ -111,9 +111,8 @@ More to the point: a model completing a `message` handler has the reviewer's pro
 worse. It sees a local scope. It cannot know whether that listener lives in an app that
 checks `event.origin` elsewhere. The sink is local; the trust decision is not.
 
-That is why this is interesting rather than merely annoying — the information needed to
-get it right is *not present at the point of writing*. A property of the problem, not of
-the author.
+Which is the interesting part — the information needed to get it right is *not present at
+the point of writing*. A property of the problem, not of the author.
 
 ## The taxonomy is the useful artifact {#source-sink-taxonomy}
 
@@ -126,26 +125,30 @@ the author.
 | Worker message | "it is our own worker" |
 
 Read the right column. That is not five vulnerabilities. It is one — *provenance assumed
-from proximity* — wearing five costumes. A list of sinks tells you where to look; pairs
-tell you what to **ask**.
+from proximity* — wearing five costumes. Sinks tell you where to look; pairs tell you what
+to **ask**.
 
 ## What it means for detection {#what-it-means-for-detection}
 
 Grepping a sink is a heuristic. Following a source to a sink is taint tracking —
 [the thing that decides your false-positive rate](https://ofriperetz.dev/articles/taint-vs-heuristic-detection).
-Full taint tracking across frames, workers and sockets is not something a linter does;
-those boundaries are
+Full taint tracking across frames and sockets is not something a linter does; those
+boundaries are
 [the line between linting and SAST](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting).
 What a linter *can* do is match source and sink inside one handler — which covers all four
-cases above, because the risky pattern is nearly always written in a single function.
+cases, because the risky pattern is nearly always written in a single function.
 
-There are **two** classes here, and separating them is the point. The XSS *outcome* is
-[CWE-79](https://cwe.mitre.org/data/definitions/79.html), under
-[CWE-74](https://cwe.mitre.org/data/definitions/74.html) Injection. The *trust failure*
-is [CWE-345](https://cwe.mitre.org/data/definitions/345.html) — or
-[CWE-346](https://cwe.mitre.org/data/definitions/346.html) where there was an origin to
-check — under [CWE-693](https://cwe.mitre.org/data/definitions/693.html). Different
-branches, not one above the other. Filing these as "XSS" is how the actual defect goes
+### Two branches, not one chain {#cwe-two-branches}
+
+The XSS *outcome* is [CWE-79](https://cwe.mitre.org/data/definitions/79.html), under
+[CWE-74](https://cwe.mitre.org/data/definitions/74.html) Injection. The *trust failure* is
+[CWE-345](https://cwe.mitre.org/data/definitions/345.html) under
+[CWE-693](https://cwe.mitre.org/data/definitions/693.html) — with its child
+[CWE-346](https://cwe.mitre.org/data/definitions/346.html) applying to `postMessage`
+alone, the only case with a page-side origin check. A WebSocket's `Origin` is validated
+server-side at the handshake; FileReader and workers have no origin at all.
+
+Different branches, not one chain. Filing all of it as "XSS" is how the actual defect goes
 unrecorded. [The taxonomy piece](https://ofriperetz.dev/articles/cwe-taxonomy-explained)
 has the map.
 

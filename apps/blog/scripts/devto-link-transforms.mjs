@@ -37,6 +37,15 @@ const FENCE_REGEX = /^\s*(```|~~~)/;
 
 /** A heading line (H1–H6) carrying a blog `{#custom-anchor}` id suffix. */
 const HEADING_ANCHOR_REGEX = /^(#{1,6}\s.*?)\s*\{#[^}]+\}\s*$/;
+// dev.to prints `{#anchor}` verbatim WHEREVER it appears, not only in headings.
+// crypto-misuse-taxonomy shipped with four literal `{#layer-N}` tags mid-paragraph
+// (`**Layer 1 — the primitive.** {#layer-1} Right kind of thing?…`) because the
+// heading-only regex above never saw them. Anchors on any non-fence line go.
+//
+// The leading alternation is load-bearing, not decoration: an INLINE CODE SPAN is
+// matched first and handed back untouched, so a CSS example like `a {#id}` — which
+// is prose about braces, not an anchor — survives. Without it this eats those too.
+const INLINE_ANCHOR_REGEX = /(`[^`]*`)|[ \t]*\{#[a-zA-Z0-9_-]+\}/g;
 
 /** The blog-only "**Skip to:**" jump-nav line (dead on dev.to — no heading ids). */
 const SKIP_TO_REGEX = /^\s*\*\*Skip to:\*\*/;
@@ -246,15 +255,15 @@ export function transformBodyForDevto(body, articleSlug) {
     }
     // Drop the blog-only jump-nav — its anchors have no target on dev.to.
     if (SKIP_TO_REGEX.test(line)) continue;
-    // Strip a heading's `{#anchor}` suffix (dev.to would print it literally).
-    const heading = line.match(HEADING_ANCHOR_REGEX);
-    if (heading) {
-      out.push(heading[1]);
-      continue;
-    }
+    // Strip every `{#anchor}` on the line, heading or inline, BEFORE the link
+    // rewrite — so a heading that also carries a link still gets its /go/ URL
+    // (the old heading-only branch returned early and skipped that).
+    const stripped = line
+      .replace(HEADING_ANCHOR_REGEX, "$1")
+      .replace(INLINE_ANCHOR_REGEX, (match, codeSpan) => codeSpan ?? "");
     // Route every inline link through /go/.
     out.push(
-      line.replace(INLINE_LINK_REGEX, (match, linkUrl, title) => {
+      stripped.replace(INLINE_LINK_REGEX, (match, linkUrl, title) => {
         const rewritten = rewriteUrlForDevto(linkUrl, articleSlug);
         return rewritten === linkUrl ? match : `](${rewritten}${title})`;
       }),

@@ -19,26 +19,26 @@ author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627
   title: Security Engineering Leader
-overall_score: 8.8
+overall_score: 9
 reviews:
   discovery & hook: 9
-  discovery & hook_why: "The opening is recognition-based, not number-based. \"Every team I have worked on has had the localStorage argument. It goes the same way each time.\" earns a nod, but your top performers open with an uncomfortable *sta..."
-  technical: 9
-  technical_why: "Consider disambiguating the CWE choice for the *cookie-without-HttpOnly* row specifically. CWE-522 (Insufficiently Protected Credentials → A07:2021) is correct for the \"token sits in a readable store\" thesis, but the ..."
-  quality: 8.8
-  quality_why: "The two `dom-sink-taxonomy` links are framed as an already-published node in this series (\"a companion piece in this series, works through why the sources that reach them outnumber the sinks\") but the slug is UNMATCHE..."
-  practitioner: 8.6
-  practitioner_why: "**Publish `dom-sink-taxonomy` first, or don't frame it as already-shipped.** The piece calls it \"a companion piece in this series … works through why the sources that reach them outnumber the sinks\" and makes \"close t..."
-  linkability: 7.5
-  linkability_why: "**The load-bearing \"next step\" points at an unpublished article, presented as already existing.** In `#why-it-recurs` the piece says \"Close the sink paths first — a companion piece in this series, [DOM sinks and sourc..."
+  discovery & hook_why: "The title travels standalone; the *opening line* doesn't quite match it. \"Every team I have worked on has had the localStorage argument\" is a strong recognition hook, but your 1,058-view performers open on an uncomfor..."
+  technical: 9.5
+  technical_why: "**Tighten the CWE choice for the cookie-without-`HttpOnly` row.** CWE-522 (Insufficiently Protected Credentials → A07:2021) is correct for the article's actual thesis (\"credential sits in a script-readable store\"), so..."
+  quality: 9
+  quality_why: "Rename the load-bearing anchor. `{#can-page-js-read-it}` marks the single most-citable idea in the piece, but it's a verb-phrase question. Higher-tier war stories about token theft will want to deep-link it as a noun ..."
+  practitioner: 8.7
+  practitioner_why: "The blast-radius framing undersells the in-session case and a senior reader will catch it. \"no exfiltration, no replay next week\" assumes the attacker only rides the current session. With script execution + `credentia..."
+  linkability: 8.5
+  linkability_why: "**Link the CWE canonical — this is the one concrete gap.** The article cites `CWE-522` prominently and correctly links CVSS and OWASP to their canonicals, but leaves CWE pointing only at MITRE. For internal-web consis..."
   abstraction: 9.5
-  abstraction_why: "Rename the load-bearing anchor. `{#can-page-js-read-it}` marks the single most-citable idea in the piece — every higher-tier war story about token theft will deep-link it — but it's phrased as a question, not a noun a..."
+  abstraction_why: "**Rename the load-bearing anchor `{#can-page-js-read-it}`.** This marks the single most-citable idea in the piece — every higher-tier token-theft war story will deep-link exactly this section — but it's phrased as a q..."
   checklist: 10
-  checklist_why: "None required for tier scope. The article stays cleanly at T1: every worked example is a general web-platform primitive, every standard cited is external (MITRE/OWASP/IETF/MDN), and the only product connections are ou..."
-  challenge: 7.4
-  challenge_why: "Companion link presented as already-published, but UNMATCHED. The body calls DOM sinks and sources \"a companion piece in this series\" that \"works through why the sources that reach them outnumber the sinks\" — stated i..."
+  checklist_why: "Tier scope is clean; nothing required for gating. (Any prose/link-quality notes belong to the other reviewers, not this checklist pass.)"
+  challenge: 7.2
+  challenge_why: "The one experiment that unlocks the Gemini XPRIZE window (open through Aug 17, $2M): run this exact read-vs-send trust-boundary test against Gemini-generated auth code — \"when asked to persist a refresh token, which s..."
   voice & agenda: 9.5
-  voice & agenda_why: "The one metaphor — \"a filing cabinet in a public lobby\" / \"not a vault\" — is apt, singular, and travels, so it's correct for this piece. But it's off the house palette (chess / ocean / value investing / dogs). Fine on..."
+  voice & agenda_why: "The blunder-check reflex is the one fingerprint trait only implied, never staged. \"The honest summary: `HttpOnly` converts *permanent theft* into *temporary misuse*. Real and worthwhile. Not immunity.\" is his self-sus..."
 ---
 Every team I have worked on has had the localStorage argument. Someone says tokens belong
 in cookies. Someone else says cookies mean CSRF. Both cite a blog post. The token stays
@@ -146,7 +146,8 @@ shared vocabulary without adjectives.
 All five equivalent rows are reached the same way: script execution on your origin. So
 storage is *downstream* of the XSS question, and a team that has not settled how untrusted
 data reaches a DOM sink is arguing about where to put the token while leaving the door
-open. A forthcoming companion piece works through why those sources outnumber the sinks.
+open. [DOM sinks and sources](https://ofriperetz.dev/articles/dom-sink-taxonomy), the
+companion piece in this series, works through why those sources outnumber the sinks.
 
 ---
 
