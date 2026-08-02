@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { BrandMark } from "@/components/brand-mark";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -14,7 +15,8 @@ export default function NotFound() {
     <main id="main" data-slot="not-found-page">
       <Container size="content" className="py-24">
         <div className="rounded-lg border border-border bg-card p-10 text-center">
-          <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          <BrandMark className="mx-auto size-14" />
+          <p className="mt-8 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             404
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight">
