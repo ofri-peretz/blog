@@ -16,8 +16,9 @@
  * Either way collectDevtoLinks(body) returns the {key,destination,kind} rows and
  * the publisher upserts them at publish time; the client NEVER passes a URL.
  *
- * Also strips blog-only heading `{#anchor}` ids and the "**Skip to:**" jump-nav
- * (dev.to renders neither).
+ * Also strips blog-only `{#anchor}` ids — in headings AND inline, since dev.to
+ * prints the token verbatim wherever it sits — and the "**Skip to:**" jump-nav
+ * (dev.to renders neither). Anchors inside inline code spans are preserved.
  *
  * Guarantees:
  *   - Links already pointing at /go/ are never rewritten (idempotent).
