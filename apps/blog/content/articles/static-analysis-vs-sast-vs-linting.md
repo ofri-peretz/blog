@@ -8,6 +8,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/static-analysis-vs-sa
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/static-analysis-vs-sast-vs-linting.jpg?v=b2"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:47:10.301Z"
 tags:
   - "security"
   - "devsecops"

@@ -7,6 +7,7 @@ description: "Two radiologists agreed on 92 of 100 scans. Cohen's kappa scores t
 slug: "inter-rater-agreement-cohens-kappa"
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:35:02.968Z"
 tags:
   - "security"
   - "devsecops"

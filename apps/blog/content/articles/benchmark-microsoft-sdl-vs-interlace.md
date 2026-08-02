@@ -6,6 +6,7 @@ description: "A reproducible benchmark: @microsoft/eslint-plugin-sdl (17 rules, 
 slug: "benchmark-microsoft-sdl-vs-interlace"
 published: true
 date: 2026-02-08
+published_at: "2026-02-08T03:37:21.039Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-microsoft-sdl-vs-interlace.jpg?v=b2"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-microsoft-sdl-vs-interlace-og.jpg?v=b2"
 tags:

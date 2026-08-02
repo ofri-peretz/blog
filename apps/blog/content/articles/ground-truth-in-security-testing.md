@@ -8,6 +8,7 @@ description: "To benchmark a security linter or SAST tool, you need labeled exam
 slug: "ground-truth-in-security-testing"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:40:10.308Z"
 tags:
   - "security"
   - "devsecops"

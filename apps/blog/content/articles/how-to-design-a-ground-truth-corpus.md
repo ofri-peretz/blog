@@ -8,6 +8,7 @@ description: "Building the 40-fixture corpus behind the Interlace security bench
 slug: "how-to-design-a-ground-truth-corpus"
 published: true
 date: 2026-07-19
+published_at: "2026-07-20T04:43:02.552Z"
 tags:
   - "security"
   - "devsecops"

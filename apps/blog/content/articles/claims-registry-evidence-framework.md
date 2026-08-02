@@ -8,6 +8,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claims-registry-evide
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/claims-registry-evidence-framework.jpg?v=b3"
 published: true
 date: 2026-07-19
+published_at: "2026-07-20T04:43:26.069Z"
 tags:
   - "security"
   - "devsecops"

@@ -8,6 +8,7 @@ description: "An index looks like a measurement of 'the market.' It's a composit
 slug: "composite-scores-and-weighting"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:38:02.250Z"
 tier: "T0"
 series: "Foundations"
 arc: 13

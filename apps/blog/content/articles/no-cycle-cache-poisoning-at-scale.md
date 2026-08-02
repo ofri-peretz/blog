@@ -14,6 +14,7 @@ tier: "T3"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-cycle-cache-poisoning-at-scale.jpg?v=b3"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-cycle-cache-poisoning-at-scale-og.jpg?v=b3"
 series: "Inside our linter benchmarks"
+published_at: "2026-05-24T03:07:43.087Z"
 ---
 
 At 2,363 files, `import-next/no-cycle` stopped detecting cycles — not because there were none, but because the cache was poisoned by a depth-truncated DFS that cached unexplored files as "known acyclic." Here's the 5-line fix and why it's harder than it sounds.

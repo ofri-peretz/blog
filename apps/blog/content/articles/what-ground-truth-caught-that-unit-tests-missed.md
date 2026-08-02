@@ -14,6 +14,7 @@ canonical_url: "https://ofriperetz.dev/articles/what-ground-truth-caught-that-un
 tier: "T3"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/what-ground-truth-caught-that-unit-tests-missed.jpg?v=b2"
 series: "Inside our linter benchmarks"
+published_at: "2026-05-14T05:18:10.112Z"
 ---
 
 Our test suite was green. Our CI was green. Then [ground-truth](https://ofriperetz.dev/articles/ground-truth-in-security-testing) fixtures caught three bugs those two signals had carried for months — two rules that silently _missed_ a real vulnerability, one that _fired on safe code_. Here's the specific difference between unit-test coverage and ground-truth coverage.
