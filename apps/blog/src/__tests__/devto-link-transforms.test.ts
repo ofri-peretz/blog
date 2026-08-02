@@ -287,6 +287,42 @@ describe("transformBodyForDevto", () => {
     expect(out).toContain(`](${stored(site)})`);
   });
 
+  // Regression: crypto-misuse-taxonomy (devto_id 4286252) published with four
+  // literal `{#layer-N}` tags visible mid-paragraph — the strip was heading-only.
+  it("strips {#anchor} inline, not just on headings", () => {
+    const body = [
+      "## Four layers {#the-four-layers}",
+      "**Layer 1 — the primitive.** {#layer-1} Right kind of thing?",
+      "A [link](/articles/target) after {#layer-2} an anchor.",
+      "### Heading with [a link](/articles/target) {#h-link}",
+      "```js",
+      "const css = '{#not-an-anchor}';",
+      "```",
+    ].join("\n");
+
+    const out = transformBodyForDevto(body, SLUG);
+
+    expect(out).not.toMatch(/\{#(the-four-layers|layer-1|layer-2|h-link)\}/);
+    expect(out).toContain("## Four layers");
+    expect(out).toContain("**Layer 1 — the primitive.** Right kind of thing?");
+    // A heading carrying a link must still get its /go/ URL.
+    expect(out).toContain(
+      `### Heading with [a link](https://ofriperetz.dev/go/target?utm_source=devto&from=${SLUG})`,
+    );
+    // Fenced content is untouched, brace-looking strings included.
+    expect(out).toContain("const css = '{#not-an-anchor}';");
+  });
+
+  // A double-backtick span is how markdown writes inline code that itself
+  // contains a backtick; a single-backtick guard would end the span early and
+  // eat the brace inside.
+  it("preserves {#...} inside multi-backtick code spans", () => {
+    const body = "Prose ``a {#id}`` and ```b {#id2}``` stay, {#gone} goes.";
+    expect(transformBodyForDevto(body, SLUG)).toBe(
+      "Prose ``a {#id}`` and ```b {#id2}``` stay, goes.",
+    );
+  });
+
   it("leaves fenced code blocks byte-identical", () => {
     const body = [
       "Before [link](/articles/target).",

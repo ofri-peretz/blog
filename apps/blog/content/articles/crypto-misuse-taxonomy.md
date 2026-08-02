@@ -1,10 +1,12 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/nobody-writes-bad-crypto-they-write-correct-crypto-at-four-layers-2noa"
+devto_id: 4286252
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/crypto-misuse-taxonomy.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/crypto-misuse-taxonomy-og.jpg"
 title: "Nobody Writes Bad Crypto. They Write Correct Crypto at Four Layers."
 description: "Crypto failures are not one mistake repeated. They are four distinct layers of correctness, and each one looks fine from the layer above it."
 slug: "crypto-misuse-taxonomy"
-published: false
+published: true
 date: 2026-08-05
 tags:
   - "ai"
@@ -19,26 +21,26 @@ author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627
   title: Security Engineering Leader
-overall_score: 8.8
+overall_score: 8.9
 reviews:
   discovery & hook: 9
-  discovery & hook_why: "**Add `#eslint`.** Current tags — `ai / security / node / javascript` — are all winners and correctly avoid dead `#staticanalysis`, but for a detection-focused piece that leans on taint-vs-heuristic and ground-truth, ..."
-  technical: 9
-  technical_why: "**Row 3 files \"reused IV\" under CWE-1204, which is the one contestable cell.** CWE-1204 is *Generation of Weak Initialization Vector (IV)* — it covers *weak/predictable generation*, not *reuse*. IV/nonce reuse maps to..."
-  quality: 8.7
-  quality_why: "**Actionability is currently zero — add one runnable thing.** This is a genre-2 methodology piece and the genre-2 bar asks for at least one command a reader can run. The article says \"the rule list tells you what to g..."
-  practitioner: 8.5
-  practitioner_why: "The maturity-clustering hypothesis is the single most interesting claim in the piece — \"a just-audited team fails at layer 2, a mature team fails at layers 3–4\" — and it's backed by nothing. The author says so plainly..."
+  discovery & hook_why: "**The hook rests on a reframe, not a testable number — and that's the one thing between this and 9.5.** Every top-3 corpus winner carries a stat the reader can run against their own code (\"80% of them,\" \"65-75% had vu..."
+  technical: 9.4
+  technical_why: "The RSA line (\"RSA padding left at a default that predates the attack it enables\") is the one spot a Node specialist would push back on. Node's `crypto.publicEncrypt` defaults to `RSA_PKCS1_OAEP_PADDING` (the *safe* o..."
+  quality: 8.8
+  quality_why: "**Give the reader one runnable thing.** This is a genre-2 methodology piece and the genre-2 bar asks for at least one command a reader can actually execute. Right now the article is 100% argument, 0% \"try it.\" A singl..."
+  practitioner: 8.6
+  practitioner_why: "The maturity-clustering claim is the article's actual differentiator over \"just a rule list,\" and it's the least-supported thing in the piece. Everything else here overlaps with the known crypto-misuse literature the ..."
   linkability: 8.5
-  linkability_why: "**Per-layer anchors — the single biggest linkability gap for a taxonomy.** All four layers live under one `{#the-four-layers}` anchor, so no other article can deep-link \"Layer 3 — the parameters.\" Give each its own: `..."
+  linkability_why: "**Missing the single most obvious cross-link — the Layer 1 worked example.** Layer 1 literally says \"`Math.random()` where you needed a CSPRNG,\" and you have a whole article on exactly that. Link it:; `` `Math.random(..."
   abstraction: 9
-  abstraction_why: "**Anchor the four layers — this is the article's whole reason to exist and the single thing keeping it off 9.5+.** The layers are the citable atoms of a T1 taxonomy: a Semgrep/CodeQL/Bandit doc, or your own T2/T3 piec..."
+  abstraction_why: "**Anchor stability on the four layers — the one thing holding this off 9.5+.** The layers are the citable atoms of this taxonomy, and each carries an inline `{#layer-1}`…`{#layer-4}`. But they sit on **bold lead-ins i..."
   checklist: 10
-  checklist_why: "None required for tier scope. One thing to keep an eye on for future edits: the Node `crypto` vs userland-library section (`#the-one-that-is-not-a-layer`) is a supply-chain judgment framed generically, which is correc..."
-  challenge: 7.7
-  challenge_why: "The load-bearing claim — that layer-failures cluster by team maturity — is the article's headline differentiator over \"just a rule list,\" and it is backed by nothing but the author's own hedge (\"a hypothesis, not some..."
+  checklist_why: "(Scope-only, non-blocking) The four-layer framing is a coined taxonomy. At T1 that is in scope — it's domain-general security vocabulary, not an Interlace-branded term — but if a later edit ever attaches an Interlace ..."
+  challenge: 8
+  challenge_why: "Add one runnable artifact. This is an ESLint-ecosystem blog by the author of 20+ plugins, and a detection piece with no command is a self-inflicted gap. Even a single `grep -rE \"aes-.*-ecb|createHash\\(.sha1\"` for laye..."
   voice & agenda: 9
-  voice & agenda_why: "Kill the one AI-tell. \"The code is not merely plausible, it is *correct at the layer a reader checks*\" is the false-choice \"not just X, it's Y\" tic — the only mechanical strike in the piece. It's a one-word fix: \"It i..."
+  voice & agenda_why: "The frontmatter `voice & agenda_why` note flags one AI-tell — `\"The code is not merely plausible, it is *correct at the layer a reader checks*\"` (the \"not just X, it's Y\" false-choice tic). **That note is stale.** The..."
 ---
 The code review comment I have written most often, and regretted most often, is
 "use a stronger algorithm."
@@ -64,9 +66,10 @@ legible after "encryption." Nothing about `aes-256-ecb` reads as wrong at a glan
 contains `aes` and `256`, and both are reassuring.
 
 **Layer 3 — the parameters.** {#layer-3} Right primitive, right mode, wrong inputs. A
-static IV. An iteration count set in 2015 and never revisited. RSA padding left at a
-default that predates the attack it enables. Each is a single argument, usually a
-constant — and constants do not attract review attention.
+static IV. An iteration count set in 2015 and never revisited. RSA where someone passed
+`RSA_PKCS1_PADDING` explicitly — Node defaults to OAEP, so this one takes a deliberate
+argument to get wrong, which is exactly why it survives review. Each is a single value,
+usually a constant, and constants do not attract attention.
 
 **Layer 4 — the usage.** {#layer-4} Everything above correct, and the surrounding code
 gives it away. Comparing an HMAC with `===` and leaking the answer through timing.
