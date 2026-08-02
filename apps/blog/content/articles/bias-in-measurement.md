@@ -6,6 +6,7 @@ description: "A blood panel, a fund's track record, and a security benchmark can
 slug: "bias-in-measurement"
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:34:28.047Z"
 tags:
   - "security"
   - "devsecops"

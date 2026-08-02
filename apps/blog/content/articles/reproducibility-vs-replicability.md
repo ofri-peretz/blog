@@ -8,6 +8,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/reproducibility-vs-re
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/reproducibility-vs-replicability.jpg?v=b2"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:40:53.546Z"
 tags:
   - "security"
   - "devsecops"

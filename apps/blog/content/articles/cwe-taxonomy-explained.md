@@ -8,6 +8,7 @@ description: "CWE-89 means SQL injection. That's a name, not a verdict. What the
 slug: "cwe-taxonomy-explained"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:39:21.275Z"
 tags:
   - "security"
   - "devsecops"

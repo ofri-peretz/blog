@@ -8,6 +8,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-were-wrong-about-s
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/we-were-wrong-about-sls-remove.jpg?v=b2"
 published: true
 date: 2026-07-19
+published_at: "2026-07-20T04:44:23.176Z"
 tags:
   - "serverless"
   - "aws"

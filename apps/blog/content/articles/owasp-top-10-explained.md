@@ -8,6 +8,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/owasp-top-10-explaine
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/owasp-top-10-explained.jpg?v=b3"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:40:20.007Z"
 tags:
   - "security"
   - "devsecops"

@@ -8,6 +8,7 @@ description: "A Serverless plugin with 142k weekly downloads last shipped a rele
 slug: "abandoned-incumbent-map"
 published: true
 date: 2026-07-19
+published_at: "2026-07-20T04:45:01.282Z"
 tags:
   - "serverless"
   - "aws"

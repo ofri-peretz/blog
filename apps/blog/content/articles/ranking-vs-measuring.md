@@ -8,6 +8,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/ranking-vs-measuring-
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/ranking-vs-measuring.jpg?v=b2"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:40:44.295Z"
 tier: "T0"
 series: "Foundations"
 arc: 9

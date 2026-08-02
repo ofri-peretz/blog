@@ -8,6 +8,7 @@ description: "Crypto failures are not one mistake repeated. They are four distin
 slug: "crypto-misuse-taxonomy"
 published: true
 date: 2026-08-05
+published_at: "2026-08-01T09:00:32.914Z"
 tags:
   - "ai"
   - "security"

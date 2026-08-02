@@ -6,6 +6,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/payload-508-circular-
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/payload-508-circular-dependency-cycles.jpg?v=b3"
 published: true
 date: "2026-05-30"
+published_at: "2026-05-30T19:19:59.485Z"
 tags:
   - "eslint"
   - "javascript"

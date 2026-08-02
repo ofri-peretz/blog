@@ -6,6 +6,7 @@ description: "Math.random() is a PRNG, not a CSPRNG — its outputs are predicta
 slug: "math-random-api-keys"
 published: true
 date: "2026-05-30"
+published_at: "2026-05-30T05:05:10.699Z"
 tags:
   - "security"
   - "javascript"

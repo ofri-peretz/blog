@@ -8,6 +8,7 @@ description: "My serverless benchmark prints 0.88 vs 0.3025 — real measurement
 slug: "composite-benchmark-anatomy"
 published: true
 date: 2026-07-19
+published_at: "2026-07-20T04:43:35.363Z"
 tags:
   - "serverless"
   - "devops"

@@ -6,6 +6,7 @@ description: "Same prompts, both CLIs, scored by the ESLint security plugins I w
 slug: "claude-vs-gemini-4-security-domains-dead-heat"
 published: true
 date: "2026-05-31"
+published_at: "2026-05-31T03:39:06.766Z"
 tags:
   - "ai"
   - "security"

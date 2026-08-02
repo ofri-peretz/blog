@@ -13,6 +13,7 @@ tier: "T3"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-hardcoded-credentials-entropy-isnt-enough.jpg?v=b3"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/no-hardcoded-credentials-entropy-isnt-enough-og.jpg?v=b3"
 series: "Inside our linter benchmarks"
+published_at: "2026-07-04T15:25:50.707Z"
 ---
 
 A credential scanner that reports 842 secrets in a codebase with zero hardcoded secrets isn't cautious. It's broken. Mine was, and it took a peer plugin reporting less than half my count to make me check.
