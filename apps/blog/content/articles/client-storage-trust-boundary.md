@@ -110,9 +110,6 @@ had this value, what could they do, and for how long?**
   the mechanism people forget is storage at all.
 - **Feature flag, theme, draft** — nothing. Put it anywhere.
 
-That ordering puts refresh tokens above session tokens, which is the reverse of how they
-usually get handled.
-
 ## And the CSRF half? {#csrf}
 
 Never on the same axis either. CSRF is the browser *attaching* a cookie to a request the
@@ -120,26 +117,24 @@ user did not intend — a property of ambient authority, not storage — and `Sa
 addresses it directly.
 
 That is why the debate feels unresolvable: one camp describes a read primitive, the other
-a send primitive. `HttpOnly` answers the first, `SameSite` the second. Orthogonal flags on
-the same cookie. Choosing between `localStorage` and cookies answers neither.
+a send primitive. `HttpOnly` answers the first, `SameSite` the second — orthogonal flags on
+the same cookie.
 
 ## Where this lands in the standards {#standards}
 
 Reading storage you should not have access to is
-[CWE-522](https://cwe.mitre.org/data/definitions/522.html), insufficiently protected
-credentials, under
+[CWE-522](https://cwe.mitre.org/data/definitions/522.html) — insufficiently protected
+credentials — under
 [A07:2021](https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/).
 `HttpOnly` and `Secure` are specified in
 [RFC 6265 §4.1.2.5–6](https://datatracker.ietf.org/doc/html/rfc6265#section-4.1.2.6);
-`SameSite` is not in RFC 6265 at all — it arrived later in
+`SameSite` arrived later, in
 [RFC 6265bis](https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-rfc6265bis), still
-a draft despite universal implementation. Both are documented on
+a draft despite universal implementation. Both are on
 [MDN's Set-Cookie page](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie).
-
-For severity language, that is what
-[CVSS is for](https://ofriperetz.dev/articles/cvss-scores-explained);
-[the OWASP categories](https://ofriperetz.dev/articles/owasp-top-10-explained) give you
-shared vocabulary without adjectives.
+For severity language, use
+[CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) and
+[the OWASP categories](https://ofriperetz.dev/articles/owasp-top-10-explained).
 
 ## Why the argument keeps happening {#why-it-recurs}
 
