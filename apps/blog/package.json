@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "sync:numbers": "node scripts/sync-interlace-numbers.mjs",
     "start": "next start",
     "lint": "npm run lint:eslint && npm run lint:oxlint",
     "lint:eslint": "eslint",
