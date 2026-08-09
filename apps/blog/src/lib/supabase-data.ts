@@ -255,6 +255,12 @@ export interface PluginMeta {
   slug: string;
   category: string | null;
   description: string | null;
+  /**
+   * npm-deprecated. Such a plugin is still in the roster and still counted in
+   * every download total — that is the point of DEPRECATED_INCLUDE in the
+   * ingest — but listings hide it so a rename doesn't appear twice.
+   */
+  deprecated: boolean;
 }
 
 export interface PluginsDailyRaw {
@@ -290,7 +296,7 @@ export const getCachedPluginsDailyRaw = unstable_cache(
 
     const { data: plugins, error: pErr } = await client
       .from("plugins")
-      .select("id, name, slug, category, description");
+      .select("id, name, slug, category, description, deprecated");
     if (pErr || !plugins) {
       throw new Error(`[supabase-data] plugins: ${pErr?.message ?? "no rows"}`);
     }

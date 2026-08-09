@@ -15,16 +15,19 @@ import { getCachedPluginsDailyRaw } from "@/lib/supabase-data";
 
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
-// Plugins we no longer actively promote. Hardcoded for v1 — a `deprecated`
-// column on the `plugins` table would be the right long-term fix.
-const DEPRECATED = new Set<string>([
-  "eslint-plugin-crypto",
-  // Internal preset — never surface publicly
-  "@interlace/eslint-config",
-  // Serverless ecosystem — not part of the ESLint package page
+// Deprecation is no longer a list here — it's `plugins.deprecated`, set by the
+// ingest from npm itself. What stays is page scope: packages that aren't ESLint
+// plugins and so don't belong on the ESLint package page, whatever their
+// deprecation status. The two questions are independent, which is why the old
+// combined DEPRECATED set went stale every time a package was renamed.
+const OFF_PAGE = new Set<string>([
   "@interlace/serverless-iam-roles-per-function",
   "@interlace/serverless-api-gateway-caching",
   "@interlace/serverless-devkit",
+  // Internal preset, never surfaced publicly. Its row is currently deleted
+  // rather than filtered (agents#122), so nothing reaches this line today —
+  // listed anyway so restoring the row can't quietly put it back on the page.
+  "@interlace/eslint-config",
 ]);
 
 const getClient = cache((): SupabaseClient | null => {
@@ -108,7 +111,7 @@ async function loadNpmPagePackages(): Promise<NpmPagePackage[]> {
   );
 
   const packages: NpmPagePackage[] = plugins
-    .filter((p) => !DEPRECATED.has(p.name))
+    .filter((p) => !p.deprecated && !OFF_PAGE.has(p.name))
     .map((p) => {
       const dailyData = daily.get(p.id) ?? [];
       const downloads30d = dailyData.reduce((s, d) => s + d.downloads, 0);
