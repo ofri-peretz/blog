@@ -16,13 +16,18 @@ import { getCachedPluginsDailyRaw } from "@/lib/supabase-data";
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
 // Deprecation is no longer a list here — it's `plugins.deprecated`, set by the
-// ingest from npm itself. What stays is page scope: these are live, counted,
-// non-deprecated packages that simply aren't ESLint plugins, so they don't
-// belong on the ESLint package page.
+// ingest from npm itself. What stays is page scope: packages that aren't ESLint
+// plugins and so don't belong on the ESLint package page, whatever their
+// deprecation status. The two questions are independent, which is why the old
+// combined DEPRECATED set went stale every time a package was renamed.
 const OFF_PAGE = new Set<string>([
   "@interlace/serverless-iam-roles-per-function",
   "@interlace/serverless-api-gateway-caching",
   "@interlace/serverless-devkit",
+  // Internal preset, never surfaced publicly. Its row is currently deleted
+  // rather than filtered (agents#122), so nothing reaches this line today —
+  // listed anyway so restoring the row can't quietly put it back on the page.
+  "@interlace/eslint-config",
 ]);
 
 const getClient = cache((): SupabaseClient | null => {
