@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "cd ../.. && rm -rf node_modules package-lock.json && npm install --no-audit --no-fund --include=optional",
+  "installCommand": "cd ../.. && npm ci --no-audit --no-fund",
   "buildCommand": "cd ../.. && npx turbo run build --filter=blog",
   "github": {
     "enabled": false
