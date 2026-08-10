@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { cachedFetch } from "@/lib/client-cache";
+import { useCachedSection } from "@/lib/client-cache";
+import { Refresh } from "@/components/panels";
 
 const TONE: Record<string, string> = {
   feat: "text-[var(--color-good)] border-[var(--color-good)]",
@@ -13,23 +13,24 @@ const TONE: Record<string, string> = {
 };
 
 export default function Releases() {
-  const [data, setData] = useState<any>(null);
-
-  useEffect(() => {
-    cachedFetch("releases", "/api/releases")
-      .then(setData)
-      .catch(() => setData({ releases: [], error: "unreachable" }));
-  }, []);
+  const { data: data, at, busy, refresh } = useCachedSection<any>(
+    "releases",
+    "/api/releases",
+    () => ({ releases: [], error: "unreachable" }),
+  );
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-8 px-5 py-10 pb-24">
       <header className="flex flex-col gap-1">
-        <Link
-          href="/"
-          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
-        >
-          ← control room
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+          >
+            ← control room
+          </Link>
+          <Refresh onClick={refresh} at={at} busy={busy} />
+        </div>
         <h1 className="text-[28px] font-semibold tracking-tight">Releases</h1>
         <p className="max-w-[62ch] text-[14px] text-[var(--color-ink-2)]">
           Generated from git, never written by hand — a hand-kept changelog

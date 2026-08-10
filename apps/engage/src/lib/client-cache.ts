@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+
 /**
  * Client-side response cache, shared across page navigations.
  *
@@ -74,4 +76,52 @@ export async function cachedFetch<T = unknown>(
 /** When a section was last actually fetched — drives the "8s ago" label. */
 export function cachedAt(key: string): number | null {
   return store.get(key)?.at || null;
+}
+
+/**
+ * A cached section with a working refresh button.
+ *
+ * The standalone pages (/queue, /calendar, /releases) each called
+ * `cachedFetch` once on mount and rendered no refresh control at all, so the
+ * only way to see new data was a hard reload — and because
+ * `publisherSchedule()` also caches on the server for 10 minutes and only
+ * busts on `?refresh=1`, which those pages never sent, a reload inside that
+ * window returned the same rows anyway. Both layers had to be bypassed
+ * together; forcing the client is what puts `refresh=1` on the URL.
+ *
+ * Returned as a hook rather than copied into three pages so the next page
+ * cannot forget the `force` argument, which is exactly how the control room's
+ * threads panel ended up with a button that did nothing.
+ */
+export function useCachedSection<T = unknown>(
+  key: string,
+  url: string,
+  fallback: (e: unknown) => T,
+): { data: T | null; at: number | null; busy: boolean; refresh: () => void } {
+  const [data, setData] = useState<T | null>(null);
+  const [at, setAt] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = useCallback(
+    (force: boolean) => {
+      setBusy(true);
+      cachedFetch<T>(key, url, { force })
+        .then(setData)
+        .catch((e) => setData(fallback(e)))
+        .finally(() => {
+          setAt(cachedAt(key) ?? Date.now());
+          setBusy(false);
+        });
+    },
+    // `fallback` is a fresh closure each render; depending on it would reload
+    // on every render. The key/url pair is what identifies this section.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [key, url],
+  );
+
+  useEffect(() => {
+    run(false);
+  }, [run]);
+
+  return { data, at, busy, refresh: () => run(true) };
 }

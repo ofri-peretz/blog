@@ -95,7 +95,6 @@ export default function Page() {
   const [web, setWeb] = useState<any>(null);
   const [person, setPerson] = useState<any>(null);
   const [audience, setAudience] = useState<any>(null);
-  const [history, setHistory] = useState<any>(null);
   const [catalog, setCatalog] = useState<any>(null);
   const [corr, setCorr] = useState<any>(null);
   const [trends, setTrends] = useState<any>(null);
@@ -172,13 +171,25 @@ export default function Page() {
     [],
   );
 
+  /**
+   * `force` is not optional here. `pull` defaults it to false, so this button
+   * re-read the 5-minute client cache and looked like a no-op — you pressed
+   * refresh after `engage:replies` had just written new drafts and the panel
+   * still showed the old set. Every other section's button passes it; this one
+   * was the outlier.
+   */
   const refreshThreads = useCallback(
-    () =>
-      pull("threads", "/api/threads", (v: any) => {
-        setThreads(v.threads ?? []);
-        setThreadHint(v.hint ?? null);
-        setRi(0);
-      }),
+    (force = true) =>
+      pull(
+        "threads",
+        "/api/threads",
+        (v: any) => {
+          setThreads(v.threads ?? []);
+          setThreadHint(v.hint ?? null);
+          setRi(0);
+        },
+        force,
+      ),
     [pull],
   );
 
@@ -191,11 +202,7 @@ export default function Page() {
     load();
     pull("insights", "/api/insights", (v: any) => setInsights(v)).catch(() => setInsights({ metrics: {}, metricsError: "unreachable", authors: [] }));
     pull("network", "/api/network", (v: any) => setGraph(v)).catch(() => setGraph(null));
-    pull("threads", "/api/threads", (v: any) => {
-      setThreads(v.threads ?? []);
-      setThreadHint(v.hint ?? null);
-      setRi(0);
-    }).catch(() => setThreads([]));
+    refreshThreads(false).catch(() => setThreads([]));
     pull("sources", "/api/sources", (v: any) => setSources(v)).catch(() => setSources({}));
     pull("audience", "/api/audience", (v: any) => setAudience(v)).catch(() =>
       setAudience({ hours: [], zones: [], error: "unreachable" }),
@@ -204,17 +211,16 @@ export default function Page() {
     pull("board", "/api/board", (v: any) => setBoard(v)).catch(() => setBoard({ prs: [] }));
     pull("eco", "/api/ecosystem", (v: any) => setEco(v)).catch(() => setEco({}));
     pull("web", "/api/articles", (v: any) => setWeb(v)).catch(() => setWeb({ nodes: [] }));
-    pull("history", "/api/history", (v: any) => setHistory(v)).catch(() => setHistory({ days: [] }));
     pull("catalog", "/api/plugins", (v: any) => setCatalog(v)).catch(() => setCatalog({ plugins: [] }));
     pull("corr", "/api/correlate", (v: any) => setCorr(v)).catch(() => setCorr({ results: [], blocked: "unreachable" }));
-    pull("trends", "/api/trends?grain=day", (v: any) => setTrends(v)).catch(() => setTrends(null));
+    pull(`trends:day`, "/api/trends?grain=day", (v: any) => setTrends(v)).catch(() => setTrends(null));
     pull("bench", "/api/benchmark", (v: any) => setBench(v)).catch(() => setBench(null));
 
     // Deep link: /?u=<author> opens that author's drill-down on load, so a link
     // to a person survives being pasted into a note or a second session.
     const u = new URLSearchParams(window.location.search).get("u");
     if (u) openPerson(u);
-  }, [load, pull]);
+  }, [load, pull, refreshThreads]);
 
   const items = state?.items ?? [];
   const item = items[i];
@@ -749,13 +755,13 @@ export default function Page() {
       </Collapse>
 
       {/* ── Trend grid ───────────────────────────────────────────────────── */}
-      <Collapse id="s20" head={<><span>Trends{trends?.days ? ` · ${trends.days}d` : ""}</span><Refresh onClick={() => pull("trends", `/api/trends?grain=${grain}`, (v: any) => setTrends(v), true)} at={at.trends ?? null} busy={!!busy.trends} /></>}>
+      <Collapse id="s20" head={<><span>Trends{trends?.days ? ` · ${trends.days}d` : ""}</span><Refresh onClick={() => pull(`trends:${grain}`, `/api/trends?grain=${grain}`, (v: any) => setTrends(v), true)} at={at[`trends:${grain}`] ?? null} busy={!!busy[`trends:${grain}`]} /></>}>
         <TrendGrid
           data={trends}
           grain={grain}
           onGrain={(g) => {
             setGrain(g);
-            pull("trends", `/api/trends?grain=${g}`, (v: any) => setTrends(v));
+            pull(`trends:${g}`, `/api/trends?grain=${g}`, (v: any) => setTrends(v));
           }}
         />
       </Collapse>
@@ -838,7 +844,11 @@ export default function Page() {
 
       {/* The old single-chart Trends panel lived here. It read history.jsonl,
           which starts today — one point, and it looked broken because it was.
-          Replaced by the trend grid above, over the 159-day Supabase series. */}
+          Replaced by the trend grid above, over the 159-day Supabase series.
+          Its `/api/history` fetch outlived it by several releases: the response
+          was still requested on every mount and assigned to state nothing read.
+          The route stays — /raw links it — but the control room no longer pays
+          for it. */}
 
     </main>
   );
