@@ -106,6 +106,22 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31_536_000,
+    // Covers now reach <Image> as paths (see src/lib/cover.ts), and they carry
+    // a `?v=` cache-buster. Next 16 rejects a LOCAL image with a query string
+    // unless localPatterns says otherwise — the build fails outright with
+    // "using a query string which is not configured in images.localPatterns".
+    //
+    // `search` is omitted deliberately, and that is the whole point of this
+    // entry: Next's matcher only compares `search` when the pattern defines it
+    // (matchLocalPattern short-circuits on `pattern.search !== undefined`), so
+    // leaving it out is the only way to accept an arbitrary `?v=`. Pinning
+    // `search: "?v=b2"` would work today and break silently the next time a
+    // cover is re-rendered and versioned.
+    //
+    // `/**` keeps the previous behaviour for every other local image: with no
+    // localPatterns at all Next allows them unconditionally, so anything
+    // narrower here would start rejecting the avatar and icons.
+    localPatterns: [{ pathname: "/**" }],
     // Article covers come from three places: self-hosted under /cdn (relative,
     // needs no entry), Dev.to's CDN proxy, and Dev.to's S3 bucket for covers
     // uploaded through their editor. Without these, <Image> throws on ~25 posts.
