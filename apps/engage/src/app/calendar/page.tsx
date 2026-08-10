@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCachedSection } from "@/lib/client-cache";
 import { Refresh } from "@/components/panels";

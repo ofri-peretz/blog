@@ -220,7 +220,7 @@ export default function Page() {
     // to a person survives being pasted into a note or a second session.
     const u = new URLSearchParams(window.location.search).get("u");
     if (u) openPerson(u);
-  }, [load, pull]);
+  }, [load, pull, refreshThreads]);
 
   const items = state?.items ?? [];
   const item = items[i];
