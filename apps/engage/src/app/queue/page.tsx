@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { cachedFetch } from "@/lib/client-cache";
+import { useCachedSection } from "@/lib/client-cache";
+import { Refresh } from "@/components/panels";
 
 type Gate = "pass" | "below-bar" | "unscored";
 
@@ -42,15 +43,13 @@ function Stat({
  * never a second copy of the cadence rule.
  */
 export default function Queue() {
-  const [d, setD] = useState<any>(null);
+  const { data: d, at, busy, refresh } = useCachedSection<any>(
+    "queue",
+    "/api/queue",
+    () => ({ error: "unreachable", articles: [], totals: {} }),
+  );
   const [filter, setFilter] = useState<"all" | Gate | "unpublished">("all");
   const [q, setQ] = useState("");
-
-  useEffect(() => {
-    cachedFetch("queue", "/api/queue")
-      .then(setD)
-      .catch(() => setD({ error: "unreachable", articles: [], totals: {} }));
-  }, []);
 
   const rows = useMemo(() => {
     if (!d?.articles) return [];
@@ -80,12 +79,15 @@ export default function Queue() {
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 pb-24">
       <header className="flex flex-col gap-1">
-        <Link
-          href="/"
-          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
-        >
-          ← control room
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+          >
+            ← control room
+          </Link>
+          <Refresh onClick={refresh} at={at} busy={busy} />
+        </div>
         <h1 className="text-[28px] font-semibold tracking-tight">
           Release queue
         </h1>
