@@ -35,8 +35,8 @@ export function localCover(url?: string): string | undefined {
   if (url.startsWith("/")) return url;
   const origin = SELF_ORIGINS.find((o) => url.startsWith(o + "/"));
   if (!origin) return url;
-  const rest = url.slice(origin.length);
   // Keep the query string: covers are cache-busted with `?v=`, and dropping it
-  // would serve a stale image from the optimizer's cache.
-  return rest.startsWith("/") ? rest : `/${rest}`;
+  // would serve a stale image from the optimizer's cache. The leading slash is
+  // guaranteed — the origin match above requires `origin + "/"`.
+  return url.slice(origin.length);
 }
