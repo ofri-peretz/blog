@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     Math.max(1, Number(new URL(req.url).searchParams.get("days") ?? 7)),
   );
 
-  const [paths, entries] = await Promise.all([
+  const [paths, entries, totals] = await Promise.all([
     // One row per session: the ordered path, plus where it began and ended.
     hogqlPublic(`
       SELECT properties.$session_id AS sid,
@@ -76,6 +76,29 @@ export async function GET(req: Request) {
       ORDER BY n DESC
       LIMIT 20
     `),
+    // Summary over EVERY session, not the 60 returned above.
+    //
+    // The session list is `ORDER BY steps DESC LIMIT 60`, so deriving a summary
+    // from it describes only the deepest sessions — the first version reported
+    // "0 bounced" while the real bounce rate was most of the traffic. A
+    // truncated list must never be the denominator.
+    hogqlPublic(`
+      SELECT count() AS sessions,
+             countIf(steps = 1) AS bounced,
+             median(steps) AS med_steps,
+             medianIf(secs, steps > 1) AS med_secs
+      FROM (
+        SELECT properties.$session_id AS sid,
+               count() AS steps,
+               dateDiff('second', min(timestamp), max(timestamp)) AS secs
+        FROM events
+        WHERE event = '$pageview'
+          AND timestamp > now() - INTERVAL ${days} DAY
+          AND properties.$virt_is_bot != true
+          AND properties.$session_id IS NOT NULL
+        GROUP BY sid
+      )
+    `),
   ]);
 
   const sessions = paths.rows.map((r) => ({
@@ -101,11 +124,13 @@ export async function GET(req: Request) {
   for (const s of sessions)
     referrers.set(s.referrer, (referrers.get(s.referrer) ?? 0) + 1);
 
-  const multi = sessions.filter((s) => !s.bounced);
+  const t = totals.rows[0] ?? [];
+  const allSessions = Number(t[0] ?? 0);
+  const allBounced = Number(t[1] ?? 0);
 
   return NextResponse.json({
     days,
-    error: paths.error ?? entries.error,
+    error: paths.error ?? entries.error ?? totals.error,
     sessions,
     doors,
     referrers: [...referrers.entries()]
@@ -113,24 +138,19 @@ export async function GET(req: Request) {
       .sort((a, b) => b.n - a.n)
       .slice(0, 12),
     summary: {
-      sessions: sessions.length,
-      multiStep: multi.length,
-      bounced: sessions.length - multi.length,
-      medianSteps:
-        sessions.length === 0
-          ? null
-          : [...sessions].sort((a, b) => a.steps - b.steps)[
-              Math.floor(sessions.length / 2)
-            ].steps,
-      medianSeconds:
-        multi.length === 0
-          ? null
-          : [...multi].sort((a, b) => a.seconds - b.seconds)[
-              Math.floor(multi.length / 2)
-            ].seconds,
+      sessions: allSessions,
+      multiStep: allSessions - allBounced,
+      bounced: allBounced,
+      bounceRate: allSessions ? Number((allBounced / allSessions).toFixed(3)) : null,
+      medianSteps: t[2] == null ? null : Number(t[2]),
+      medianSeconds: t[3] == null ? null : Math.round(Number(t[3])),
+      shown: sessions.length,
     },
     // Sessions are capped at 60 by the query. Say so, rather than letting a
     // truncated list read as "this is everyone".
-    note: sessions.length >= 60 ? "Showing the 60 longest sessions — not all traffic." : null,
+    note:
+      allSessions > sessions.length
+        ? `Listing the ${sessions.length} deepest of ${allSessions} sessions. The summary counts all of them.`
+        : null,
   });
 }

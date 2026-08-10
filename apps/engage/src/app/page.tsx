@@ -376,6 +376,9 @@ export default function Page() {
           <Link href="/queue" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             queue
           </Link>
+          <Link href="/journeys" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+            journeys
+          </Link>
           <Link href="/calendar" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             calendar
           </Link>
