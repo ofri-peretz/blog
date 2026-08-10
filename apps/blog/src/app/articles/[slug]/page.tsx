@@ -128,13 +128,23 @@ export default async function ArticlePage(props: PageProps) {
             {/* next/image, not <img>: routes through Vercel's optimizer so the
                 cover is served as AVIF/WebP at the viewer's width. Measured on a
                 real cover: 245 KB PNG → 43 KB AVIF. `priority` keeps it eager —
-                this is the LCP element. */}
+                this is the LCP element.
+
+                `fetchPriority` is set explicitly and is NOT redundant with
+                `priority`. Measured in production (4x CPU / Slow 4G, desktop):
+                `priority` alone emitted the preload link but left both the link
+                and the <img> with no fetchpriority attribute, so Chrome
+                scheduled the request at Low and it sat queued — 533 ms of the
+                863 ms LCP was "load delay", against a 2 ms download. The image
+                was never slow; it was merely late. Removing this attribute puts
+                that half-second back. */}
             <Image
               src={fm.cover_image}
               alt=""
               width={1000}
               height={420}
               priority
+              fetchPriority="high"
               sizes="(max-width: 768px) 100vw, 768px"
               className="w-full object-cover"
             />
