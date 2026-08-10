@@ -2,10 +2,11 @@
 node_modules/
 .pnp
 .pnp.*
-# lockfile intentionally not committed — exact versions are pinned via .npmrc
-# (save-exact=true); a macOS-generated lockfile breaks linux native bindings
-# (@tailwindcss/oxide) on CI/Vercel, which both `npm install` fresh.
-package-lock.json
+# package-lock.json IS committed on purpose. It was ignored until 2026-08-09 on the
+# belief that a macOS-generated lockfile breaks linux native bindings — untrue since
+# lockfileVersion 3, which records every platform (verified: all 20 darwin entries
+# have linux siblings, and `npm ci` builds green on Vercel). Without it, .npmrc
+# save-exact pins direct deps only and every transitive dep floats on each deploy.
 
 # build / turbo / next
 .next/
