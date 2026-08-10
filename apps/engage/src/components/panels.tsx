@@ -1397,20 +1397,37 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
             return (
               <g key={t}>
                 <line x1={20} y1={y} x2={W - 20} y2={y} stroke="var(--color-line)" strokeWidth={1} />
+          <defs>
+            {/* Arrowheads, so direction survives a greyscale screenshot and a
+                reader who cannot separate orange from green. */}
+            <marker id="arrow-out" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill="var(--color-accent)" />
+            </marker>
+            <marker id="arrow-in" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill="var(--color-good)" />
+            </marker>
+          </defs>
                 <text x={4} y={y - 6} className="fill-[var(--color-ink-3)]"
                       style={{ fontSize: 9, fontFamily: "monospace" }}>{t}</text>
               </g>
             );
           })}
           {edges.map((e, i) => {
-            const lit = sel && (e.from === sel || e.to === sel);
+            // Direction is the meaning, so it gets the colour. Orange leaves the
+            // selected node (authority it spends), green arrives (authority it
+            // receives). Unselected edges stay neutral — colouring all 300 at
+            // once is noise, not information.
+            const out = sel != null && e.from === sel;
+            const inc = sel != null && e.to === sel;
+            const lit = out || inc;
             return (
               <path key={i}
                     d={`M${e.x1},${e.y1} C${e.x1},${(e.y1 + e.y2) / 2} ${e.x2},${(e.y1 + e.y2) / 2} ${e.x2},${e.y2}`}
                     fill="none"
-                    stroke={lit ? "var(--color-accent)" : "var(--color-ink-3)"}
-                    strokeWidth={lit ? 1.4 : 0.5}
-                    opacity={sel ? (lit ? 0.9 : 0.04) : 0.16} />
+                    stroke={out ? "var(--color-accent)" : inc ? "var(--color-good)" : "var(--color-ink-3)"}
+                    strokeWidth={lit ? 1.6 : 0.5}
+                    markerEnd={out ? "url(#arrow-out)" : inc ? "url(#arrow-in)" : undefined}
+                    opacity={sel ? (lit ? 0.95 : 0.04) : 0.16} />
             );
           })}
           {[...pos.entries()].map(([slug, p]) => {
@@ -1447,27 +1464,39 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
                   source →
                 </a>
               </div>
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-                Links out · {outLinks.length}
+              {/* Two directions, two colours, two arrow glyphs.
+                  A single "→" for both made the panel unreadable: which way a
+                  citation points is the entire meaning. Outbound is what THIS
+                  article spends its authority on; inbound is what it receives.
+                  Colour carries it at a glance, the glyph carries it for anyone
+                  who cannot separate the hues. */}
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)]">
+                ↗ Links out · {outLinks.length}
+                <span className="ml-1.5 normal-case tracking-normal text-[var(--color-ink-3)]">
+                  authority this one spends
+                </span>
               </p>
-              <ul className="mt-1 flex flex-col gap-0.5">
+              <ul className="mt-1 flex flex-col gap-0.5 border-l-2 border-[var(--color-accent)] pl-2">
                 {outLinks.slice(0, 8).map((l: string) => (
                   <li key={l}>
                     <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--color-ink-2)] hover:text-[var(--color-accent)]">
-                      → {l}
+                      <span className="text-[var(--color-accent)]">↗</span> {l}
                     </button>
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-                Cited by · {inLinks.length}
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--color-good)]">
+                ↙ Cited by · {inLinks.length}
+                <span className="ml-1.5 normal-case tracking-normal text-[var(--color-ink-3)]">
+                  authority it receives
+                </span>
               </p>
               {inLinks.length ? (
-                <ul className="mt-1 flex flex-col gap-0.5">
+                <ul className="mt-1 flex flex-col gap-0.5 border-l-2 border-[var(--color-good)] pl-2">
                   {inLinks.slice(0, 8).map((l: string) => (
                     <li key={l}>
-                      <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--color-ink-2)] hover:text-[var(--color-accent)]">
-                        ← {l}
+                      <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--color-ink-2)] hover:text-[var(--color-good)]">
+                        <span className="text-[var(--color-good)]">↙</span> {l}
                       </button>
                     </li>
                   ))}

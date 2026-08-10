@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { cachedFetch } from "@/lib/client-cache";
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -44,8 +45,7 @@ export default function Calendar() {
   const [d, setD] = useState<any>(null);
 
   useEffect(() => {
-    fetch("/api/schedule", { cache: "no-store" })
-      .then((r) => r.json())
+    cachedFetch("schedule", "/api/schedule")
       .then(setD)
       .catch(() => setD({ error: "unreachable" }));
   }, []);

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { cachedFetch } from "@/lib/client-cache";
 
 type Gate = "pass" | "below-bar" | "unscored";
 
@@ -46,8 +47,7 @@ export default function Queue() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    fetch("/api/queue", { cache: "no-store" })
-      .then((r) => r.json())
+    cachedFetch("queue", "/api/queue")
       .then(setD)
       .catch(() => setD({ error: "unreachable", articles: [], totals: {} }));
   }, []);

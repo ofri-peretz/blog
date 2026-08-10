@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { execFileSync } from "node:child_process";
-import { FOOTPRINT, devtoKey } from "@/lib/footprint";
+import { devtoKey } from "@/lib/footprint";
+import { publisherSchedule } from "@/lib/cache";
 import { fetchJson } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
@@ -99,7 +99,8 @@ async function history(): Promise<Post[]> {
  * Reactions are deliberately NOT the metric: the median article has 0-1, which
  * cannot discriminate between slots. Views per day can.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const force = new URL(req.url).searchParams.get("refresh") === "1";
   const posts = await history();
   const solo = posts.filter((p) => p.sameDay <= 2 && p.vpd != null);
   const burst = posts.filter((p) => p.sameDay > 2 && p.vpd != null);
@@ -141,19 +142,10 @@ export async function GET() {
     };
   });
 
-  // Upcoming fires from the publisher — never re-derived here.
-  let schedule: any = { fires: [], queue: [], minDays: null, error: null };
-  try {
-    const raw = execFileSync("npx", ["tsx", "scripts/publish-next.ts", "--json"], {
-      cwd: FOOTPRINT,
-      encoding: "utf8",
-      timeout: 90_000,
-      maxBuffer: 8 << 20,
-    });
-    schedule = JSON.parse(raw.slice(raw.indexOf("{")));
-  } catch (e: any) {
-    schedule.error = String(e?.message ?? e).split("\n")[0].slice(0, 200);
-  }
+  // Upcoming fires from the publisher — never re-derived here, and cached so
+  // this page stops paying for a tsx subprocess on every visit.
+  const sched = publisherSchedule(force);
+  const schedule: any = { ...sched.value, cachedAt: sched.at, fresh: sched.fresh };
 
   const bestDay = [...byDow].filter((d) => d.trusted).sort((a, b) => (b.lift ?? 0) - (a.lift ?? 0))[0] ?? null;
   const bestHour = [...byHour].filter((h) => h.trusted).sort((a, b) => (b.lift ?? 0) - (a.lift ?? 0))[0] ?? null;

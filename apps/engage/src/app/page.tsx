@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { gauges, blocked, type Acted } from "@/lib/safety";
+import { cachedFetch, cachedAt } from "@/lib/client-cache";
 import { NetworkGraph, type Graph } from "@/components/network-graph";
 import { AudienceClock } from "@/components/audience-clock";
 import {
@@ -148,17 +150,21 @@ export default function Page() {
   const [at, setAt] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
 
+  /**
+   * Fetch a section, through the shared client cache.
+   *
+   * `force` is passed only by the section's refresh button, which is the whole
+   * contract: navigation and remounts reuse what is already loaded, and the
+   * only two ways to hit the network are an expired TTL or an explicit click.
+   * Before this, every navigation re-ran a dozen requests to redisplay data
+   * that had been on screen seconds earlier.
+   */
   const pull = useCallback(
-    async (key: string, url: string, set: (v: unknown) => void) => {
+    async (key: string, url: string, set: (v: unknown) => void, force = false) => {
       setBusy((b) => ({ ...b, [key]: true }));
       try {
-        // cache: no-store plus a cache-buster — the section is being refreshed
-        // precisely because the caller believes the cached answer is stale.
-        const r = await fetch(`${url}${url.includes("?") ? "&" : "?"}_=${Date.now()}`, {
-          cache: "no-store",
-        });
-        set(await r.json());
-        setAt((a) => ({ ...a, [key]: Date.now() }));
+        set(await cachedFetch(key, url, { force }));
+        setAt((a) => ({ ...a, [key]: cachedAt(key) ?? Date.now() }));
       } finally {
         setBusy((b) => ({ ...b, [key]: false }));
       }
@@ -166,12 +172,6 @@ export default function Page() {
     [],
   );
 
-  /**
-   * A refetch returns only what is still PENDING, so the cursor has to go back
-   * to 0 with it. Leaving `ri` where the last session left it is what made the
-   * header read "· 1" over a card reading "No unanswered replies": the list had
-   * shrunk under a cursor that never moved back.
-   */
   const refreshThreads = useCallback(
     () =>
       pull("threads", "/api/threads", (v: any) => {
@@ -373,18 +373,18 @@ export default function Page() {
         </span>
         <div className="flex flex-wrap items-baseline gap-4">
           <h1 className="text-[28px] font-semibold tracking-tight">Engage</h1>
-          <a href="/queue" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          <Link href="/queue" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             queue
-          </a>
-          <a href="/calendar" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          </Link>
+          <Link href="/calendar" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             calendar
-          </a>
-          <a href="/raw" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          </Link>
+          <Link href="/raw" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             raw data →
-          </a>
-          <a href="/releases" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          </Link>
+          <Link href="/releases" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             releases →
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -517,7 +517,7 @@ export default function Page() {
       {/* ── Platform metrics ─────────────────────────────────────────────── */}
       <Collapse id="s2" head={<><span>
           Reach
-        </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v))} at={at.insights ?? null} busy={!!busy.insights} /></>}>
+        </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v), true)} at={at.insights ?? null} busy={!!busy.insights} /></>}>
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-5">
           {(
             [
@@ -554,7 +554,7 @@ export default function Page() {
       {/* ── DEV community network ────────────────────────────────────────── */}
       <Collapse id="s3" head={<><span>
           DEV community network
-        </span><Refresh onClick={() => pull("network", "/api/network", (v: any) => setGraph(v))} at={at.network ?? null} busy={!!busy.network} /></>}>
+        </span><Refresh onClick={() => pull("network", "/api/network", (v: any) => setGraph(v), true)} at={at.network ?? null} busy={!!busy.network} /></>}>
         {graph ? (
           <NetworkGraph graph={graph} onOpenPerson={openPerson} />
         ) : (
@@ -588,7 +588,7 @@ export default function Page() {
       {/* ── Partnerships ─────────────────────────────────────────────────── */}
       <Collapse id="s5" head={<><span>
           Author partnerships
-        </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v))} at={at.insights ?? null} busy={!!busy.insights} /></>}>
+        </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v), true)} at={at.insights ?? null} busy={!!busy.insights} /></>}>
         <div className="overflow-x-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
           {insights ? (
             <table className="w-full text-[13.5px]">
@@ -719,7 +719,7 @@ export default function Page() {
       {/* ── Impact ───────────────────────────────────────────────────────── */}
       <Collapse id="s7" head={<><span>
           Impact
-        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v))} at={at.sources ?? null} busy={!!busy.sources} /></>}>
+        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} busy={!!busy.sources} /></>}>
         {sources ? (
           sources.impact?.error ? (
             <p className="text-[13px] text-[var(--color-warn)]">
@@ -736,17 +736,17 @@ export default function Page() {
       {/* ── Promotion ────────────────────────────────────────────────────── */}
       <Collapse id="s8" head={<><span>
           Plugin promotion {sources?.promotion?.prs?.length ? `· ${sources.promotion.prs.length} PRs` : ""}
-        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v))} at={at.sources ?? null} busy={!!busy.sources} /></>}>
+        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} busy={!!busy.sources} /></>}>
         {sources ? <Promotion prs={sources.promotion?.prs ?? []} /> : <Skel rows={4} />}
       </Collapse>
 
       {/* ── Benchmark ────────────────────────────────────────────────────── */}
-      <Collapse id="s21" head={<><span>Beating the index?{bench?.daysCollected ? ` · ${bench.daysCollected}d sampled` : ""}</span><Refresh onClick={() => pull("bench", "/api/benchmark", (v: any) => setBench(v))} at={at.bench ?? null} busy={!!busy.bench} /></>}>
+      <Collapse id="s21" head={<><span>Beating the index?{bench?.daysCollected ? ` · ${bench.daysCollected}d sampled` : ""}</span><Refresh onClick={() => pull("bench", "/api/benchmark", (v: any) => setBench(v), true)} at={at.bench ?? null} busy={!!busy.bench} /></>}>
         <Benchmark data={bench} />
       </Collapse>
 
       {/* ── Trend grid ───────────────────────────────────────────────────── */}
-      <Collapse id="s20" head={<><span>Trends{trends?.days ? ` · ${trends.days}d` : ""}</span><Refresh onClick={() => pull("trends", `/api/trends?grain=${grain}`, (v: any) => setTrends(v))} at={at.trends ?? null} busy={!!busy.trends} /></>}>
+      <Collapse id="s20" head={<><span>Trends{trends?.days ? ` · ${trends.days}d` : ""}</span><Refresh onClick={() => pull("trends", `/api/trends?grain=${grain}`, (v: any) => setTrends(v), true)} at={at.trends ?? null} busy={!!busy.trends} /></>}>
         <TrendGrid
           data={trends}
           grain={grain}
@@ -758,26 +758,26 @@ export default function Page() {
       </Collapse>
 
       {/* ── Google AI roster ─────────────────────────────────────────────── */}
-      <Collapse id="s19" head={<><span>Google AI org{people?.roster?.length ? ` · ${people.roster.length}` : ""}</span><Refresh onClick={() => pull("people", "/api/people", (v: any) => setPeople(v))} at={at.people ?? null} busy={!!busy.people} /></>}>
+      <Collapse id="s19" head={<><span>Google AI org{people?.roster?.length ? ` · ${people.roster.length}` : ""}</span><Refresh onClick={() => pull("people", "/api/people", (v: any) => setPeople(v), true)} at={at.people ?? null} busy={!!busy.people} /></>}>
         <Roster roster={people?.roster ?? []} />
       </Collapse>
 
       {/* ── Correlation ──────────────────────────────────────────────────── */}
-      <Collapse id="s18" head={<><span>Did it move anything?</span><Refresh onClick={() => pull("corr", "/api/correlate", (v: any) => setCorr(v))} at={at.corr ?? null} busy={!!busy.corr} /></>}>
+      <Collapse id="s18" head={<><span>Did it move anything?</span><Refresh onClick={() => pull("corr", "/api/correlate", (v: any) => setCorr(v), true)} at={at.corr ?? null} busy={!!busy.corr} /></>}>
         <Correlate data={corr} />
       </Collapse>
 
       {/* ── Plugin catalog ───────────────────────────────────────────────── */}
       <Collapse id="s9" head={<><span>
           The portfolio{catalog?.plugins?.length ? ` · ${catalog.plugins.length} packages` : ""}
-        </span><Refresh onClick={() => pull("catalog", "/api/plugins", (v: any) => setCatalog(v))} at={at.catalog ?? null} busy={!!busy.catalog} /></>}>
+        </span><Refresh onClick={() => pull("catalog", "/api/plugins", (v: any) => setCatalog(v), true)} at={at.catalog ?? null} busy={!!busy.catalog} /></>}>
         {catalog ? <PluginCatalog plugins={catalog.plugins ?? []} /> : <Skel rows={6} />}
       </Collapse>
 
       {/* ── Plugin FP/FN ─────────────────────────────────────────────────── */}
       <Collapse id="s10" head={<><span>
           Plugin findings {sources?.plugins?.findings?.length ? `· ${sources.plugins.findings.length}` : ""}
-        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v))} at={at.sources ?? null} busy={!!busy.sources} /></>}>
+        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} busy={!!busy.sources} /></>}>
         {sources ? <Plugins findings={sources.plugins?.findings ?? []} /> : <Skel rows={5} />}
       </Collapse>
 
@@ -794,19 +794,19 @@ export default function Page() {
           <Skel rows={5} />
         )}
       </Collapse>
-      <Collapse id="s12" head={<><span>Founders &amp; Google AI{people?.people?.length ? ` · ${people.people.filter((p: any) => p.latest?.reactable).length} reactable` : ""}</span><Refresh onClick={() => pull("people", "/api/people", (v: any) => setPeople(v))} at={at.people ?? null} busy={!!busy.people} /></>}>
+      <Collapse id="s12" head={<><span>Founders &amp; Google AI{people?.people?.length ? ` · ${people.people.filter((p: any) => p.latest?.reactable).length} reactable` : ""}</span><Refresh onClick={() => pull("people", "/api/people", (v: any) => setPeople(v), true)} at={at.people ?? null} busy={!!busy.people} /></>}>
         {people ? <People people={people.people ?? []} /> : <Skel rows={5} />}
       </Collapse>
 
-      <Collapse id="s13" head={<><span>PR board{board?.prs?.length ? ` · ${board.prs.filter((p: any) => p.actionRequired).length} need you` : ""}</span><Refresh onClick={() => pull("board", "/api/board", (v: any) => setBoard(v))} at={at.board ?? null} busy={!!busy.board} /></>}>
+      <Collapse id="s13" head={<><span>PR board{board?.prs?.length ? ` · ${board.prs.filter((p: any) => p.actionRequired).length} need you` : ""}</span><Refresh onClick={() => pull("board", "/api/board", (v: any) => setBoard(v), true)} at={at.board ?? null} busy={!!busy.board} /></>}>
         {board ? <Board prs={board.prs ?? []} /> : <Skel rows={5} />}
       </Collapse>
 
-      <Collapse id="s14" head={<><span>Ecosystem</span><Refresh onClick={() => pull("eco", "/api/ecosystem", (v: any) => setEco(v))} at={at.eco ?? null} busy={!!busy.eco} /></>}>
+      <Collapse id="s14" head={<><span>Ecosystem</span><Refresh onClick={() => pull("eco", "/api/ecosystem", (v: any) => setEco(v), true)} at={at.eco ?? null} busy={!!busy.eco} /></>}>
         {eco ? <Ecosystem totals={eco.totals ?? null} /> : <Skel rows={2} />}
       </Collapse>
 
-      <Collapse id="s15" head={<><span>Article web{web?.nodes?.length ? ` · ${web.nodes.length}` : ""}</span><Refresh onClick={() => pull("web", "/api/articles", (v: any) => setWeb(v))} at={at.web ?? null} busy={!!busy.web} /></>}>
+      <Collapse id="s15" head={<><span>Article web{web?.nodes?.length ? ` · ${web.nodes.length}` : ""}</span><Refresh onClick={() => pull("web", "/api/articles", (v: any) => setWeb(v), true)} at={at.web ?? null} busy={!!busy.web} /></>}>
         {web ? <ArticleWeb nodes={web.nodes ?? []} /> : <Skel rows={4} />}
       </Collapse>
 
@@ -817,7 +817,7 @@ export default function Page() {
             {audience?.zones?.length ? ` · ${audience.zones.length} zones` : ""}
           </span>
           <Refresh
-            onClick={() => pull("audience", "/api/audience", (v: any) => setAudience(v))}
+            onClick={() => pull("audience", "/api/audience", (v: any) => setAudience(v), true)}
             at={at.audience ?? null}
             busy={!!busy.audience}
           />

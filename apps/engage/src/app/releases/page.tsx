@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { cachedFetch } from "@/lib/client-cache";
 
 const TONE: Record<string, string> = {
   feat: "text-[var(--color-good)] border-[var(--color-good)]",
@@ -15,8 +16,7 @@ export default function Releases() {
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    fetch("/api/releases", { cache: "no-store" })
-      .then((r) => r.json())
+    cachedFetch("releases", "/api/releases")
       .then(setData)
       .catch(() => setData({ releases: [], error: "unreachable" }));
   }, []);

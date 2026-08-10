@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { FOOTPRINT } from "@/lib/footprint";
+import { publisherSchedule } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -94,26 +94,14 @@ function frontmatter(raw: string): Record<string, string> {
  * decisions get made, so the queue has to live here too — same numbers, same
  * rules, no second source of truth.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const force = new URL(req.url).searchParams.get("refresh") === "1";
   const sc = scores();
 
-  // Schedule + runway, straight from the publisher. Never re-derive the cadence
-  // here: it was mirrored in three places once and drifted in two of them.
-  let schedule: any = { error: null };
-  try {
-    const raw = execFileSync(
-      "npx",
-      ["tsx", "scripts/publish-next.ts", "--json"],
-      { cwd: FOOTPRINT, encoding: "utf8", timeout: 90_000, maxBuffer: 8 << 20 },
-    );
-    schedule = JSON.parse(raw.slice(raw.indexOf("{")));
-  } catch (e: any) {
-    schedule = {
-      error: String(e?.message ?? e).split("\n")[0].slice(0, 200),
-      fires: [],
-      queue: [],
-    };
-  }
+  // Schedule + runway, straight from the publisher — cached, because this
+  // spawns a tsx subprocess and it was paid on every page view.
+  const sched = publisherSchedule(force);
+  const schedule = { ...sched.value, cachedAt: sched.at, fresh: sched.fresh };
 
   const files = existsSync(ARTICLES)
     ? readdirSync(ARTICLES).filter((f) => f.endsWith(".md"))
