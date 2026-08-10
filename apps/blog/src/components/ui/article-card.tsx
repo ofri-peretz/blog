@@ -95,6 +95,14 @@ function formatDate(value: ArticleCardProps["publishedAt"]): string {
     month: "short",
     day: "numeric",
     year: "numeric",
+    // Pinned, and it must stay pinned. This is a client component, so the
+    // string is produced twice: once during SSR (Vercel runs UTC) and again at
+    // hydration (the reader's own zone). Without a fixed zone any article
+    // published near midnight UTC renders a different day on each pass, React
+    // sees the text diverge and throws #418 — which is exactly what /articles
+    // was doing in production. A publication date is a calendar fact, not a
+    // local-time one, so UTC is also the correct reading.
+    timeZone: "UTC",
   });
 }
 
@@ -243,11 +251,18 @@ function CoverImage({
       // next/image serves AVIF/WebP at the tile's real width instead of
       // shipping the full-size cover to a thumbnail. `fill` because the
       // parent is already sized; `priority` still marks above-fold tiles.
+      //
+      // `fetchPriority` is paired with `priority` deliberately: measured on the
+      // article route, `priority` alone emitted a preload but no fetchpriority
+      // attribute, so Chrome still scheduled the request at Low. Only the
+      // prioritised tile gets it — marking every tile high would flatten the
+      // ordering and prioritise nothing.
       <Image
         src={imageUrl}
         alt=""
         fill
         priority={priority}
+        fetchPriority={priority ? "high" : undefined}
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         className={cn(
           // The container is aspect-[1000/420], so nothing should crop. This

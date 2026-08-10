@@ -12,6 +12,28 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
 
+  // Same-origin PostHog ingest (ANALYTICS_PHILOSOPHY §9). Ad blockers match on
+  // the `*.i.posthog.com` hostname, not on payload shape, so proxying through
+  // our own origin is what recovers the ~30-40% of visitors they were dropping.
+  // `skipTrailingSlashRedirect` is required: Next would otherwise 308
+  // `/ingest/e/` -> `/ingest/e`, and posthog-js does not follow the redirect.
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      // Static assets (the recorder/surveys bundles) come from a different
+      // upstream host than the event API — order matters, this must precede
+      // the catch-all below or `:path*` swallows it.
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://us.i.posthog.com/:path*",
+      },
+    ];
+  },
+
   // Security headers. All free — they ride on responses Vercel already sends.
   // HSTS is set by Vercel; these are the ones that were missing.
   //
