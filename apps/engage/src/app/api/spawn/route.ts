@@ -27,10 +27,11 @@ const REPOS: Record<string, string> = {
  * Fixing someone's PR is not a thing to fire and forget, and a spawn that
  * silently starts editing is a spawn you have to police.
  *
- * The prompt is passed through a file, never interpolated into the AppleScript
- * string. A PR title is attacker-influenced text — anyone can open a PR — and
- * concatenating it into a shell command inside an `osascript` string is a
- * command-injection hole with a public write path to it.
+ * The prompt travels as an `osascript` ARGUMENT (`item 2 of argv`), never
+ * interpolated into the AppleScript source. A PR title is attacker-influenced
+ * text — anyone can open a PR — and concatenating it into a shell command
+ * inside an osascript string is a command-injection hole with a public write
+ * path to it. `quoted form of` then escapes it once more for the shell.
  */
 export async function POST(req: Request) {
   let body: { repo?: string; number?: number; title?: string; reason?: string };

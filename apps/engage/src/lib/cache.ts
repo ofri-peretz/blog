@@ -68,7 +68,13 @@ export function publisherSchedule(force = false) {
         ["tsx", "scripts/publish-next.ts", "--json"],
         { cwd: FOOTPRINT, encoding: "utf8", timeout: 120_000, maxBuffer: 8 << 20 },
       );
-      return JSON.parse(raw.slice(raw.indexOf("{")));
+      // A tsx compile error prints no `{` at all; indexOf returns -1 and
+      // slice(-1) hands JSON.parse the final character, which fails with a
+      // message about that character instead of about the real failure.
+      const brace = raw.indexOf("{");
+      if (brace === -1)
+        throw new Error(`publish-next produced no JSON: ${raw.trim().slice(0, 160)}`);
+      return JSON.parse(raw.slice(brace));
     } catch (e: any) {
       // Cache the failure too, briefly — otherwise a broken publisher turns
       // every page view into another 120s timeout.

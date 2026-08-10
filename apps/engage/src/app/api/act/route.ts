@@ -4,14 +4,28 @@ import { recordAction as ledger } from "@/lib/store";
 
 const MAX_BODY = 64 * 1024;
 
+/**
+ * `date` becomes part of a queue FILE PATH, so "is a string" is not a check.
+ * `../../../etc/passwd` is a string. Only an exact calendar shape is safe.
+ */
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 export async function POST(req: Request) {
-  const len = Number(req.headers.get("content-length") ?? 0);
-  if (len > MAX_BODY)
+  // Read the body and measure what ACTUALLY arrived. `content-length` is a
+  // client-supplied header — a chunked request omits it, and a lying one can
+  // claim any value, so gating on it alone enforces nothing.
+  let raw: string;
+  try {
+    raw = await req.text();
+  } catch {
+    return NextResponse.json({ ok: false, error: "unreadable body" }, { status: 400 });
+  }
+  if (raw.length > MAX_BODY)
     return NextResponse.json({ ok: false, error: "body too large" }, { status: 413 });
 
   let body: { kind?: string; date?: string; slot?: number; action?: string };
   try {
-    body = await req.json();
+    body = JSON.parse(raw);
   } catch {
     return NextResponse.json({ ok: false, error: "bad json" }, { status: 400 });
   }
@@ -20,6 +34,7 @@ export async function POST(req: Request) {
   if (
     (kind !== "comment" && kind !== "reaction") ||
     typeof date !== "string" ||
+    !DATE.test(date) ||
     typeof slot !== "number" ||
     (action !== "done" && action !== "skip")
   )

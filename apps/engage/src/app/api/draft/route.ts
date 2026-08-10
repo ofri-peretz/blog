@@ -17,13 +17,20 @@ const MAX_BODY = 64 * 1024;
  * composing a response is exactly the work being delegated.
  */
 export async function POST(req: Request) {
-  const len = Number(req.headers.get("content-length") ?? 0);
-  if (len > MAX_BODY)
+  // Measure the body that actually arrived, not the length the client claims:
+  // `content-length` is absent on chunked requests and forgeable on any other.
+  let raw: string;
+  try {
+    raw = await req.text();
+  } catch {
+    return NextResponse.json({ ok: false, error: "unreadable body" }, { status: 400 });
+  }
+  if (raw.length > MAX_BODY)
     return NextResponse.json({ ok: false, error: "body too large" }, { status: 413 });
 
   let body: { author?: string; theirComment?: string; articleTitle?: string };
   try {
-    body = await req.json();
+    body = JSON.parse(raw);
   } catch {
     return NextResponse.json({ ok: false, error: "bad json" }, { status: 400 });
   }
