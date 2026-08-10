@@ -35,6 +35,10 @@ export default function Journeys() {
 
   useEffect(() => {
     setD(null);
+    // Reset the property filter with the window. A property present in 30 days
+    // may have no sessions in 7, and a filter that silently survives leaves you
+    // staring at an empty list with no clue why.
+    setApp("all");
     cachedFetch(`journeys:${days}`, `/api/journeys?days=${days}`)
       .then(setD)
       .catch(() => setD({ error: "unreachable", sessions: [] }));
@@ -108,6 +112,18 @@ export default function Journeys() {
         <p className="text-[13px] text-[var(--color-warn)]">{d.error}</p>
       ) : (
         <>
+          {/* These four come from a server-side aggregate over EVERY session.
+              The property filter below only narrows the LIST, so with a filter
+              active the two describe different populations — exactly the
+              denominator mismatch that made this endpoint report "0 bounced".
+              Label it rather than letting the numbers imply a scope they do
+              not have. */}
+          {app !== "all" && (
+            <p className="-mb-1 font-mono text-[11px] text-[var(--color-warn)]">
+              Totals below cover <b>all properties</b>; the session list is
+              filtered to <b>{app}</b>.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               ["sessions", s.sessions],
@@ -154,8 +170,10 @@ export default function Journeys() {
                 </div>
               ))}
               <p className="mt-1 text-[12px] text-[var(--color-ink-3)]">
-                Counted over the deep sessions listed below — the referrer of a
-                one-page bounce says little about intent.
+                Scope differs from &ldquo;doors&rdquo; on purpose: referrers are
+                counted over the <b>deep sessions listed below</b> (a one-page
+                bounce&apos;s referrer says little about intent), while doors are a
+                server-side aggregate over <b>every</b> session.
               </p>
             </section>
 
