@@ -4,6 +4,7 @@ import { Container } from "@/components/ui/container";
 import { ArticleCard } from "@/components/ui/article-card";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
+import { localCover } from "@/lib/cover";
 import { getAllArticles } from "@/lib/source";
 
 const PAGE_SIZE = 12;
@@ -104,7 +105,7 @@ export default async function ArticlesPage(props: PageProps) {
                     description={article.frontmatter.description}
                     href={`/articles/${article.slug}`}
                     external={false}
-                    imageUrl={article.frontmatter.cover_image ?? undefined}
+                    imageUrl={localCover(article.frontmatter.cover_image ?? undefined)}
                     tags={article.frontmatter.tags}
                     publishedAt={article.frontmatter.published_at}
                     meta={{

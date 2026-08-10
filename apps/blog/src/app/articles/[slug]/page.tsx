@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { getAllArticleSlugs, getArticleBySlug } from "@/lib/source";
 import { MarkdownArticle } from "@/components/markdown-article";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { localCover } from "@/lib/cover";
 import { Container } from "@/components/ui/container";
 import { buttonVariants } from "@/components/ui/button-variants";
 
@@ -139,7 +140,7 @@ export default async function ArticlePage(props: PageProps) {
                 was never slow; it was merely late. Removing this attribute puts
                 that half-second back. */}
             <Image
-              src={fm.cover_image}
+              src={localCover(fm.cover_image)}
               alt=""
               width={1000}
               height={420}
