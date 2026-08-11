@@ -23,15 +23,31 @@ export interface SeriesDef {
   group: string;
   unit: "count" | "ratio" | "ms" | "percent";
   /**
-   * Cumulative totals (followers, downloads) versus rates (exceptions/day).
-   * This drives whether trend detection differences first — get it wrong and a
-   * dead metric reads as "rising" forever. See detect.ts.
+   * Cumulative totals (followers, downloads), rates (exceptions/day), and
+   * gauges (a p75 latency) behave differently under BOTH bucketing and trend
+   * detection, and getting it wrong is silent in both directions:
+   *
+   * - cumulative summed into a week double-counts every prior day;
+   * - a gauge summed into a week reports ~7x the real p75 as if it were latency;
+   * - a cumulative series fitted to its level reads "rising" forever, including
+   *   when it has been dead for a month.
+   *
+   * Only `cumulative` is differenced before trend detection. See detect.ts.
    */
-  kind: "cumulative" | "rate";
-  /** Higher is better, except where it very much is not (exceptions). */
+  kind: "cumulative" | "rate" | "gauge";
+  /** Higher is better, except where it very much is not (exceptions, latency). */
   goodDirection: "up" | "down";
   /** Hours after which this series should be treated as stale on screen. */
   staleAfterHours: number;
+  /**
+   * Where the number comes from, per series rather than per response.
+   *
+   * This was one hardcoded string on the route ("supabase:creator_daily_metrics")
+   * printed against every series regardless of origin. That was survivable only
+   * while every series really did come from that table; the moment PostHog and
+   * npm series exist it is a false provenance label on two thirds of the catalog.
+   */
+  source: string;
   /** Known caveat, surfaced next to the chart rather than buried in a doc. */
   caveat?: string;
 }
@@ -43,14 +59,16 @@ export interface SeriesDef {
  * read this one list, so a series cannot exist in the UI without declaring its
  * source and its staleness budget.
  */
+const SB_CREATOR = "supabase:creator_daily_metrics";
+
 export const CATALOG: SeriesDef[] = [
   // ── Audience ──────────────────────────────────────────────────────────────
-  { id: "devto.followers", label: "dev.to followers", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36 },
-  { id: "devto.views", label: "dev.to views", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36 },
-  { id: "devto.reactions", label: "dev.to reactions", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36 },
-  { id: "devto.comments", label: "dev.to comments", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36 },
-  { id: "devto.posts", label: "articles published", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36 },
-  { id: "github.followers", label: "GitHub followers", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36 },
+  { id: "devto.followers", label: "dev.to followers", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36, source: SB_CREATOR },
+  { id: "devto.views", label: "dev.to views", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36, source: SB_CREATOR },
+  { id: "devto.reactions", label: "dev.to reactions", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36, source: SB_CREATOR },
+  { id: "devto.comments", label: "dev.to comments", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36, source: SB_CREATOR },
+  { id: "devto.posts", label: "articles published", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36, source: SB_CREATOR },
+  { id: "github.followers", label: "GitHub followers", group: "Audience", unit: "count", kind: "cumulative", goodDirection: "up", staleAfterHours: 36, source: SB_CREATOR },
   {
     id: "github.stars",
     label: "GitHub stars",
@@ -59,6 +77,7 @@ export const CATALOG: SeriesDef[] = [
     kind: "cumulative",
     goodDirection: "up",
     staleAfterHours: 36,
+    source: SB_CREATOR,
     // The number lives under a column named for something else; the obvious
     // column (plugin_daily_metrics.github_stars) is never populated by the
     // ingest and would render a flat zero line that looks like a fact.
@@ -107,9 +126,19 @@ function weekKey(iso: string): string {
 /**
  * Roll up to week/month.
  *
- * A cumulative series takes the LAST value in the bucket; a rate takes the SUM.
- * Averaging a cumulative total produces a number that is not a total of
- * anything, and summing one double-counts every prior day.
+ * Each kind aggregates differently, and every wrong pairing produces a number
+ * that renders perfectly:
+ *
+ * - cumulative → LAST. Summing double-counts every prior day; averaging yields
+ *   a total of nothing.
+ * - rate → SUM. Seven daily exception counts really do make a weekly count.
+ * - gauge → MEAN. A p75 latency is not additive; summing seven days of "p75
+ *   LCP" reports ~7x the real figure in milliseconds, which looks like a
+ *   catastrophic regression rather than an aggregation bug.
+ *
+ * The weekly mean of seven daily p75s is not itself the weekly p75 — that would
+ * need the raw distribution, which we do not hold. It is an approximation, and
+ * it is the reason gauges carry their own kind rather than borrowing `rate`.
  */
 export function bucket(points: Point[], grain: Grain, kind: SeriesDef["kind"]): Point[] {
   if (grain === "day") return points;
@@ -121,7 +150,12 @@ export function bucket(points: Point[], grain: Grain, kind: SeriesDef["kind"]): 
   }
   return [...groups.entries()].map(([k, ps]) => ({
     t: k,
-    v: kind === "cumulative" ? ps[ps.length - 1].v : ps.reduce((s, p) => s + p.v, 0),
+    v:
+      kind === "cumulative"
+        ? ps[ps.length - 1].v
+        : kind === "gauge"
+          ? ps.reduce((s, p) => s + p.v, 0) / ps.length
+          : ps.reduce((s, p) => s + p.v, 0),
   }));
 }
 
@@ -143,12 +177,24 @@ const SOURCE_COLUMN: Record<string, [string, string]> = {
   "github.stars": ["github-repo", "followers"],
 };
 
-/** Every catalogued series, fetched in ONE round trip and pivoted here. */
-export async function loadAll(): Promise<{ series: Map<string, Point[]>; asOf: string | null }> {
+/**
+ * A loader turns one upstream into `id → points`. Registering a loader is the
+ * only way to add a source, so a series cannot reach the catalog without one
+ * place that knows how to fetch it.
+ */
+export type Loader = () => Promise<Map<string, Point[]>>;
+
+const LOADERS: Loader[] = [loadCreatorDaily];
+
+/** Register an additional upstream. Called at module load by each source file. */
+export function registerLoader(l: Loader): void {
+  LOADERS.push(l);
+}
+
+/** The seven Supabase series — ONE round trip, pivoted here. */
+async function loadCreatorDaily(): Promise<Map<string, Point[]>> {
   const rows = await sb("creator_daily_metrics?select=*&order=observed_on.asc&limit=2000");
   const out = new Map<string, Point[]>();
-  let asOf: string | null = null;
-
   for (const def of CATALOG) {
     const mapping = SOURCE_COLUMN[def.id];
     if (!mapping) continue;
@@ -158,13 +204,51 @@ export async function loadAll(): Promise<{ series: Map<string, Point[]>; asOf: s
       if (r.platform !== platform) continue;
       const v = Number(r[column]);
       if (!Number.isFinite(v)) continue;
-      const t = String(r.observed_on).slice(0, 10);
-      pts.push({ t, v });
-      if (!asOf || t > asOf) asOf = t;
+      pts.push({ t: String(r.observed_on).slice(0, 10), v });
     }
     out.set(def.id, pts);
   }
-  return { series: out, asOf };
+  return out;
+}
+
+/**
+ * Every catalogued series from every registered source, in parallel.
+ *
+ * `asOf` is computed PER SERIES, from that series' own last point. The previous
+ * global `asOf` took the maximum observation date across every row in the
+ * table, which meant a series whose ingest had stopped days ago inherited a
+ * fresh timestamp from a healthy neighbour and reported `stale: false`. That is
+ * precisely the documented failure mode — schedulers go stale silently — dressed
+ * up as a freshness guarantee. One source failing entirely must not make the
+ * rest look stale either, which is why a rejected loader contributes nothing
+ * rather than poisoning the merge.
+ */
+export async function loadAll(): Promise<{
+  series: Map<string, Point[]>;
+  asOfById: Map<string, string | null>;
+  asOf: string | null;
+}> {
+  const results = await Promise.allSettled(LOADERS.map((l) => l()));
+  const out = new Map<string, Point[]>();
+  for (const r of results) {
+    if (r.status !== "fulfilled") {
+      console.error("[series] loader failed:", r.reason);
+      continue;
+    }
+    for (const [id, pts] of r.value) out.set(id, pts);
+  }
+
+  const asOfById = new Map<string, string | null>();
+  let asOf: string | null = null;
+  for (const [id, pts] of out) {
+    // Points arrive ordered, but a merged source need not be; take the max
+    // rather than trusting arrival order.
+    let last: string | null = null;
+    for (const p of pts) if (!last || p.t > last) last = p.t;
+    asOfById.set(id, last);
+    if (last && (!asOf || last > asOf)) asOf = last;
+  }
+  return { series: out, asOfById, asOf };
 }
 
 /**
