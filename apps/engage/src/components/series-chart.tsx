@@ -56,7 +56,7 @@ function toTime(key: string): UTCTimestamp {
  * Not the brand accent for everything: on a comparison chart the colour IS the
  * legend, so two series that read as the same colour make the chart unusable.
  */
-const PALETTE = ["#f4794a", "#0d9460", "#5b8def", "#c9a227", "#a259c4", "#39b8b0"];
+export const PALETTE = ["#f4794a", "#0d9460", "#5b8def", "#c9a227", "#a259c4", "#39b8b0"];
 
 export function SeriesChart({
   series,
@@ -70,6 +70,15 @@ export function SeriesChart({
   const drawn = useRef<ISeriesApi<"Line" | "Histogram">[]>([]);
   /** Whether the container has ever reported a non-zero width. */
   const sized = useRef(false);
+  /**
+   * The latest series, readable from the mount effect.
+   *
+   * Without it the two effects can disagree: changing `height` tears the chart
+   * down and builds an empty one, while the data effect — keyed on `series` —
+   * does not re-run, so the chart stays blank until the next selection change.
+   */
+  const latest = useRef(series);
+  latest.current = series;
 
   useEffect(() => {
     if (!box.current) return;
@@ -114,6 +123,10 @@ export function SeriesChart({
       sized.current = true;
     }
 
+    // Recreating the chart (a height change) must re-draw; the data effect will
+    // not fire if `series` has not changed identity.
+    draw.current();
+
     return () => {
       ro.disconnect();
       c.remove();
@@ -123,12 +136,14 @@ export function SeriesChart({
     };
   }, [height]);
 
-  useEffect(() => {
+  const draw = useRef<() => void>(() => {});
+  draw.current = () => {
     const c = chart.current;
     if (!c) return;
 
     for (const s of drawn.current) c.removeSeries(s);
     drawn.current = [];
+    const series = latest.current;
 
     // A ratio (0.01) and a view count (7,066) on one price scale renders the
     // ratio as a flat line welded to the axis — technically plotted, actually
@@ -165,6 +180,10 @@ export function SeriesChart({
     });
 
     if (series.length) c.timeScale().fitContent();
+  };
+
+  useEffect(() => {
+    draw.current();
   }, [series]);
 
   return <div ref={box} className="w-full" />;

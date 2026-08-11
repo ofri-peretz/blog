@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { cachedFetch, cachedAt } from "@/lib/client-cache";
 import { Refresh } from "@/components/panels";
-import { SeriesChart, type ChartSeries } from "@/components/series-chart";
+import { SeriesChart, PALETTE, type ChartSeries } from "@/components/series-chart";
 
 /**
  * The terminal.
@@ -127,6 +127,12 @@ export default function Terminal() {
     [data, transform],
   );
 
+  /** id → the colour the chart actually drew it with. */
+  const colourOf = useMemo(
+    () => new Map(chartSeries.map((s, i) => [s.id, PALETTE[i % PALETTE.length]])),
+    [chartSeries],
+  );
+
   const toggle = (id: string) =>
     setIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].slice(0, 6)));
 
@@ -233,11 +239,17 @@ export default function Terminal() {
           </p>
         )}
         <div className="flex flex-wrap gap-4 px-2 pt-3">
-          {(data?.series ?? []).map((s, i) => (
+          {/* Coloured from the DRAWN list, not from data.series: the chart skips
+              errored and empty series, so indexing the unfiltered list puts the
+              wrong swatch under every label after the first failure. */}
+          {(data?.series ?? []).map((s) => (
             <span key={s.id} className="flex items-center gap-2 font-mono text-[11px]">
               <span
                 className="inline-block h-2 w-4 rounded-sm"
-                style={{ background: ["#f4794a", "#0d9460", "#5b8def", "#c9a227", "#a259c4", "#39b8b0"][i % 6] }}
+                style={{
+                  background:
+                    colourOf.get(s.id) ?? "var(--color-ink-3)",
+                }}
               />
               <span className="text-[var(--color-ink-2)]">{s.label}</span>
               <span className="text-[var(--color-ink)]">{num(s.last, 2)}</span>
