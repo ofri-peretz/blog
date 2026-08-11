@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, appendFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, appendFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { FOOTPRINT } from "@/lib/footprint";
 
@@ -25,28 +25,47 @@ const SIGNALS = join(DIR, "signals.json");
 const ODDS = join(DIR, "odds.json");
 const HISTORY = join(DIR, "history.jsonl");
 
-const read = (p: string): any | null => {
-  if (!existsSync(p)) return null;
+type ReadResult = { ok: true; data: any } | { ok: false; why: "missing" | "corrupt"; detail?: string };
+
+/**
+ * Missing and corrupt are different problems with different fixes.
+ *
+ * Collapsing both to `null` told you to run gh-signals.ts when the file was
+ * present and unparseable — the wrong instruction, and one that would
+ * regenerate signals.json while leaving the actually-broken file alone.
+ */
+const read = (p: string): ReadResult => {
+  if (!existsSync(p)) return { ok: false, why: "missing" };
   try {
-    return JSON.parse(readFileSync(p, "utf8"));
-  } catch {
-    return null;
+    return { ok: true, data: JSON.parse(readFileSync(p, "utf8")) };
+  } catch (e) {
+    return { ok: false, why: "corrupt", detail: String(e).slice(0, 160) };
   }
 };
 
 export async function GET() {
-  const nodes = read(NODES);
-  const signals = read(SIGNALS);
-  const odds = read(ODDS);
+  const nodesR = read(NODES);
+  const signalsR = read(SIGNALS);
+  const oddsR = read(ODDS);
 
-  if (!nodes) {
+  if (!nodesR.ok) {
     return NextResponse.json({
       repos: [],
       edges: [],
-      error: "adoption/repos.json missing",
-      hint: "run `tsx scripts/gh-signals.ts && tsx scripts/gh-odds.ts` in agents/footprint",
+      error:
+        nodesR.why === "missing"
+          ? "adoption/repos.json missing"
+          : `adoption/repos.json is not valid JSON — ${nodesR.detail}`,
+      hint:
+        nodesR.why === "missing"
+          ? "run `tsx scripts/gh-signals.ts && tsx scripts/gh-odds.ts` in agents/footprint"
+          : "repair the file by hand; regenerating signals will not fix it",
     });
   }
+
+  const nodes = nodesR.data;
+  const signals = signalsR.ok ? signalsR.data : null;
+  const odds = oddsR.ok ? oddsR.data : null;
 
   const sig = new Map<string, any>((signals?.signals ?? []).map((s: any) => [s.slug, s]));
   const odd = new Map<string, any>((odds?.odds ?? []).map((o: any) => [o.slug, o]));
@@ -72,8 +91,8 @@ export async function GET() {
     stale: ageHours != null && ageHours > 24 * 7,
     computedAt: odds?.computedAt ?? null,
     missing: {
-      signals: !signals,
-      odds: !odds,
+      signals: !signalsR.ok ? signalsR.why : null,
+      odds: !oddsR.ok ? oddsR.why : null,
     },
     counts: {
       held: repos.filter((r: any) => r.odds?.band === "held").length,
@@ -103,8 +122,21 @@ export async function POST(req: Request) {
       { status: 400 },
     );
 
-  const nodes = read(NODES);
-  if (!nodes) return NextResponse.json({ ok: false, error: "repos.json missing" }, { status: 404 });
+  const nodesR = read(NODES);
+  if (!nodesR.ok)
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          nodesR.why === "missing"
+            ? "repos.json missing"
+            : `repos.json is not valid JSON — ${nodesR.detail}`,
+      },
+      // A corrupt file is a server-side problem, not "you asked for something
+      // that is not here".
+      { status: nodesR.why === "missing" ? 404 : 500 },
+    );
+  const nodes = nodesR.data;
 
   const hit = (nodes.repos ?? []).find((r: any) => r.slug === slug);
   if (!hit) return NextResponse.json({ ok: false, error: "unknown repo" }, { status: 404 });
@@ -115,8 +147,14 @@ export async function POST(req: Request) {
   if (note) hit.stateNote = note;
   if (state === "merged" && !hit.mergedOn) hit.mergedOn = hit.stateChangedAt.slice(0, 10);
 
+  // Write to a sibling and rename. A crash midway through a direct write
+  // leaves repos.json half-serialised, and since it is the judgement file —
+  // hand-authored, not regenerable — the map would be down until someone
+  // restored it from git. rename() within a directory is atomic.
   try {
-    writeFileSync(NODES, JSON.stringify(nodes, null, 2) + "\n");
+    const tmp = `${NODES}.tmp`;
+    writeFileSync(tmp, JSON.stringify(nodes, null, 2) + "\n");
+    renameSync(tmp, NODES);
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: `write failed: ${String(e).slice(0, 160)}` },

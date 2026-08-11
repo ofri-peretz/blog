@@ -69,7 +69,10 @@ export default function Conquest() {
   // separately rather than parked at x=0, which would read as "terrible odds"
   // for something we already own.
   const plotted = useMemo(
-    () => repos.filter((r) => r.odds?.score != null),
+    () =>
+      repos.filter(
+        (r) => r.odds?.score != null && r.odds.band !== "held" && r.odds.band !== "dead",
+      ),
     [repos],
   );
   const maxValue = Math.max(...plotted.map((r) => r.odds!.value), 1);
