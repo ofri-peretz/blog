@@ -93,6 +93,7 @@ export default function Page() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [threads, setThreads] = useState<Thread[] | null>(null);
+  const [alerts, setAlerts] = useState<any>(null);
   const [sources, setSources] = useState<any>(null);
   const [people, setPeople] = useState<any>(null);
   const [board, setBoard] = useState<any>(null);
@@ -207,6 +208,12 @@ export default function Page() {
     load();
     pull("insights", "/api/insights", (v: any) => setInsights(v)).catch(() => setInsights({ metrics: {}, metricsError: "unreachable", authors: [] }));
     pull("network", "/api/network", (v: any) => setGraph(v)).catch(() => setGraph(null));
+    // On failure this sets `error`, never an empty alert list. A monitoring
+    // panel that renders "all clear" when it could not evaluate is the exact
+    // failure it exists to catch.
+    pull("alerts", "/api/alerts", (v: any) => setAlerts(v)).catch(() =>
+      setAlerts({ alerts: [], evaluated: 0, error: "unreachable" }),
+    );
     refreshThreads(false).catch(() => setThreads([]));
     pull("sources", "/api/sources", (v: any) => setSources(v)).catch(() => setSources({}));
     pull("audience", "/api/audience", (v: any) => setAudience(v)).catch(() =>
@@ -445,6 +452,70 @@ export default function Page() {
           </Callout>
         )}
       </section>
+
+      {/* ── Stalled feeds ────────────────────────────────────────────────────
+          Placed above "Up next" deliberately. A feed that stopped nine days ago
+          outranks today's queue, and the reason this panel exists is that the
+          blog's client-side analytics died on 2026-08-02 and was found by hand
+          on the 11th — server-side /go/ events kept arriving, so nothing ever
+          looked broken. */}
+      <Collapse
+        id="s0"
+        head={
+          <>
+            <span>
+              Stalled feeds{" "}
+              {alerts?.firing ? `· ${alerts.firing}` : ""}
+              {alerts?.high ? ` · ${alerts.high} high` : ""}
+            </span>
+            <Refresh
+              onClick={() => pull("alerts", "/api/alerts", (v: any) => setAlerts(v), true)}
+              at={at.alerts ?? null}
+              busy={!!busy.alerts}
+            />
+          </>
+        }
+      >
+        {!alerts ? (
+          <Skel rows={2} />
+        ) : alerts.error ? (
+          <Callout tone="warn">
+            Could not evaluate alerts ({alerts.error}). This is an error, not an
+            all-clear.
+          </Callout>
+        ) : alerts.alerts?.length ? (
+          <ul className="flex flex-col gap-2">
+            {alerts.alerts.map((a: any) => (
+              <li
+                key={a.id}
+                className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`font-mono text-[10px] uppercase tracking-[0.08em] ${
+                      a.severity === "high"
+                        ? "text-[var(--destructive)]"
+                        : "text-[var(--warning)]"
+                    }`}
+                  >
+                    {a.severity} · {a.kind}
+                  </span>
+                  <code className="font-mono text-[11px] text-[var(--muted-foreground)]">
+                    {a.id}
+                  </code>
+                </div>
+                <p className="mt-1 text-[13px]">{a.message}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-[var(--muted-foreground)]">
+            Nothing stalled — {alerts.evaluated} series evaluated. The count is
+            here because &ldquo;no alerts&rdquo; and &ldquo;no series had enough
+            data to judge&rdquo; are different answers.
+          </p>
+        )}
+      </Collapse>
 
       <Collapse id="s1" head={<>
           Up next
