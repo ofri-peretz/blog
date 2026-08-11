@@ -182,14 +182,14 @@ export default function Terminal() {
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
           >
             ← control room
           </Link>
           <Refresh onClick={() => load(true)} at={at} busy={busy} />
         </div>
         <h1 className="text-[28px] font-semibold tracking-tight">Terminal</h1>
-        <p className="max-w-[72ch] text-[14px] text-[var(--color-ink-2)]">
+        <p className="max-w-[72ch] text-[14px] text-[var(--muted-foreground)]">
           Any series against any other, on one axis. Trend is measured on the{" "}
           <strong>rate of change</strong>, not the total — a cumulative metric climbs forever
           and would otherwise read as &ldquo;rising&rdquo; the month after it died.
@@ -197,10 +197,10 @@ export default function Terminal() {
       </header>
 
       {/* ── picker ─────────────────────────────────────────────────────────── */}
-      <section className="flex flex-col gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+      <section className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
         {groups.map((g) => (
           <div key={g} className="flex flex-wrap items-center gap-2">
-            <span className="w-20 shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+            <span className="w-20 shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
               {g}
             </span>
             {catalog
@@ -212,8 +212,8 @@ export default function Terminal() {
                   title={d.caveat ?? undefined}
                   className={`rounded-md border px-2 py-1 font-mono text-[11px] ${
                     ids.includes(d.id)
-                      ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                      : "border-[var(--color-line)] text-[var(--color-ink-2)] hover:border-[var(--color-accent)]"
+                      ? "border-[var(--primary)] text-[var(--primary)]"
+                      : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]"
                   }`}
                 >
                   {d.label}
@@ -222,7 +222,7 @@ export default function Terminal() {
           </div>
         ))}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="w-20 shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+          <span className="w-20 shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
             Ratios
           </span>
           {PRESET_RATIOS.map((r) => (
@@ -231,8 +231,8 @@ export default function Terminal() {
               onClick={() => toggle(r.id)}
               className={`rounded-md border px-2 py-1 font-mono text-[11px] ${
                 ids.includes(r.id)
-                  ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                  : "border-[var(--color-line)] text-[var(--color-ink-2)] hover:border-[var(--color-accent)]"
+                  ? "border-[var(--primary)] text-[var(--primary)]"
+                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]"
               }`}
             >
               {r.label}
@@ -240,7 +240,7 @@ export default function Terminal() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 border-t border-[var(--color-line)] pt-3">
+        <div className="flex flex-wrap items-center gap-4 border-t border-[var(--border)] pt-3">
           <Seg label="grain" value={grain} onChange={(v) => setGrain(v as Grain)} options={["day", "week", "month"]} />
           <Seg
             label="transform"
@@ -248,7 +248,7 @@ export default function Terminal() {
             onChange={(v) => setTransform(v as Transform)}
             options={["none", "delta", "rebase100"]}
           />
-          <label className="flex cursor-pointer items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+          <label className="flex cursor-pointer items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
             <input
               type="checkbox"
               checked={showEvents}
@@ -257,7 +257,7 @@ export default function Terminal() {
             events{events.length ? ` · ${events.length}` : ""}
           </label>
           {data?.asOf && (
-            <span className="font-mono text-[10px] text-[var(--color-ink-3)]">
+            <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
               data through {data.asOf}
               {grain !== "day" && (
                 // The current week/month is still accumulating, so its bucket
@@ -265,7 +265,7 @@ export default function Terminal() {
                 // cliff at the right edge. A terminal treats the live candle
                 // as partial; say so rather than let the last point read as a
                 // collapse.
-                <span className="text-[var(--color-warn)]">
+                <span className="text-[var(--warning)]">
                   {" "}
                   · final {grain} is partial
                 </span>
@@ -276,11 +276,11 @@ export default function Terminal() {
       </section>
 
       {/* ── chart ──────────────────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-3">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
         {chartSeries.length ? (
           <SeriesChart series={chartSeries} markers={markers} />
         ) : (
-          <p className="px-2 py-10 text-center text-[13px] text-[var(--color-ink-3)]">
+          <p className="px-2 py-10 text-center text-[13px] text-[var(--muted-foreground)]">
             {ids.length ? "no points for this selection" : "pick a series"}
           </p>
         )}
@@ -294,11 +294,11 @@ export default function Terminal() {
                 className="inline-block h-2 w-4 rounded-sm"
                 style={{
                   background:
-                    colourOf.get(s.id) ?? "var(--color-ink-3)",
+                    colourOf.get(s.id) ?? "var(--muted-foreground)",
                 }}
               />
-              <span className="text-[var(--color-ink-2)]">{s.label}</span>
-              <span className="text-[var(--color-ink)]">{num(s.last, 2)}</span>
+              <span className="text-[var(--muted-foreground)]">{s.label}</span>
+              <span className="text-[var(--foreground)]">{num(s.last, 2)}</span>
             </span>
           ))}
         </div>
@@ -306,23 +306,23 @@ export default function Terminal() {
 
       {/* ── detection ──────────────────────────────────────────────────────── */}
       <section className="grid gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+        <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
             Trend — on the rate of change
           </h2>
           {(data?.series ?? []).map((s) => (
             <div key={s.id} className="flex items-baseline justify-between gap-3 text-[13px]">
-              <span className="min-w-0 flex-1 truncate text-[var(--color-ink-2)]">{s.label}</span>
+              <span className="min-w-0 flex-1 truncate text-[var(--muted-foreground)]">{s.label}</span>
               {s.error ? (
-                <span className="font-mono text-[11px] text-[var(--color-accent)]">{s.error}</span>
+                <span className="font-mono text-[11px] text-[var(--primary)]">{s.error}</span>
               ) : s.trend?.insufficient ? (
-                <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+                <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                   {s.trend.insufficient}
                 </span>
               ) : (
                 <span className="flex items-center gap-2 font-mono text-[11px]">
                   <Dir d={s.trend?.direction ?? "flat"} />
-                  <span className="text-[var(--color-ink-3)]">
+                  <span className="text-[var(--muted-foreground)]">
                     τ={s.trend ? s.trend.tau.toFixed(2) : "—"} · p=
                     {s.trend ? s.trend.p.toFixed(3) : "—"} · n={s.trend?.n ?? 0}
                   </span>
@@ -331,37 +331,37 @@ export default function Terminal() {
             </div>
           ))}
           {(data?.series ?? []).some((s) => s.caveat) && (
-            <p className="mt-1 border-l-2 border-[var(--color-warn)] pl-2 text-[11px] text-[var(--color-ink-3)]">
+            <p className="mt-1 border-l-2 border-[var(--warning)] pl-2 text-[11px] text-[var(--muted-foreground)]">
               {(data?.series ?? []).find((s) => s.caveat)?.caveat}
             </p>
           )}
         </div>
 
-        <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+        <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
             Correlation — on daily change, never on totals
           </h2>
           {(data?.pairs ?? []).length ? (
             (data?.pairs ?? []).map((p) => (
               <div key={`${p.a}|${p.b}`} className="flex flex-col gap-0.5 text-[13px]">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="min-w-0 flex-1 truncate text-[var(--color-ink-2)]">
+                  <span className="min-w-0 flex-1 truncate text-[var(--muted-foreground)]">
                     {p.a} × {p.b}
                   </span>
-                  <span className="font-mono text-[11px] text-[var(--color-ink)]">
+                  <span className="font-mono text-[11px] text-[var(--foreground)]">
                     {p.correlation.insufficient ? "—" : `r=${p.correlation.r.toFixed(2)}`}
-                    <span className="text-[var(--color-ink-3)]"> · n={p.correlation.n}</span>
+                    <span className="text-[var(--muted-foreground)]"> · n={p.correlation.n}</span>
                   </span>
                 </div>
                 {p.divergence.diverging && (
-                  <span className="font-mono text-[11px] text-[var(--color-accent)]">
+                  <span className="font-mono text-[11px] text-[var(--primary)]">
                     ⚠ diverging — {p.divergence.note}
                   </span>
                 )}
               </div>
             ))
           ) : (
-            <p className="text-[12px] text-[var(--color-ink-3)]">pick two or more series</p>
+            <p className="text-[12px] text-[var(--muted-foreground)]">pick two or more series</p>
           )}
         </div>
       </section>
@@ -371,9 +371,9 @@ export default function Terminal() {
 
 function Dir({ d }: { d: "rising" | "falling" | "flat" }) {
   const map = {
-    rising: ["↑ rising", "var(--color-good)"],
-    falling: ["↓ falling", "var(--color-accent)"],
-    flat: ["→ flat", "var(--color-ink-3)"],
+    rising: ["↑ rising", "var(--success)"],
+    falling: ["↓ falling", "var(--primary)"],
+    flat: ["→ flat", "var(--muted-foreground)"],
   } as const;
   const [text, colour] = map[d];
   return <span style={{ color: colour }}>{text}</span>;
@@ -392,7 +392,7 @@ function Seg({
 }) {
   return (
     <span className="flex items-center gap-2">
-      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
         {label}
       </span>
       <span className="flex">
@@ -404,8 +404,8 @@ function Seg({
               i === 0 ? "rounded-l-md" : i === options.length - 1 ? "rounded-r-md border-l-0" : "border-l-0"
             } ${
               value === o
-                ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-panel)]"
-                : "border-[var(--color-line)] text-[var(--color-ink-2)] hover:border-[var(--color-accent)]"
+                ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--card)]"
+                : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]"
             }`}
           >
             {o}

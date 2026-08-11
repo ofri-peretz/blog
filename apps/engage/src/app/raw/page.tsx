@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Callout } from "@/components/ui/callout";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Raw data explorer.
@@ -81,12 +83,12 @@ export default function Raw() {
       <header className="flex flex-col gap-1">
         <Link
           href="/"
-          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
         >
           ← control room
         </Link>
         <h1 className="text-[28px] font-semibold tracking-tight">Raw data</h1>
-        <p className="max-w-[68ch] text-[14px] text-[var(--color-ink-2)]">
+        <p className="max-w-[68ch] text-[14px] text-[var(--muted-foreground)]">
           Every panel is an opinion about data — a median, a denominator, a
           classification. Those have been wrong here before. This is the path back
           to the bytes.
@@ -101,8 +103,8 @@ export default function Raw() {
             title={e.note}
             className={`rounded-md border px-2.5 py-1 font-mono text-[11px] ${
               sel === e.path
-                ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
-                : "border-[var(--color-line)] text-[var(--color-ink-2)] hover:border-[var(--color-accent)]"
+                ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]"
             }`}
           >
             {e.label}
@@ -115,22 +117,22 @@ export default function Raw() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="filter lines…"
-          className="min-w-[220px] flex-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-ground)] px-3 py-2 font-mono text-[12.5px]"
+          className="min-w-[220px] flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-[12.5px]"
         />
         <button
           onClick={() => load(sel)}
           disabled={busy}
-          className="rounded-lg border border-[var(--color-line)] px-3 py-2 font-mono text-[11px] disabled:opacity-40"
+          className="rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-[11px] disabled:opacity-40"
         >
           {busy ? "…" : "↻ refetch"}
         </button>
         <button
           onClick={() => navigator.clipboard?.writeText(text)}
-          className="rounded-lg border border-[var(--color-line)] px-3 py-2 font-mono text-[11px]"
+          className="rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-[11px]"
         >
           copy
         </button>
-        <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+        <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
           {ms != null && `${ms}ms · `}
           {(bytes / 1024).toFixed(1)}kb
           {q && ` · ${shown.split("\n").length} matching lines`}
@@ -138,15 +140,13 @@ export default function Raw() {
       </div>
 
       {err ? (
-        <p className="text-[13px] text-[var(--color-warn)]">{err}</p>
+        <Callout tone="danger" title="Endpoint did not answer">
+          {err}
+        </Callout>
       ) : busy ? (
-        <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="skeleton mb-2 h-4 w-full" />
-          ))}
-        </div>
+        <Skeleton count={10} className="h-4 w-full" label="Fetching the endpoint" />
       ) : (
-        <pre className="max-h-[70vh] overflow-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4 font-mono text-[12px] leading-relaxed">
+        <pre className="max-h-[70vh] overflow-auto rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 font-mono text-[12px] leading-relaxed">
           {shown || "(no matching lines)"}
         </pre>
       )}
