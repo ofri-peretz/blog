@@ -46,6 +46,8 @@ export interface Graph {
   /** Connected groups above a size floor — candidate communities to join. */
   clusters: { members: string[]; density: number }[];
   sampledArticles: number;
+  /** The ids actually crawled, so the sample itself is auditable. */
+  sampledIds?: number[];
   fetchedAt: string;
 }
 
@@ -72,6 +74,12 @@ export async function buildGraph(
 ): Promise<Graph> {
   const edges = new Map<string, Edge>();
   let sampled = 0;
+  // The ids, not just the count. `sampledArticles: 132` cannot be reproduced,
+  // audited, or diffed against a later run — you cannot tell a graph that
+  // sampled the wrong 132 articles from one that sampled the right ones. The
+  // `via` evidence on each edge is only checkable against the sample it came
+  // from.
+  const sampledIds: number[] = [];
 
   for (const [id, owner] of articles) {
     let comments: DevComment[];
@@ -82,6 +90,7 @@ export async function buildGraph(
     }
     if (!Array.isArray(comments)) continue;
     sampled++;
+    sampledIds.push(id);
     for (const c of flatten(comments)) {
       const from = c.user?.username;
       if (!from || from === owner) continue; // self-comments are not a tie
@@ -119,6 +128,7 @@ export async function buildGraph(
     edges: [...edges.values()],
     clusters: clusters([...nodeMap.values()], [...edges.values()]),
     sampledArticles: sampled,
+    sampledIds,
     fetchedAt: new Date().toISOString(),
   };
 }
@@ -182,23 +192,69 @@ async function defaultFetch(url: string) {
  */
 export async function expandTwoHop(
   seed: Graph,
-  opts: { topAuthors?: number; perAuthor?: number } = {},
+  opts: { topAuthors?: number; perAuthor?: number; ourArticles?: number } = {},
   fetchJson: (url: string) => Promise<any> = defaultFetch,
 ): Promise<[number, string][]> {
-  const { topAuthors = 25, perAuthor = 3 } = opts;
-  const targets = seed.nodes
-    .filter((n) => !n.us)
-    .sort((a, b) => b.degree - a.degree)
-    .slice(0, topAuthors);
+  const { topAuthors = 25, perAuthor = 3, ourArticles = 200 } = opts;
+
+  /*
+   * OUR OWN ARTICLES ARE ALWAYS SAMPLED, and are not subject to the top-N
+   * ranking.
+   *
+   * This used to read `.filter((n) => !n.us)`, which looks like a sensible
+   * "don't waste budget on ourselves" and is the one exclusion that breaks the
+   * thing this hop exists for. Every edge points at the OWNER of the article it
+   * was observed on, so never sampling our articles means no edge can ever
+   * point at us: our `in` is structurally 0, our `mutual` structurally empty,
+   * for any corpus, forever.
+   *
+   * Measured against the dev.to API on 2026-08-11: the graph had 0 edges to us
+   * and in=0, while 19 distinct authors had left 37 comments on our articles —
+   * and 11 of those 19 were ALREADY nodes in the graph, just never connected to
+   * us. The "ranked by who talked back" panel was ranking on a column that
+   * could only ever be zero.
+   *
+   * A larger budget than `perAuthor` because this is the whole inbound signal
+   * rather than one sample among 25.
+   */
+  const targets: { id: string; take: number }[] = [
+    { id: ME, take: ourArticles },
+    ...seed.nodes
+      .filter((n) => !n.us)
+      .sort((a, b) => b.degree - a.degree)
+      .slice(0, topAuthors)
+      .map((n) => ({ id: n.id, take: perAuthor })),
+  ];
 
   const extra: [number, string][] = [];
-  for (const n of targets) {
+  const seen = new Set<number>();
+  for (const t of targets) {
     try {
       const arts = await fetchJson(
-        `https://dev.to/api/articles?username=${encodeURIComponent(n.id)}&per_page=${perAuthor}`,
+        `https://dev.to/api/articles?username=${encodeURIComponent(t.id)}&per_page=${t.take}`,
       );
       if (!Array.isArray(arts)) continue;
-      for (const a of arts) if (a?.id) extra.push([a.id, n.id]);
+      for (const a of arts) {
+        if (!a?.id || seen.has(a.id)) continue;
+        /*
+         * For OUR articles, skip the ones with no comments.
+         *
+         * The list endpoint already returns `comments_count`, so an article
+         * with zero comments is a guaranteed-empty crawl request. Skipping
+         * them buys full history for FEWER requests than the 40-most-recent
+         * window cost: measured, a 40-article window saw 26 of the 37 comments
+         * on our articles, missing everything older — including a thread from
+         * February. Filtering by count covers all of them and still only pays
+         * for the ~14 articles that have anything on them.
+         *
+         * Not applied to other authors: `perAuthor` is a deliberate sampling
+         * budget there, not an attempt at completeness.
+         */
+        if (t.id === ME && typeof a.comments_count === "number" && a.comments_count === 0)
+          continue;
+        seen.add(a.id);
+        extra.push([a.id, t.id]);
+      }
     } catch {
       continue; // one unreachable author must not void the expansion
     }
