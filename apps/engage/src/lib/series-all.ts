@@ -15,5 +15,6 @@ import "server-only";
  */
 import "@/lib/series-posthog";
 import "@/lib/series-npm";
+import "@/lib/series-adoption";
 
 export * from "@/lib/series";
