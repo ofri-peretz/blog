@@ -3,7 +3,51 @@ import type { NextConfig } from "next";
 
 const monorepoRoot = path.join(__dirname, "..", "..");
 
+/**
+ * The PostHog PROJECT key, with a committed fallback.
+ *
+ * On 2026-08-02 this site stopped sending client-side analytics entirely — no
+ * $pageview, $autocapture, $pageleave, $web_vitals or visitor_classified for
+ * nine days. Nothing alerted, because server-side `/go/` tracking kept firing
+ * and the property never looked dead.
+ *
+ * The cause was asymmetry, not a code change. `NEXT_PUBLIC_*` is inlined at
+ * BUILD time, so when the key is absent from the build environment the client
+ * provider hits its `!POSTHOG_KEY` branch and never initialises — silently, by
+ * design, because that branch also serves local dev. Meanwhile the `/go/` route
+ * reads env at RUNTIME *and already carried this exact fallback literal*, so it
+ * carried on posting events. One key, two resolution paths, one of them with a
+ * safety net.
+ *
+ * Committing it is not a leak and not a new exposure: a `phc_` project key is
+ * write-only, designed to ship inside the browser bundle of every page, and the
+ * identical literal has been committed in `src/app/go/[...key]/route.ts` all
+ * along. It is NOT the `phx_` personal API key from footprint/.env — that one
+ * can READ the project and must never reach a client bundle.
+ *
+ * Setting NEXT_PUBLIC_POSTHOG_KEY in Vercel still overrides this, which is the
+ * right place for it and what makes rotation work. The fallback exists so a
+ * missing env var costs nothing instead of nine days.
+ */
+const POSTHOG_PROJECT_KEY =
+  process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() ||
+  "phc_vNTTgQeYr4iBQmQOJoyfoLwGWpNwRA2dcNoAAG5PjPz";
+
+if (!process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim()) {
+  // Loud at build time. The whole failure was that nothing ever said this.
+  console.warn(
+    "[blog] NEXT_PUBLIC_POSTHOG_KEY is not set in this build environment — " +
+      "falling back to the committed project key. Set it in Vercel so rotation works.",
+  );
+}
+
 const nextConfig: NextConfig = {
+  // Inlined into the client bundle, so the provider's key check passes even
+  // when the build environment forgot to supply one.
+  env: {
+    NEXT_PUBLIC_POSTHOG_KEY: POSTHOG_PROJECT_KEY,
+  },
+
   turbopack: {
     root: monorepoRoot,
   },
