@@ -3,12 +3,21 @@
 import { useEffect, useRef } from "react";
 import {
   createChart,
+  createSeriesMarkers,
   LineSeries,
   HistogramSeries,
   type IChartApi,
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
+
+export interface ChartMarker {
+  /** Same bucket-key vocabulary the series use. */
+  t: string;
+  label: string;
+  kind: "publish" | "adoption" | "engagement";
+  weight: 1 | 2 | 3;
+}
 
 export interface ChartSeries {
   id: string;
@@ -58,11 +67,19 @@ function toTime(key: string): UTCTimestamp {
  */
 export const PALETTE = ["#f4794a", "#0d9460", "#5b8def", "#c9a227", "#a259c4", "#39b8b0"];
 
+const MARKER_COLOUR: Record<string, string> = {
+  publish: "#5b8def",
+  adoption: "#0d9460",
+  engagement: "#8b847a",
+};
+
 export function SeriesChart({
   series,
+  markers = [],
   height = 340,
 }: {
   series: ChartSeries[];
+  markers?: ChartMarker[];
   height?: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -79,6 +96,8 @@ export function SeriesChart({
    */
   const latest = useRef(series);
   latest.current = series;
+  const latestMarkers = useRef(markers);
+  latestMarkers.current = markers;
 
   useEffect(() => {
     if (!box.current) return;
@@ -185,12 +204,57 @@ export function SeriesChart({
       drawn.current.push(api);
     });
 
+    // Markers hang off one series because lightweight-charts anchors them to a
+    // series' time scale. The first drawn one is the anchor; which one it is
+    // does not matter, since every series shares the axis.
+    const anchor = drawn.current[0];
+    const ms = latestMarkers.current;
+    if (anchor && ms.length) {
+      const byTime = new Map<number, ChartMarker[]>();
+      for (const m of ms) {
+        const t = toTime(m.t);
+        if (!Number.isFinite(t)) continue;
+        (byTime.get(t) ?? byTime.set(t, []).get(t)!).push(m);
+      }
+      // One marker per timestamp. Three articles on one day is one pin reading
+      // "3 events", not three pins fighting for the same pixel.
+      // Text is rationed. lightweight-charts draws every marker's label, so 81
+      // publishes over eight months rendered as a solid wall of overlapping
+      // strings across the bottom of the chart — every event labelled is the
+      // same as none of them labelled.
+      //
+      // So: the arrow is the event, and the label is reserved for the ones
+      // worth reading at a glance. A merge (weight 3) always gets its text; a
+      // publish only does when the whole chart is sparse enough to fit them.
+      const sparse = byTime.size <= 12;
+      createSeriesMarkers(
+        anchor,
+        [...byTime.entries()]
+          .sort((a, b) => a[0] - b[0])
+          .map(([time, group]) => {
+            const top = group.reduce((m, g) => (g.weight > m.weight ? g : m), group[0]);
+            const worthLabelling = top.weight >= 3 || sparse;
+            return {
+              time: time as UTCTimestamp,
+              position: "belowBar" as const,
+              color: MARKER_COLOUR[top.kind] ?? "#8b847a",
+              shape: "arrowUp" as const,
+              text: worthLabelling
+                ? group.length > 1
+                  ? `${top.label} +${group.length - 1}`
+                  : top.label
+                : "",
+            };
+          }),
+      );
+    }
+
     if (series.length) c.timeScale().fitContent();
   };
 
   useEffect(() => {
     draw.current();
-  }, [series]);
+  }, [series, markers]);
 
   return <div ref={box} className="w-full" />;
 }
