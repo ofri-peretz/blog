@@ -31,7 +31,7 @@ const monorepoRoot = path.join(__dirname, "..", "..");
  */
 const POSTHOG_PROJECT_KEY =
   process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() ||
-  "phc_vNTTgQeYr4iBQmQOJoyfoLwGWpNwRA2dcNoAAG5PjPz";
+  "phc_vNTTtpj4s6nXGJ5pnnXxHey6WBjHJWnytQ4Zv6HeDTT3";
 
 if (!process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim()) {
   // Loud at build time. The whole failure was that nothing ever said this.
