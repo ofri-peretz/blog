@@ -243,9 +243,21 @@ export interface Divergence {
 export function divergence(
   a: Point[],
   b: Point[],
-  opts: { recent?: number; baselineMin?: number } = {},
+  opts: {
+    recent?: number;
+    baselineMin?: number;
+    /**
+     * Per-side rate flags. A `ratio(a,b)` series is ALREADY a rate, and
+     * differencing it again yields a second derivative — "day-over-day change
+     * in the ratio" — which trends flat almost regardless of what the ratio is
+     * doing. Without these, any pair involving a ratio could effectively never
+     * report a divergence.
+     */
+    isRateA?: boolean;
+    isRateB?: boolean;
+  } = {},
 ): Divergence {
-  const { recent = 21, baselineMin = 0.3 } = opts;
+  const { recent = 21, baselineMin = 0.3, isRateA = false, isRateB = false } = opts;
 
   // The baseline is measured on the data BEFORE the recent window, not on the
   // whole series. Measuring it on everything is self-defeating: a genuine
@@ -255,9 +267,12 @@ export function divergence(
   // was silently discarded.
   const priorA = a.slice(0, Math.max(0, a.length - recent));
   const priorB = b.slice(0, Math.max(0, b.length - recent));
-  const base = correlate(priorA, priorB);
-  const ra = trend(a.slice(-recent));
-  const rb = trend(b.slice(-recent));
+  // correlate() differences unless BOTH sides are rates — mixing a rate with a
+  // cumulative means the cumulative one still has to be differenced to be
+  // comparable, which is what isRate=false does.
+  const base = correlate(priorA, priorB, { isRate: isRateA && isRateB });
+  const ra = trend(a.slice(-recent), { isRate: isRateA });
+  const rb = trend(b.slice(-recent), { isRate: isRateB });
 
   const opposed =
     (ra.direction === "rising" && rb.direction !== "rising") ||

@@ -70,6 +70,23 @@ function resolve(id: string, all: Map<string, Point[]>): Point[] | null {
 const kindOf = (id: string): "cumulative" | "rate" =>
   RATIO.test(id.trim()) ? "rate" : (definition(id)?.kind ?? "cumulative");
 
+/**
+ * The staleness budget for any id, including computed ones.
+ *
+ * `definition()` returns undefined for `ratio(a,b)` because it is not in the
+ * catalog, so keying staleness off it reported `stale: false` for every ratio
+ * no matter how old the data was. A ratio is exactly as stale as its stalest
+ * input.
+ */
+function staleAfterHours(id: string): number | null {
+  const m = RATIO.exec(id.trim());
+  if (!m) return definition(id)?.staleAfterHours ?? null;
+  const a = definition(m[1].trim())?.staleAfterHours;
+  const b = definition(m[2].trim())?.staleAfterHours;
+  if (a == null && b == null) return null;
+  return Math.max(a ?? 0, b ?? 0);
+}
+
 const labelOf = (id: string): string => {
   const m = RATIO.exec(id.trim());
   if (!m) return definition(id)?.label ?? id;
@@ -79,7 +96,15 @@ const labelOf = (id: string): string => {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const idsParam = url.searchParams.get("ids");
-  const grain = (url.searchParams.get("grain") as Grain) ?? "day";
+  // An unvalidated grain is not a harmless typo: `grain=year` falls through
+  // bucket()'s else-branch and silently produces MONTHLY buckets labelled as
+  // whatever was asked for.
+  const grainParam = url.searchParams.get("grain") ?? "day";
+  const grain: Grain = (["day", "week", "month"] as const).includes(
+    grainParam as Grain,
+  )
+    ? (grainParam as Grain)
+    : "day";
   const transform = url.searchParams.get("transform");
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
@@ -127,11 +152,14 @@ export async function GET(req: Request) {
       trend: t,
       source: "supabase:creator_daily_metrics",
       asOf,
-      stale:
-        asOf && def
-          ? Date.now() - new Date(asOf + "T00:00:00Z").getTime() >
-            def.staleAfterHours * 3_600_000
-          : false,
+      stale: (() => {
+        const budget = staleAfterHours(id);
+        if (!asOf || budget == null) return false;
+        return (
+          Date.now() - new Date(asOf + "T00:00:00Z").getTime() >
+          budget * 3_600_000
+        );
+      })(),
     };
   });
 
@@ -143,9 +171,10 @@ export async function GET(req: Request) {
     for (let j = i + 1; j < usable.length; j++) {
       const a = resolve(usable[i], all)!.filter((p) => (!from || p.t >= from) && (!to || p.t <= to));
       const b = resolve(usable[j], all)!.filter((p) => (!from || p.t >= from) && (!to || p.t <= to));
-      const isRate = kindOf(usable[i]) === "rate" && kindOf(usable[j]) === "rate";
-      const c = correlate(a, b, { isRate });
-      const d = divergence(a, b);
+      const isRateA = kindOf(usable[i]) === "rate";
+      const isRateB = kindOf(usable[j]) === "rate";
+      const c = correlate(a, b, { isRate: isRateA && isRateB });
+      const d = divergence(a, b, { isRateA, isRateB });
       pairs.push({ a: usable[i], b: usable[j], correlation: c, divergence: d });
     }
   }

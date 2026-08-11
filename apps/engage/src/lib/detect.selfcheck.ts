@@ -121,7 +121,27 @@ const cumulative = (gains: number[]): Point[] => {
   assert.equal(divergence(unrelated, stalls).diverging, false);
 }
 
-// ── 10. diff() is the plain first difference ──────────────────────────────────
+// ── 10. A RATIO side must not be differenced twice ────────────────────────────
+{
+  // A ratio that is genuinely climbing, paired with one that is flat. Both are
+  // already rates. Differencing them again yields a second derivative that
+  // trends flat regardless, so without per-side isRate flags this pair could
+  // never report a divergence.
+  const shared = Array.from({ length: 39 }, (_, i) => 0.05 + ((i * 3) % 7) / 1000);
+  const climbing = series([...shared, ...Array.from({ length: 21 }, (_, i) => 0.06 + i / 500)]);
+  const flatRatio = series([...shared, ...Array(21).fill(0.055)]);
+
+  const withFlags = divergence(climbing, flatRatio, { isRateA: true, isRateB: true });
+  assert.equal(withFlags.recentA, "rising", "a rising ratio must read as rising when isRate is set");
+  assert.equal(withFlags.diverging, true, `expected divergence, got: ${withFlags.note}`);
+
+  // And without the flags it is silently missed — the assertion that keeps the
+  // per-side options from being "simplified" away.
+  const without = divergence(climbing, flatRatio);
+  assert.notEqual(without.recentA, "rising", "sanity: double-differencing hides the rise");
+}
+
+// ── 11. diff() is the plain first difference ──────────────────────────────────
 assert.deepEqual(diff([1, 3, 6, 10]), [2, 3, 4]);
 
 console.log("detect.ts self-check: all assertions passed");
