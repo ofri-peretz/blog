@@ -128,14 +128,18 @@ export async function GET(req: Request) {
     const kind = kindOf(id);
     // Window first, then bucket, then transform. Any other order changes the
     // numbers: rebasing before windowing anchors to a point outside the view.
-    let pts = raw.filter((p) => (!from || p.t >= from) && (!to || p.t <= to));
-    pts = bucket(pts, grain, kind);
+    const bucketed = bucket(
+      raw.filter((p) => (!from || p.t >= from) && (!to || p.t <= to)),
+      grain,
+      kind,
+    );
+    let pts = bucketed;
     if (transform === "delta") pts = toDelta(pts);
     else if (transform === "rebase100") pts = rebase100(pts);
 
     // Detection runs on the WINDOWED, BUCKETED series but before rebasing —
     // rebasing is a display concern and must not change whether a trend exists.
-    const detectOn = transform === "delta" ? pts : bucket(raw.filter((p) => (!from || p.t >= from) && (!to || p.t <= to)), grain, kind);
+    const detectOn = transform === "delta" ? pts : bucketed;
     const t = trend(detectOn, { isRate: kind === "rate" || transform === "delta" });
 
     const def = definition(id);

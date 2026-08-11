@@ -77,7 +77,15 @@ async function sb(path: string): Promise<any[]> {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
     cache: "no-store",
   });
-  if (!r.ok) return [];
+  // A revoked key, an RLS change and a Supabase outage all land here, and all
+  // three are indistinguishable from an empty table downstream: the route would
+  // answer 200 with "insufficient data" and nothing anywhere would say why.
+  if (!r.ok) {
+    console.error(
+      `[series] supabase ${r.status} for ${path}: ${(await r.text()).slice(0, 200)}`,
+    );
+    return [];
+  }
   const j = await r.json();
   return Array.isArray(j) ? j : [];
 }
