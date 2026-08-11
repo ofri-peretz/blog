@@ -3,33 +3,37 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cachedFetch } from "@/lib/client-cache";
+import { Callout } from "@/components/ui/callout";
+import { RankedBarList, type RankedBarRow } from "@/components/ui/meter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Colour a measured lift, but only once the cell has enough samples. */
-function liftTone(lift: number | null, trusted: boolean) {
-  if (lift == null || !trusted) return "text-[var(--color-ink-3)]";
-  if (lift >= 2) return "text-[var(--color-good)]";
-  if (lift < 0.8) return "text-[var(--color-warn)]";
-  return "text-[var(--color-ink-2)]";
-}
+/**
+ * A measured slot as a `<RankedBarList>` row.
+ *
+ * The hand-rolled `<Bar>` drew an untrusted slot as a 45%-opacity fill — a
+ * dimmer version of a real value, which is the one thing an unmeasured cell
+ * must never look like. `variant: "hatch"` is the DS's vocabulary for exactly
+ * this: "no measurement was taken; this is not a small number".
+ *
+ * `max` is 4× — the scale ceiling the old component hardcoded inside its own
+ * percentage maths, where nothing named it.
+ */
+const LIFT_CEILING = 4;
 
-function Bar({ lift, trusted }: { lift: number | null; trusted: boolean }) {
-  const pct = lift == null ? 0 : Math.min(100, (lift / 4) * 100);
-  return (
-    <div className="h-1.5 w-full rounded bg-[var(--color-line)]">
-      <div
-        className="h-1.5 rounded"
-        style={{
-          width: `${pct}%`,
-          background: trusted
-            ? "var(--color-good)"
-            : "var(--color-ink-3)",
-          opacity: trusted ? 1 : 0.45,
-        }}
-      />
-    </div>
-  );
+function liftRow(s: any): RankedBarRow {
+  const measured = s.lift != null && s.trusted;
+  return {
+    key: s.label,
+    label: s.label,
+    value: measured ? s.lift : null,
+    variant: measured ? "default" : "hatch",
+    tone: !measured ? "neutral" : s.lift >= 2 ? "positive" : s.lift < 0.8 ? "negative" : "neutral",
+    display: s.lift != null ? `${s.lift}×` : undefined,
+    note: `n=${s.n}`,
+    state: measured ? undefined : { notCounted: !s.trusted },
+  };
 }
 
 /**
@@ -53,11 +57,7 @@ export default function Calendar() {
   if (!d)
     return (
       <main className="mx-auto max-w-5xl px-5 py-10">
-        <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="skeleton mb-2 h-9 w-full" />
-          ))}
-        </div>
+        <Skeleton variant="meter" count={7} label="Loading the publishing calendar" />
       </main>
     );
 
@@ -66,14 +66,14 @@ export default function Calendar() {
       <header className="flex flex-col gap-1">
         <Link
           href="/"
-          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
         >
           ← control room
         </Link>
         <h1 className="text-[28px] font-semibold tracking-tight">
           Publishing calendar
         </h1>
-        <p className="max-w-[72ch] text-[14px] text-[var(--color-ink-2)]">
+        <p className="max-w-[72ch] text-[14px] text-[var(--muted-foreground)]">
           When each queued article ships, and whether that slot is one we have
           evidence for.
         </p>
@@ -81,7 +81,7 @@ export default function Calendar() {
 
       {/* Upcoming */}
       <section className="flex flex-col gap-3">
-        <h2 className="border-b border-[var(--color-line)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+        <h2 className="border-b border-[var(--border)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
           Next {d.calendar?.length ?? 0} slots · every {d.schedule?.minDays} days
         </h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -90,9 +90,9 @@ export default function Calendar() {
               key={c.at}
               className={`rounded-xl border p-3 ${
                 i === 0
-                  ? "border-[var(--color-accent)]"
-                  : "border-[var(--color-line)]"
-              } bg-[var(--color-panel)]`}
+                  ? "border-[var(--primary)]"
+                  : "border-[var(--border)]"
+              } bg-[var(--card)]`}
             >
               <div className="flex items-baseline justify-between gap-2">
                 <span className="font-mono text-[12.5px]">
@@ -102,24 +102,24 @@ export default function Calendar() {
                     day: "numeric",
                   })}
                 </span>
-                <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+                <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                   {String(c.hourUtc).padStart(2, "0")}:00 UTC
                 </span>
               </div>
-              <p className="mt-1.5 min-h-[2.4em] text-[13px] text-[var(--color-ink-2)]">
+              <p className="mt-1.5 min-h-[2.4em] text-[13px] text-[var(--muted-foreground)]">
                 {c.article?.title ?? (
-                  <span className="text-[var(--color-warn)]">
+                  <span className="text-[var(--warning)]">
                     nothing queued for this slot
                   </span>
                 )}
               </p>
               <div className="mt-2 font-mono text-[11px]">
                 {c.lift != null ? (
-                  <span className="text-[var(--color-good)]">
+                  <span className="text-[var(--success)]">
                     {c.lift}× median · n={c.n}
                   </span>
                 ) : (
-                  <span className="text-[var(--color-ink-3)]">
+                  <span className="text-[var(--muted-foreground)]">
                     no trusted measurement (n={c.n})
                   </span>
                 )}
@@ -131,28 +131,28 @@ export default function Calendar() {
 
       {/* Recommendations */}
       <section className="flex flex-col gap-3">
-        <h2 className="border-b border-[var(--color-line)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+        <h2 className="border-b border-[var(--border)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
           What the data says to change
         </h2>
         <div className="flex flex-col gap-2">
           {(d.recommendations ?? []).map((r: any) => (
             <div
               key={r.title}
-              className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4"
+              className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
             >
               <div className="flex flex-wrap items-baseline gap-2">
                 <h3 className="text-[14.5px] font-semibold">{r.title}</h3>
                 <span
                   className={`rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${
                     r.confidence.startsWith("moderate")
-                      ? "border-[var(--color-good)] text-[var(--color-good)]"
-                      : "border-[var(--color-warn)] text-[var(--color-warn)]"
+                      ? "border-[var(--success)] text-[var(--success)]"
+                      : "border-[var(--warning)] text-[var(--warning)]"
                   }`}
                 >
                   {r.confidence}
                 </span>
               </div>
-              <p className="mt-1.5 max-w-[80ch] text-[13.5px] leading-relaxed text-[var(--color-ink-2)]">
+              <p className="mt-1.5 max-w-[80ch] text-[13.5px] leading-relaxed text-[var(--muted-foreground)]">
                 {r.detail}
               </p>
             </div>
@@ -162,56 +162,28 @@ export default function Calendar() {
 
       {/* Measured slots */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-3">
-          <h2 className="border-b border-[var(--color-line)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
-            By weekday (UTC)
-          </h2>
-          <div className="flex flex-col gap-2">
-            {(d.byDow ?? []).map((s: any) => (
-              <div key={s.label} className="flex items-center gap-3">
-                <span className="w-9 font-mono text-[12px]">{s.label}</span>
-                <div className="flex-1">
-                  <Bar lift={s.lift} trusted={s.trusted} />
-                </div>
-                <span
-                  className={`w-24 text-right font-mono text-[11.5px] ${liftTone(s.lift, s.trusted)}`}
-                >
-                  {s.lift != null ? `${s.lift}×` : "—"} n={s.n}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <h2 className="border-b border-[var(--color-line)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
-            By hour (UTC)
-          </h2>
-          <div className="flex flex-col gap-2">
-            {(d.byHour ?? []).map((s: any) => (
-              <div key={s.label} className="flex items-center gap-3">
-                <span className="w-14 font-mono text-[12px]">{s.label}</span>
-                <div className="flex-1">
-                  <Bar lift={s.lift} trusted={s.trusted} />
-                </div>
-                <span
-                  className={`w-24 text-right font-mono text-[11.5px] ${liftTone(s.lift, s.trusted)}`}
-                >
-                  {s.lift != null ? `${s.lift}×` : "—"} n={s.n}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <RankedBarList
+          caption="By weekday (UTC)"
+          order="given"
+          size="sm"
+          max={LIFT_CEILING}
+          rows={(d.byDow ?? []).map(liftRow)}
+        />
+        <RankedBarList
+          caption="By hour (UTC)"
+          order="given"
+          size="sm"
+          max={LIFT_CEILING}
+          rows={(d.byHour ?? []).map(liftRow)}
+        />
       </section>
 
-      <p className="max-w-[80ch] rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4 text-[12.5px] leading-relaxed text-[var(--color-ink-3)]">
-        <b className="text-[var(--color-ink-2)]">Method.</b> {d.caveat} Base rate{" "}
-        {d.base} views/day across {d.counts?.solo} solo publishes ({d.counts?.burst}{" "}
-        of {d.counts?.total} articles shipped in bursts and are excluded — they
-        compete with each other and are a different regime from the current
-        cadence).
-      </p>
+      <Callout tone="note" title="Method" className="max-w-[80ch]">
+        {d.caveat} Base rate {d.base} views/day across {d.counts?.solo} solo
+        publishes ({d.counts?.burst} of {d.counts?.total} articles shipped in
+        bursts and are excluded — they compete with each other and are a
+        different regime from the current cadence).
+      </Callout>
     </main>
   );
 }
