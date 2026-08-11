@@ -91,8 +91,18 @@ function adoption(): Event[] {
 
   const hist = join(ADOPTION, "history.jsonl");
   if (existsSync(hist)) {
+    let lines: string[] = [];
     try {
-      for (const line of readFileSync(hist, "utf8").split("\n").filter(Boolean)) {
+      lines = readFileSync(hist, "utf8").split("\n").filter(Boolean);
+    } catch {
+      lines = [];
+    }
+    for (const line of lines) {
+      // Per line, not per file. Wrapping the whole loop meant one truncated
+      // append — the shape a crashed write actually leaves behind — discarded
+      // every transition after it, which is the opposite of what this guard
+      // was written to do.
+      try {
         const e = JSON.parse(line);
         // Merges already came from repos.json; re-adding them here would
         // double-draw the same marker.
@@ -104,9 +114,9 @@ function adoption(): Event[] {
           href: `https://github.com/${e.slug}`,
           weight: 1,
         });
+      } catch {
+        /* skip this line only */
       }
-    } catch {
-      /* one bad line must not hide the rest */
     }
   }
   return out;
@@ -116,18 +126,18 @@ function adoption(): Event[] {
 function engagement(): Event[] {
   const db = join(FOOTPRINT, "engagement", "engage.db");
   if (!existsSync(db)) return [];
+  // Imported lazily: node:sqlite is unavailable in some runtimes and a missing
+  // binding must not 500 the whole endpoint.
+  let conn: InstanceType<typeof import("node:sqlite").DatabaseSync> | null = null;
   try {
-    // Imported lazily: node:sqlite is unavailable in some runtimes and a
-    // missing binding must not 500 the whole endpoint.
     const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite");
-    const conn = new DatabaseSync(db, { readOnly: true });
+    conn = new DatabaseSync(db, { readOnly: true });
     const rows = conn
       .prepare(
         `SELECT substr(at,1,10) AS day, COUNT(*) AS n
            FROM actions GROUP BY day ORDER BY day`,
       )
       .all() as { day: string; n: number }[];
-    conn.close();
     return rows.map((r) => ({
       t: r.day,
       kind: "engagement" as const,
@@ -136,6 +146,15 @@ function engagement(): Event[] {
     }));
   } catch {
     return [];
+  } finally {
+    // close() only ran on the happy path before. A schema mismatch or a locked
+    // database threw past it and leaked the handle on every failed request,
+    // which in a long-lived server is a slow bleed rather than a visible bug.
+    try {
+      conn?.close();
+    } catch {
+      /* already closed or never opened */
+    }
   }
 }
 
