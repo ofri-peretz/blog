@@ -152,6 +152,13 @@ export function SeriesChart({
     const peak = (pts: { v: number }[]) =>
       pts.reduce((m, p) => Math.max(m, Math.abs(p.v)), 0);
     const biggest = Math.max(...series.map((s) => peak(s.points)), 0);
+    const needsLeft = series.some(
+      (s) => biggest > 0 && peak(s.points) > 0 && peak(s.points) < biggest / 100,
+    );
+    // Set every draw, not only when it becomes true: turning it on and never
+    // off leaves an empty left axis floating after the small-magnitude series
+    // is removed, until something recreates the chart.
+    c.priceScale("left").applyOptions({ visible: needsLeft });
 
     series.forEach((s, i) => {
       const colour = PALETTE[i % PALETTE.length];
@@ -161,7 +168,6 @@ export function SeriesChart({
       const api = s.asBars
         ? c.addSeries(HistogramSeries, opts)
         : c.addSeries(LineSeries, { ...opts, lineWidth: 2, lastValueVisible: true });
-      if (scaleId === "left") c.priceScale("left").applyOptions({ visible: true });
 
       // Sort and de-duplicate: lightweight-charts throws on unordered or
       // repeated timestamps, and a month bucket can repeat a key if the window
