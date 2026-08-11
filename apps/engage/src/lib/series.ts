@@ -85,10 +85,74 @@ export const CATALOG: SeriesDef[] = [
   },
 ];
 
-const byId = new Map(CATALOG.map((d) => [d.id, d]));
+let byId = new Map(CATALOG.map((d) => [d.id, d]));
 export const definition = (id: string): SeriesDef | undefined => byId.get(id);
 
-async function sb(path: string): Promise<any[]> {
+/**
+ * Add catalog entries from a source module.
+ *
+ * Sources register themselves rather than being listed here, because the
+ * alternative is a circular import: a source needs `SeriesDef` and
+ * `registerLoader` from this file, so this file cannot import the source back.
+ * Import the barrel (`series-all.ts`) rather than this module directly, or the
+ * catalog you read will be whichever subset happened to be loaded.
+ *
+ * Registration is IDEMPOTENT, which is not a nicety: Next re-evaluates modules
+ * on hot reload, so a naive "throw on duplicate" guard turns the first edit to
+ * any source file into a 500 on every subsequent request until the server is
+ * restarted. Re-registering the same id from the same source replaces it.
+ *
+ * Two DIFFERENT sources claiming one id still throws. That is not a hot-reload
+ * artifact — it is two different numbers under one label, with the winner
+ * decided by module evaluation order.
+ */
+export function registerSeries(defs: SeriesDef[]): void {
+  for (const d of defs) {
+    const existing = byId.get(d.id);
+    if (existing && existing.source !== d.source)
+      throw new Error(
+        `[series] duplicate catalog id "${d.id}" — claimed by both ${existing.source} and ${d.source}`,
+      );
+    if (existing) {
+      CATALOG[CATALOG.indexOf(existing)] = d;
+    } else {
+      CATALOG.push(d);
+    }
+  }
+  byId = new Map(CATALOG.map((d) => [d.id, d]));
+}
+
+/**
+ * Page through a PostgREST collection until it is exhausted.
+ *
+ * PostgREST enforces a server-side max rows (1,000 on this project) and silently
+ * ignores a larger `limit=`. Measured: a 36-package x 90-day query asking for
+ * 10,000 rows returned 1,000 — the earliest ~28 days — and the terminal charted
+ * June numbers under an August label. Nothing in the response says it was cut;
+ * the giveaway was `npm.downloads.total` equalling `npm.downloads.excl_devkit`,
+ * because the devkit's rows fell beyond the cut.
+ *
+ * `order=` in the caller's path is what makes paging deterministic. Without a
+ * stable sort, PostgREST may return overlapping or missing rows across pages.
+ */
+export async function sbPaged(path: string, pageSize = 1000): Promise<any[]> {
+  const out: any[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const sep = path.includes("?") ? "&" : "?";
+    const page = await sb(`${path}${sep}offset=${offset}&limit=${pageSize}`);
+    out.push(...page);
+    if (page.length < pageSize) return out;
+    // A runaway guard, not an expected exit: 50k rows is far beyond any window
+    // this app charts, so reaching it means the filter is wrong.
+    if (out.length >= 50_000) {
+      console.error(`[series] sbPaged stopped at ${out.length} rows for ${path}`);
+      return out;
+    }
+  }
+}
+
+/** Shared by every Supabase-backed source module. */
+export async function sb(path: string): Promise<any[]> {
   const url = secret("SUPABASE_URL");
   const key = secret("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) return [];
@@ -184,11 +248,17 @@ const SOURCE_COLUMN: Record<string, [string, string]> = {
  */
 export type Loader = () => Promise<Map<string, Point[]>>;
 
-const LOADERS: Loader[] = [loadCreatorDaily];
+/**
+ * Keyed by name, for the same hot-reload reason as `registerSeries`: an array
+ * would accumulate a fresh closure on every module re-evaluation, so after
+ * three edits the PostHog loader runs three times per request — triple the
+ * upstream queries, for identical results.
+ */
+const LOADERS = new Map<string, Loader>([["supabase:creator_daily", loadCreatorDaily]]);
 
 /** Register an additional upstream. Called at module load by each source file. */
-export function registerLoader(l: Loader): void {
-  LOADERS.push(l);
+export function registerLoader(name: string, l: Loader): void {
+  LOADERS.set(name, l);
 }
 
 /** The seven Supabase series — ONE round trip, pivoted here. */
@@ -228,15 +298,16 @@ export async function loadAll(): Promise<{
   asOfById: Map<string, string | null>;
   asOf: string | null;
 }> {
-  const results = await Promise.allSettled(LOADERS.map((l) => l()));
+  const names = [...LOADERS.keys()];
+  const results = await Promise.allSettled([...LOADERS.values()].map((l) => l()));
   const out = new Map<string, Point[]>();
-  for (const r of results) {
+  results.forEach((r, i) => {
     if (r.status !== "fulfilled") {
-      console.error("[series] loader failed:", r.reason);
-      continue;
+      console.error(`[series] loader "${names[i]}" failed:`, r.reason);
+      return;
     }
     for (const [id, pts] of r.value) out.set(id, pts);
-  }
+  });
 
   const asOfById = new Map<string, string | null>();
   let asOf: string | null = null;

@@ -10,7 +10,7 @@ import {
   type Grain,
   type Point,
   type SeriesDef,
-} from "@/lib/series";
+} from "@/lib/series-all";
 import { trend, correlate, divergence } from "@/lib/detect";
 
 export const dynamic = "force-dynamic";

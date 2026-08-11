@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "engage",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["exec", "--workspace", "engage", "--", "next", "dev", "apps/engage", "-p", "7778"],
+      "port": 7778,
+      "autoPort": false
+    }
+  ]
+}
