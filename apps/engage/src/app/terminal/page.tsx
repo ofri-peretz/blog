@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { cachedFetch, cachedAt } from "@/lib/client-cache";
 import { Refresh } from "@/components/panels";
-import { SeriesChart, PALETTE, type ChartSeries } from "@/components/series-chart";
+import {
+  SeriesChart,
+  PALETTE,
+  type ChartSeries,
+  type ChartMarker,
+} from "@/components/series-chart";
 
 /**
  * The terminal.
@@ -76,12 +81,45 @@ export default function Terminal() {
   );
   const [at, setAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [events, setEvents] = useState<ChartMarker[]>([]);
+  const [showEvents, setShowEvents] = useState(true);
 
   useEffect(() => {
     cachedFetch<{ catalog: Def[] }>("series:catalog", "/api/series")
       .then((j) => setCatalog(j.catalog ?? []))
       .catch(() => setCatalog([]));
+    cachedFetch<{ events: ChartMarker[] }>("events", "/api/events")
+      .then((j) => setEvents(j.events ?? []))
+      .catch(() => setEvents([]));
   }, []);
+
+  /**
+   * Markers are bucketed to match the series.
+   *
+   * A daily event on a weekly chart has no bucket to sit in, so it would be
+   * dropped or land on the wrong bar. Rounding the event to the same key the
+   * series uses puts "the article shipped" against the week its numbers moved.
+   */
+  const markers: ChartMarker[] = useMemo(() => {
+    if (!showEvents) return [];
+    if (grain === "day") return events;
+    return events.map((e) => {
+      if (grain === "month") return { ...e, t: e.t.slice(0, 7) };
+      const d = new Date(e.t + "T00:00:00Z");
+      const day = (d.getUTCDay() + 6) % 7;
+      d.setUTCDate(d.getUTCDate() - day + 3);
+      const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+      const week =
+        1 +
+        Math.round(
+          ((d.getTime() - jan4.getTime()) / 86_400_000 -
+            3 +
+            ((jan4.getUTCDay() + 6) % 7)) /
+            7,
+        );
+      return { ...e, t: `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}` };
+    });
+  }, [events, grain, showEvents]);
 
   const url = useMemo(
     () =>
@@ -210,6 +248,14 @@ export default function Terminal() {
             onChange={(v) => setTransform(v as Transform)}
             options={["none", "delta", "rebase100"]}
           />
+          <label className="flex cursor-pointer items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+            <input
+              type="checkbox"
+              checked={showEvents}
+              onChange={(e) => setShowEvents(e.target.checked)}
+            />
+            events{events.length ? ` · ${events.length}` : ""}
+          </label>
           {data?.asOf && (
             <span className="font-mono text-[10px] text-[var(--color-ink-3)]">
               data through {data.asOf}
@@ -232,7 +278,7 @@ export default function Terminal() {
       {/* ── chart ──────────────────────────────────────────────────────────── */}
       <section className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-3">
         {chartSeries.length ? (
-          <SeriesChart series={chartSeries} />
+          <SeriesChart series={chartSeries} markers={markers} />
         ) : (
           <p className="px-2 py-10 text-center text-[13px] text-[var(--color-ink-3)]">
             {ids.length ? "no points for this selection" : "pick a series"}
