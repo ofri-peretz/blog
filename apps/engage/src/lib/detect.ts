@@ -188,9 +188,9 @@ function pearson(a: number[], b: number[]): number {
 export function correlate(
   a: Point[],
   b: Point[],
-  opts: { isRate?: boolean; minPoints?: number } = {},
+  opts: { isRateA?: boolean; isRateB?: boolean; minPoints?: number } = {},
 ): Correlation {
-  const { isRate = false, minPoints = 10 } = opts;
+  const { isRateA = false, isRateB = false, minPoints = 10 } = opts;
   const mb = new Map(b.map((p) => [p.t, p.v]));
   const ts: string[] = [];
   const av: number[] = [];
@@ -204,13 +204,22 @@ export function correlate(
     bv.push(other);
   }
 
-  const x = isRate ? av : diff(av);
-  const y = isRate ? bv : diff(bv);
-  const n = Math.min(x.length, y.length);
+  const x = isRateA ? av : diff(av);
+  const y = isRateB ? bv : diff(bv);
+
+  // Differencing shortens a side by one AND shifts what each index means: a
+  // differenced value at index i is the change into ts[i+1], while an
+  // undifferenced one at index i is the level at ts[i]. Zipping them as-is
+  // compares a change to the level of the bucket BEFORE it. Only the mixed
+  // case needs the correction; when both sides match they are already aligned.
+  const [xs, ys] =
+    isRateA === isRateB ? [x, y] : isRateA ? [x.slice(1), y] : [x, y.slice(1)];
+
+  const n = Math.min(xs.length, ys.length);
   if (n < minPoints)
     return { r: 0, p: 1, n, insufficient: `needs ${minPoints} overlapping points, has ${n}` };
 
-  const r = pearson(x.slice(0, n), y.slice(0, n));
+  const r = pearson(xs.slice(0, n), ys.slice(0, n));
   // t = r*sqrt((n-2)/(1-r²)); |r| = 1 would divide by zero.
   const denom = 1 - r * r;
   const p =
@@ -270,7 +279,7 @@ export function divergence(
   // correlate() differences unless BOTH sides are rates — mixing a rate with a
   // cumulative means the cumulative one still has to be differenced to be
   // comparable, which is what isRate=false does.
-  const base = correlate(priorA, priorB, { isRate: isRateA && isRateB });
+  const base = correlate(priorA, priorB, { isRateA, isRateB });
   const ra = trend(a.slice(-recent), { isRate: isRateA });
   const rb = trend(b.slice(-recent), { isRate: isRateB });
 

@@ -173,7 +173,7 @@ export async function GET(req: Request) {
       const b = resolve(usable[j], all)!.filter((p) => (!from || p.t >= from) && (!to || p.t <= to));
       const isRateA = kindOf(usable[i]) === "rate";
       const isRateB = kindOf(usable[j]) === "rate";
-      const c = correlate(a, b, { isRate: isRateA && isRateB });
+      const c = correlate(a, b, { isRateA, isRateB });
       const d = divergence(a, b, { isRateA, isRateB });
       pairs.push({ a: usable[i], b: usable[j], correlation: c, divergence: d });
     }

@@ -73,7 +73,7 @@ const cumulative = (gains: number[]): Point[] => {
   // The naive level-based version is the bug we are avoiding; assert it really
   // does produce the near-perfect correlation, so this test fails loudly if
   // someone "simplifies" correlate() back to operating on levels.
-  const naive = correlate(a, b, { isRate: true });
+  const naive = correlate(a, b, { isRateA: true, isRateB: true });
   assert.ok(naive.r > 0.95, `sanity: level correlation is spurious-high, got ${naive.r}`);
 }
 
@@ -141,7 +141,29 @@ const cumulative = (gains: number[]): Point[] => {
   assert.notEqual(without.recentA, "rising", "sanity: double-differencing hides the rise");
 }
 
-// ── 11. diff() is the plain first difference ──────────────────────────────────
+// ── 11. A MIXED pair (one rate, one cumulative) stays time-aligned ────────────
+{
+  // A cumulative series whose weekly GAIN tracks a ratio exactly. Differencing
+  // the cumulative side and leaving the ratio alone must line them up on the
+  // same buckets; a one-off shift here silently weakens every mixed correlation.
+  const gains = Array.from({ length: 60 }, (_, i) => 10 + ((i * 5) % 13));
+  const cum = cumulative(gains);
+  // The ratio at ts[i+1] equals the gain into ts[i+1], scaled.
+  const rate = series([0, ...gains.slice(1).map((g) => g / 100)]);
+
+  const aligned = correlate(cum, rate, { isRateA: false, isRateB: true });
+  assert.ok(aligned.r > 0.99, `mixed pair should align, got r=${aligned.r}`);
+
+  // Treating the ratio as cumulative differences it a second time and the
+  // relationship collapses — the bug this locks.
+  const doubleDiffed = correlate(cum, rate, { isRateA: false, isRateB: false });
+  assert.ok(
+    doubleDiffed.r < aligned.r,
+    "sanity: double-differencing the rate side must weaken the relationship",
+  );
+}
+
+// ── 12. diff() is the plain first difference ──────────────────────────────────
 assert.deepEqual(diff([1, 3, 6, 10]), [2, 3, 4]);
 
 console.log("detect.ts self-check: all assertions passed");
