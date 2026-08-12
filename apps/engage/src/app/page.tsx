@@ -262,7 +262,26 @@ export default function Page() {
         } catch {
           /* clipboard needs a gesture + permission; the tab still opens */
         }
-        window.open(t.articleUrl, "_blank", "noopener");
+        /*
+         * Open the COMMENT, not the article.
+         *
+         * `articleUrl` alone drops you at the top of the post and you scroll
+         * hunting for the thread you are answering — on a piece with 15
+         * comments, or one from February, that is most of the time the reply
+         * takes. `#comment-<id_code>` is the anchor Dev.to renders on every
+         * comment, so the browser lands on the exact thread with its reply box
+         * already in view.
+         *
+         * Verified: `<articleUrl>#comment-<id>` returns 200. The other two
+         * plausible shapes do not — `/<commenter>/comment/<id>` is a 404
+         * because the permalink lives in the ARTICLE AUTHOR's namespace, and
+         * `<articleUrl>/comments/<id>` is a 404 outright.
+         */
+        window.open(
+          t.commentId ? `${t.articleUrl}#comment-${t.commentId}` : t.articleUrl,
+          "_blank",
+          "noopener",
+        );
         // A reply IS a comment to Forem: it spends the same
         // `comment_antispam_creation` 5-minute budget as a queue comment. Not
         // recording it here left the one server-enforced gauge reading green
@@ -797,6 +816,13 @@ export default function Page() {
             onRetry={refreshThreads}
             focused={focus === "replies"}
             onFocus={() => setFocus("replies")}
+            onJump={(n) => {
+              setRi(n);
+              // Load that thread's draft, or clear the box — carrying the
+              // previous thread's text into a different conversation is how you
+              // post the wrong reply.
+              setReply(threads[n]?.draft ?? "");
+            }}
           />
         ) : (
           <Skel rows={3} />

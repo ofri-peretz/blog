@@ -219,7 +219,25 @@ export interface Thread {
   at: string;
   articleTitle: string;
   articleUrl: string;
+  /**
+   * COMMENT IN vs COMMENT OUT — the distinction the inbox was flattening.
+   *
+   * `replyToUs: false` is someone commenting on OUR article. `true` is someone
+   * answering a comment WE left on THEIRS. They are different conversations
+   * and they are owed different replies: the first is a guest on our turf, the
+   * second is us being invited further into someone else's. Rendering them as
+   * one undifferentiated list is why "13 waiting" did not tell you what to do.
+   */
+  replyToUs?: boolean;
+  depth?: number;
+  ageDays?: number;
+  /** Marked sent locally but absent from dev.to — a send that did not land. */
+  sendFailed?: boolean;
 }
+
+/** The exact-comment permalink. Anchor form; the other shapes 404. */
+export const commentUrl = (t: Pick<Thread, "articleUrl" | "commentId">) =>
+  t.commentId ? `${t.articleUrl}#comment-${t.commentId}` : t.articleUrl;
 
 /**
  * Same shape as the "Up next" card, deliberately: one item at a time, the text
@@ -239,6 +257,7 @@ export function Threads({
   onRetry,
   focused = true,
   onFocus,
+  onJump,
 }: {
   threads: Thread[];
   i: number;
@@ -251,6 +270,8 @@ export function Threads({
   /** Whether Enter/s/r currently drive THIS stepper rather than the queue. */
   focused?: boolean;
   onFocus?: () => void;
+  /** Jump straight to a thread instead of stepping to it. */
+  onJump?: (index: number) => void;
 }) {
   const t = threads[i];
   if (!t)
@@ -285,7 +306,34 @@ export function Threads({
       onFocusCapture={onFocus}
       className={`rounded-xl border bg-[var(--card)] p-6 ${focused ? "border-[var(--primary)]" : "border-[var(--border)]"}`}
     >
-      <div className="flex flex-wrap items-baseline gap-2">
+      {/* Direction first, because it changes how you answer. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${
+            t.replyToUs
+              ? "bg-[var(--primary)]/15 text-[var(--primary)]"
+              : "bg-[var(--success)]/15 text-[var(--success)]"
+          }`}
+        >
+          {t.replyToUs ? "↩ replied to us" : "← on our article"}
+        </span>
+        {typeof t.ageDays === "number" && (
+          <span
+            className={`font-mono text-[11px] ${t.ageDays > 30 ? "text-[var(--warning)]" : "text-[var(--muted-foreground)]"}`}
+          >
+            {t.ageDays}d old
+          </span>
+        )}
+        {t.sendFailed && (
+          <span
+            className="rounded border border-[var(--destructive)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--destructive)]"
+            title="Marked sent locally, but dev.to has no reply from us — that send did not land."
+          >
+            send failed
+          </span>
+        )}
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
         <a
           href={`https://dev.to/${t.author}`}
           target="_blank"
@@ -297,9 +345,16 @@ export function Threads({
         <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
           {new Date(t.at).toLocaleDateString()}
         </span>
-        <span className="truncate text-[12px] text-[var(--muted-foreground)]">
-          on “{t.articleTitle}”
-        </span>
+        {/* Straight to the comment, so you can read it in context before
+            answering without losing the card. */}
+        <a
+          href={commentUrl(t)}
+          target="_blank"
+          rel="noopener"
+          className="truncate text-[12px] text-[var(--muted-foreground)] underline decoration-dotted underline-offset-2 hover:text-[var(--primary)]"
+        >
+          on “{t.articleTitle}” ↗
+        </a>
       </div>
       <p className="mt-2 border-l-2 border-[var(--border)] pl-3 text-[14px] text-[var(--muted-foreground)]">
         {t.body}
@@ -355,6 +410,57 @@ export function Threads({
           ? "Enter next · s skip · r refresh"
           : "Keys are on Up next — click this card to take them."}
       </p>
+
+      {/*
+        The whole queue, jumpable.
+
+        A stepper alone answers "what is next" and hides "what is waiting". With
+        13 threads and the oldest at 181 days, stepping is the slow way to reach
+        the one that actually matters — and it made the panel read as though
+        there were nowhere to act. Direction and age are on every row so the
+        pick is informed before the click.
+      */}
+      {threads.length > 1 && onJump && (
+        <div className="mt-4 border-t border-[var(--border)] pt-3">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+            all {threads.length} waiting
+          </div>
+          <ul className="flex flex-col gap-0.5">
+            {threads.map((x, n) => (
+              <li key={x.commentId}>
+                <button
+                  onClick={() => onJump(n)}
+                  className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[12px] ${
+                    n === i
+                      ? "bg-[var(--primary)]/12 text-[var(--foreground)]"
+                      : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40"
+                  }`}
+                >
+                  <span className="w-3 shrink-0 font-mono text-[10px]">
+                    {x.replyToUs ? "↩" : "←"}
+                  </span>
+                  <span className="w-16 shrink-0 truncate font-mono text-[11px]">
+                    @{x.author}
+                  </span>
+                  <span
+                    className={`w-11 shrink-0 text-right font-mono text-[10px] ${
+                      (x.ageDays ?? 0) > 30 ? "text-[var(--warning)]" : ""
+                    }`}
+                  >
+                    {x.ageDays}d
+                  </span>
+                  <span className="truncate">{x.articleTitle}</span>
+                  {x.drafted && (
+                    <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--success)]">
+                      drafted
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </article>
   );
 }
