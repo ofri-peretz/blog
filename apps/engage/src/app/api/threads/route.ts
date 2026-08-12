@@ -42,7 +42,20 @@ const load = (): any[] => replyDrafts();
  * refresh) bypasses it.
  */
 export async function GET(req: Request) {
-  const force = new URL(req.url).searchParams.get("force") === "1";
+  /*
+   * The param is `refresh`, not `force`.
+   *
+   * `cachedFetch` appends `?refresh=1&_=<ts>` when a section's refresh button
+   * is pressed, and /api/network, /api/queue and /api/schedule all read
+   * `refresh`. This route read `force`, which nothing in the app ever sends —
+   * so pressing refresh bypassed the CLIENT cache, re-requested, and got the
+   * same 12-hour server-cached inbox back. The button worked, the request went
+   * out, the response was stale, and nothing looked wrong.
+   *
+   * Same class of bug as the one #148 fixed on the other panels, reintroduced
+   * one layer down by picking a different word for the same idea.
+   */
+  const force = new URL(req.url).searchParams.get("refresh") === "1";
   const drafts = load();
 
   const byId = new Map(drafts.map((r) => [r.commentId, r]));
