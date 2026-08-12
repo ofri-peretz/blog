@@ -351,3 +351,64 @@ export async function pruneMissingAuthors(
     checked: ids.length,
   };
 }
+
+/**
+ * Seed from the PLATFORM, not only from our own history.
+ *
+ * The graph was seeded exclusively from articles we had already engaged with,
+ * then expanded from the authors that surfaced. That is a closed loop: it can
+ * only ever redraw the neighbourhood we are already in, and it cannot discover
+ * anyone we have never touched. Measured 2026-08-12 over 12 feed pages / 469
+ * distinct authors, coverage was 68% of the top 25 by engagement but only 20%
+ * of the top 250 — and the single largest author on the platform in the sample,
+ * @jess at ~22.7k engagement, was absent entirely.
+ *
+ * So this pass asks dev.to who is actually leading, across several windows so
+ * the answer is not one day's front page: `top=7` catches the current moment,
+ * `top=365` the durable names, and the default feed the rising ones.
+ *
+ * Engagement weights comments 3x reactions deliberately. A reaction is one
+ * click; a comment is a conversation with a reply surface — the thing this
+ * whole graph is built out of, and the only one we can actually join.
+ */
+export async function platformSeeds(
+  opts: { authors?: number; perAuthor?: number } = {},
+  fetchJson: (url: string) => Promise<any> = defaultFetch,
+): Promise<{ seeds: [number, string][]; discovered: string[] }> {
+  const { authors = 40, perAuthor = 2 } = opts;
+
+  const scored = new Map<string, { score: number; ids: number[] }>();
+  const feeds = [
+    "https://dev.to/api/articles?top=7&per_page=100",
+    "https://dev.to/api/articles?top=30&per_page=100",
+    "https://dev.to/api/articles?top=365&per_page=100",
+    "https://dev.to/api/articles?per_page=100",
+  ];
+  for (const url of feeds) {
+    let arts: any[];
+    try {
+      arts = await fetchJson(url);
+    } catch {
+      continue; // one dead feed must not void discovery
+    }
+    if (!Array.isArray(arts)) continue;
+    for (const a of arts) {
+      const u = a?.user?.username;
+      if (!u || u === ME || !a.id) continue;
+      const e = scored.get(u) ?? { score: 0, ids: [] };
+      e.score += (a.public_reactions_count ?? 0) + (a.comments_count ?? 0) * 3;
+      // Only articles with comments are worth crawling — a post with none
+      // yields no edges, and the comment count is already in hand.
+      if (a.comments_count > 0 && e.ids.length < perAuthor) e.ids.push(a.id);
+      scored.set(u, e);
+    }
+  }
+
+  const top = [...scored.entries()]
+    .sort((a, b) => b[1].score - a[1].score)
+    .slice(0, authors);
+
+  const seeds: [number, string][] = [];
+  for (const [u, e] of top) for (const id of e.ids) seeds.push([id, u]);
+  return { seeds, discovered: top.map(([u]) => u) };
+}

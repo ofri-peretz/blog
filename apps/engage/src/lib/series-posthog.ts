@@ -155,21 +155,39 @@ async function loadPostHog(): Promise<Map<string, Point[]>> {
   const out = new Map<string, Point[]>();
   const window = `timestamp > now() - INTERVAL ${WINDOW_DAYS} DAY`;
 
+  /*
+   * Retry 5xx and 429. PostHog answered `HTTP 504` mid-session and the whole
+   * Quality group vanished from the terminal for that refresh — six apps x four
+   * series, gone, because one gateway timed out. A timeout is not an answer.
+   */
+  const hog = async (sql: string, label: string) => {
+    let last: Awaited<ReturnType<typeof hogqlPublic>> = { rows: [], error: "unrun" };
+    for (let n = 0; n < 3; n++) {
+      last = await hogqlPublic(sql);
+      if (!last.error) return last;
+      const retryable = /HTTP (429|5\d\d)/.test(last.error);
+      if (!retryable) break;
+      console.warn(`[series-posthog] ${label} ${last.error}, retry ${n + 1}/2`);
+      await new Promise((r) => setTimeout(r, 1500 * (n + 1)));
+    }
+    return last;
+  };
+
   const [traffic, errors, vitals] = await Promise.all([
-    hogqlPublic(`
+    hog(`
       SELECT toDate(timestamp) AS d, properties.app AS app,
              count() AS views, uniq(properties.$session_id) AS sessions
       FROM events
       WHERE event = '$pageview' AND ${window} AND properties.$virt_is_bot != true
       GROUP BY d, app ORDER BY d LIMIT ${ROW_CAP}
-    `),
-    hogqlPublic(`
+    `, "traffic"),
+    hog(`
       SELECT toDate(timestamp) AS d, properties.app AS app, count() AS n
       FROM events
       WHERE event = '$exception' AND ${window}
       GROUP BY d, app ORDER BY d LIMIT ${ROW_CAP}
-    `),
-    hogqlPublic(`
+    `, "exceptions"),
+    hog(`
       SELECT toDate(timestamp) AS d, properties.app AS app,
              quantile(0.75)(toFloat(properties.$web_vitals_LCP_value)) AS lcp,
              quantile(0.75)(toFloat(properties.$web_vitals_INP_value)) AS inp,
@@ -177,7 +195,7 @@ async function loadPostHog(): Promise<Map<string, Point[]>> {
       FROM events
       WHERE event = '$web_vitals' AND ${window} AND properties.$virt_is_bot != true
       GROUP BY d, app ORDER BY d LIMIT ${ROW_CAP}
-    `),
+    `, "vitals"),
   ]);
 
   // A failed query must not masquerade as a site with no traffic. Returning an

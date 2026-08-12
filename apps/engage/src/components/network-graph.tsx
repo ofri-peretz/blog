@@ -23,6 +23,8 @@ export interface Graph {
   edges: Edge[];
   clusters: { members: string[]; density: number }[];
   sampledArticles: number;
+  /** When the crawl ran. The graph is cached 12h; age belongs on screen. */
+  fetchedAt?: string;
 }
 
 /**
@@ -50,7 +52,11 @@ export function NetworkGraph({
   graph,
   onOpenPerson,
 }: {
-  graph: Graph;
+  graph: Graph & {
+    targets?: string[];
+    discovered?: string[];
+    removedAuthors?: string[];
+  };
   onOpenPerson?: (u: string) => void;
 }) {
   const [sel, setSel] = useState<string | null>(null);
@@ -70,6 +76,17 @@ export function NetworkGraph({
       })),
     [graph.nodes],
   );
+
+  /*
+   * Freshness, on screen.
+   *
+   * The crawl is cached for 12 hours, so a graph can be most of a day old with
+   * nothing saying so — and every conclusion drawn off it inherits that age
+   * silently. Same rule the series spine already follows.
+   */
+  const ageHours = graph.fetchedAt
+    ? Math.round((Date.now() - Date.parse(graph.fetchedAt)) / 3_600_000)
+    : null;
 
   const tally = useMemo(() => {
     let us = 0;
@@ -135,10 +152,67 @@ export function NetworkGraph({
         }}
       />
 
+      {/* Legend. The colours became meaningful; nothing said what they meant. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-[var(--muted-foreground)]">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-full bg-[var(--primary)]" /> us
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-full bg-[var(--success)]" />
+          mutual tie ({tally.mutual})
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-full bg-[var(--muted-foreground)]" />
+          one-way ({tally.oneWay})
+        </span>
+        <span className="ml-auto">
+          {ageHours === null
+            ? "age unknown"
+            : ageHours < 1
+              ? "fresh"
+              : `${ageHours}h old`}
+          {graph.removedAuthors?.length
+            ? ` · ${graph.removedAuthors.length} deleted account(s) pruned`
+            : ""}
+        </span>
+      </div>
       <p className="font-mono text-[11px] text-[var(--muted-foreground)]">
-        {tally.us} us · {tally.mutual} mutual ties · {tally.oneWay} one-way.
         Distance from centre is rank by number of ties.
       </p>
+
+      {/*
+        NEW TERRITORY — leading authors on the platform with no edge to us.
+        
+        This is the actionable half of widening the map. The graph used to be
+        seeded only from what we had already touched, so it could never contain
+        anyone new; now that it discovers the platform's leaders, the ones we
+        have NOT reached are the list worth acting on. Without this panel they
+        exist only in the API response, which is the same as not existing.
+      */}
+      {graph.targets?.length ? (
+        <div className="rounded-lg border border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_6%,transparent)] p-3">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--primary)]">
+            not reached yet · {graph.targets.length} of {graph.discovered?.length ?? 0} leading authors
+          </div>
+          <ul className="flex flex-wrap gap-1.5">
+            {graph.targets.slice(0, 24).map((u) => (
+              <li key={u}>
+                <button
+                  onClick={() => onOpenPerson?.(u)}
+                  className="rounded border border-[var(--border)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                >
+                  @{u}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[12px] text-[var(--muted-foreground)]">
+            Ranked by engagement across dev.to&apos;s own feeds, comments weighted
+            3x reactions — a reaction is one click, a comment is a conversation
+            you can join. Click to open the author.
+          </p>
+        </div>
+      ) : null}
 
       {graph.clusters.length === 0 && (
         <p className="rounded-lg border border-[var(--border)] px-4 py-3 text-[12.5px] text-[var(--muted-foreground)]">

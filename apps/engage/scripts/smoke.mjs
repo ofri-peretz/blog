@@ -77,6 +77,75 @@ const STYLESHEET_CONTRACT = [
   },
 ];
 
+/**
+ * API contracts, asserted on the RESPONSE not the page.
+ *
+ * Every defect this file failed to catch was a route returning a confident,
+ * well-formed, wrong answer: an inbox reporting 0 waiting against a real 14, a
+ * count silently shrunk by a rate limit, a graph counting deleted accounts.
+ * Pages rendered perfectly through all of it, so page checks alone could not
+ * see any of them.
+ *
+ * These assert SHAPE and INVARIANTS, never a specific count — the numbers move
+ * every day and a check that has to be updated daily gets deleted.
+ */
+const API_CONTRACT = [
+  {
+    path: '/api/threads',
+    name: 'inbox reports completeness, not just a number',
+    check: (j) => {
+      if (!Array.isArray(j.threads)) return 'threads is not an array';
+      if (typeof j.actionable !== 'number') return 'missing actionable count';
+      if (typeof j.articlesFailed !== 'number') return 'missing articlesFailed — a partial crawl could pass as complete';
+      if (j.actionable > j.threads.length) return 'actionable exceeds total';
+      // A thread from a deleted account must never be counted as actionable.
+      const goneCounted = j.threads.filter((t) => t.authorGone).length;
+      if (j.actionable + goneCounted > j.threads.length) return 'gone authors counted as actionable';
+      return null;
+    },
+  },
+  {
+    path: '/api/alerts',
+    name: 'alerts distinguish "none firing" from "nothing evaluated"',
+    check: (j) => {
+      if (!Array.isArray(j.alerts)) return 'alerts is not an array';
+      if (typeof j.evaluated !== 'number') return 'missing evaluated count — "0 alerts" would be ambiguous';
+      if (j.alerts.length && !j.alerts[0].message) return 'an alert with no message';
+      return null;
+    },
+  },
+  {
+    path: '/api/series',
+    name: 'every catalogued series declares its source and staleness budget',
+    check: (j) => {
+      if (!Array.isArray(j.catalog) || !j.catalog.length) return 'empty catalog';
+      const bad = j.catalog.find((d) => !d.source || typeof d.staleAfterHours !== 'number');
+      if (bad) return `series ${bad.id} has no source or staleness budget`;
+      const kinds = new Set(j.catalog.map((d) => d.kind));
+      for (const k of kinds) if (!['cumulative', 'rate', 'gauge'].includes(k)) return `unknown kind ${k}`;
+      return null;
+    },
+  },
+];
+
+async function checkApiContracts(base, failures) {
+  for (const c of API_CONTRACT) {
+    let problem = null;
+    try {
+      const r = await fetch(`${base}${c.path}`, { signal: AbortSignal.timeout(240_000) });
+      problem = r.ok ? c.check(await r.json()) : `HTTP ${r.status}`;
+    } catch (e) {
+      problem = e.message;
+    }
+    if (problem) {
+      failures.push(`${c.path} — ${problem}`);
+      console.log(`  \u2717 ${c.path} — ${problem}`);
+    } else {
+      console.log(`  \u2713 ${c.path} — ${c.name}`);
+    }
+  }
+}
+
 const arg = (flag) => {
   const index = process.argv.indexOf(flag);
   return index === -1 ? undefined : process.argv[index + 1];
@@ -146,6 +215,8 @@ async function main() {
 
   const failures = [];
   let firstBody = '';
+
+  await checkApiContracts(base, failures);
 
   for (const route of ROUTES) {
     let response;
