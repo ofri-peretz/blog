@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { allItems, FOOTPRINT } from "@/lib/footprint";
-import { buildGraph, expandTwoHop } from "@/lib/network";
+import { buildGraph, expandTwoHop, pruneMissingAuthors, type Graph } from "@/lib/network";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -43,7 +43,24 @@ export async function GET(req: Request) {
   if (url0.searchParams.get("hops") === "1") return NextResponse.json(hop1);
 
   const extra = await expandTwoHop(hop1);
-  const graph = await buildGraph([...seeds, ...extra]);
+  const built = await buildGraph([...seeds, ...extra]);
+
+  /*
+   * Drop authors dev.to has removed.
+   *
+   * Their comments stay on the articles, so they keep earning edges on every
+   * crawl and read as real, quiet participants indefinitely. Measured: 7 of 663
+   * were gone, and the handles are dev.to's auto-generated signup pattern —
+   * purged spam sitting in the network looking like reach.
+   *
+   * `removedAuthors` rides along in the response so the pruning is visible
+   * rather than a silent shrink between two refreshes.
+   */
+  const { graph, removed } = await pruneMissingAuthors(built);
+  if (removed.length)
+    console.log(`[network] pruned ${removed.length} removed author(s): ${removed.join(", ")}`);
+  (graph as Graph & { removedAuthors?: string[] }).removedAuthors = removed;
+
   try {
     mkdirSync(join(FOOTPRINT, "engagement"), { recursive: true });
     writeFileSync(CACHE, JSON.stringify(graph));

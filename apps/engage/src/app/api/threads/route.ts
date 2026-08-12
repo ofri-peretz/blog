@@ -104,6 +104,8 @@ export async function GET(req: Request) {
         depth: t.depth,
         replyToUs: t.replyToUs,
         ageDays: t.ageDays,
+        authorGone: t.authorGone ?? false,
+        authorName: t.authorName ?? null,
         draft: d?.draft,
         drafted: !!d?.draft,
         /**
@@ -115,12 +117,27 @@ export async function GET(req: Request) {
       };
     });
 
-  const undrafted = threads.filter((t) => !t.drafted).length;
-  const stale = threads.filter((t) => t.ageDays > 30).length;
-  const failed = threads.filter((t) => t.sendFailed).length;
+  /*
+   * A thread whose author no longer exists is not work.
+   *
+   * The comment is still on the article, so it is still listed — dropping it
+   * would be the silent-removal failure this file keeps arguing against. But it
+   * does not count as waiting, because there is nobody to answer: dev.to's API
+   * still returns a normal 200 for these accounts and only the profile page
+   * 404s, so they look completely live until you check.
+   */
+  const gone = threads.filter((t) => t.authorGone).length;
+  const actionable = threads.filter((t) => !t.authorGone);
+  const undrafted = actionable.filter((t) => !t.drafted).length;
+  const stale = actionable.filter((t) => t.ageDays > 30).length;
+  const failed = actionable.filter((t) => t.sendFailed).length;
   return NextResponse.json({
     threads,
     undrafted,
+    actionable: actionable.length,
+    authorsGone: gone,
+    // Non-zero means the count below is a FLOOR, not a total.
+    articlesFailed: inbox.value.articlesFailed ?? 0,
     asOf: inbox.at,
     scanned: inbox.value.articlesScanned,
     commentsSeen: inbox.value.commentsSeen,
@@ -129,6 +146,12 @@ export async function GET(req: Request) {
     sendFailed: failed,
     hint:
       [
+        inbox.value.articlesFailed
+          ? `INCOMPLETE — ${inbox.value.articlesFailed} article(s) could not be read (dev.to rate limit), so threads on them are missing. This count is a floor. Press refresh to retry.`
+          : null,
+        gone
+          ? `${gone} thread(s) are from accounts that no longer exist (profile 404s) — listed at the bottom, not counted as waiting.`
+          : null,
         failed
           ? `${failed} thread(s) are marked "sent" locally but have no reply on dev.to — those sends did not land.`
           : null,

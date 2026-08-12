@@ -261,3 +261,93 @@ export async function expandTwoHop(
   }
   return extra;
 }
+
+/**
+ * Drop authors whose dev.to profile no longer exists.
+ *
+ * Suspended and deleted accounts keep their comments on the articles, so they
+ * keep earning edges in every crawl — they look like real, if quiet,
+ * participants forever. Swept 2026-08-11: 7 of 663 nodes were gone, and the
+ * handles say what they were — `sam_tech_e3c30d03221da839`,
+ * `melissa_gate_b817873be472`, `willy_james_45b9223ca9d6b`: dev.to's
+ * auto-generated signup pattern, i.e. purged spam.
+ *
+ * THE API CANNOT ANSWER THIS. `/api/users/by_username` returns a normal 200
+ * for a suspended account — full payload, real name, real join date, no flag.
+ * Only the profile PAGE 404s. So this is one HEAD per node, which is why it is
+ * a separate pass over a finished graph rather than something the crawl does
+ * inline: it runs once per 12h refresh alongside a crawl that already costs
+ * ~130 requests.
+ *
+ * A failed check is NEVER a deletion. Only a definite 404 removes anyone; a
+ * 429, a 5xx or a network error keeps the node, because the alternative is a
+ * rate limit quietly deleting half the network.
+ */
+export async function pruneMissingAuthors(
+  graph: Graph,
+  concurrency = 4,
+): Promise<{ graph: Graph; removed: string[]; checked: number }> {
+  const ids = graph.nodes.map((n) => n.id);
+  const gone = new Set<string>();
+
+  const check = async (u: string): Promise<void> => {
+    for (let n = 0; n < 3; n++) {
+      try {
+        const r = await fetch(`https://dev.to/${encodeURIComponent(u)}`, {
+          method: "HEAD",
+          redirect: "follow",
+          cache: "no-store",
+        });
+        if (r.status === 404) {
+          gone.add(u);
+          return;
+        }
+        if (r.status === 429 || r.status >= 500) {
+          await new Promise((x) => setTimeout(x, Math.min(1000 * 2 ** n, 8000)));
+          continue;
+        }
+        return;
+      } catch {
+        await new Promise((x) => setTimeout(x, 600 * (n + 1)));
+      }
+    }
+  };
+
+  const queue = [...ids];
+  await Promise.all(
+    Array.from({ length: concurrency }, async () => {
+      while (queue.length) {
+        await check(queue.shift()!);
+        await new Promise((x) => setTimeout(x, 120));
+      }
+    }),
+  );
+
+  if (!gone.size) return { graph, removed: [], checked: ids.length };
+
+  // Edges must go with the nodes, or the renderer draws lines to nothing and
+  // every degree that referenced them stays inflated.
+  const edges = graph.edges.filter((e) => !gone.has(e.from) && !gone.has(e.to));
+  const nodes = graph.nodes
+    .filter((n) => !gone.has(n.id))
+    .map((n) => ({ ...n, mutual: n.mutual.filter((m) => !gone.has(m)) }));
+
+  // Degree is a property of the surviving edge set, so it is recomputed rather
+  // than carried over — a stale degree is how a pruned graph still ranks a
+  // deleted account.
+  for (const n of nodes) {
+    const partners = new Set<string>();
+    for (const e of edges) {
+      if (e.from === n.id) partners.add(e.to);
+      if (e.to === n.id) partners.add(e.from);
+    }
+    n.degree = partners.size;
+  }
+  nodes.sort((a, b) => b.degree - a.degree);
+
+  return {
+    graph: { ...graph, nodes, edges },
+    removed: [...gone],
+    checked: ids.length,
+  };
+}

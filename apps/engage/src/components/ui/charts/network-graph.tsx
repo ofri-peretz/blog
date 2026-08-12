@@ -73,6 +73,19 @@ export const MIN_VIEWPORT = 320 as const;
 const W = 900;
 const H = 560;
 
+/**
+ * Group -> fill. Tokens only (R19), never a raw colour.
+ *
+ * Three tones and no more: this is the only thing distinguishing hundreds of
+ * nodes, so it is coarse on purpose. A group not listed here keeps the neutral
+ * default rather than inventing a colour.
+ */
+const GROUP_FILL: Record<string, string> = {
+  us: 'fill-primary',
+  'mutual tie': 'fill-success',
+  'one-way': 'fill-viz-node',
+};
+
 export interface NetworkGraphProps extends Omit<React.ComponentProps<'div'>, 'onSelect'> {
   nodes: readonly GraphNode[];
   edges: readonly GraphEdge[];
@@ -270,9 +283,20 @@ export const NetworkGraph = React.forwardRef<HTMLDivElement, NetworkGraphProps>(
                     cy={position.y}
                     r={position.r}
                     strokeWidth={1.2}
+                    /*
+                     * `group` drives the node tone, as this component's own API
+                     * documents. It previously did not: every node painted
+                     * `fill-viz-node`, so a 91-node graph rendered 90 nodes in
+                     * one identical grey and you could not locate yourself in
+                     * your own network. The group survived only in the header
+                     * tally and the a11y table.
+                     */
+                    data-group={node.group}
                     className={cn(
                       'stroke-card',
-                      node.id === selected ? 'fill-viz-node-active' : 'fill-viz-node',
+                      node.id === selected
+                        ? 'fill-viz-node-active'
+                        : (GROUP_FILL[node.group ?? ''] ?? 'fill-viz-node'),
                       dimmed && 'opacity-20',
                       onSelect && 'cursor-pointer',
                     )}

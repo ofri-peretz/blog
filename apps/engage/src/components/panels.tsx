@@ -233,6 +233,10 @@ export interface Thread {
   ageDays?: number;
   /** Marked sent locally but absent from dev.to — a send that did not land. */
   sendFailed?: boolean;
+  /** Author's profile 404s — suspended or deleted. Nobody to reply to. */
+  authorGone?: boolean;
+  /** Display name. A handle alone often does not say who this is. */
+  authorName?: string | null;
 }
 
 /** The exact-comment permalink. Anchor form; the other shapes 404. */
@@ -324,6 +328,14 @@ export function Threads({
             {t.ageDays}d old
           </span>
         )}
+        {t.authorGone && (
+          <span
+            className="rounded border border-[var(--muted-foreground)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted-foreground)]"
+            title="This account's dev.to profile 404s — suspended or deleted. The comment is still on the article, but a reply reaches nobody."
+          >
+            account gone
+          </span>
+        )}
         {t.sendFailed && (
           <span
             className="rounded border border-[var(--destructive)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--destructive)]"
@@ -342,6 +354,11 @@ export function Threads({
         >
           @{t.author}
         </a>
+        {t.authorName && (
+          <span className="text-[13px] font-medium text-[var(--foreground)]">
+            {t.authorName}
+          </span>
+        )}
         <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
           {new Date(t.at).toLocaleDateString()}
         </span>
@@ -434,13 +451,20 @@ export function Threads({
                     n === i
                       ? "bg-[var(--primary)]/12 text-[var(--foreground)]"
                       : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40"
-                  }`}
+                  } ${x.authorGone ? "opacity-45" : ""}`}
+                  title={x.authorGone ? "account gone — profile 404s" : undefined}
                 >
                   <span className="w-3 shrink-0 font-mono text-[10px]">
                     {x.replyToUs ? "↩" : "←"}
                   </span>
-                  <span className="w-16 shrink-0 truncate font-mono text-[11px]">
-                    @{x.author}
+                  <span
+                    className={`w-44 shrink-0 truncate text-[11px] ${x.authorGone ? "line-through" : ""}`}
+                    title={`@${x.author}${x.authorName ? ` — ${x.authorName}` : ""}`}
+                  >
+                    <span className="font-mono">@{x.author}</span>
+                    {x.authorName && (
+                      <span className="text-[var(--foreground)]"> {x.authorName}</span>
+                    )}
                   </span>
                   <span
                     className={`w-11 shrink-0 text-right font-mono text-[10px] ${
