@@ -1,10 +1,12 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/innerhtml-has-five-doors-most-reviews-only-watch-one-587c"
+devto_id: 4347164
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/dom-sink-taxonomy.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/dom-sink-taxonomy-og.jpg"
 title: "innerHTML Has Five Doors. Most Reviews Only Watch One."
 description: "A DOM sink is easy to grep for. The hard part is that one sink has many sources, and the source is where the trust decision actually lives — not the assignment."
 slug: "dom-sink-taxonomy"
-published: false
+published: true
 date: 2026-08-01
 tags:
   - "ai"
