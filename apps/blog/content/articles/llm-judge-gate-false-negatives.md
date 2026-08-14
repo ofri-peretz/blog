@@ -2,6 +2,7 @@
 title: "My 9-Reviewer AI Gate Failed Articles It Scored 9.1"
 description: "A reviewer scored 10.0 and its clean bill of health parsed as a blocker. Three ways my LLM-judge gate failed work it had just praised."
 slug: "llm-judge-gate-false-negatives"
+published: false
 canonical_url: "https://ofriperetz.dev/articles/llm-judge-gate-false-negatives"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/llm-judge-gate-false-negatives.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/llm-judge-gate-false-negatives-og.jpg"

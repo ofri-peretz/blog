@@ -2,6 +2,7 @@
 title: "55 Places My Code Predates the Language. All Auto-Fixed."
 description: "Four rules over 389 of my own files found 55 spots written the pre-2022 way. Every one carried a fixer, so the whole thing was one command."
 slug: "modernization-lint-as-codemod"
+published: false
 canonical_url: "https://ofriperetz.dev/articles/modernization-lint-as-codemod"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/modernization-lint-as-codemod.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/modernization-lint-as-codemod-og.jpg"

@@ -2,6 +2,7 @@
 title: "The 3 Most-Installed ESLint Plugins Went Quiet in 2025"
 description: "I measured days-since-release for 18 ESLint plugins. import, react and jsx-a11y have shipped nothing in over a year — and dormant is not the same as dead."
 slug: "eslint-plugin-maintenance-signals"
+published: false
 canonical_url: "https://ofriperetz.dev/articles/eslint-plugin-maintenance-signals"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-maintenance-signals.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-maintenance-signals-og.jpg"

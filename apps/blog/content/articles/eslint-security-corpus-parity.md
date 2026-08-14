@@ -2,6 +2,7 @@
 title: "I Ran My Plugins Against a Competitor's Own Test Suite"
 description: "eslint-plugin-security ships its tests. I ran 84 of its own vulnerable samples through my plugins: 51 caught, and 29 of the 33 misses are one obsolete rule."
 slug: "eslint-security-corpus-parity"
+published: false
 canonical_url: "https://ofriperetz.dev/articles/eslint-security-corpus-parity"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-security-corpus-parity.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-security-corpus-parity-og.jpg"

@@ -2,6 +2,7 @@
 title: "Your ESLint Plugin Installs 205 Packages. 69 Are ESLint."
 description: "I measured the install tree of 11 ESLint plugins. Direct dependency counts predict almost nothing, and every raw number hides the same 69-package baseline."
 slug: "eslint-plugin-dependency-weight"
+published: false
 canonical_url: "https://ofriperetz.dev/articles/eslint-plugin-dependency-weight"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-dependency-weight.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-dependency-weight-og.jpg"
