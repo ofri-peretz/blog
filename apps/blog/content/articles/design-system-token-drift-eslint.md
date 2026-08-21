@@ -1,8 +1,10 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/i-linted-my-own-design-system-all-8-breaks-were-pasted-in-3hm4"
+devto_id: 4443062
 title: "I Linted My Own Design System. All 8 Breaks Were Pasted In."
 description: "I ran four design-system rules over 401 of my own components. 144 violations — and every color break was in code I pasted in."
 slug: "design-system-token-drift-eslint"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/design-system-token-drift-eslint"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/design-system-token-drift-eslint.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/design-system-token-drift-eslint-og.jpg"
