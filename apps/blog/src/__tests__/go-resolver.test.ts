@@ -24,6 +24,7 @@ import {
   applyGuards,
   buildCapture,
   SERVER_FALLBACK_ID,
+  type ShortLinkClickProps,
   anonymousVisitorId,
   buildClickEventBody,
   classifyKey,
