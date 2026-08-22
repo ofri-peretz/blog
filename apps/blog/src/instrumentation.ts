@@ -17,7 +17,7 @@
  * Silent no-op without a token, so local `next dev`, forks, and preview builds
  * behave exactly as they do today.
  */
-import { logs } from '@opentelemetry/api-logs';
+import { SeverityNumber, logs } from '@opentelemetry/api-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
@@ -95,5 +95,50 @@ export async function flushTelemetry(): Promise<void> {
     ]);
   } catch {
     // Telemetry is never allowed to break the request path.
+  }
+}
+
+/**
+ * One wide log record per `/go` redirect — not a play-by-play of the code.
+ *
+ * PostHog's own cost guidance is to log what happened to a request rather than
+ * what the code was doing: one rich record per request beats twenty INFO lines,
+ * costs less (Logs bills by GB), and is easier to query. Every field here is a
+ * dimension worth filtering on when a link misbehaves.
+ *
+ * Never throws — the redirect path must not be able to fail because telemetry
+ * did.
+ */
+export function logGoRedirect(fields: {
+  key: string;
+  status: number;
+  destinationHost: string;
+  overrideHit: boolean;
+  shortLinksAvailable: boolean;
+  refererOrigin: string | null;
+  lookupMs: number;
+}): void {
+  try {
+    logs.getLogger(SERVICE_NAME).emit({
+      severityNumber: fields.shortLinksAvailable
+        ? SeverityNumber.INFO
+        : SeverityNumber.WARN,
+      severityText: fields.shortLinksAvailable ? 'INFO' : 'WARN',
+      body: `go ${fields.key} -> ${fields.status} ${fields.destinationHost}`,
+      attributes: {
+        'go.key': fields.key,
+        'go.status': fields.status,
+        'go.destination_host': fields.destinationHost,
+        'go.override_hit': fields.overrideHit,
+        // False means the Supabase read failed and the redirect fell back to
+        // its derived default. The redirect still works, which is exactly why
+        // this needs to be visible: it degrades silently by design.
+        'go.short_links_available': fields.shortLinksAvailable,
+        'go.referer_origin': fields.refererOrigin ?? '(none)',
+        'go.lookup_ms': fields.lookupMs,
+      },
+    });
+  } catch {
+    // Telemetry is never allowed to break the redirect.
   }
 }
