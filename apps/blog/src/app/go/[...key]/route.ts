@@ -18,6 +18,7 @@ import { flushTelemetry, logGoRedirect } from "@/instrumentation";
 
 import { getCachedShortLinks } from "@/lib/supabase-data";
 import {
+  anonymousVisitorId,
   buildClickEventBody,
   refererToOrigin,
   resolveGoDestination,
@@ -50,10 +51,19 @@ function captureShortLinkClick(
   const host =
     process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
   const refererOrigin = refererToOrigin(request.headers.get("referer"));
-  const body = { api_key: apiKey, ...buildClickEventBody(capture, refererOrigin) };
 
   after(async () => {
     try {
+      // Hashing is async (Web Crypto), so it happens here rather than on the
+      // redirect path — the 302 is never delayed by telemetry.
+      const distinctId = await anonymousVisitorId(
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+        request.headers.get("user-agent"),
+      );
+      const body = {
+        api_key: apiKey,
+        ...buildClickEventBody(capture, refererOrigin, undefined, distinctId),
+      };
       await fetch(`${host}/i/v0/e/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

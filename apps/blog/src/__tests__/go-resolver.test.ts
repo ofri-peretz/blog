@@ -23,6 +23,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyGuards,
   buildCapture,
+  SERVER_FALLBACK_ID,
+  anonymousVisitorId,
   buildClickEventBody,
   classifyKey,
   deriveDefault,
@@ -579,7 +581,11 @@ describe("GET /go/[...key] (route wrapper)", () => {
     const sent = JSON.parse((opts as RequestInit).body as string);
     expect(sent.api_key).toBe("phc_test");
     expect(sent.event).toBe("short_link_click");
-    expect(sent.distinct_id).toBe("server-go");
+    // Per-visitor anonymous hash, not the old constant. Asserting the shape
+    // rather than a literal keeps the test honest about what it guarantees:
+    // an opaque, non-reversible id — not one fixed value for every click.
+    expect(sent.distinct_id).toMatch(/^[0-9a-f]{32}$/);
+    expect(sent.distinct_id).not.toBe("server-go");
     expect(sent.properties).toMatchObject({
       key: "my-slug",
       kind: "article",
@@ -648,5 +654,61 @@ describe("GET /go/[...key] (route wrapper)", () => {
     });
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toBe(`${BLOG}/`);
+  });
+});
+
+describe("anonymousVisitorId", () => {
+  it("is stable for the same visitor on the same day", async () => {
+    const a = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    const b = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    expect(a).toBe(b);
+  });
+
+  it("rotates across days, so it cannot follow anyone", async () => {
+    const day1 = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    const day2 = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-23");
+    expect(day1).not.toBe(day2);
+  });
+
+  it("separates different visitors", async () => {
+    const one = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    const two = await anonymousVisitorId("198.51.100.4", "Mozilla/5.0", "2026-08-22");
+    expect(one).not.toBe(two);
+  });
+
+  it("never leaks the inputs", async () => {
+    const id = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0 (secret-agent)", "2026-08-22");
+    expect(id).not.toContain("203.0.113.7");
+    expect(id).not.toContain("secret-agent");
+    expect(id).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("still produces an id when the request has neither IP nor user agent", async () => {
+    const id = await anonymousVisitorId(null, null, "2026-08-22");
+    expect(id).toMatch(/^[0-9a-f]{32}$/);
+  });
+});
+
+describe("buildClickEventBody — distinct_id", () => {
+  const props: ShortLinkClickProps = {
+    key: "npm/eslint-plugin-secure-coding",
+    kind: "npm",
+    from: null,
+    utm_source: null,
+    destination: "https://www.npmjs.com/package/eslint-plugin-secure-coding",
+  };
+
+  it("uses the anonymous id when one is supplied", () => {
+    const body = buildClickEventBody(props, null, undefined, "a".repeat(32));
+    expect(body.distinct_id).toBe("a".repeat(32));
+  });
+
+  it("keeps person profiles off regardless of the id", () => {
+    const body = buildClickEventBody(props, null, undefined, "b".repeat(32));
+    expect(body.properties.$process_person_profile).toBe(false);
+  });
+
+  it("falls back to the synthetic id when no anonymous id is given", () => {
+    expect(buildClickEventBody(props, null).distinct_id).toBe(SERVER_FALLBACK_ID);
   });
 });
