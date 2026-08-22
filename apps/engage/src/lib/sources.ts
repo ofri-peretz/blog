@@ -635,6 +635,20 @@ export type RuleEntry = {
     status: string;
     knownGaps: number;
   } | null;
+  detection: {
+    tp: number;
+    fp: number;
+    fn: number;
+    tn: number;
+    precision: number | null;
+    recall: number | null;
+    f1: number | null;
+    fixtures: number | null;
+    vulnerable: number | null;
+    missed: string[];
+    falsePositives: string[];
+    competitors: { name: string; tp: number; fp: number; fn: number; f1: number | null }[];
+  } | null;
 };
 
 /**
