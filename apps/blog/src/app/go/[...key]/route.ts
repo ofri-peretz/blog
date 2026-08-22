@@ -14,6 +14,8 @@
 
 import { after } from "next/server";
 
+import { flushTelemetry, logGoRedirect } from "@/instrumentation";
+
 import { getCachedShortLinks } from "@/lib/supabase-data";
 import {
   buildClickEventBody,
@@ -67,6 +69,15 @@ function captureShortLinkClick(
   });
 }
 
+/** Host only — the full destination can carry campaign params we don't need in a log dimension. */
+function hostOf(location: string): string {
+  try {
+    return new URL(location).host;
+  } catch {
+    return "(relative)";
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ key: string[] }> },
@@ -83,11 +94,15 @@ export async function GET(
   // failure for twelve hours and across redeploys, silently disabling every
   // override. Failing per-request means the next visitor gets the real table.
   let rows: Awaited<ReturnType<typeof getCachedShortLinks>> = [];
+  let shortLinksAvailable = true;
+  const lookupStart = Date.now();
   try {
     rows = await getCachedShortLinks();
   } catch (err) {
+    shortLinksAvailable = false;
     console.error("[go] short_links unavailable, using derived defaults:", err);
   }
+  const lookupMs = Date.now() - lookupStart;
   const resolution = resolveGoDestination({
     keyParts: keyParts ?? [],
     utmSource: url.searchParams.get("utm_source"),
@@ -97,6 +112,23 @@ export async function GET(
   });
 
   captureShortLinkClick(request, resolution.capture);
+
+  // One wide log record per redirect (see logGoRedirect). Kept to a single
+  // call so this wrapper stays dumb, per the note at the top of the file.
+  // Same normalisation as classifyKey in resolver.ts — empty segments filtered
+  // before joining. Without the filter a trailing-slash URL yields "slug/" here
+  // but "slug" in the lookup, which would make overrideHit a false negative.
+  const loggedKey = (keyParts ?? []).filter((s) => s.length > 0).join("/");
+  logGoRedirect({
+    key: loggedKey,
+    status: resolution.status,
+    destinationHost: hostOf(resolution.location),
+    overrideHit: rows.some((r) => r.key === loggedKey),
+    shortLinksAvailable,
+    refererOrigin: refererToOrigin(request.headers.get("referer")),
+    lookupMs,
+  });
+  after(flushTelemetry);
 
   return new Response(null, {
     status: resolution.status,
