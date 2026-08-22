@@ -115,11 +115,15 @@ export async function GET(
 
   // One wide log record per redirect (see logGoRedirect). Kept to a single
   // call so this wrapper stays dumb, per the note at the top of the file.
+  // Same normalisation as classifyKey in resolver.ts — empty segments filtered
+  // before joining. Without the filter a trailing-slash URL yields "slug/" here
+  // but "slug" in the lookup, which would make overrideHit a false negative.
+  const loggedKey = (keyParts ?? []).filter((s) => s.length > 0).join("/");
   logGoRedirect({
-    key: (keyParts ?? []).join("/"),
+    key: loggedKey,
     status: resolution.status,
     destinationHost: hostOf(resolution.location),
-    overrideHit: rows.some((r) => r.key === (keyParts ?? []).join("/")),
+    overrideHit: rows.some((r) => r.key === loggedKey),
     shortLinksAvailable,
     refererOrigin: refererToOrigin(request.headers.get("referer")),
     lookupMs,

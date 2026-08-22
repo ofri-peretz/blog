@@ -80,12 +80,16 @@ export function register(): void {
   loggerProvider = new LoggerProvider({
     resource,
     processors: [
-      new BatchLogRecordProcessor(
-        new OTLPLogExporter({
+      // 0.221.0 takes an options object here; earlier batches took the
+      // exporter positionally. Pinning every experimental package to one
+      // batch is what surfaced this — mixed batches compiled but would have
+      // failed at runtime.
+      new BatchLogRecordProcessor({
+        exporter: new OTLPLogExporter({
           url: `${HOST}/i/v1/logs`,
           headers: { Authorization: `Bearer ${token}` },
         }),
-      ),
+      }),
     ],
   });
   logs.setGlobalLoggerProvider(loggerProvider);
