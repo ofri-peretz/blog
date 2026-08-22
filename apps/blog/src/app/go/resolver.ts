@@ -293,20 +293,60 @@ export function refererToOrigin(referer: string | null): string | null {
  * plus referer_origin and the shared `app` super-property — exactly the
  * fields a per-link click-count / top-referrers view will group by.
  */
+/** Fallback when no request context is available (tests, direct calls). */
+export const SERVER_FALLBACK_ID = "server-go";
+
+/**
+ * Daily-rotating, one-way visitor id for server-originated clicks.
+ *
+ * The same shape PostHog's own cookieless mode uses: hash the things that
+ * identify a request (IP, user agent) together with the current date, keep the
+ * digest, discard the inputs. It rotates every day, so it cannot follow anyone
+ * across days, and it is not reversible into an IP.
+ *
+ * Sync and dependency-free via Web Crypto's `subtle` — which is async, so this
+ * returns a promise; callers schedule it with the rest of the fire-and-forget
+ * capture work.
+ */
+export async function anonymousVisitorId(
+  ip: string | null,
+  userAgent: string | null,
+  day: string = new Date().toISOString().slice(0, 10),
+): Promise<string> {
+  const material = `${ip ?? "no-ip"}|${userAgent ?? "no-ua"}|${day}`;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(material),
+  );
+  return Array.from(new Uint8Array(digest).slice(0, 16))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export function buildClickEventBody(
   props: ShortLinkClickProps,
   refererOrigin: string | null,
   timestamp: string = new Date().toISOString(),
+  /**
+   * Privacy-preserving per-visitor id, from `anonymousVisitorId()`. Optional so
+   * existing callers and tests keep working; without it every click collapses
+   * onto one synthetic id, which is what the historical data looks like —
+   * 18,050 clicks, one "person", no way to tell a campaign from a loop.
+   */
+  anonymousId: string = SERVER_FALLBACK_ID,
 ): {
   event: "short_link_click";
-  distinct_id: "server-go";
+  distinct_id: string;
   properties: Record<string, unknown>;
   timestamp: string;
 } {
   return {
     event: "short_link_click",
-    // Server-originated: one synthetic id, and no ephemeral person profile.
-    distinct_id: "server-go",
+    // A daily-rotating hash of IP + user agent, never the raw values, and
+    // still `$process_person_profile: false` — this exists to make
+    // `uniq(person_id)` mean "distinct clickers" instead of "1", not to build
+    // a profile of anyone.
+    distinct_id: anonymousId,
     properties: {
       ...props,
       referer_origin: refererOrigin,
