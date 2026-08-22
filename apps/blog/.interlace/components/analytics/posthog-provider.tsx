@@ -135,6 +135,13 @@ function ensureInit(app: AppName): void {
     // Web vitals — LCP / CLS / INP / FCP / TTFB captured as `$web_vitals`
     // events, powering the performance dashboard without a separate tool.
     capture_performance: true,
+    // Heatmaps + scrollmaps — `$heatmap` events power the toolbar overlay.
+    // On content sites this answers the one question autocapture cannot:
+    // did anyone scroll far enough to reach the CTA?
+    capture_heatmaps: true,
+    // Dead clicks — a click on something that looks interactive and does
+    // nothing. The highest-signal UX defect on a content site.
+    capture_dead_clicks: true,
   });
   // Super-property: attached to every event from this app, persists across
   // page loads in the same browser via localStorage.
