@@ -10,9 +10,12 @@
  * how that gets explained rather than guessed at. Statically-rendered docs pages
  * would produce volume without signal, and Logs bills by GB.
  *
- * Auth is the PUBLIC project token (`phc_`), passed as a query param — the same
- * write-only key the browser already ships. Personal API keys (`phx_`) are
- * explicitly wrong here and must never appear in this file.
+ * Auth is the PUBLIC project token (`phc_`) sent as an `Authorization: Bearer`
+ * header — the same write-only key the browser already ships. PostHog also
+ * accepts `?token=`, and this file used it until `security/no-credentials-in-url`
+ * (CWE-798) flagged it: a token in a query string leaks into access logs, proxy
+ * logs, and referrer headers. Our own rule, applied to our own code.
+ * Personal API keys (`phx_`) are explicitly wrong here and must never appear.
  *
  * Silent no-op without a token, so local `next dev`, forks, and preview builds
  * behave exactly as they do today.
@@ -65,7 +68,10 @@ export function register(): void {
     resource,
     spanProcessors: [
       new BatchSpanProcessor(
-        new OTLPTraceExporter({ url: `${HOST}/i/v1/traces?token=${token}` }),
+        new OTLPTraceExporter({
+          url: `${HOST}/i/v1/traces`,
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ),
     ],
   });
@@ -75,7 +81,10 @@ export function register(): void {
     resource,
     processors: [
       new BatchLogRecordProcessor(
-        new OTLPLogExporter({ url: `${HOST}/i/v1/logs?token=${token}` }),
+        new OTLPLogExporter({
+          url: `${HOST}/i/v1/logs`,
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ),
     ],
   });
@@ -93,8 +102,10 @@ export async function flushTelemetry(): Promise<void> {
       tracerProvider?.forceFlush() ?? Promise.resolve(),
       loggerProvider?.forceFlush() ?? Promise.resolve(),
     ]);
-  } catch {
-    // Telemetry is never allowed to break the request path.
+  } catch (err) {
+    // Telemetry is never allowed to break the request path — but swallowing
+    // silently is how a dead pipeline goes unnoticed for weeks, so say it.
+    console.warn("[otel] flush failed:", err);
   }
 }
 
@@ -138,7 +149,8 @@ export function logGoRedirect(fields: {
         'go.lookup_ms': fields.lookupMs,
       },
     });
-  } catch {
-    // Telemetry is never allowed to break the redirect.
+  } catch (err) {
+    // Never allowed to break the redirect, but never silent either.
+    console.warn("[otel] go log emit failed:", err);
   }
 }
