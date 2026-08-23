@@ -62,6 +62,7 @@ export async function GET() {
   if (!r.ok) {
     return NextResponse.json({
       customers: [],
+      candidates: [],
       packages: [],
       error:
         r.why === "missing"
@@ -85,10 +86,102 @@ export async function GET() {
        * we have actually read in source is the number that decides whether this
        * page is reassuring or alarming, so it is stated rather than implied.
        */
-      unread: Math.max(0, (c.findings ?? 0) - (c.verifiedFalse ?? 0)),
+      /**
+       * THE APPROACH GATE.
+       *
+       * A customer is contacted only when we know we expose it to no false
+       * positives: every finding read, each one landed as a true or a false
+       * positive, and every false positive fixed AND shipped.
+       *
+       * Unread counts against the gate exactly as hard as a known false positive.
+       * Not knowing is not the same as being clean — treating them as the same is
+       * what produced this problem in the first place.
+       */
+      truePositives: c.truePositives ?? [],
+      falsePositives: c.falsePositives ?? [],
+      tpCount: (c.truePositives ?? []).length,
+      fpCount: (c.falsePositives ?? []).reduce((n: number, f: any) => n + (f.count ?? 1), 0),
+      fpOpen: (c.falsePositives ?? []).filter((f: any) => !f.fixShipped).length,
+      unread: Math.max(
+        0,
+        (c.findings ?? 0) -
+          (c.truePositives ?? []).length -
+          (c.falsePositives ?? []).reduce((n: number, f: any) => n + (f.count ?? 1), 0),
+      ),
+      /**
+       * A caret range never crosses a major, so a consumer on ^4.5.0 cannot
+       * receive 5.1.2 however many fixes ship. Released and received are
+       * different things, and download counts cannot tell them apart.
+       */
+      receives: c.receives !== false,
+      approachable:
+        (c.falsePositives ?? []).every((f: any) => f.fixShipped) &&
+        (c.findings ?? 0) -
+          (c.truePositives ?? []).length -
+          (c.falsePositives ?? []).reduce((n: number, f: any) => n + (f.count ?? 1), 0) ===
+          0,
+      reach: c.reach ?? null,
       perKloc: c.kloc ? Number(((c.findings ?? 0) / c.kloc).toFixed(2)) : null,
     };
   });
+
+  /**
+   * Candidate readiness.
+   *
+   * A repository that measures CLEAN is the strongest candidate we have, because
+   * the ask becomes "keep it clean" instead of "you have bugs" — an ask that needs
+   * no finding to be defensible and cannot be lost by arguing about one. Both
+   * adoptions that actually worked had exactly that shape.
+   *
+   * Reachability gates it: outside merges, not stars. A 5,666-star repository that
+   * never merges an outsider is a worse door than a 9-star one that merges 48.
+   */
+  const candidates = (r.data.candidates ?? [])
+    .map((c: any) => {
+      const idleDays = daysSince(c.pushedAt);
+      const clean = c.effectivelyClean === true || (c.findings ?? 0) === 0;
+      const reach = Math.min(1, (c.outsideMerges ?? 0) / 30);
+      const fresh = idleDays == null ? 0 : idleDays > DORMANT_DAYS ? 0 : 1 - idleDays / DORMANT_DAYS;
+      // Clean is the dominant term on purpose — it decides whether a PR can be
+      // written at all, where reach and freshness only decide how fast it lands.
+      const score = (clean ? 0.55 : 0.15) + 0.28 * reach + 0.17 * fresh;
+      return {
+        ...c,
+        idleDays,
+        churn: churn(idleDays),
+        clean,
+        perKloc: c.kloc ? Number(((c.findings ?? 0) / c.kloc).toFixed(2)) : null,
+        score: Number(score.toFixed(3)),
+        blockers: [
+          ...(clean ? [] : ["findings unread — cannot promise a clean gate"]),
+          ...((c.outsideMerges ?? 0) < 5 ? ["few outside merges — slow door"] : []),
+          ...(idleDays != null && idleDays > DORMANT_DAYS ? ["dormant — unmaintained"] : []),
+        ],
+      };
+    })
+    .sort((a: any, b: any) => b.score - a.score);
+
+  /**
+   * Grouped by sector, because sector is what actually predicts adoption here.
+   * Profiling the eight consumers we have found three config aggregators and two
+   * public-sector bodies, and not one product company. Reachability finds
+   * repositories that merge PRs; sector finds repositories that want the thing
+   * we sell.
+   */
+  const bySector = new Map<string, any[]>();
+  for (const c of candidates) {
+    const k = c.sector ?? "unsorted";
+    bySector.set(k, [...(bySector.get(k) ?? []), c]);
+  }
+  const sectors = [...bySector.entries()]
+    .map(([sector, items]) => ({
+      sector,
+      items,
+      ready: items.filter((i: any) => i.clean && i.churn !== "dormant").length,
+      // A sector is worth working when it has clean, reachable doors in it.
+      weight: items.reduce((n: number, i: any) => n + i.score, 0),
+    }))
+    .sort((a, b) => b.ready - a.ready || b.weight - a.weight);
 
   const exposed = customers.filter((c: any) => c.findings > 0).length;
 
@@ -96,12 +189,20 @@ export async function GET() {
     asOf: r.data.asOf ?? null,
     packages: r.data.packages ?? [],
     customers,
+    candidates,
+    sectors,
     totals: {
       customers: customers.length,
       configures: customers.filter((c: any) => c.depth === "configures").length,
       clean: customers.filter((c: any) => c.findings === 0).length,
       exposed,
       dormant: customers.filter((c: any) => c.churn === "dormant").length,
+      approachable: customers.filter((c: any) => c.approachable).length,
+      strandedInstalls: customers
+        .filter((c: any) => c.receives === false)
+        .reduce((n: number, c: any) => n + (c.reach ?? 0), 0),
+      candidates: candidates.length,
+      candidatesClean: candidates.filter((c: any) => c.clean && c.churn !== "dormant").length,
       weeklyDownloads: (r.data.packages ?? []).reduce(
         (s: number, p: any) => s + (p.weeklyDownloads ?? 0),
         0,

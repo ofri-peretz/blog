@@ -65,6 +65,8 @@ export default function Customers() {
   );
 
   const customers: Customer[] = data?.customers ?? [];
+  const candidates: any[] = data?.candidates ?? [];
+  const sectors: any[] = data?.sectors ?? [];
   const packages: any[] = data?.packages ?? [];
   const totals = data?.totals ?? null;
 
@@ -93,7 +95,7 @@ export default function Customers() {
   const maxDl = Math.max(1, ...packages.map((p) => p.weeklyDownloads ?? 0));
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-8 px-5 py-10 pb-24">
+    <main className="mx-auto flex max-w-6xl flex-col gap-10 px-5 py-10 pb-24">
       <header className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-3">
           <Link
@@ -123,13 +125,20 @@ export default function Customers() {
       ) : null}
 
       {totals ? (
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-3 lg:grid-cols-7">
           {[
             { k: "downloads / wk", v: totals.weeklyDownloads.toLocaleString(), n: `${packages.length} packages` },
             { k: "running rules", v: totals.customers, n: `${totals.configures} configure` },
             { k: "clean", v: `${totals.clean} / ${totals.customers}`, n: "no findings", warn: totals.clean < totals.customers },
             { k: "exposed", v: totals.exposed, n: "see findings today", warn: totals.exposed > 0 },
             { k: "dormant", v: totals.dormant, n: "> 90d idle", warn: totals.dormant > 0 },
+            { k: "ready to pitch", v: totals.candidatesClean, n: "scan clean, reachable" },
+            {
+              k: "stranded installs",
+              v: (totals.strandedInstalls ?? 0).toLocaleString(),
+              n: "pinned below current major",
+              warn: (totals.strandedInstalls ?? 0) > 0,
+            },
           ].map((s: any) => (
             <div key={s.k} className="bg-[var(--color-panel)] p-3">
               <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
@@ -251,22 +260,125 @@ export default function Customers() {
         </section>
       ) : null}
 
+      {/* ---- candidates, by sector ---- */}
+      {sectors.length ? (
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[16px] font-semibold tracking-tight">
+              Candidates by sector
+            </h2>
+            <p className="max-w-[72ch] text-[13px] text-[var(--color-ink-3)]">
+              Sector is the axis that predicts adoption, and it was found by profiling
+              the eight consumers we already have rather than by guessing: three are
+              config aggregators, two are public-sector bodies, and not one is a product
+              company. A config aggregator&rsquo;s product <em>is</em> curating plugins,
+              so a 54th is cheap. A public-sector team has security review mandated
+              rather than optional, and CWE/OWASP metadata is what an audit asks for.
+              Within each sector, <b>a clean scan ranks first</b> — that ask needs no
+              finding to be defensible.
+            </p>
+          </div>
+
+          {sectors.map((s: any) => (
+            <div key={s.sector} className="flex flex-col gap-2">
+              <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line)] pb-1.5">
+                <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-2)]">
+                  {s.sector}
+                </h3>
+                <span className="font-mono text-[10.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                  {s.ready} ready · {s.items.length} scanned
+                </span>
+              </div>
+
+              {s.items.map((c: any) => (
+                <div
+                  key={c.slug}
+                  className="flex flex-col gap-2 rounded-xl border bg-[var(--color-panel)] p-3"
+                  style={{
+                    borderColor:
+                      c.clean && c.churn !== "dormant"
+                        ? "var(--color-good)"
+                        : "var(--color-line)",
+                  }}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <a
+                      href={`https://github.com/${c.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-[12.5px] hover:text-[var(--color-accent)]"
+                    >
+                      {c.slug}
+                    </a>
+                    <div className="flex items-center gap-3 font-mono text-[10.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                      <span
+                        style={{
+                          color: c.clean ? "var(--color-good)" : "var(--color-warn)",
+                        }}
+                      >
+                        {c.clean ? "scans clean" : `${c.findings} unread`}
+                      </span>
+                      <span>{c.stars}&#9733;</span>
+                      <span>{c.outsideMerges} merges</span>
+                      <span>{c.idleDays}d idle</span>
+                      <span className="tabular-nums text-[var(--color-ink-2)]">
+                        {c.score.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-[3px] w-full overflow-hidden rounded-full bg-[var(--color-line)]">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.round(c.score * 100)}%`,
+                        background: c.clean
+                          ? "var(--color-good)"
+                          : "var(--color-warn)",
+                      }}
+                    />
+                  </div>
+                  {c.note ? (
+                    <p className="max-w-[82ch] text-[12px] leading-snug text-[var(--color-ink-3)]">
+                      {c.note}
+                    </p>
+                  ) : null}
+                  {c.blockers?.length ? (
+                    <div className="flex flex-wrap gap-x-4">
+                      {c.blockers.map((b: string) => (
+                        <span
+                          key={b}
+                          className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-warn)]"
+                        >
+                          · {b}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {/* ---- monitor ---- */}
       {customers.length ? (
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <h2 className="text-[16px] font-semibold tracking-tight">Monitor</h2>
             <p className="max-w-[70ch] text-[13px] text-[var(--color-ink-3)]">
-              <b>Unread is not clean.</b> The gap between what a consumer is shown and
-              what we have actually read in source is the number that decides whether
-              this page is reassuring.
+              <b>We approach a customer only when we expose it to no false positives.</b>{" "}
+              That means every finding read, each landed as TP or FP, and every FP fixed
+              and shipped. <b>Unread counts against the gate exactly as hard as a known
+              false positive</b> — not knowing is not the same as being clean, and
+              treating them as the same is what produced this problem.
             </p>
           </div>
           <div className="overflow-x-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
             <table className="w-full min-w-[720px] border-collapse">
               <thead>
                 <tr>
-                  {["Repository", "Depth", "Idle", "Shown", "Read false", "Unread", "/ KLOC", ""].map((h) => (
+                  {["Repository", "Depth", "Idle", "Shown", "TP", "FP", "Unread", "Approach"].map((h) => (
                     <th
                       key={h}
                       className="border-b border-[var(--color-line)] px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-ink-3)]"
@@ -291,9 +403,49 @@ export default function Customers() {
                       >
                         {c.slug}
                       </a>
+                      {c.reach ? (
+                        <span className="ml-2 font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                          {c.reach.toLocaleString()} installs / wk
+                        </span>
+                      ) : null}
+                      {c.receives === false ? (
+                        <span
+                          className="ml-2 font-mono text-[10px] uppercase tracking-wide"
+                          style={{ color: "var(--color-accent)" }}
+                          title="Its semver range cannot resolve to what we publish today"
+                        >
+                          · cannot receive fixes
+                        </span>
+                      ) : null}
                       {c.note ? (
-                        <div className="mt-1 max-w-[52ch] text-[11.5px] leading-snug text-[var(--color-ink-3)]">
+                        <div className="mt-1 max-w-[58ch] text-[11.5px] leading-snug text-[var(--color-ink-3)]">
                           {c.note}
+                        </div>
+                      ) : null}
+                      {c.falsePositives?.length ? (
+                        <div className="mt-1.5 flex flex-col gap-1">
+                          {c.falsePositives.map((f: any) => (
+                            <div key={f.rule} className="max-w-[58ch] text-[11px] leading-snug">
+                              <span className="font-mono text-[var(--color-accent)]">
+                                {f.count}× {f.rule}
+                              </span>{" "}
+                              {f.fixShipped ? (
+                                <a
+                                  href={`https://github.com/ofri-peretz/eslint/pull/${f.fixPr}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="font-mono text-[var(--color-good)]"
+                                >
+                                  fixed #{f.fixPr}
+                                </a>
+                              ) : (
+                                <span className="font-mono text-[var(--color-warn)]">
+                                  no fix yet
+                                </span>
+                              )}
+                              <div className="text-[var(--color-ink-3)]">{f.why}</div>
+                            </div>
+                          ))}
                         </div>
                       ) : null}
                     </td>
@@ -318,23 +470,41 @@ export default function Customers() {
                     </td>
                     <td
                       className="border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[12px] tabular-nums"
-                      style={c.verifiedFalse ? { color: "var(--color-accent)" } : undefined}
+                      style={c.tpCount ? { color: "var(--color-good)" } : undefined}
                     >
-                      {c.verifiedFalse || "—"}
+                      {c.tpCount || "—"}
                     </td>
-                    <td className="border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[12px] tabular-nums text-[var(--color-ink-3)]">
+                    <td
+                      className="border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[12px] tabular-nums"
+                      style={c.fpCount ? { color: "var(--color-accent)" } : undefined}
+                    >
+                      {c.fpCount || "—"}
+                      {c.fpOpen ? (
+                        <div className="mt-0.5 text-[9.5px] uppercase tracking-wide text-[var(--color-accent)]">
+                          {c.fpOpen} unfixed
+                        </div>
+                      ) : null}
+                    </td>
+                    <td
+                      className="border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[12px] tabular-nums"
+                      style={c.unread ? { color: "var(--color-warn)" } : undefined}
+                    >
                       {c.unread || "—"}
-                    </td>
-                    <td className="border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[12px] tabular-nums text-[var(--color-ink-3)]">
-                      {c.perKloc ?? "—"}
                     </td>
                     <td className="border-b border-[var(--color-line)] px-3 py-2.5">
                       <span
                         className="font-mono text-[10px] uppercase tracking-wide"
-                        style={{ color: CHURN_TONE[c.churn] }}
+                        style={{
+                          color: c.approachable
+                            ? "var(--color-good)"
+                            : "var(--color-accent)",
+                        }}
                       >
-                        {CHURN_WORD[c.churn]}
+                        {c.approachable ? "clear" : "hold"}
                       </span>
+                      <div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-wide" style={{ color: CHURN_TONE[c.churn] }}>
+                        {CHURN_WORD[c.churn]}
+                      </div>
                     </td>
                   </tr>
                 ))}
