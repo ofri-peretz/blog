@@ -279,7 +279,9 @@ export async function GET() {
     .map((c: any) => {
       const idleDays = daysSince(c.pushedAt);
       const clean = c.effectivelyClean === true || (c.findings ?? 0) === 0;
-      const reach = Math.min(1, (c.outsideMerges ?? 0) / 30);
+      // Saturating at 30 put two thirds of the pipeline at exactly 1.00 and
+      // destroyed the ranking. 60 keeps the top of the list separable.
+      const reach = Math.min(1, (c.outsideMerges ?? 0) / 60);
       const fresh =
         idleDays == null
           ? 0

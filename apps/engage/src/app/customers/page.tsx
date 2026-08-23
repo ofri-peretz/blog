@@ -228,6 +228,99 @@ export default function Customers() {
         </div>
       ) : null}
 
+      {/* ---- candidates, by sector ---- */}
+      {sectors.length ? (
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[16px] font-semibold tracking-tight">
+              Candidates by sector
+            </h2>
+            <p className="max-w-[74ch] text-[13px] text-[var(--color-ink-2)]">
+              Sector is the axis that predicts adoption, and it was found by
+              profiling the consumers we already have rather than by guessing:
+              config aggregators and public-sector bodies, and not one product
+              company. An aggregator&rsquo;s product <em>is</em> curating
+              plugins, so one more is cheap. A public-sector team has security
+              review mandated rather than optional, and CWE/OWASP metadata is
+              what an audit asks for.
+            </p>
+            <p className="max-w-[74ch] text-[13px] text-[var(--color-ink-3)]">
+              Within each sector a{" "}
+              <b className="text-[var(--color-good)]">clean</b> scan ranks
+              first: the ask becomes &ldquo;keep it clean&rdquo; rather than
+              &ldquo;you have bugs&rdquo;, which needs no finding to be
+              defensible and cannot be lost by arguing about one. <b>Merges</b>{" "}
+              counts outside merges, not stars — a 5,000-star repository that
+              never merges an outsider is a worse door than a 9-star one that
+              merges 48.
+            </p>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            {sectors.map((s: any) => (
+              <div
+                key={s.sector}
+                className="flex flex-col overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]"
+              >
+                <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line)] px-3 py-2">
+                  <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-2)]">
+                    {s.sector}
+                  </h3>
+                  <span className="font-mono text-[10.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                    <b className="text-[var(--color-good)]">{s.ready}</b> ready
+                    · {s.items.length} scanned
+                  </span>
+                </div>
+
+                <div className="max-h-[26rem] overflow-y-auto">
+                  <table className="w-full border-collapse text-[12px]">
+                    <tbody>
+                      {s.items.map((c: any) => (
+                        <tr
+                          key={c.slug}
+                          className="border-b border-[var(--color-line)] last:border-0"
+                        >
+                          <td className="w-1 py-1.5 pl-3">
+                            {/* Colour never carries this alone — the word is in the next cell. */}
+                            <span
+                              className={`block h-4 w-[3px] rounded-full ${
+                                c.clean
+                                  ? "bg-[var(--color-good)]"
+                                  : "bg-[var(--color-warn)]"
+                              }`}
+                            />
+                          </td>
+                          <td className="max-w-0 truncate py-1.5 pl-2 pr-2">
+                            <a
+                              href={c.repoUrl ?? `https://github.com/${c.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={c.note ?? c.slug}
+                              className="font-mono text-[11.5px] hover:text-[var(--color-accent)]"
+                            >
+                              {c.slug}
+                            </a>
+                          </td>
+                          <td className="whitespace-nowrap py-1.5 pr-2 text-right font-mono text-[10.5px] text-[var(--color-ink-3)]">
+                            {c.clean ? "clean" : `${c.findings} unread`}
+                          </td>
+                          <td className="whitespace-nowrap py-1.5 pr-2 text-right font-mono text-[10.5px] tabular-nums text-[var(--color-ink-3)]">
+                            {c.outsideMerges ?? 0} merges
+                          </td>
+                          <td className="whitespace-nowrap py-1.5 pr-3 text-right font-mono text-[10.5px] tabular-nums text-[var(--color-ink-2)]">
+                            {c.score.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* ---- pipeline ---- */}
       {pipeline.length ? (
         <section className="flex flex-col gap-3">
@@ -615,110 +708,6 @@ export default function Customers() {
               })}
             </svg>
           </div>
-        </section>
-      ) : null}
-
-      {/* ---- candidates, by sector ---- */}
-      {sectors.length ? (
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-[16px] font-semibold tracking-tight">
-              Candidates by sector
-            </h2>
-            <p className="max-w-[72ch] text-[13px] text-[var(--color-ink-3)]">
-              Sector is the axis that predicts adoption, and it was found by
-              profiling the eight consumers we already have rather than by
-              guessing: three are config aggregators, two are public-sector
-              bodies, and not one is a product company. A config
-              aggregator&rsquo;s product <em>is</em> curating plugins, so a 54th
-              is cheap. A public-sector team has security review mandated rather
-              than optional, and CWE/OWASP metadata is what an audit asks for.
-              Within each sector, <b>a clean scan ranks first</b> — that ask
-              needs no finding to be defensible.
-            </p>
-          </div>
-
-          {sectors.map((s: any) => (
-            <div key={s.sector} className="flex flex-col gap-2">
-              <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-line)] pb-1.5">
-                <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-2)]">
-                  {s.sector}
-                </h3>
-                <span className="font-mono text-[10.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
-                  {s.ready} ready · {s.items.length} scanned
-                </span>
-              </div>
-
-              {s.items.map((c: any) => (
-                <div
-                  key={c.slug}
-                  className="flex flex-col gap-2 rounded-xl border bg-[var(--color-panel)] p-3"
-                  style={{
-                    borderColor:
-                      c.clean && c.churn !== "dormant"
-                        ? "var(--color-good)"
-                        : "var(--color-line)",
-                  }}
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                    <a
-                      href={`https://github.com/${c.slug}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-mono text-[12.5px] underline decoration-[var(--color-line)] underline-offset-2 hover:text-[var(--color-accent)]"
-                    >
-                      {c.slug}
-                    </a>
-                    <div className="flex items-center gap-3 font-mono text-[10.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
-                      <span
-                        style={{
-                          color: c.clean
-                            ? "var(--color-good)"
-                            : "var(--color-warn)",
-                        }}
-                      >
-                        {c.clean ? "scans clean" : `${c.findings} unread`}
-                      </span>
-                      <span>{c.stars}&#9733;</span>
-                      <span>{c.outsideMerges} merges</span>
-                      <span>{c.idleDays}d idle</span>
-                      <span className="tabular-nums text-[var(--color-ink-2)]">
-                        {c.score.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-[3px] w-full overflow-hidden rounded-full bg-[var(--color-line)]">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.round(c.score * 100)}%`,
-                        background: c.clean
-                          ? "var(--color-good)"
-                          : "var(--color-warn)",
-                      }}
-                    />
-                  </div>
-                  {c.note ? (
-                    <p className="max-w-[82ch] text-[12px] leading-snug text-[var(--color-ink-3)]">
-                      {c.note}
-                    </p>
-                  ) : null}
-                  {c.blockers?.length ? (
-                    <div className="flex flex-wrap gap-x-4">
-                      {c.blockers.map((b: string) => (
-                        <span
-                          key={b}
-                          className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-warn)]"
-                        >
-                          · {b}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ))}
         </section>
       ) : null}
 
