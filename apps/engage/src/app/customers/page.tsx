@@ -97,6 +97,9 @@ export default function Customers() {
   const sectors: any[] = data?.sectors ?? [];
   const packages: any[] = data?.packages ?? [];
   const totals = data?.totals ?? null;
+  const pipeline: any[] = data?.pipeline ?? [];
+  const pt = data?.pipelineTotals ?? null;
+  const upsells: any[] = data?.upsells ?? [];
 
   /**
    * Node placement.
@@ -107,17 +110,29 @@ export default function Customers() {
    * at the bottom.
    */
   const layout = useMemo(() => {
-    const order = { live: 0, aging: 1, dormant: 2, unknown: 3 } as Record<string, number>;
+    const order = { live: 0, aging: 1, dormant: 2, unknown: 3 } as Record<
+      string,
+      number
+    >;
     const sorted = [...customers].sort(
-      (a, b) => (order[a.churn] ?? 9) - (order[b.churn] ?? 9) || b.findings - a.findings,
+      (a, b) =>
+        (order[a.churn] ?? 9) - (order[b.churn] ?? 9) ||
+        b.findings - a.findings,
     );
     const H = 54;
     const top = 52;
     const pkgY = new Map<string, number>();
-    packages.forEach((p, i) => pkgY.set(p.name.replace(/^eslint-plugin-/, ""), top + i * H));
+    packages.forEach((p, i) =>
+      pkgY.set(p.name.replace(/^eslint-plugin-/, ""), top + i * H),
+    );
     const custY = new Map<string, number>();
     sorted.forEach((c, i) => custY.set(c.slug, top + i * H));
-    return { sorted, pkgY, custY, height: top + Math.max(packages.length, sorted.length) * H + 20 };
+    return {
+      sorted,
+      pkgY,
+      custY,
+      height: top + Math.max(packages.length, sorted.length) * H + 20,
+    };
   }, [customers, packages]);
 
   const maxDl = Math.max(1, ...packages.map((p) => p.weeklyDownloads ?? 0));
@@ -136,16 +151,18 @@ export default function Customers() {
         </div>
         <h1 className="text-[28px] font-semibold tracking-tight">Customers</h1>
         <p className="max-w-[66ch] text-[14px] text-[var(--color-ink-2)]">
-          Downloads measure curiosity. This measures the two things that decide impact:
-          which repositories genuinely execute our rules, and whether those repositories
-          are being shown false positives. A customer seeing noise is a churn event that
-          has not happened yet.
+          Downloads measure curiosity. This measures the two things that decide
+          impact: which repositories genuinely execute our rules, and whether
+          those repositories are being shown false positives. A customer seeing
+          noise is a churn event that has not happened yet.
         </p>
       </header>
 
       {data?.error ? (
         <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-panel)] p-4 text-[13px]">
-          <div className="font-mono text-[var(--color-accent)]">{data.error}</div>
+          <div className="font-mono text-[var(--color-accent)]">
+            {data.error}
+          </div>
           {data.hint ? (
             <div className="mt-1 text-[var(--color-ink-3)]">{data.hint}</div>
           ) : null}
@@ -155,12 +172,39 @@ export default function Customers() {
       {totals ? (
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-3 lg:grid-cols-7">
           {[
-            { k: "downloads / wk", v: totals.weeklyDownloads.toLocaleString(), n: `${packages.length} packages` },
-            { k: "running rules", v: totals.customers, n: `${totals.configures} configure` },
-            { k: "clean", v: `${totals.clean} / ${totals.customers}`, n: "no findings", warn: totals.clean < totals.customers },
-            { k: "exposed", v: totals.exposed, n: "see findings today", warn: totals.exposed > 0 },
-            { k: "dormant", v: totals.dormant, n: "> 90d idle", warn: totals.dormant > 0 },
-            { k: "ready to pitch", v: totals.candidatesClean, n: "scan clean, reachable" },
+            {
+              k: "downloads / wk",
+              v: totals.weeklyDownloads.toLocaleString(),
+              n: `${packages.length} packages`,
+            },
+            {
+              k: "running rules",
+              v: totals.customers,
+              n: `${totals.configures} configure`,
+            },
+            {
+              k: "clean",
+              v: `${totals.clean} / ${totals.customers}`,
+              n: "no findings",
+              warn: totals.clean < totals.customers,
+            },
+            {
+              k: "exposed",
+              v: totals.exposed,
+              n: "see findings today",
+              warn: totals.exposed > 0,
+            },
+            {
+              k: "dormant",
+              v: totals.dormant,
+              n: "> 90d idle",
+              warn: totals.dormant > 0,
+            },
+            {
+              k: "ready to pitch",
+              v: totals.candidatesClean,
+              n: "scan clean, reachable",
+            },
             {
               k: "stranded installs",
               v: (totals.strandedInstalls ?? 0).toLocaleString(),
@@ -184,16 +228,268 @@ export default function Customers() {
         </div>
       ) : null}
 
+      {/* ---- pipeline ---- */}
+      {pipeline.length ? (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[16px] font-semibold tracking-tight">
+              Pipeline
+            </h2>
+            <p className="max-w-[70ch] text-[13px] text-[var(--color-ink-2)]">
+              Every PR we have open on someone else&rsquo;s repository, ordered
+              by who is blocking.{" "}
+              <span className="text-[var(--color-accent)]">Our move</span> means
+              a maintainer has already answered and is now waiting on us — the
+              only delay on this page that is entirely ours to remove. Bot
+              reviews do not count as a reply; a CodeRabbit pass is work for us,
+              not a signal from them.
+            </p>
+          </div>
+
+          {pt ? (
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-3 lg:grid-cols-6">
+              {[
+                {
+                  k: "our move",
+                  v: pt.ourMove,
+                  n: "they replied, we have not",
+                  warn: pt.ourMove > 0,
+                },
+                {
+                  k: "awaiting reply",
+                  v: pt.awaitingFirstReply,
+                  n: "no human has answered",
+                },
+                { k: "in review", v: pt.inReview, n: "conversation is live" },
+                { k: "merged", v: pt.merged, n: "landed" },
+                {
+                  k: "reply rate",
+                  v:
+                    pt.replyRate == null
+                      ? "—"
+                      : `${Math.round(pt.replyRate * 100)}%`,
+                  n:
+                    pt.medianReplyDays == null
+                      ? "no replies yet"
+                      : `median ${pt.medianReplyDays}d to first reply`,
+                },
+                {
+                  k: "stalled",
+                  v: pt.stalled,
+                  n: "> 21d silent — nudge",
+                  warn: pt.stalled > 0,
+                },
+              ].map((x: any) => (
+                <div key={x.k} className="bg-[var(--color-panel)] p-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+                    {x.k}
+                  </div>
+                  <div
+                    className={`mt-1 text-[22px] font-semibold tabular-nums tracking-tight ${
+                      x.warn ? "text-[var(--color-accent)]" : ""
+                    }`}
+                  >
+                    {x.v}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-ink-3)]">
+                    {x.n}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="overflow-x-auto rounded-xl border border-[var(--color-line)]">
+            <table className="w-full min-w-[720px] border-collapse text-[13px]">
+              <thead>
+                <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+                  <th className="p-2.5 font-normal">Stage</th>
+                  <th className="p-2.5 font-normal">Repository</th>
+                  <th className="p-2.5 font-normal">Pull request</th>
+                  <th className="p-2.5 text-right font-normal">Age</th>
+                  <th className="p-2.5 text-right font-normal">Quiet</th>
+                  <th className="p-2.5 font-normal">First reply</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pipeline.map((o: any) => {
+                  const mine = o.waitingOn === "us";
+                  return (
+                    <tr
+                      key={o.pr}
+                      className="border-b border-[var(--color-line)] last:border-0 align-top"
+                    >
+                      <td className="p-2.5">
+                        <span
+                          className={`inline-block rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] ${
+                            mine
+                              ? "border-[var(--color-accent)] text-[var(--color-accent)]"
+                              : "border-[var(--color-line)] text-[var(--color-ink-3)]"
+                          }`}
+                        >
+                          {o.stage}
+                        </span>
+                      </td>
+                      <td className="p-2.5">
+                        <a
+                          className="hover:text-[var(--color-accent)]"
+                          href={`https://github.com/${o.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {o.slug}
+                        </a>
+                        {o.sector ? (
+                          <div className="text-[11px] text-[var(--color-ink-3)]">
+                            {o.sector}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="max-w-[280px] p-2.5">
+                        <a
+                          className="hover:text-[var(--color-accent)]"
+                          href={o.pr}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          #{o.pr.split("/").pop()} {o.title ?? ""}
+                        </a>
+                        {o.changesRequested ? (
+                          <div className="text-[11px] text-[var(--color-accent)]">
+                            changes requested
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="p-2.5 text-right tabular-nums">
+                        {o.ageDays ?? "—"}d
+                      </td>
+                      <td
+                        className={`p-2.5 text-right tabular-nums ${
+                          (o.quietDays ?? 0) > 21
+                            ? "text-[var(--color-accent)]"
+                            : ""
+                        }`}
+                      >
+                        {o.quietDays ?? "—"}d
+                      </td>
+                      <td className="p-2.5 text-[12px] text-[var(--color-ink-2)]">
+                        {o.respondedAt ? (
+                          <>
+                            {o.responseDays}d &middot; {o.responder}
+                          </>
+                        ) : (
+                          <span className="text-[var(--color-ink-3)]">
+                            none yet
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {pt?.checkedAt ? (
+            <div className="font-mono text-[10px] text-[var(--color-ink-3)]">
+              live state as of {pt.checkedAt.slice(0, 16).replace("T", " ")} UTC
+              &middot; refresh with{" "}
+              <span className="text-[var(--color-ink-2)]">
+                node scripts/track-outreach.mjs --write
+              </span>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* ---- upsell ---- */}
+      {upsells.length ? (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[16px] font-semibold tracking-tight">Upsell</h2>
+            <p className="max-w-[70ch] text-[13px] text-[var(--color-ink-2)]">
+              What each repository could take that it does not have yet. A{" "}
+              <span className="font-mono text-[12px]">version</span> gap
+              outranks everything else: a consumer pinned below our current
+              major receives none of the fixes we ship, so bumping the range is
+              worth more to them than any new plugin — and it is the easiest PR
+              to say yes to. Applications get a{" "}
+              <span className="font-mono text-[12px]">stack</span> match against
+              what they actually import; presets get{" "}
+              <span className="font-mono text-[12px]">breadth</span>, because a
+              stack match would mean nothing to a config that ships to other
+              people.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {upsells.map((u: any) => (
+              <div
+                key={u.slug}
+                className="flex flex-col gap-2 rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-3.5"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <a
+                    className="text-[14px] font-medium hover:text-[var(--color-accent)]"
+                    href={u.repoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {u.slug}
+                  </a>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+                    {u.kind ?? "—"}
+                  </span>
+                </div>
+                <ul className="flex flex-col gap-1.5">
+                  {u.items.map((i: any) => (
+                    <li
+                      key={`${i.kind}-${i.pkg}`}
+                      className="flex flex-col gap-0.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-block rounded-full border px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.1em] ${
+                            i.kind === "version"
+                              ? "border-[var(--color-accent)] text-[var(--color-accent)]"
+                              : "border-[var(--color-line)] text-[var(--color-ink-3)]"
+                          }`}
+                        >
+                          {i.kind}
+                        </span>
+                        <span className="font-mono text-[12px]">
+                          {i.pkg}
+                          {i.from ? (
+                            <span className="text-[var(--color-ink-3)]">
+                              {" "}
+                              {i.from} → {i.to}
+                            </span>
+                          ) : null}
+                        </span>
+                      </div>
+                      <div className="pl-1 text-[11px] text-[var(--color-ink-3)]">
+                        {i.why}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* ---- the graph ---- */}
       {customers.length ? (
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 className="text-[16px] font-semibold tracking-tight">Dependency graph</h2>
+            <h2 className="text-[16px] font-semibold tracking-tight">
+              Dependency graph
+            </h2>
             <p className="max-w-[70ch] text-[13px] text-[var(--color-ink-3)]">
-              Left: what we publish, sized by weekly downloads. Right: who installs it,
-              ordered so anything at risk sits together at the bottom. A thick edge means
-              the consumer <em>configures</em> the plugin, so its own consumers run our
-              rules too — that edge outweighs any number of listings.
+              Left: what we publish, sized by weekly downloads. Right: who
+              installs it, ordered so anything at risk sits together at the
+              bottom. A thick edge means the consumer <em>configures</em> the
+              plugin, so its own consumers run our rules too — that edge
+              outweighs any number of listings.
             </p>
           </div>
           <div className="overflow-x-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-2">
@@ -203,10 +499,18 @@ export default function Customers() {
               role="img"
               aria-label={`Bipartite graph: ${packages.length} published plugins on the left connect to ${customers.length} consuming repositories on the right.`}
             >
-              <text x="18" y="26" className="fill-[var(--color-ink-3)] font-mono text-[10px] uppercase tracking-[0.13em]">
+              <text
+                x="18"
+                y="26"
+                className="fill-[var(--color-ink-3)] font-mono text-[10px] uppercase tracking-[0.13em]"
+              >
                 Published
               </text>
-              <text x="500" y="26" className="fill-[var(--color-ink-3)] font-mono text-[10px] uppercase tracking-[0.13em]">
+              <text
+                x="500"
+                y="26"
+                className="fill-[var(--color-ink-3)] font-mono text-[10px] uppercase tracking-[0.13em]"
+              >
                 Running our rules
               </text>
 
@@ -222,7 +526,9 @@ export default function Customers() {
                       key={`${c.slug}-${p}`}
                       d={`M 250 ${y1} C 370 ${y1}, 380 ${y2}, 490 ${y2}`}
                       fill="none"
-                      stroke={strong ? "var(--color-accent)" : "var(--color-line)"}
+                      stroke={
+                        strong ? "var(--color-accent)" : "var(--color-line)"
+                      }
                       strokeWidth={strong ? 2 : 1.25}
                     />
                   );
@@ -233,7 +539,9 @@ export default function Customers() {
               {packages.map((p) => {
                 const nm = p.name.replace(/^eslint-plugin-/, "");
                 const y = layout.pkgY.get(nm) ?? 0;
-                const used = customers.some((c) => (c.plugins ?? []).includes(nm));
+                const used = customers.some((c) =>
+                  (c.plugins ?? []).includes(nm),
+                );
                 const r = 6 + 9 * ((p.weeklyDownloads ?? 0) / maxDl);
                 return (
                   <g key={p.name}>
@@ -246,7 +554,12 @@ export default function Customers() {
                       strokeWidth={used ? 0 : 2}
                       strokeDasharray={used ? undefined : "3 3"}
                     />
-                    <text x="220" y={y - 3} textAnchor="end" className="fill-[var(--color-ink)] font-mono text-[11px]">
+                    <text
+                      x="220"
+                      y={y - 3}
+                      textAnchor="end"
+                      className="fill-[var(--color-ink)] font-mono text-[11px]"
+                    >
                       {nm}
                     </text>
                     <text
@@ -269,14 +582,31 @@ export default function Customers() {
                 const tone = CHURN_TONE[c.churn];
                 return (
                   <g key={c.slug}>
-                    <rect x="490" y={y - 9} width="11" height="18" fill={tone} rx="1" />
-                    <text x="512" y={y - 1} className="fill-[var(--color-ink)] font-mono text-[11px]">
+                    <rect
+                      x="490"
+                      y={y - 9}
+                      width="11"
+                      height="18"
+                      fill={tone}
+                      rx="1"
+                    />
+                    <text
+                      x="512"
+                      y={y - 1}
+                      className="fill-[var(--color-ink)] font-mono text-[11px]"
+                    >
                       {short(c.slug)}
                     </text>
-                    <text x="512" y={y + 11} className="fill-[var(--color-ink-3)] font-mono text-[9.5px]">
+                    <text
+                      x="512"
+                      y={y + 11}
+                      className="fill-[var(--color-ink-3)] font-mono text-[9.5px]"
+                    >
                       {c.depth}
                       {" · "}
-                      {c.findings === 0 ? "0 findings" : `${c.findings} findings`}
+                      {c.findings === 0
+                        ? "0 findings"
+                        : `${c.findings} findings`}
                       {c.verifiedFalse ? ` · ${c.verifiedFalse} false` : ""}
                       {c.idleDays != null ? ` · ${c.idleDays}d idle` : ""}
                     </text>
@@ -296,14 +626,15 @@ export default function Customers() {
               Candidates by sector
             </h2>
             <p className="max-w-[72ch] text-[13px] text-[var(--color-ink-3)]">
-              Sector is the axis that predicts adoption, and it was found by profiling
-              the eight consumers we already have rather than by guessing: three are
-              config aggregators, two are public-sector bodies, and not one is a product
-              company. A config aggregator&rsquo;s product <em>is</em> curating plugins,
-              so a 54th is cheap. A public-sector team has security review mandated
-              rather than optional, and CWE/OWASP metadata is what an audit asks for.
-              Within each sector, <b>a clean scan ranks first</b> — that ask needs no
-              finding to be defensible.
+              Sector is the axis that predicts adoption, and it was found by
+              profiling the eight consumers we already have rather than by
+              guessing: three are config aggregators, two are public-sector
+              bodies, and not one is a product company. A config
+              aggregator&rsquo;s product <em>is</em> curating plugins, so a 54th
+              is cheap. A public-sector team has security review mandated rather
+              than optional, and CWE/OWASP metadata is what an audit asks for.
+              Within each sector, <b>a clean scan ranks first</b> — that ask
+              needs no finding to be defensible.
             </p>
           </div>
 
@@ -341,7 +672,9 @@ export default function Customers() {
                     <div className="flex items-center gap-3 font-mono text-[10.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
                       <span
                         style={{
-                          color: c.clean ? "var(--color-good)" : "var(--color-warn)",
+                          color: c.clean
+                            ? "var(--color-good)"
+                            : "var(--color-warn)",
                         }}
                       >
                         {c.clean ? "scans clean" : `${c.findings} unread`}
@@ -393,20 +726,38 @@ export default function Customers() {
       {customers.length ? (
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 className="text-[16px] font-semibold tracking-tight">Monitor</h2>
+            <h2 className="text-[16px] font-semibold tracking-tight">
+              Monitor
+            </h2>
             <p className="max-w-[70ch] text-[13px] text-[var(--color-ink-3)]">
-              <b>We approach a customer only when we expose it to no false positives.</b>{" "}
-              That means every finding read, each landed as TP or FP, and every FP fixed
-              and shipped. <b>Unread counts against the gate exactly as hard as a known
-              false positive</b> — not knowing is not the same as being clean, and
-              treating them as the same is what produced this problem.
+              <b>
+                We approach a customer only when we expose it to no false
+                positives.
+              </b>{" "}
+              That means every finding read, each landed as TP or FP, and every
+              FP fixed and shipped.{" "}
+              <b>
+                Unread counts against the gate exactly as hard as a known false
+                positive
+              </b>{" "}
+              — not knowing is not the same as being clean, and treating them as
+              the same is what produced this problem.
             </p>
           </div>
           <div className="overflow-x-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
             <table className="w-full min-w-[720px] border-collapse">
               <thead>
                 <tr>
-                  {["Repository", "Depth", "Idle", "Shown", "TP", "FP", "Unread", "Approach"].map((h) => (
+                  {[
+                    "Repository",
+                    "Depth",
+                    "Idle",
+                    "Shown",
+                    "TP",
+                    "FP",
+                    "Unread",
+                    "Approach",
+                  ].map((h) => (
                     <th
                       key={h}
                       className="border-b border-[var(--color-line)] px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-ink-3)]"
@@ -421,7 +772,9 @@ export default function Customers() {
                   <tr key={c.slug} className="align-top">
                     <td
                       className="border-b border-[var(--color-line)] px-3 py-2.5"
-                      style={{ boxShadow: `inset 3px 0 0 ${CHURN_TONE[c.churn]}` }}
+                      style={{
+                        boxShadow: `inset 3px 0 0 ${CHURN_TONE[c.churn]}`,
+                      }}
                     >
                       <a
                         href={c.repoUrl}
@@ -485,7 +838,10 @@ export default function Customers() {
                       {c.falsePositives?.length ? (
                         <div className="mt-1.5 flex flex-col gap-1">
                           {c.falsePositives.map((f: any) => (
-                            <div key={f.rule} className="max-w-[58ch] text-[11px] leading-snug">
+                            <div
+                              key={f.rule}
+                              className="max-w-[58ch] text-[11px] leading-snug"
+                            >
                               <span className="font-mono text-[var(--color-accent)]">
                                 {f.count}× {f.rule}
                               </span>{" "}
@@ -503,7 +859,9 @@ export default function Customers() {
                                   no fix yet
                                 </span>
                               )}
-                              <div className="text-[var(--color-ink-3)]">{f.why}</div>
+                              <div className="text-[var(--color-ink-3)]">
+                                {f.why}
+                              </div>
                               {f.files?.length ? (
                                 <div className="mt-0.5 flex flex-wrap gap-x-3">
                                   {f.files.flatMap((file: any) =>
@@ -547,13 +905,17 @@ export default function Customers() {
                     </td>
                     <td
                       className="border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[12px] tabular-nums"
-                      style={c.tpCount ? { color: "var(--color-good)" } : undefined}
+                      style={
+                        c.tpCount ? { color: "var(--color-good)" } : undefined
+                      }
                     >
                       {c.tpCount || "—"}
                     </td>
                     <td
                       className="border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[12px] tabular-nums"
-                      style={c.fpCount ? { color: "var(--color-accent)" } : undefined}
+                      style={
+                        c.fpCount ? { color: "var(--color-accent)" } : undefined
+                      }
                     >
                       {c.fpCount || "—"}
                       {c.fpOpen ? (
@@ -564,7 +926,9 @@ export default function Customers() {
                     </td>
                     <td
                       className="border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[12px] tabular-nums"
-                      style={c.unread ? { color: "var(--color-warn)" } : undefined}
+                      style={
+                        c.unread ? { color: "var(--color-warn)" } : undefined
+                      }
                     >
                       {c.unread || "—"}
                     </td>
@@ -594,25 +958,26 @@ export default function Customers() {
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11.5px] text-[var(--color-ink-3)]">
             <span>
-              <b className="text-[var(--color-ink-2)]">Approach</b> — clear means every
-              finding is read and every false positive shipped a fix; hold means it is
-              not.
+              <b className="text-[var(--color-ink-2)]">Approach</b> — clear
+              means every finding is read and every false positive shipped a
+              fix; hold means it is not.
             </span>
             <span>
               <b className="text-[var(--color-ink-2)]">Activity</b> measures the
               repository, not the relationship:{" "}
-              <span style={{ color: "var(--color-good)" }}>active</span> pushed within
-              30d ·{" "}
-              <span style={{ color: "var(--color-warn)" }}>slowing</span> 30–90d ·{" "}
-              <span style={{ color: "var(--color-accent)" }}>stale</span> over 90d. A
-              stale repo is still worth a try — it is a slower door, not a closed one.
+              <span style={{ color: "var(--color-good)" }}>active</span> pushed
+              within 30d ·{" "}
+              <span style={{ color: "var(--color-warn)" }}>slowing</span> 30–90d
+              · <span style={{ color: "var(--color-accent)" }}>stale</span> over
+              90d. A stale repo is still worth a try — it is a slower door, not
+              a closed one.
             </span>
           </div>
           <p className="text-[11.5px] text-[var(--color-ink-3)]">
-            Measured against the published packages, never a local build — a stranger runs
-            what is on npm. Consumers are found by code search over{" "}
-            <span className="font-mono">package.json</span>, so private and vendored
-            consumers are invisible and the count is a floor.
+            Measured against the published packages, never a local build — a
+            stranger runs what is on npm. Consumers are found by code search
+            over <span className="font-mono">package.json</span>, so private and
+            vendored consumers are invisible and the count is a floor.
           </p>
         </section>
       ) : null}
