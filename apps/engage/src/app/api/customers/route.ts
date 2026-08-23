@@ -22,6 +22,12 @@ export const dynamic = "force-dynamic";
  */
 
 const FILE = join(FOOTPRINT, "adoption", "customers.json");
+/**
+ * Every finding we have ever shown a repository, with its CWE, CVSS and exact
+ * line. Separate from customers.json because it is evidence rather than state:
+ * it only ever grows, and a finding you cannot point at is not evidence.
+ */
+const LEDGER = join(FOOTPRINT, "adoption", "findings.json");
 
 const DAY = 86_400_000;
 
@@ -416,6 +422,33 @@ export async function GET() {
 
   const exposed = customers.filter((c: any) => c.findings > 0).length;
 
+  const led = read(LEDGER);
+  const ledger = led.ok
+    ? (() => {
+        const repos = Object.entries(led.data.repos ?? {}).map(
+          ([slug, r]: [string, any]) => ({
+            slug,
+            kloc: r.kloc,
+            scannedAt: r.scannedAt,
+            findings: r.findings ?? [],
+            // Worst-first: a critical among thirty mediums is the whole story.
+            worst: (r.findings ?? []).reduce(
+              (m: number, f: any) => Math.max(m, f.cvss ?? 0),
+              0,
+            ),
+          }),
+        );
+        return {
+          asOf: led.data.asOf ?? null,
+          totals: led.data.totals ?? null,
+          repos: repos
+            .filter((r) => r.findings.length)
+            .sort((a, b) => b.worst - a.worst),
+          cleanRepos: repos.filter((r) => !r.findings.length).length,
+        };
+      })()
+    : null;
+
   /**
    * The pipeline, flattened across customers and candidates alike, because a PR
    * does not care which bucket the repository sits in. `ourMove` is the only
@@ -486,6 +519,7 @@ export async function GET() {
             Number(a.items.some((i: any) => i.kind === "version")) ||
           b.items.length - a.items.length,
       ),
+    ledger,
     totals: {
       customers: customers.length,
       configures: customers.filter((c: any) => c.depth === "configures").length,

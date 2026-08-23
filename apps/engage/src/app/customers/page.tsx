@@ -100,6 +100,7 @@ export default function Customers() {
   const pipeline: any[] = data?.pipeline ?? [];
   const pt = data?.pipelineTotals ?? null;
   const upsells: any[] = data?.upsells ?? [];
+  const ledger: any = data?.ledger ?? null;
 
   /** Which candidate is expanded. One at a time — this is a board, not a wall. */
   const [focus, setFocus] = useState<string | null>(null);
@@ -256,6 +257,181 @@ export default function Customers() {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {/* ---- vulnerability ledger ---- */}
+      {ledger?.totals ? (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[16px] font-semibold tracking-tight">
+              Vulnerability ledger
+            </h2>
+            <p className="max-w-[74ch] text-[13px] text-[var(--color-ink-2)]">
+              Every finding we have shown a repository, kept with its CWE, its
+              CVSS score and the exact line. This is what turns &ldquo;our rules
+              find real problems&rdquo; from a claim into a query — and it is
+              the same evidence a security team asks for before adopting
+              anything.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-4">
+            {[
+              ["repositories scanned", ledger.totals.repos],
+              ["thousand lines read", ledger.totals.kloc],
+              ["findings on record", ledger.totals.findings],
+              ["scanned clean", ledger.cleanRepos],
+            ].map(([k, v]: any) => (
+              <div key={k} className="bg-[var(--color-panel)] p-3">
+                <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+                  {k}
+                </div>
+                <div className="mt-1 text-[22px] font-semibold tabular-nums">
+                  {Number(v).toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
+              <h3 className="border-b border-[var(--color-line)] px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-2)]">
+                by severity
+              </h3>
+              <div className="flex flex-col gap-1.5 p-3">
+                {["critical", "high", "medium", "low", "unscored"]
+                  .filter((k) => ledger.totals.bySeverity?.[k])
+                  .map((k) => {
+                    const n = ledger.totals.bySeverity[k];
+                    const pct = Math.round((n / ledger.totals.findings) * 100);
+                    return (
+                      <div key={k} className="flex items-center gap-2">
+                        <span className="w-16 shrink-0 font-mono text-[10.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                          {k}
+                        </span>
+                        <span className="h-[6px] flex-1 overflow-hidden rounded-full bg-[var(--color-line)]">
+                          <span
+                            className="block h-full rounded-full"
+                            style={{
+                              width: `${pct}%`,
+                              background:
+                                k === "critical" || k === "high"
+                                  ? "var(--color-bad)"
+                                  : k === "medium"
+                                    ? "var(--color-warn)"
+                                    : "var(--color-ink-3)",
+                            }}
+                          />
+                        </span>
+                        <span className="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums">
+                          {n}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
+              <h3 className="border-b border-[var(--color-line)] px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-2)]">
+                by weakness (CWE)
+              </h3>
+              <div className="max-h-52 overflow-y-auto p-3">
+                <table className="w-full text-[12px]">
+                  <tbody>
+                    {Object.entries(ledger.totals.byCwe ?? {}).map(
+                      ([cwe, n]: any) => (
+                        <tr key={cwe}>
+                          <td className="py-0.5">
+                            <a
+                              href={`https://cwe.mitre.org/data/definitions/${String(cwe).replace("CWE-", "")}.html`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-mono text-[11px] hover:text-[var(--color-accent)]"
+                            >
+                              {cwe}
+                            </a>
+                          </td>
+                          <td className="py-0.5 text-right font-mono text-[11px] tabular-nums">
+                            {n}
+                          </td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
+            <h3 className="border-b border-[var(--color-line)] px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-2)]">
+              where they are — worst first
+            </h3>
+            <div className="max-h-[28rem] overflow-y-auto">
+              {ledger.repos.map((r: any) => (
+                <div
+                  key={r.slug}
+                  className="border-b border-[var(--color-line)] px-3 py-2 last:border-0"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <a
+                      href={`https://github.com/${r.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all font-mono text-[11.5px] hover:text-[var(--color-accent)]"
+                    >
+                      {r.slug}
+                    </a>
+                    <span className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                      {r.findings.length} findings · {r.kloc} kloc · worst CVSS{" "}
+                      {r.worst || "—"}
+                    </span>
+                  </div>
+                  <ul className="mt-1 flex flex-col gap-0.5">
+                    {r.findings
+                      .slice()
+                      .sort((a: any, b: any) => (b.cvss ?? 0) - (a.cvss ?? 0))
+                      .slice(0, 6)
+                      .map((f: any, i: number) => (
+                        <li
+                          key={i}
+                          className="flex flex-wrap items-baseline gap-x-2 font-mono text-[10.5px]"
+                        >
+                          <span
+                            style={{
+                              color:
+                                (f.cvss ?? 0) >= 7
+                                  ? "var(--color-bad)"
+                                  : "var(--color-warn)",
+                            }}
+                          >
+                            {f.cwe ?? "—"} {f.cvss ? `· ${f.cvss}` : ""}
+                          </span>
+                          <a
+                            href={`https://github.com/${r.slug}/blob/HEAD/${f.file}#L${f.line}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[var(--color-ink-2)] underline decoration-[var(--color-line)] underline-offset-2 hover:text-[var(--color-accent)]"
+                          >
+                            {f.file}:{f.line}
+                          </a>
+                          <span className="text-[var(--color-ink-3)]">
+                            {f.rule.split("/").pop()}
+                          </span>
+                        </li>
+                      ))}
+                    {r.findings.length > 6 ? (
+                      <li className="font-mono text-[10px] text-[var(--color-ink-3)]">
+                        … {r.findings.length - 6} more
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       ) : null}
 
       {/* ---- glossary ---- */}
