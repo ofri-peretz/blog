@@ -1,5 +1,8 @@
 "use client";
 
+/** Untouched this long and a PR needs a nudge rather than more patience. */
+const STALE_PR_DAYS = 21;
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCachedSection } from "@/lib/client-cache";
@@ -121,6 +124,28 @@ export default function Customers() {
   /** Which candidate is expanded. One at a time — this is a board, not a wall. */
   const [focus, setFocus] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  /** PR list controls: what to hide, and what to lead with. */
+  const [prSort, setPrSort] = useState<"phase" | "newest" | "oldest">("phase");
+  const [hideStale, setHideStale] = useState(false);
+
+  /**
+   * The PR list defaults to whose-move order, because that is what it is for.
+   * Newest exists because a list led by things nobody has touched in three
+   * weeks reads as "we have not opened a PR in a month" even when we have.
+   */
+  const shownPrs = useMemo(() => {
+    const all = prData?.prs ?? [];
+    const kept = hideStale
+      ? all.filter((p: any) => (p.idleDays ?? 0) < STALE_PR_DAYS)
+      : all;
+    if (prSort === "phase") return kept;
+    const dir = prSort === "newest" ? -1 : 1;
+    return [...kept].sort(
+      (a: any, b: any) =>
+        dir * (Date.parse(b.openedAt ?? 0) - Date.parse(a.openedAt ?? 0)),
+    );
+  }, [prData, prSort, hideStale]);
+
   const [readyOnly, setReadyOnly] = useState(false);
 
   /**
@@ -323,8 +348,45 @@ export default function Customers() {
           </div>
         ) : null}
 
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex overflow-hidden rounded-lg border border-[var(--color-line)]">
+            {(
+              [
+                ["phase", "whose move"],
+                ["newest", "newest"],
+                ["oldest", "oldest"],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setPrSort(k)}
+                className={`px-2.5 py-1.5 font-mono text-[10.5px] uppercase tracking-wide ${
+                  prSort === k
+                    ? "bg-[var(--color-accent)] text-[var(--color-bg)]"
+                    : "bg-[var(--color-panel)] hover:text-[var(--color-accent)]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] px-2.5 py-1.5 font-mono text-[10.5px] uppercase tracking-wide">
+            <input
+              type="checkbox"
+              checked={hideStale}
+              onChange={(e) => setHideStale(e.target.checked)}
+              className="accent-[var(--color-accent)]"
+            />
+            hide stale ({STALE_PR_DAYS}d+ untouched)
+          </label>
+          <span className="font-mono text-[10.5px] uppercase tracking-wide tabular-nums text-[var(--color-ink-3)]">
+            {shownPrs.length} of {(prData?.prs ?? []).length} shown
+          </span>
+        </div>
+
         <div className="flex flex-col gap-2">
-          {(prData?.prs ?? []).map((p: any) => (
+          {shownPrs.map((p: any) => (
             <div
               key={p.url}
               className="flex flex-col gap-1.5 rounded-xl border bg-[var(--color-panel)] p-3"
