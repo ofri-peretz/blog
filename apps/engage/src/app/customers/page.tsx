@@ -36,6 +36,16 @@ interface Customer {
   plugins: string[];
   note?: string;
   via?: number;
+  /** Weekly installs of the consumer itself, where it is a published package. */
+  reach?: number | null;
+  /** False when its semver range cannot resolve to what we publish today. */
+  receives?: boolean;
+  approachable?: boolean;
+  tpCount?: number;
+  fpCount?: number;
+  fpOpen?: number;
+  truePositives?: any[];
+  falsePositives?: any[];
 }
 
 const CHURN_TONE: Record<string, string> = {
@@ -45,11 +55,23 @@ const CHURN_TONE: Record<string, string> = {
   unknown: "var(--color-ink-3)",
 };
 
+/**
+ * These describe REPOSITORY MAINTENANCE — days since the last push — and nothing
+ * about the health of our relationship with it. A dormant repo is still worth a
+ * try; it is just a slower door and a merge is less likely to be noticed.
+ */
 const CHURN_WORD: Record<string, string> = {
   live: "active",
-  aging: "aging",
-  dormant: "dormant",
+  aging: "slowing",
+  dormant: "stale",
   unknown: "unknown",
+};
+
+const CHURN_MEANING: Record<string, string> = {
+  live: "pushed within 30 days",
+  aging: "30–90 days since a push",
+  dormant: "no push in over 90 days",
+  unknown: "no push date",
 };
 
 const short = (slug: string) => {
@@ -502,7 +524,11 @@ export default function Customers() {
                       >
                         {c.approachable ? "clear" : "hold"}
                       </span>
-                      <div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-wide" style={{ color: CHURN_TONE[c.churn] }}>
+                      <div
+                        className="mt-0.5 font-mono text-[9.5px] uppercase tracking-wide"
+                        style={{ color: CHURN_TONE[c.churn] }}
+                        title={CHURN_MEANING[c.churn]}
+                      >
                         {CHURN_WORD[c.churn]}
                       </div>
                     </td>
@@ -510,6 +536,22 @@ export default function Customers() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11.5px] text-[var(--color-ink-3)]">
+            <span>
+              <b className="text-[var(--color-ink-2)]">Approach</b> — clear means every
+              finding is read and every false positive shipped a fix; hold means it is
+              not.
+            </span>
+            <span>
+              <b className="text-[var(--color-ink-2)]">Activity</b> measures the
+              repository, not the relationship:{" "}
+              <span style={{ color: "var(--color-good)" }}>active</span> pushed within
+              30d ·{" "}
+              <span style={{ color: "var(--color-warn)" }}>slowing</span> 30–90d ·{" "}
+              <span style={{ color: "var(--color-accent)" }}>stale</span> over 90d. A
+              stale repo is still worth a try — it is a slower door, not a closed one.
+            </span>
           </div>
           <p className="text-[11.5px] text-[var(--color-ink-3)]">
             Measured against the published packages, never a local build — a stranger runs
