@@ -288,9 +288,30 @@ export async function GET() {
           : idleDays > DORMANT_DAYS
             ? 0
             : 1 - idleDays / DORMANT_DAYS;
-      // Clean is the dominant term on purpose — it decides whether a PR can be
-      // written at all, where reach and freshness only decide how fast it lands.
-      const score = (clean ? 0.55 : 0.15) + 0.28 * reach + 0.17 * fresh;
+
+      /**
+       * USAGE UPSIDE — how far coverage travels from one merge.
+       *
+       * A merge into a package that ships 400k installs a week is worth more
+       * than the same merge into an internal service, and neither stars nor
+       * outside merges say anything about that. Weekly npm downloads is the
+       * honest number when the repository publishes; when it does not, the
+       * repository is its own audience and this term is neutral rather than
+       * zero, since "does not publish to npm" is not a demerit.
+       *
+       * Log-scaled: the gap between 100 and 10,000 downloads matters far more
+       * than the gap between 400k and 500k, and a linear term would let two or
+       * three huge packages flatten everything else to nothing.
+       */
+      const dl = c.weeklyDownloads ?? null;
+      const usage =
+        dl == null ? 0.35 : Math.min(1, Math.log10(Math.max(dl, 1)) / 6);
+
+      // Clean still dominates: it decides whether a PR can be written at all,
+      // where the other three only decide how much the merge is worth and how
+      // fast it lands.
+      const score =
+        (clean ? 0.42 : 0.12) + 0.22 * reach + 0.12 * fresh + 0.24 * usage;
       return {
         ...c,
         idleDays,

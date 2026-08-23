@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCachedSection } from "@/lib/client-cache";
 import { Refresh } from "@/components/panels";
@@ -100,6 +100,9 @@ export default function Customers() {
   const pipeline: any[] = data?.pipeline ?? [];
   const pt = data?.pipelineTotals ?? null;
   const upsells: any[] = data?.upsells ?? [];
+
+  /** Which candidate is expanded. One at a time — this is a board, not a wall. */
+  const [focus, setFocus] = useState<string | null>(null);
 
   /**
    * Node placement.
@@ -228,6 +231,81 @@ export default function Customers() {
         </div>
       ) : null}
 
+      {/* ---- glossary ---- */}
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-[16px] font-semibold tracking-tight">
+            What these words mean
+          </h2>
+          <p className="max-w-[70ch] text-[13px] text-[var(--color-ink-2)]">
+            Every term on this page, defined once. Most of them are deliberately
+            narrower than they sound — <b>clean</b> in particular means measured
+            clean, never assumed clean.
+          </p>
+        </div>
+        <dl className="grid gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            [
+              "active",
+              "Pushed within 30 days. Someone is working on it now, so a PR gets seen.",
+            ],
+            [
+              "slowing",
+              "Last push 30–90 days ago. Still maintained, but a PR may sit for weeks. Worth trying — just not worth waiting on.",
+            ],
+            [
+              "stale",
+              "No push in over 90 days. Treat as unmaintained: a merge here reaches nobody, and the PR may never be read.",
+            ],
+            [
+              "clean",
+              "We linted it with the published plugins and it produced zero findings. Not 'we assume it is fine' — measured.",
+            ],
+            [
+              "unread",
+              "It produced findings and no human has read them yet. Counts against us exactly as hard as a known false positive: not knowing is not the same as being clean.",
+            ],
+            [
+              "merges",
+              "Outside merges — merged PRs from someone who is not an owner, member, collaborator or bot. This, not stars, is whether the door opens.",
+            ],
+            [
+              "score",
+              "Clean (0.55) + reach (0.28) + freshness (0.17). Clean dominates because it decides whether a PR can be written at all; the others only decide how fast it lands.",
+            ],
+            [
+              "dl / wk",
+              "Weekly npm downloads for the package this repository publishes, when it publishes one. How far coverage travels from a single merge.",
+            ],
+            [
+              "configures",
+              "The deepest kind of adoption: the repository turns our rules on. Below it, in order: depends, lists, mentions.",
+            ],
+            [
+              "our move",
+              "A maintainer replied and is waiting on us. The only delay on this page that is entirely ours to remove.",
+            ],
+            [
+              "stalled",
+              "An open PR with no activity from anyone for over 21 days. Needs a nudge, not more waiting.",
+            ],
+            [
+              "stranded installs",
+              "Installs pinned below our current major. A caret range never crosses a major, so these receive nothing we ship however many fixes land.",
+            ],
+          ].map(([term, meaning]) => (
+            <div key={term} className="bg-[var(--color-panel)] p-3">
+              <dt className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--color-accent)]">
+                {term}
+              </dt>
+              <dd className="mt-1 text-[12px] leading-snug text-[var(--color-ink-2)]">
+                {meaning}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
       {/* ---- candidates, by sector ---- */}
       {sectors.length ? (
         <section className="flex flex-col gap-4">
@@ -272,48 +350,144 @@ export default function Customers() {
                   </span>
                 </div>
 
-                <div className="max-h-[26rem] overflow-y-auto">
-                  <table className="w-full border-collapse text-[12px]">
-                    <tbody>
-                      {s.items.map((c: any) => (
-                        <tr
+                <div className="max-h-[30rem] overflow-y-auto">
+                  <ul className="flex flex-col">
+                    {s.items.map((c: any) => {
+                      const open = focus === c.slug;
+                      return (
+                        <li
                           key={c.slug}
                           className="border-b border-[var(--color-line)] last:border-0"
                         >
-                          <td className="w-1 py-1.5 pl-3">
-                            {/* Colour never carries this alone — the word is in the next cell. */}
+                          <button
+                            type="button"
+                            onClick={() => setFocus(open ? null : c.slug)}
+                            aria-expanded={open}
+                            className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-[var(--color-line)]/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+                          >
+                            {/* Colour never carries this alone — the word is on the next line. */}
                             <span
-                              className={`block h-4 w-[3px] rounded-full ${
+                              className={`mt-1 block h-3.5 w-[3px] shrink-0 rounded-full ${
                                 c.clean
                                   ? "bg-[var(--color-good)]"
                                   : "bg-[var(--color-warn)]"
                               }`}
                             />
-                          </td>
-                          <td className="max-w-0 truncate py-1.5 pl-2 pr-2">
-                            <a
-                              href={c.repoUrl ?? `https://github.com/${c.slug}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title={c.note ?? c.slug}
-                              className="font-mono text-[11.5px] hover:text-[var(--color-accent)]"
-                            >
-                              {c.slug}
-                            </a>
-                          </td>
-                          <td className="whitespace-nowrap py-1.5 pr-2 text-right font-mono text-[10.5px] text-[var(--color-ink-3)]">
-                            {c.clean ? "clean" : `${c.findings} unread`}
-                          </td>
-                          <td className="whitespace-nowrap py-1.5 pr-2 text-right font-mono text-[10.5px] tabular-nums text-[var(--color-ink-3)]">
-                            {c.outsideMerges ?? 0} merges
-                          </td>
-                          <td className="whitespace-nowrap py-1.5 pr-3 text-right font-mono text-[10.5px] tabular-nums text-[var(--color-ink-2)]">
-                            {c.score.toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                              {/* Full name, wrapped rather than truncated — a slug you
+                                  cannot read is not an identifier. */}
+                              <span className="break-all font-mono text-[11.5px] leading-tight">
+                                {c.slug}
+                              </span>
+                              <span className="flex flex-wrap gap-x-2 font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                                <span
+                                  className={
+                                    c.clean
+                                      ? "text-[var(--color-good)]"
+                                      : "text-[var(--color-warn)]"
+                                  }
+                                >
+                                  {c.clean ? "clean" : `${c.findings} unread`}
+                                </span>
+                                <span>{c.kloc ?? "?"} kloc</span>
+                                <span>{c.outsideMerges ?? 0} merges</span>
+                                <span>{CHURN_WORD[c.churn] ?? c.churn}</span>
+                                {c.weeklyDownloads ? (
+                                  <span className="text-[var(--color-ink-2)]">
+                                    {c.weeklyDownloads.toLocaleString()} dl/wk
+                                  </span>
+                                ) : null}
+                              </span>
+                            </span>
+                            <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--color-ink-2)]">
+                              {c.score.toFixed(2)}
+                            </span>
+                          </button>
+
+                          {open ? (
+                            <div className="flex flex-col gap-2 border-t border-[var(--color-line)] bg-[var(--color-bg)] px-3 py-2.5">
+                              {c.description ? (
+                                <p className="text-[12px] leading-snug text-[var(--color-ink-2)]">
+                                  {c.description}
+                                </p>
+                              ) : null}
+                              {c.note ? (
+                                <p className="text-[12px] leading-snug text-[var(--color-ink-3)]">
+                                  {c.note}
+                                </p>
+                              ) : null}
+                              {c.topRules ? (
+                                <p className="font-mono text-[11px] text-[var(--color-warn)]">
+                                  {c.topRules}
+                                </p>
+                              ) : null}
+                              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10.5px] uppercase tracking-wide text-[var(--color-ink-3)] sm:grid-cols-4">
+                                {[
+                                  ["stars", c.stars ?? "—"],
+                                  ["outside merges", c.outsideMerges ?? 0],
+                                  [
+                                    "idle",
+                                    c.idleDays == null ? "—" : `${c.idleDays}d`,
+                                  ],
+                                  ["findings / kloc", c.perKloc ?? "0"],
+                                  [
+                                    "npm reach",
+                                    c.weeklyDownloads
+                                      ? `${c.weeklyDownloads.toLocaleString()} / wk`
+                                      : "not published",
+                                  ],
+                                ].map(([k, v]) => (
+                                  <div
+                                    key={String(k)}
+                                    className="flex flex-col"
+                                  >
+                                    <dt>{k}</dt>
+                                    <dd className="text-[13px] normal-case tabular-nums text-[var(--color-ink-1)]">
+                                      {v}
+                                    </dd>
+                                  </div>
+                                ))}
+                              </dl>
+                              {c.blockers?.length ? (
+                                <ul className="flex flex-col gap-0.5">
+                                  {c.blockers.map((b: string) => (
+                                    <li
+                                      key={b}
+                                      className="font-mono text-[10.5px] text-[var(--color-warn)]"
+                                    >
+                                      · {b}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                              <div className="flex flex-wrap gap-2">
+                                <a
+                                  href={
+                                    c.repoUrl ?? `https://github.com/${c.slug}`
+                                  }
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-md border border-[var(--color-line)] px-2 py-1 font-mono text-[10.5px] uppercase tracking-wide hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                                >
+                                  Open on GitHub ↗
+                                </a>
+                                {c.npm ? (
+                                  <a
+                                    href={`https://www.npmjs.com/package/${c.npm}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-md border border-[var(--color-line)] px-2 py-1 font-mono text-[10.5px] uppercase tracking-wide hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                                  >
+                                    {c.npm} on npm ↗
+                                  </a>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               </div>
             ))}
