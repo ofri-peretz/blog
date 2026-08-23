@@ -194,7 +194,14 @@ export default function Customers() {
           >
             ← engage
           </Link>
-          <Refresh at={at} busy={busy} onClick={refresh} />
+          <Refresh
+            at={at}
+            busy={busy || prBusy}
+            onClick={() => {
+              refresh();
+              refreshPrs();
+            }}
+          />
         </div>
         <h1 className="text-[28px] font-semibold tracking-tight">Customers</h1>
         <p className="max-w-[66ch] text-[14px] text-[var(--color-ink-2)]">
