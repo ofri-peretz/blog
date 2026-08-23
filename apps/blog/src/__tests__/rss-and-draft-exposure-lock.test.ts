@@ -125,3 +125,25 @@ describe("draft exposure", () => {
     expect(liveMeta.robots).toBeUndefined();
   });
 });
+
+describe("feed discoverability", () => {
+  it("advertises the feed via <link rel=alternate> in <head>", () => {
+    // Asserted against layout.tsx SOURCE, not by importing it: layout.tsx
+    // pulls a "#interlace/*" subpath alias that vitest's resolver does not
+    // handle, and adding that alias to the shared vitest config to satisfy
+    // one assertion is a worse trade than reading the file.
+    //
+    // robots.txt has no field for a feed — this head link is the only
+    // mechanism readers and aggregators use to find one. A feed that exists
+    // but is unlisted is a feed nothing subscribes to.
+    const layout = readFileSync(
+      join(PROJECT_ROOT, "src", "app", "layout.tsx"),
+      "utf-8",
+    );
+    expect(
+      layout,
+      "no application/rss+xml alternate in root metadata",
+    ).toContain('"application/rss+xml"');
+    expect(layout).toContain("/rss.xml");
+  });
+});

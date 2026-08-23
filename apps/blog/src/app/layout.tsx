@@ -26,7 +26,17 @@ export const metadata: Metadata = {
   description:
     "Building Products That Matter • Engineering Leadership • Open-Source Contributor. Creator of the Interlace ESLint Ecosystem.",
   metadataBase: new URL("https://ofriperetz.dev"),
-  alternates: { canonical: "https://ofriperetz.dev" },
+  alternates: {
+    canonical: "https://ofriperetz.dev",
+    // Feed autodiscovery. This <link rel="alternate"> in <head> — NOT a line
+    // in robots.txt — is how readers and aggregators find a feed; robots.txt
+    // has no field for one. Without this the feed exists but is unlisted.
+    types: {
+      "application/rss+xml": [
+        { url: "https://ofriperetz.dev/rss.xml", title: "Ofri Peretz" },
+      ],
+    },
+  },
   openGraph: {
     title: "Ofri Peretz — Engineering Leader & Open Source Creator",
     description:
