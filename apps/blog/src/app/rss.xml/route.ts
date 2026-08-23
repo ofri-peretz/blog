@@ -25,11 +25,12 @@ const XML_ESCAPES: Record<string, string> = {
 const esc = (s: string): string =>
   s.replace(/[&<>"']/g, (c) => XML_ESCAPES[c] ?? c);
 
-/** RSS 2.0 requires RFC-822 dates; `toUTCString()` emits exactly that form. */
-const rfc822 = (iso?: string): string =>
-  new Date(
-    iso && !Number.isNaN(Date.parse(iso)) ? iso : Date.now(),
-  ).toUTCString();
+/**
+ * RSS 2.0 requires RFC-822 dates; `toUTCString()` emits exactly that form.
+ * Returns null for a missing or unparseable date rather than substituting one.
+ */
+const rfc822 = (iso?: string): string | null =>
+  iso && !Number.isNaN(Date.parse(iso)) ? new Date(iso).toUTCString() : null;
 
 /**
  * The feed is generated at build time — the articles are files in the repo, so
@@ -53,8 +54,18 @@ export function GET(): Response {
       <link>${esc(url)}</link>
       <guid isPermaLink="true">${esc(url)}</guid>
       <description>${esc(fm.description)}</description>
-      <pubDate>${rfc822(fm.published_at)}</pubDate>
-${fm.tags.map((t) => `      <category>${esc(t)}</category>`).join("\n")}
+${(() => {
+  // Omitted, never faked. The route is force-static, so a Date.now()
+  // fallback would bake the BUILD time into pubDate — and three
+  // published articles (client-storage-trust-boundary,
+  // design-system-token-drift-eslint, dom-sink-taxonomy) genuinely have
+  // no published_at today. Those items would be re-dated by every
+  // unrelated deploy and resurface in readers as new. pubDate is
+  // optional in RSS 2.0; readers fall back to first-seen, which is
+  // stable. A missing date is honest, a churning one is harmful.
+  const d = rfc822(fm.published_at);
+  return d ? `      <pubDate>${d}</pubDate>\n` : "";
+})()}${fm.tags.map((t) => `      <category>${esc(t)}</category>`).join("\n")}
     </item>`;
     })
     .join("\n");
@@ -71,7 +82,7 @@ ${fm.tags.map((t) => `      <category>${esc(t)}</category>`).join("\n")}
     <link>${SITE_URL}</link>
     <description>${esc(DESCRIPTION)}</description>
     <language>en</language>
-    <lastBuildDate>${rfc822(newest)}</lastBuildDate>
+    <lastBuildDate>${rfc822(newest) ?? new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${FEED_URL}" rel="self" type="application/rss+xml" />
 ${items}
   </channel>

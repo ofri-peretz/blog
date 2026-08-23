@@ -23,7 +23,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import matter from "gray-matter";
 
-import { isPublished } from "@/lib/source";
+import { isPublished, type ArticleFrontmatter } from "@/lib/source";
 import { GET } from "@/app/rss.xml/route";
 import sitemap from "@/app/sitemap";
 import { generateMetadata } from "@/app/articles/[slug]/page";
@@ -42,7 +42,9 @@ function partitionSlugs(): { drafts: string[]; live: string[] } {
   for (const f of readdirSync(ARTICLES_DIR).filter((x) => x.endsWith(".md"))) {
     const data = matter(readFileSync(join(ARTICLES_DIR, f), "utf-8")).data;
     const slug = f.replace(/\.md$/, "");
-    (isPublished(data as never) ? live : drafts).push(slug);
+    (isPublished(data as unknown as ArticleFrontmatter) ? live : drafts).push(
+      slug,
+    );
   }
   return { drafts, live };
 }
@@ -78,6 +80,23 @@ describe("rss feed", () => {
     const items = [...xml.matchAll(/<item>/g)];
     expect(items.length).toBeGreaterThan(0);
     expect(xml).toContain("https://ofriperetz.dev/articles/");
+  });
+
+  it("never invents a pubDate for an undated article", async () => {
+    // force-static means a Date.now() fallback bakes the BUILD time in, so
+    // every unrelated deploy re-dates the item and readers resurface it as
+    // new. Three published articles have no published_at today, so this is
+    // an active path, not a hypothetical one.
+    const xml = await feedXml();
+    const items = xml.split("<item>").slice(1);
+    const dated = partitionSlugs()
+      .live.map((slug) =>
+        matter(readFileSync(join(ARTICLES_DIR, `${slug}.md`), "utf-8")),
+      )
+      .filter((m) => m.data.published_at).length;
+    const pubDates = items.filter((i) => i.includes("<pubDate>")).length;
+    expect(pubDates).toBe(dated);
+    expect(pubDates).toBeLessThan(items.length);
   });
 
   it("excludes every unpublished article", async () => {
