@@ -92,6 +92,22 @@ export default function Customers() {
     () => ({ customers: [], packages: [], error: "unreachable" }),
   );
 
+  /**
+   * PR state is fetched separately and on its own refresh, because it is the
+   * one thing here that changes without us doing anything: a maintainer
+   * replies, a check goes red, a review lands. A copy stored alongside the
+   * pipeline would be wrong from the moment it was written.
+   */
+  const {
+    data: prData,
+    at: prAt,
+    busy: prBusy,
+    refresh: refreshPrs,
+  } = useCachedSection<any>("customer-prs", "/api/prs", () => ({
+    prs: [],
+    totals: null,
+  }));
+
   const customers: Customer[] = data?.customers ?? [];
   const candidates: any[] = data?.candidates ?? [];
   const sectors: any[] = data?.sectors ?? [];
@@ -258,6 +274,143 @@ export default function Customers() {
           ))}
         </div>
       ) : null}
+
+      {/* ---- open PRs ---- */}
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-[16px] font-semibold tracking-tight">
+              Open pull requests
+            </h2>
+            <p className="max-w-[70ch] text-[13px] text-[var(--color-ink-2)]">
+              Live from GitHub, not from a file — a PR&rsquo;s state changes
+              without us touching it. Sorted by whose move it is, because that
+              is the only part of a pipeline anyone can act on, and the delay
+              that is ours is the only one we can remove alone.
+            </p>
+          </div>
+          <Refresh at={prAt} busy={prBusy} onClick={refreshPrs} />
+        </div>
+
+        {prData?.totals ? (
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-5">
+            {[
+              ["open", prData.totals.open, null],
+              ["our move", prData.totals.ourMove, "var(--color-bad)"],
+              ["stalled", prData.totals.stalled, "var(--color-warn)"],
+              ["no reply yet", prData.totals.silent, null],
+              ["waiting on them", prData.totals.waiting, "var(--color-good)"],
+            ].map(([k, v, colour]: any) => (
+              <div key={k} className="bg-[var(--color-panel)] p-3">
+                <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+                  {k}
+                </div>
+                <div
+                  className="mt-1 text-[22px] font-semibold tabular-nums"
+                  style={colour && v ? { color: colour } : undefined}
+                >
+                  {v}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-2">
+          {(prData?.prs ?? []).map((p: any) => (
+            <div
+              key={p.url}
+              className="flex flex-col gap-1.5 rounded-xl border bg-[var(--color-panel)] p-3"
+              style={{
+                borderColor: p.phase.startsWith("our move")
+                  ? "var(--color-bad)"
+                  : p.phase === "stalled"
+                    ? "var(--color-warn)"
+                    : "var(--color-line)",
+              }}
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all font-mono text-[12px] hover:text-[var(--color-accent)]"
+                >
+                  {p.slug}#{p.number} ↗
+                </a>
+                <span
+                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
+                  style={{
+                    color: p.phase.startsWith("our move")
+                      ? "var(--color-bad)"
+                      : p.phase === "stalled"
+                        ? "var(--color-warn)"
+                        : p.phase === "waiting on them"
+                          ? "var(--color-good)"
+                          : "var(--color-ink-3)",
+                  }}
+                >
+                  {p.phase}
+                </span>
+              </div>
+
+              <p className="text-[12.5px] leading-snug text-[var(--color-ink-1)]">
+                {p.title}
+              </p>
+
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                <span>opened {p.openedAt}</span>
+                <span>{p.idleDays}d since activity</span>
+                <span>
+                  {p.humanComments} human{" "}
+                  {p.humanComments === 1 ? "comment" : "comments"}
+                </span>
+                {p.additions != null ? (
+                  <span>
+                    +{p.additions}/&minus;{p.deletions}
+                  </span>
+                ) : null}
+                {p.approved ? (
+                  <span className="text-[var(--color-good)]">approved</span>
+                ) : null}
+                {p.changesRequested ? (
+                  <span className="text-[var(--color-warn)]">
+                    changes requested
+                  </span>
+                ) : null}
+                {p.botWaiting ? <span>bot analysis pending</span> : null}
+                {p.sector ? (
+                  <span className="text-[var(--color-ink-2)]">{p.sector}</span>
+                ) : null}
+                {p.weeklyDownloads ? (
+                  <span className="text-[var(--color-ink-2)]">
+                    {p.weeklyDownloads.toLocaleString()} dl/wk
+                  </span>
+                ) : null}
+              </div>
+
+              {p.failingChecks?.length ? (
+                <p className="font-mono text-[10.5px] text-[var(--color-bad)]">
+                  red: {p.failingChecks.join(" · ")}
+                </p>
+              ) : null}
+
+              {p.lastHuman ? (
+                <p className="border-l-2 border-[var(--color-line)] pl-2 text-[11.5px] leading-snug text-[var(--color-ink-3)]">
+                  <b className="font-mono text-[10.5px] uppercase tracking-wide">
+                    {p.lastHuman.who}
+                  </b>{" "}
+                  <span className="font-mono text-[10px]">
+                    {p.lastHuman.at}
+                  </span>{" "}
+                  — {p.lastHuman.body.slice(0, 220)}
+                  {p.lastHuman.body.length > 220 ? "…" : ""}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ---- vulnerability ledger ---- */}
       {ledger?.totals ? (
