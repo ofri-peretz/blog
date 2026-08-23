@@ -11,6 +11,7 @@ export interface ArticleFrontmatter {
   canonical_url?: string;
   devto_url?: string;
   devto_id?: number;
+  /** Tri-state on purpose: true / false / absent. See isPublished(). */
   published?: boolean;
   published_at?: string;
   edited_at?: string | null;
@@ -83,7 +84,7 @@ function normalize(fm: Record<string, unknown>): ArticleFrontmatter {
     canonical_url: fm.canonical_url as string | undefined,
     devto_url: fm.devto_url as string | undefined,
     devto_id: fm.devto_id as number | undefined,
-    published: fm.published !== false,
+    published: typeof fm.published === "boolean" ? fm.published : undefined,
     published_at: fm.published_at as string | undefined,
     edited_at: (fm.edited_at as string | null) ?? null,
     cover_image: (fm.cover_image as string | null) ?? null,
@@ -115,11 +116,32 @@ function loadArticle(filename: string): Article {
   };
 }
 
+/**
+ * Is this article released?
+ *
+ * `published` is tri-state and 40 of the articles on disk simply do not carry
+ * the field. Treating absence as published — which `published !== false` did —
+ * is fail-open: on 2026-08-23 exactly one queued, unwritten-to-dev.to article
+ * had no `published` key and was consequently live on the site, in the sitemap,
+ * and indexable, days before its release slot.
+ *
+ * So absence defers to the fact rather than to an assumption. `devto_id` is
+ * that fact — it is written back by the publisher and is the same signal
+ * publish-next.ts trusts over graph status. An explicit flag still wins over
+ * it in both directions, which keeps blog-only articles (`published: true`,
+ * no dev.to copy) visible.
+ */
+export function isPublished(fm: ArticleFrontmatter): boolean {
+  if (fm.published === false) return false;
+  if (fm.published === true) return true;
+  return fm.devto_id != null;
+}
+
 export function getAllArticles(): Article[] {
   const files = readdirSync(getArticlesDir()).filter((f) => f.endsWith(".md"));
   return files
     .map(loadArticle)
-    .filter((a) => a.frontmatter.published !== false)
+    .filter((a) => isPublished(a.frontmatter))
     .sort((a, b) => {
       const ad = a.frontmatter.published_at ?? "";
       const bd = b.frontmatter.published_at ?? "";
