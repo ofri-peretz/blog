@@ -275,12 +275,63 @@ export async function GET() {
    * Reachability gates it: outside merges, not stars. A 5,666-star repository that
    * never merges an outsider is a worse door than a 9-star one that merges 48.
    */
+  /**
+   * Institutional weight.
+   *
+   * A national government body is a strategically different prize from a hobby
+   * repository with the same star count: the adoption is cited, it is copied by
+   * the other departments in the same ministry, and it survives the maintainer
+   * leaving. Downloads cannot see any of that, so it is scored separately and
+   * explicitly rather than smuggled in through stars.
+   */
+  const INSTITUTION: Array<[RegExp, number, string]> = [
+    [
+      /^(alphagov|hmcts|ministryofjustice|UKHomeOffice|NHSDigital|nhsx|dfe-digital|DEFRA|HMRC|UKHSA|dwp-)/i,
+      1.0,
+      "national government",
+    ],
+    [
+      /^(18F|GSA|usds|cds-snc|canada-ca|AusDTO|govau|GovTechSG|IMDA-GDS|betagouv|bundesAPI|digitalservicebund|MinBZK|minvws)/i,
+      1.0,
+      "national government",
+    ],
+    [
+      /^(City-of-|CityOf|cityofaustin|NYCPlanning|bcgov|ongov|Amsterdam|Vlaanderen|digipolisantwerp)/i,
+      0.72,
+      "city or regional government",
+    ],
+    [
+      /^(w3c|whatwg|mozilla|mdn|nodejs|openjs|cncf|kubernetes|open-telemetry)/i,
+      0.85,
+      "standards or foundation",
+    ],
+  ];
+  const institutionOf = (slug: string) => {
+    const org = slug.split("/")[0];
+    for (const [re, w, label] of INSTITUTION)
+      if (re.test(org)) return { weight: w, label };
+    return { weight: 0, label: null as string | null };
+  };
+
+  /**
+   * Candidate readiness.
+   *
+   * A repository that measures CLEAN is the strongest candidate we have, because
+   * the ask becomes "keep it clean" instead of "you have bugs" — an ask that needs
+   * no finding to be defensible and cannot be lost by arguing about one. Both
+   * adoptions that actually worked had exactly that shape. So clean still gates.
+   *
+   * What clean cannot tell us is whether landing it is worth the week. That is
+   * three separate questions, and they are scored separately because they can
+   * disagree: can we get in (outside merges), is anyone home (freshness), and
+   * how far does one merge travel (npm downloads, institutional weight, stars).
+   */
   const candidates = (r.data.candidates ?? [])
     .map((c: any) => {
       const idleDays = daysSince(c.pushedAt);
       const clean = c.effectivelyClean === true || (c.findings ?? 0) === 0;
-      // Saturating at 30 put two thirds of the pipeline at exactly 1.00 and
-      // destroyed the ranking. 60 keeps the top of the list separable.
+
+      // Outside merges, not stars: whether the door opens at all.
       const reach = Math.min(1, (c.outsideMerges ?? 0) / 60);
       const fresh =
         idleDays == null
@@ -289,29 +340,20 @@ export async function GET() {
             ? 0
             : 1 - idleDays / DORMANT_DAYS;
 
-      /**
-       * USAGE UPSIDE — how far coverage travels from one merge.
-       *
-       * A merge into a package that ships 400k installs a week is worth more
-       * than the same merge into an internal service, and neither stars nor
-       * outside merges say anything about that. Weekly npm downloads is the
-       * honest number when the repository publishes; when it does not, the
-       * repository is its own audience and this term is neutral rather than
-       * zero, since "does not publish to npm" is not a demerit.
-       *
-       * Log-scaled: the gap between 100 and 10,000 downloads matters far more
-       * than the gap between 400k and 500k, and a linear term would let two or
-       * three huge packages flatten everything else to nothing.
-       */
-      const dl = c.weeklyDownloads ?? null;
-      const usage =
-        dl == null ? 0.35 : Math.min(1, Math.log10(Math.max(dl, 1)) / 6);
+      // Downloads on a log scale — 1k/wk and 1M/wk are both real, and a linear
+      // scale would let one package erase every other lead on the board.
+      const dl = c.weeklyDownloads ?? 0;
+      const downloadWeight = dl > 0 ? Math.min(1, Math.log10(dl) / 6) : 0;
+      const starWeight = c.stars ? Math.min(0.8, Math.log10(c.stars) / 5) : 0;
+      const inst = institutionOf(c.slug);
 
-      // Clean still dominates: it decides whether a PR can be written at all,
-      // where the other three only decide how much the merge is worth and how
-      // fast it lands.
+      // The three are alternative routes to the same thing — how much a single
+      // merge is worth — so the strongest one counts rather than their sum.
+      const impact = Math.max(downloadWeight, inst.weight, starWeight);
+
       const score =
-        (clean ? 0.42 : 0.12) + 0.22 * reach + 0.12 * fresh + 0.24 * usage;
+        (clean ? 0.4 : 0.1) + 0.2 * reach + 0.12 * fresh + 0.28 * impact;
+
       return {
         ...c,
         idleDays,
@@ -320,19 +362,30 @@ export async function GET() {
         perKloc: c.kloc
           ? Number(((c.findings ?? 0) / c.kloc).toFixed(2))
           : null,
+        institution: inst.label,
+        // Shown in the UI so a rank is always explainable rather than magic.
+        why: {
+          clean,
+          reach: Number(reach.toFixed(2)),
+          fresh: Number(fresh.toFixed(2)),
+          impact: Number(impact.toFixed(2)),
+          impactFrom:
+            impact === 0
+              ? "none"
+              : impact === downloadWeight && dl > 0
+                ? `${dl.toLocaleString()} downloads/wk`
+                : impact === inst.weight && inst.label
+                  ? inst.label
+                  : `${c.stars} stars`,
+        },
         score: Number(score.toFixed(3)),
-        upsell: upsell(c, r.data.packages ?? []),
-        outreach: (c.outreach ?? []).map((o: any) => ({
-          ...o,
-          stage: stageOf(o),
-        })),
         blockers: [
           ...(clean ? [] : ["findings unread — cannot promise a clean gate"]),
           ...((c.outsideMerges ?? 0) < 5
             ? ["few outside merges — slow door"]
             : []),
           ...(idleDays != null && idleDays > DORMANT_DAYS
-            ? ["dormant — unmaintained"]
+            ? ["stale — unmaintained"]
             : []),
         ],
       };

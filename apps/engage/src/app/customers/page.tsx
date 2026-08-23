@@ -103,6 +103,33 @@ export default function Customers() {
 
   /** Which candidate is expanded. One at a time — this is a board, not a wall. */
   const [focus, setFocus] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [readyOnly, setReadyOnly] = useState(false);
+
+  /**
+   * 534 candidates in eleven panels is a list, not a board. The filter is what
+   * makes it one: 212 public-sector rows are unusable until you can ask them a
+   * question.
+   */
+  const shownSectors = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle && !readyOnly) return sectors;
+    return sectors
+      .map((sec: any) => ({
+        ...sec,
+        items: sec.items.filter(
+          (c: any) =>
+            (!needle || c.slug.toLowerCase().includes(needle)) &&
+            (!readyOnly || (c.clean && c.churn !== "stale")),
+        ),
+      }))
+      .filter((sec: any) => sec.items.length);
+  }, [sectors, q, readyOnly]);
+
+  const shownCount = shownSectors.reduce(
+    (n: number, s: any) => n + s.items.length,
+    0,
+  );
 
   /**
    * Node placement.
@@ -334,8 +361,34 @@ export default function Customers() {
             </p>
           </div>
 
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] px-2.5 py-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                find
+              </span>
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="org or repo name"
+                className="w-full bg-transparent font-mono text-[12px] outline-none placeholder:text-[var(--color-ink-3)]"
+              />
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] px-2.5 py-1.5 font-mono text-[10.5px] uppercase tracking-wide">
+              <input
+                type="checkbox"
+                checked={readyOnly}
+                onChange={(e) => setReadyOnly(e.target.checked)}
+                className="accent-[var(--color-accent)]"
+              />
+              ready to pitch only
+            </label>
+            <span className="font-mono text-[10.5px] uppercase tracking-wide tabular-nums text-[var(--color-ink-3)]">
+              {shownCount} of {candidates.length} shown
+            </span>
+          </div>
+
           <div className="grid gap-3 lg:grid-cols-2">
-            {sectors.map((s: any) => (
+            {shownSectors.map((s: any) => (
               <div
                 key={s.sector}
                 className="flex flex-col overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]"
@@ -392,10 +445,17 @@ export default function Customers() {
                                 <span>{c.kloc ?? "?"} kloc</span>
                                 <span>{c.outsideMerges ?? 0} merges</span>
                                 <span>{CHURN_WORD[c.churn] ?? c.churn}</span>
+                                {c.institution ? (
+                                  <span className="text-[var(--color-accent)]">
+                                    {c.institution}
+                                  </span>
+                                ) : null}
                                 {c.weeklyDownloads ? (
                                   <span className="text-[var(--color-ink-2)]">
                                     {c.weeklyDownloads.toLocaleString()} dl/wk
                                   </span>
+                                ) : c.stars ? (
+                                  <span>{c.stars.toLocaleString()}&#9733;</span>
                                 ) : null}
                               </span>
                             </span>
@@ -448,6 +508,63 @@ export default function Customers() {
                                   </div>
                                 ))}
                               </dl>
+                              {c.why ? (
+                                <div className="flex flex-col gap-1">
+                                  <span className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)]">
+                                    why it ranks {c.score.toFixed(2)}
+                                  </span>
+                                  {[
+                                    [
+                                      "clean gate",
+                                      c.why.clean ? 0.4 : 0.1,
+                                      0.4,
+                                      c.why.clean
+                                        ? "scans clean"
+                                        : "findings unread",
+                                    ],
+                                    [
+                                      "door opens",
+                                      0.2 * c.why.reach,
+                                      0.2,
+                                      `${c.outsideMerges ?? 0} outside merges`,
+                                    ],
+                                    [
+                                      "someone home",
+                                      0.12 * c.why.fresh,
+                                      0.12,
+                                      c.idleDays == null
+                                        ? "unknown"
+                                        : `${c.idleDays}d since last push`,
+                                    ],
+                                    [
+                                      "how far it travels",
+                                      0.28 * c.why.impact,
+                                      0.28,
+                                      c.why.impactFrom,
+                                    ],
+                                  ].map(([label, got, max, detail]: any) => (
+                                    <div
+                                      key={label}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <span className="w-[8.5rem] shrink-0 font-mono text-[10px] text-[var(--color-ink-3)]">
+                                        {label}
+                                      </span>
+                                      <span className="h-[3px] w-16 shrink-0 overflow-hidden rounded-full bg-[var(--color-line)]">
+                                        <span
+                                          className="block h-full rounded-full bg-[var(--color-accent)]"
+                                          style={{
+                                            width: `${Math.round((got / max) * 100)}%`,
+                                          }}
+                                        />
+                                      </span>
+                                      <span className="truncate font-mono text-[10px] text-[var(--color-ink-2)]">
+                                        {detail}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
                               {c.blockers?.length ? (
                                 <ul className="flex flex-col gap-0.5">
                                   {c.blockers.map((b: string) => (
