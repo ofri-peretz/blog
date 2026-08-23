@@ -2,7 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getAllArticleSlugs, getArticleBySlug } from "@/lib/source";
+import {
+  getAllArticleSlugs,
+  getArticleBySlug,
+  isPublished,
+} from "@/lib/source";
 import { MarkdownArticle } from "@/components/markdown-article";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { localCover } from "@/lib/cover";
@@ -26,6 +30,12 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   return {
     title: fm.title,
     description: fm.description,
+    // A queued article is on disk and reachable on purpose: dev.to's
+    // canonical_url points here, so this URL has to resolve the instant the
+    // publisher fires. But reachable is not released — until `published`
+    // flips true, keep it out of the index instead of letting crawlers find
+    // the release queue. Paired with the getAllArticles() filter in sitemap.ts.
+    ...(isPublished(fm) ? {} : { robots: { index: false, follow: false } }),
     alternates: {
       canonical: fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`,
     },
@@ -117,7 +127,10 @@ export default async function ArticlePage(props: PageProps) {
           aria-label="Breadcrumb"
           className="mb-6 text-sm text-muted-foreground"
         >
-          <Link href="/articles" className="inline-flex min-h-6 min-w-6 items-center justify-center hover:text-foreground">
+          <Link
+            href="/articles"
+            className="inline-flex min-h-6 min-w-6 items-center justify-center hover:text-foreground"
+          >
             ← All articles
           </Link>
         </nav>
