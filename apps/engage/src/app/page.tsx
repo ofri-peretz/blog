@@ -388,6 +388,9 @@ export default function Page() {
           <Link href="/calendar" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             calendar
           </Link>
+          <Link href="/customers" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+            customers
+          </Link>
           <Link href="/raw" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             raw data →
           </Link>
