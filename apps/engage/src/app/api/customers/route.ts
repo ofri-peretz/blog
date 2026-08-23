@@ -337,8 +337,23 @@ export async function GET() {
       const idleDays = daysSince(c.pushedAt);
       const clean = c.effectivelyClean === true || (c.findings ?? 0) === 0;
 
-      // Outside merges, not stars: whether the door opens at all.
-      const reach = Math.min(1, (c.outsideMerges ?? 0) / 60);
+      /**
+       * Whether the door opens at all — and this is the number that was wrong.
+       *
+       * It used to count merged PRs whose author_association was not OWNER,
+       * MEMBER or COLLABORATOR. GitHub reports anyone who has previously
+       * committed as CONTRIBUTOR, so a repository staffed entirely by its own
+       * organisation read as wide open: ministryofjustice/hmpps-typescript-lib
+       * scored 59 "outside" merges and every one is a MoJ employee. It called
+       * 420 of 542 repositories reachable; 65 are.
+       *
+       * A stranger merge — author_association NONE or FIRST_TIME_CONTRIBUTOR —
+       * is proof: someone with no prior tie to the repository got work merged.
+       * Returning contributors inform the picture but cannot decide it, because
+       * a repeat outsider and a staff engineer are indistinguishable there.
+       */
+      const strangers = c.strangerMerges ?? 0;
+      const reach = strangers > 0 ? Math.min(1, 0.45 + strangers / 20) : 0;
       const fresh =
         idleDays == null
           ? 0
@@ -373,6 +388,8 @@ export async function GET() {
         why: {
           clean,
           reach: Number(reach.toFixed(2)),
+          strangers,
+          returning: c.returningMerges ?? 0,
           fresh: Number(fresh.toFixed(2)),
           impact: Number(impact.toFixed(2)),
           impactFrom:
