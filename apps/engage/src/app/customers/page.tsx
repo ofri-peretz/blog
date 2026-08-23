@@ -46,6 +46,12 @@ interface Customer {
   fpOpen?: number;
   truePositives?: any[];
   falsePositives?: any[];
+  repoUrl?: string;
+  npmUrl?: string | null;
+  prUrl?: string | null;
+  branch?: string;
+  measuredOn?: string;
+  measuredUrl?: string;
 }
 
 const CHURN_TONE: Record<string, string> = {
@@ -328,7 +334,7 @@ export default function Customers() {
                       href={`https://github.com/${c.slug}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-mono text-[12.5px] hover:text-[var(--color-accent)]"
+                      className="font-mono text-[12.5px] underline decoration-[var(--color-line)] underline-offset-2 hover:text-[var(--color-accent)]"
                     >
                       {c.slug}
                     </a>
@@ -418,13 +424,45 @@ export default function Customers() {
                       style={{ boxShadow: `inset 3px 0 0 ${CHURN_TONE[c.churn]}` }}
                     >
                       <a
-                        href={`https://github.com/${c.slug.replace("/*", "")}`}
+                        href={c.repoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="font-mono text-[12px] hover:text-[var(--color-accent)]"
+                        className="font-mono text-[12px] underline decoration-[var(--color-line)] underline-offset-2 hover:text-[var(--color-accent)]"
                       >
                         {c.slug}
                       </a>
+                      {c.measuredUrl ? (
+                        <a
+                          href={c.measuredUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-2 font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+                          title={`Findings measured on ${c.measuredOn}`}
+                        >
+                          measured on {c.measuredOn?.split("/")[1]}
+                        </a>
+                      ) : null}
+                      {c.npmUrl ? (
+                        <a
+                          href={c.npmUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-2 font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+                        >
+                          npm
+                        </a>
+                      ) : null}
+                      {c.prUrl ? (
+                        <a
+                          href={c.prUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-2 font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+                          title="The PR that made this a customer"
+                        >
+                          via #{c.via}
+                        </a>
+                      ) : null}
                       {c.reach ? (
                         <span className="ml-2 font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-3)]">
                           {c.reach.toLocaleString()} installs / wk
@@ -466,6 +504,23 @@ export default function Customers() {
                                 </span>
                               )}
                               <div className="text-[var(--color-ink-3)]">{f.why}</div>
+                              {f.files?.length ? (
+                                <div className="mt-0.5 flex flex-wrap gap-x-3">
+                                  {f.files.flatMap((file: any) =>
+                                    (file.lines ?? []).map((ln: number) => (
+                                      <a
+                                        key={`${file.path}:${ln}`}
+                                        href={`${c.repoUrl}/blob/${c.branch}/${file.path}#L${ln}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="font-mono text-[10px] text-[var(--color-ink-3)] underline decoration-[var(--color-line)] underline-offset-2 hover:text-[var(--color-accent)]"
+                                      >
+                                        {file.path.split("/").pop()}:{ln}
+                                      </a>
+                                    )),
+                                  )}
+                                </div>
+                              ) : null}
                             </div>
                           ))}
                         </div>
