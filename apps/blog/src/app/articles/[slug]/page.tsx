@@ -283,6 +283,8 @@ function DevToCallout({
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <a
           href="https://eslint.interlace.tools/play"
+          target="_blank"
+          rel="noopener noreferrer"
           className={buttonVariants({ variant: "default", size: "sm" })}
         >
           Try the rules in the playground ↗
