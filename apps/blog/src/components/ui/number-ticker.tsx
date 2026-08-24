@@ -14,10 +14,12 @@ import { useReducedMotion } from "@/lib/use-reduced-motion";
 interface NumberTickerProps extends ComponentPropsWithoutRef<"span"> {
   value: number;
   /**
-   * Where the count-up starts. Defaults to `value` — meaning **no animation**
-   * and an honest SSR render (UX_PHILOSOPHY §6: "ease of use is performance"
-   * — a stat that says `0` on first paint reads as broken). Pass an explicit
-   * lower number to opt into the count-up effect.
+   * Where the count-up starts. Defaults to `value`, meaning no animation.
+   * Passing a lower number opts into the count-up effect — but only in a
+   * live browser: server HTML always carries the FINAL value, because the
+   * pre-hydration render is what crawlers, LLMs, reader mode, and JS-off
+   * visitors keep (UX_PHILOSOPHY §6 — a stat that says `0` reads as
+   * broken; eight of them read as an abandoned project).
    */
   startValue?: number;
   direction?: "up" | "down";
@@ -93,6 +95,13 @@ export function NumberTicker({
           const animFrom = direction === "down" ? value : from;
           const to = direction === "down" ? from : value;
 
+          // The DOM shows the final value until now (honest static render);
+          // snap to the animation origin only once the count-up is really
+          // about to run.
+          if (ref.current) {
+            ref.current.textContent = formatNumber(animFrom);
+          }
+
           const animate = () => {
             const now = Date.now();
             if (now < startTime) {
@@ -149,7 +158,9 @@ export function NumberTicker({
       )}
       {...props}
     >
-      {formatNumber(from)}
+      {/* Always the FINAL value: this is the text crawlers, reader mode,
+          and JS-off visitors keep. The count-up rewrites it client-side. */}
+      {formatNumber(value)}
     </span>
   );
 }
