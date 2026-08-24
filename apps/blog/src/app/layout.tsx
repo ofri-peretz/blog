@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s — Ofri Peretz",
   },
   description:
-    "Building Products That Matter • Engineering Leadership • Open-Source Contributor. Creator of the Interlace ESLint Ecosystem.",
+    "Engineering leader building the trust layer for machine-written software. Creator of the Interlace ESLint Ecosystem.",
   metadataBase: new URL("https://ofriperetz.dev"),
   alternates: {
     canonical: "https://ofriperetz.dev",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Ofri Peretz — Engineering Leader & Open Source Creator",
     description:
-      "Building Products That Matter • Engineering Leadership • Open-Source Contributor.",
+      "Engineering leader building the trust layer for machine-written software.",
     url: "https://ofriperetz.dev",
     siteName: "Ofri Peretz",
     locale: "en_US",

@@ -112,12 +112,17 @@ export function CorpusMap({
       const key = `${lane}|${p.date}`;
       const n = groups.get(key) ?? 0;
       groups.set(key, n + 1);
+      // Center-first fan order: a solo dot sits centered in its lane —
+      // the naive row-0-first order parked every un-bursted article at
+      // the lane's top edge. Off-center rows cap at r6 so burst dots
+      // keep ≥3px clearance from the lane borders.
+      const dy = [0, -13, 13][n % 3];
+      const rBase = 5 + Math.min(Math.max((p.minutes - 4) / 8, 0), 1) * 3;
       dotsByLane.get(lane)?.push({
         p,
         cx: x(new Date(`${p.date}T00:00:00Z`).getTime()) + Math.floor(n / 3) * 10,
-        cy: 22 + ((n % 3) - 1) * 13,
-        // 10–16px diameter in viewBox units → ≥8px at mobile scale.
-        r: 5 + Math.min(Math.max((p.minutes - 4) / 8, 0), 1) * 3,
+        cy: 22 + dy,
+        r: dy === 0 ? rBase : Math.min(rBase, 6),
         key: `${p.slug}-${i}`,
       });
     });

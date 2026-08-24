@@ -52,6 +52,12 @@ describe("CorpusMap static markup", () => {
   it("renders nothing for an empty corpus", () => {
     expect(renderToStaticMarkup(<CorpusMap points={[]} />)).toBe("");
   });
+
+  it("a solo (un-bursted) dot sits vertically centered in its lane", () => {
+    // The naive fan order parked every solo dot at the lane's top edge.
+    const gammaStrip = html.split("<svg").find((s) => s.includes("Gamma"));
+    expect(gammaStrip).toMatch(/<circle cx="[^"]+" cy="22"/);
+  });
 });
 
 describe("no occluded articles — the real corpus renders every dot visibly", () => {
