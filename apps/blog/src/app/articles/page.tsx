@@ -18,7 +18,9 @@ interface PageProps {
 // page is set via a Cache-Control header on /articles in next.config.ts.
 
 export const metadata: Metadata = {
-  title: "Articles — Ofri Peretz",
+  // Bare page name — the root layout's title template appends "— Ofri
+  // Peretz"; hard-coding it here doubled the suffix in the tab title.
+  title: "Articles",
   description:
     "Engineering writing on JavaScript static analysis, ESLint, security, and AI-native developer tooling.",
   alternates: {
