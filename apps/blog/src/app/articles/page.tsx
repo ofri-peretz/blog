@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { localCover } from "@/lib/cover";
 import { getAllArticles } from "@/lib/source";
+import { CorpusMap, type CorpusPoint } from "@/components/corpus-map";
 
 const PAGE_SIZE = 12;
 
@@ -52,6 +53,18 @@ export default async function ArticlesPage(props: PageProps) {
       ? `/articles?tag=${encodeURIComponent(tag)}&page=${p}`
       : `/articles?page=${p}`;
 
+  // The map shows the WHOLE corpus regardless of tag filter or page — it
+  // is the territory view; the grid below is the filtered, paginated one.
+  const mapPoints: CorpusPoint[] = all
+    .filter((a) => a.frontmatter.published_at)
+    .map((a) => ({
+      slug: a.slug,
+      title: a.frontmatter.title,
+      series: a.frontmatter.series ?? null,
+      date: (a.frontmatter.published_at ?? "").slice(0, 10),
+      minutes: a.readingTimeMinutes,
+    }));
+
   return (
     <main id="main" data-slot="articles-page">
       <Container size="content" className="py-16">
@@ -72,6 +85,7 @@ export default async function ArticlesPage(props: PageProps) {
               </Link>
             </p>
           )}
+          <CorpusMap points={mapPoints} className="mt-8" />
         </header>
 
         {articles.length === 0 ? (
