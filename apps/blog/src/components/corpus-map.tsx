@@ -183,6 +183,7 @@ export function CorpusMap({
               left-to-right = time encoding is announced before any dots. */}
           <div className="sticky left-0 z-10 border-b border-border bg-card" />
           <svg
+            data-slot="corpus-map-axis"
             viewBox={`0 0 ${VW} 20`}
             width={VW}
             height={20}

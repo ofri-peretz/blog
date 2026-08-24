@@ -44,7 +44,7 @@ describe("CorpusMap static markup", () => {
   it("announces the encoding: axis header row first, key in the caption", () => {
     // The axis renders BEFORE the first lane strip so left-to-right = time
     // is announced before any dots (2026-08-24 legibility pass).
-    const axis = html.indexOf('aria-hidden="true"');
+    const axis = html.indexOf('data-slot="corpus-map-axis"');
     const firstLane = html.indexOf("Foundations");
     expect(axis).toBeGreaterThan(-1);
     expect(axis).toBeLessThan(firstLane);
