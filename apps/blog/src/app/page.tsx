@@ -4,11 +4,8 @@ import { HeroBackdrop } from "@/components/home/hero-backdrop";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
-import { About } from "@/components/landing/about";
-import { Skills } from "@/components/landing/skills";
+import { Agenda } from "@/components/landing/agenda";
 import { FeaturedProject } from "@/components/landing/featured-project";
-import { Faq } from "@/components/landing/faq";
-import { Philosophy } from "@/components/landing/philosophy";
 import { WorkExperience } from "@/components/landing/work-experience";
 import { DevToArticles } from "@/components/landing/devto-articles";
 import { ImpactMetricsBlock } from "@/components/landing/impact-metrics-block";
@@ -16,15 +13,16 @@ import { FloatingToc } from "@/components/floating-toc";
 import { getAllArticles } from "@/lib/source";
 import numbers from "@/data/interlace-numbers.json";
 
+// Brand decision (2026-08-24): the page sells a leader with an agenda —
+// ideas, shipped products, impact — not a developer's skill inventory.
+// Stack and FAQ are gone; About + Philosophy merged into Agenda; Writing
+// moved above Experience because the ideas ARE the product here.
 const TOC_ITEMS = [
   { id: "impact", label: "Impact" },
-  { id: "about", label: "About" },
+  { id: "agenda", label: "Agenda" },
   { id: "featured", label: "Featured" },
-  { id: "experience", label: "Experience" },
-  { id: "philosophy", label: "Philosophy" },
   { id: "writing", label: "Writing" },
-  { id: "stack", label: "Stack" },
-  { id: "faq", label: "FAQ" },
+  { id: "experience", label: "Experience" },
 ];
 
 export const metadata: Metadata = {
@@ -129,17 +127,14 @@ export default async function HomePage() {
 
       <FloatingToc items={TOC_ITEMS} />
       {stats && <ImpactMetricsBlock id="impact" stats={stats} />}
-      <About id="about" />
+      <Agenda id="agenda" />
       <FeaturedProject
         id="featured"
         stars={stats?.github.totalStars}
         downloads={stats?.npm.totalDownloads}
       />
-      <WorkExperience id="experience" />
-      <Philosophy id="philosophy" />
       <DevToArticles id="writing" articles={getAllArticles().slice(0, 6)} />
-      <Skills id="stack" />
-      <Faq id="faq" />
+      <WorkExperience id="experience" />
     </main>
   );
 }
