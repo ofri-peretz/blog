@@ -39,6 +39,15 @@ interface Metric {
 }
 
 function buildMetrics(stats: Stats): Metric[] {
+  // Zero metrics are omitted, not rendered: on this surface a zero always
+  // means a data gap (an unauthenticated fetch, a source not yet wired) —
+  // and a first impression that says "CONTRIBUTIONS 0" reads as
+  // abandonment. Same rule as the docs site's ImpactCard: a card reading
+  // 0 is a claim; a missing card is a gap.
+  return buildAllMetrics(stats).filter((m) => m.value > 0);
+}
+
+function buildAllMetrics(stats: Stats): Metric[] {
   return [
     {
       label: "npm downloads",
@@ -117,9 +126,8 @@ export function ImpactMetricsBlock({
           The numbers behind the work
         </h2>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          Cumulative totals across code, writing, and community engagement.
-          Source-of-truth: Supabase v_* views, written by a daily ingest cron
-          and cached for ~12 hours.
+          Cumulative totals across code, writing, and community — refreshed
+          daily, every number traceable to its source.
         </p>
 
         <div className="relative mt-10 overflow-hidden rounded-xl border border-border bg-card p-6 sm:p-10">
@@ -127,13 +135,15 @@ export function ImpactMetricsBlock({
           <dl className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
             {metrics.map((m) => (
               <div key={m.label} className="min-w-0">
-                <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
                   {m.label}
                 </dt>
                 {/* Full 6-figure value where it fits (sm+); compact K/M on
-                    narrow viewports so a wide number (e.g. 113,313) can't
-                    overflow into the adjacent grid cell. */}
-                <dd className="mt-2 text-3xl font-semibold tabular-nums sm:text-4xl">
+                    narrow viewports so a wide number can't overflow into
+                    the adjacent grid cell. text-2xl on mobile: "409.1K"
+                    outgrew the text-3xl headroom the original fix left
+                    (seen colliding with the neighbor at 280-375px). */}
+                <dd className="mt-2 text-2xl font-semibold tabular-nums sm:text-4xl">
                   <NumberTicker
                     value={m.value}
                     startValue={0}

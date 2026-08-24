@@ -28,7 +28,7 @@ const TOC_ITEMS = [
 export const metadata: Metadata = {
   title: "Ofri Peretz — Engineering Leader & Open Source Creator",
   description:
-    "Building Products That Matter • Engineering Leadership • Open-Source Contributor. Creator of the Interlace ESLint Ecosystem.",
+    "Engineering leader building the trust layer for machine-written software. Creator of the Interlace ESLint Ecosystem.",
 };
 
 interface HomepageStats {
@@ -98,7 +98,8 @@ export default async function HomePage() {
             Ofri Peretz
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-            Building Products That Matter. Architect of the{" "}
+            Most production code will soon be written by machines — I build
+            the trust layer for it. Architect of the{" "}
             <Link
               href="https://eslint.interlace.tools"
               className="text-foreground underline-offset-4 hover:underline"
@@ -106,7 +107,7 @@ export default async function HomePage() {
               Interlace ESLint Ecosystem
             </Link>{" "}
             — {numbers.rules.total} rules across {numbers.plugins.total}{" "}
-            specialized plugins, designed for the AI/Agentic era.
+            specialized plugins, built for the AI/agentic era.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link

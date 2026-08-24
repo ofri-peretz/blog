@@ -26,6 +26,25 @@ describe("NumberTicker static markup", () => {
 });
 
 describe("Impact section static markup", () => {
+  it("omits zero-valued metrics entirely — a 0 here is a data gap, not a fact", () => {
+    const html = renderToStaticMarkup(
+      <ImpactMetricsBlock
+        stats={{
+          github: { totalStars: 16, totalRepos: 36, totalContributions: 0 },
+          npm: { totalDownloads: 409111, packageCount: 36 },
+          devto: {
+            totalViews: 8400,
+            articleCount: 82,
+            totalReactions: 87,
+            totalComments: 67,
+          },
+        }}
+      />,
+    );
+    expect(html).not.toContain("Contributions");
+    expect(html).toContain("GitHub stars");
+  });
+
   it("shows real metrics, never a wall of zeros", () => {
     const html = renderToStaticMarkup(
       <ImpactMetricsBlock
