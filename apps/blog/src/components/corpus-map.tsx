@@ -1,22 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
  * CorpusMap — the writing as an explorable territory.
  *
- * Every published article is a dot on a time axis, grouped into labeled
- * series lanes. Identity is carried SPATIALLY (lane position + direct lane
- * labels), so a single brand hue suffices — no 8-way categorical palette
- * to keep colorblind-safe. Dots are real links: hover or keyboard-focus
- * previews the article in a fixed detail strip below the chart (reserved
- * height, so no layout shift and no floating-tooltip positioning), click
- * navigates. The card grid below the map is the accessible table view of
- * the same data.
+ * Every published article is a dot on a shared time axis, one labeled
+ * strip per series. Identity is carried SPATIALLY (strip position + HTML
+ * lane labels), so a single brand hue suffices — no 8-way categorical
+ * palette to keep colorblind-safe. Dots are real links: hover or
+ * keyboard-focus previews the article in a fixed detail strip below
+ * (reserved height — no floating tooltip, no layout shift), click
+ * navigates. The card grid below the map is the accessible table view.
  *
- * Dot radius encodes reading time (8–14px diameter, per mark-size floor);
- * the strip spells the number out, so size is never the only carrier.
+ * Layout learned the hard way (2026-08-24 visual pass):
+ * - Lane labels are sticky HTML OUTSIDE the svg — labels inside the
+ *   scrolling chart scrolled away with the data on mobile.
+ * - Same-day same-series bursts fan into a 3-row beeswarm; before the
+ *   fan, 43 of 89 dots were perfectly stacked and invisible.
+ * - Dot diameter floors at 10px in viewBox units so the ~0.8 mobile
+ *   scale keeps marks at or above the 8px mark-size floor.
  */
 
 export interface CorpusPoint {
@@ -24,7 +28,7 @@ export interface CorpusPoint {
   title: string;
   /** Series name, or null for standalone pieces. */
   series: string | null;
-  /** ISO date (published_at). */
+  /** ISO date (published_at, falling back to date). */
   date: string;
   minutes: number;
 }
@@ -36,11 +40,8 @@ interface CorpusMapProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 const STANDALONE = "Standalone";
-const W = 760;
+const VW = 560; // strip width — rendered 1:1, so viewBox units ARE pixels
 const LANE_H = 44;
-const LABEL_W = 168;
-const TOP_PAD = 8;
-const AXIS_H = 26;
 
 function laneOrder(points: readonly CorpusPoint[]): string[] {
   const counts = new Map<string, number>();
@@ -63,6 +64,14 @@ const fmtDate = (iso: string): string =>
     timeZone: "UTC",
   });
 
+interface Dot {
+  p: CorpusPoint;
+  cx: number;
+  cy: number;
+  r: number;
+  key: string;
+}
+
 export function CorpusMap({
   points,
   className,
@@ -70,37 +79,80 @@ export function CorpusMap({
   ...rest
 }: CorpusMapProps) {
   const [active, setActive] = useState<CorpusPoint | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
-  const { lanes, dots, ticks, height } = useMemo(() => {
+  // Start scrolled to the recent end: the timeline's left edge is its
+  // sparsest region, and a narrow viewport otherwise opens on empty
+  // strips. No smooth behavior — this is initial state, not motion.
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, []);
+
+  const { lanes, dotsByLane, ticks } = useMemo(() => {
+    if (points.length === 0) {
+      // Guarded here, not only at render: Math.min() of an empty spread is
+      // Infinity and the tick fallback would build an Invalid Date.
+      return { lanes: [], dotsByLane: new Map<string, Dot[]>(), ticks: [] };
+    }
     const lanes = laneOrder(points);
     const times = points.map((p) => new Date(`${p.date}T00:00:00Z`).getTime());
     const min = Math.min(...times);
     const max = Math.max(...times);
     const span = Math.max(max - min, 1);
-    const x = (t: number): number =>
-      LABEL_W + 14 + ((t - min) / span) * (W - LABEL_W - 34);
+    const x = (t: number): number => 14 + ((t - min) / span) * (VW - 46);
 
-    const dots = points.map((p, i) => ({
-      p,
-      cx: x(new Date(`${p.date}T00:00:00Z`).getTime()),
-      cy: TOP_PAD + lanes.indexOf(p.series ?? STANDALONE) * LANE_H + LANE_H / 2,
-      // 8–14px diameter across the corpus's 4–12 minute range.
-      r: 4 + Math.min(Math.max((p.minutes - 4) / 8, 0), 1) * 3,
-      key: `${p.slug}-${i}`,
-    }));
+    // Same-(lane,day) beeswarm fan: rows 9/22/35 inside the 44px strip,
+    // columns spilling right in 10px steps. The x-drift trades sub-week
+    // precision for actually showing every article in a burst.
+    const groups = new Map<string, number>();
+    const dotsByLane = new Map<string, Dot[]>(lanes.map((l) => [l, []]));
+    points.forEach((p, i) => {
+      const lane = p.series ?? STANDALONE;
+      const key = `${lane}|${p.date}`;
+      const n = groups.get(key) ?? 0;
+      groups.set(key, n + 1);
+      dotsByLane.get(lane)?.push({
+        p,
+        cx: x(new Date(`${p.date}T00:00:00Z`).getTime()) + Math.floor(n / 3) * 10,
+        cy: 22 + ((n % 3) - 1) * 13,
+        // 10–16px diameter in viewBox units → ≥8px at mobile scale.
+        r: 5 + Math.min(Math.max((p.minutes - 4) / 8, 0), 1) * 3,
+        key: `${p.slug}-${i}`,
+      });
+    });
 
+    // Quarter-start ticks inside [min, max]; a corpus too narrow to
+    // contain one falls back to labeled endpoints, so the axis is never
+    // empty (review catch: a same-year fixture produced zero ticks).
     const ticks: { x: number; label: string }[] = [];
-    const first = new Date(min);
-    for (
-      let year = first.getUTCFullYear() + (first.getUTCMonth() === 0 ? 0 : 1);
-      year <= new Date(max).getUTCFullYear();
-      year++
-    ) {
-      const t = Date.UTC(year, 0, 1);
-      if (t >= min && t <= max) ticks.push({ x: x(t), label: String(year) });
+    const cursor = new Date(min);
+    let year = cursor.getUTCFullYear();
+    let quarter = Math.ceil((cursor.getUTCMonth() + 1) / 3) * 3 % 12;
+    for (let guard = 0; guard < 40; guard++) {
+      if (quarter === 0) year += 1;
+      const t = Date.UTC(year, quarter, 1);
+      if (t > max) break;
+      if (t >= min) {
+        const label =
+          quarter === 0
+            ? String(year)
+            : new Date(t).toLocaleDateString("en-US", {
+                month: "short",
+                timeZone: "UTC",
+              });
+        ticks.push({ x: x(t), label });
+      }
+      quarter = (quarter + 3) % 12;
+    }
+    if (ticks.length === 0) {
+      ticks.push(
+        { x: x(min), label: fmtDate(new Date(min).toISOString().slice(0, 10)) },
+        { x: x(max), label: fmtDate(new Date(max).toISOString().slice(0, 10)) },
+      );
     }
 
-    return { lanes, dots, ticks, height: TOP_PAD + lanes.length * LANE_H + AXIS_H };
+    return { lanes, dotsByLane, ticks };
   }, [points]);
 
   if (points.length === 0) return null;
@@ -116,86 +168,81 @@ export function CorpusMap({
         Every article, by series and publication date — hover to preview,
         click to read.
       </figcaption>
-      <div className="overflow-x-auto">
-        <svg
-          viewBox={`0 0 ${W} ${height}`}
-          role="group"
-          aria-label="Timeline map of all articles by series"
-          className="min-w-[640px] w-full"
-        >
-          {/* Recessive year gridlines + labels */}
-          <g className="text-muted-foreground/60">
-            {ticks.map((t) => (
-              <g key={t.label}>
-                <line
-                  x1={t.x}
-                  x2={t.x}
-                  y1={TOP_PAD}
-                  y2={height - AXIS_H + 6}
-                  className="stroke-border"
-                  strokeDasharray="2 4"
-                />
+      <div ref={scrollerRef} className="overflow-x-auto">
+        <div className="grid w-max grid-cols-[10rem_560px]">
+          {lanes.map((lane) => (
+            <div key={lane} className="contents">
+              {/* Sticky HTML label: stays put while the strips scroll. */}
+              <div className="sticky left-0 z-10 flex h-11 items-center border-b border-border/60 bg-card pr-3 text-[11px] font-medium leading-tight text-foreground">
+                {lane}
+              </div>
+              <svg
+                viewBox={`0 0 ${VW} ${LANE_H}`}
+                width={VW}
+                height={LANE_H}
+                role="group"
+                aria-label={`${lane} articles`}
+                className="h-11 w-[560px] border-b border-border/60"
+              >
+                <g className="text-muted-foreground/60">
+                  {ticks.map((t) => (
+                    <line
+                      key={t.x}
+                      x1={t.x}
+                      x2={t.x}
+                      y1={0}
+                      y2={LANE_H}
+                      className="stroke-border"
+                      strokeDasharray="2 4"
+                    />
+                  ))}
+                </g>
+                <g className="text-[var(--chart-1)]">
+                  {(dotsByLane.get(lane) ?? []).map(({ p, cx, cy, r, key }) => (
+                    <a
+                      key={key}
+                      href={`/articles/${p.slug}`}
+                      aria-label={`${p.title} — ${p.series ?? STANDALONE}, ${fmtDate(p.date)}, ${p.minutes} min`}
+                      onMouseEnter={() => setActive(p)}
+                      onFocus={() => setActive(p)}
+                      className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+                    >
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={r}
+                        className="fill-current stroke-card stroke-2 opacity-80 transition-opacity hover:opacity-100"
+                      />
+                    </a>
+                  ))}
+                </g>
+              </svg>
+            </div>
+          ))}
+          {/* Shared axis strip */}
+          <div className="sticky left-0 z-10 bg-card" />
+          <svg
+            viewBox={`0 0 ${VW} 22`}
+            width={VW}
+            height={22}
+            aria-hidden
+            className="h-5 w-[560px]"
+          >
+            <g className="text-muted-foreground">
+              {ticks.map((t) => (
                 <text
+                  key={t.x}
                   x={t.x}
-                  y={height - 8}
+                  y={15}
                   textAnchor="middle"
                   className="fill-current text-[10px]"
                 >
                   {t.label}
                 </text>
-              </g>
-            ))}
-          </g>
-
-          {/* Direct lane labels — the legend, spelled out in place */}
-          <g className="text-foreground">
-            {lanes.map((name, i) => (
-              <text
-                key={name}
-                x={0}
-                y={TOP_PAD + i * LANE_H + LANE_H / 2 + 4}
-                className="fill-current text-[11px] font-medium"
-              >
-                {name.length > 24 ? `${name.slice(0, 23)}…` : name}
-              </text>
-            ))}
-          </g>
-
-          {/* Lane separators */}
-          <g>
-            {lanes.slice(1).map((name, i) => (
-              <line
-                key={name}
-                x1={LABEL_W}
-                x2={W}
-                y1={TOP_PAD + (i + 1) * LANE_H}
-                y2={TOP_PAD + (i + 1) * LANE_H}
-                className="stroke-border/60"
-              />
-            ))}
-          </g>
-
-          {/* Article dots — real links with a 2px surface ring for overlap */}
-          <g className="text-[var(--chart-1)]">
-            {dots.map(({ p, cx, cy, r, key }) => (
-              <a
-                key={key}
-                href={`/articles/${p.slug}`}
-                aria-label={`${p.title} — ${p.series ?? STANDALONE}, ${fmtDate(p.date)}, ${p.minutes} min`}
-                onMouseEnter={() => setActive(p)}
-                onFocus={() => setActive(p)}
-                className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
-              >
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={r}
-                  className="fill-current stroke-card stroke-2 opacity-80 transition-opacity hover:opacity-100"
-                />
-              </a>
-            ))}
-          </g>
-        </svg>
+              ))}
+            </g>
+          </svg>
+        </div>
       </div>
       {/* Fixed-height detail strip — the hover layer without a floating
           tooltip: no positioning math, no clipping, no layout shift. */}

@@ -55,15 +55,20 @@ export default async function ArticlesPage(props: PageProps) {
 
   // The map shows the WHOLE corpus regardless of tag filter or page — it
   // is the territory view; the grid below is the filtered, paginated one.
+  // published_at falls back to date: 4 published articles carry only the
+  // latter, and filtering them out silently hid them from the map.
   const mapPoints: CorpusPoint[] = all
-    .filter((a) => a.frontmatter.published_at)
     .map((a) => ({
       slug: a.slug,
       title: a.frontmatter.title,
       series: a.frontmatter.series ?? null,
-      date: (a.frontmatter.published_at ?? "").slice(0, 10),
+      date: String(a.frontmatter.published_at ?? a.frontmatter.date ?? "").slice(
+        0,
+        10,
+      ),
       minutes: a.readingTimeMinutes,
-    }));
+    }))
+    .filter((p) => p.date.length === 10);
 
   return (
     <main id="main" data-slot="articles-page">

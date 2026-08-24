@@ -54,6 +54,49 @@ describe("CorpusMap static markup", () => {
   });
 });
 
+describe("no occluded articles — the real corpus renders every dot visibly", () => {
+  it("no two dots share coordinates (batch-published bursts must fan out)", async () => {
+    // Real data, not fixtures: the corpus was batch-published, so before
+    // the beeswarm fan 43 of 89 dots were perfectly stacked and invisible.
+    // Same published_at→date fallback as the page: 4 published articles
+    // carry only `date` and were silently dropped before it.
+    const { getAllArticles } = await import("@/lib/source");
+    const all = getAllArticles();
+    const points: CorpusPoint[] = all
+      .map((a) => ({
+        slug: a.slug,
+        title: a.frontmatter.title,
+        series: a.frontmatter.series ?? null,
+        date: String(
+          a.frontmatter.published_at ?? a.frontmatter.date ?? "",
+        ).slice(0, 10),
+        minutes: a.readingTimeMinutes,
+      }))
+      .filter((p) => p.date.length === 10);
+    // The fallback must not lose articles: every article that HAS a date
+    // maps. Articles with neither published_at nor date are unplottable
+    // on a time axis — the skip must account for them exactly, so a
+    // regression in the fallback can't hide behind them.
+    const dateless = all.filter(
+      (a) => !a.frontmatter.published_at && !a.frontmatter.date,
+    );
+    expect(points.length + dateless.length).toBe(all.length);
+    const markup = renderToStaticMarkup(<CorpusMap points={points} />);
+    // Dots live in per-lane svg strips with independent coordinate spaces —
+    // uniqueness is asserted within each strip.
+    const strips = markup.split("<svg").slice(1);
+    let total = 0;
+    for (const strip of strips) {
+      const coords = [...strip.matchAll(/<circle cx="([^"]+)" cy="([^"]+)"/g)].map(
+        (m) => `${m[1]},${m[2]}`,
+      );
+      total += coords.length;
+      expect(new Set(coords).size).toBe(coords.length);
+    }
+    expect(total).toBe(points.length);
+  });
+});
+
 describe("corpus-map constraints", () => {
   it("no inline style props (feedback_no_inline_styles)", () => {
     expect(MAP_SOURCE).not.toMatch(/style=\{\{/);
