@@ -16,6 +16,12 @@ import { cn } from "@/lib/utils";
 
 interface MarkdownArticleProps extends React.HTMLAttributes<HTMLElement> {
   body: string;
+  /**
+   * Pre-rendered pipeline output for `body`. Pass when the caller already
+   * ran `renderMarkdown` (e.g. to extract a TOC) so the pipeline — Shiki
+   * included — runs once per page, not twice.
+   */
+  renderedHtml?: string;
   /** Stable selector for E2E tests; consumer provides — no default. */
   "data-testid"?: string;
 }
@@ -225,11 +231,12 @@ export async function renderMarkdown(body: string): Promise<string> {
 
 export async function MarkdownArticle({
   body,
+  renderedHtml,
   className,
   "data-testid": testId,
   ...rest
 }: MarkdownArticleProps) {
-  const html = await renderMarkdown(body);
+  const html = renderedHtml ?? (await renderMarkdown(body));
 
   return (
     <article

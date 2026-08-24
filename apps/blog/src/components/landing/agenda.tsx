@@ -18,18 +18,21 @@ interface AgendaProps extends React.HTMLAttributes<HTMLElement> {
  * impact. The three statements below ARE the agenda; the closing line ties
  * them to what actually shipped.
  */
+// Scale check for this copy: each statement is a claim about where the
+// industry is going, not about a tool or a personal working style — and the
+// delivery stays flat. No superlatives; the numbers are the only loudness.
 const IDEAS = [
   {
-    title: "Security tooling must be AI-native",
-    body: "Static analysis is no longer read only by humans. Every rule ships LLM-readable messages with CWE/OWASP metadata and remediation guidance, so the coding agents writing tomorrow's code can fix what they flag.",
+    title: "Code is changing authors",
+    body: "Most production code will soon be written by machines. The trust layer — review, analysis, policy — has to change authors with it: findings a coding agent can act on, standards that survive the handoff from human judgment to automated repair.",
   },
   {
-    title: "Claims need evidence",
-    body: "A public number should trace to a source. Benchmarks with open methodology, regression locks in CI, marketing claims that carry expiry dates — measurement you can audit beats confidence you can't.",
+    title: "Evidence over confidence",
+    body: "The industry runs on unverifiable claims. Public numbers should carry their methodology, benchmarks should publish their weights, and a marketing claim should expire unless it re-earns its place. I hold my own work to that bar first.",
   },
   {
-    title: "Build in public",
-    body: "Open source is the ultimate learning accelerator. Transparent, well-documented code builds trust, gives back to the community, and keeps the work state-of-the-art.",
+    title: "Leadership in the open",
+    body: "Trust doesn't scale through authority; it scales through work anyone can audit. Transparent methods, documented decisions, code in public — the same discipline whether the room is an engineering org or an open ecosystem.",
   },
 ] as const;
 
@@ -61,7 +64,7 @@ export function Agenda({
             <AvatarFallback className="text-base">OP</AvatarFallback>
           </Avatar>
           <h2 className="text-3xl font-semibold tracking-tight">
-            Ideas worth shipping
+            Software is changing authors. Trust has to keep up.
           </h2>
         </div>
         <dl className="mt-8 grid gap-8 sm:grid-cols-3">
@@ -73,7 +76,7 @@ export function Agenda({
           ))}
         </dl>
         <p className="mt-8 max-w-3xl text-muted-foreground">
-          The agenda ships as the{" "}
+          This agenda is behind the{" "}
           <a
             href="https://eslint.interlace.tools"
             className="text-foreground underline-offset-4 hover:underline"
@@ -81,9 +84,9 @@ export function Agenda({
             Interlace ESLint Ecosystem
           </a>{" "}
           — {numbers.plugins.total} plugins, {numbers.rules.total} rules,
-          covering OWASP Top 10, LLM security, and database hardening — and as
-          the writing below. Behind it: a decade shipping production JavaScript
-          at scale, currently leading distributed engineering teams at Snappy.
+          covering OWASP Top 10, LLM security, and database hardening — behind
+          the writing below, and behind how I run distributed engineering
+          teams at Snappy.
         </p>
       </Container>
     </Section>
