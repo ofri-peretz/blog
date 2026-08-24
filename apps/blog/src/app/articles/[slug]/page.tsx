@@ -5,8 +5,10 @@ import type { Metadata } from "next";
 import {
   getAllArticleSlugs,
   getArticleBySlug,
+  getSeriesContext,
   isPublished,
 } from "@/lib/source";
+import { SeriesBanner, SeriesPager } from "@/components/series-nav";
 import { MarkdownArticle } from "@/components/markdown-article";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { localCover } from "@/lib/cover";
@@ -85,6 +87,7 @@ export default async function ArticlePage(props: PageProps) {
   if (!article) notFound();
 
   const { frontmatter: fm } = article;
+  const series = getSeriesContext(slug);
   const url = fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`;
   const image =
     fm.social_image ??
@@ -216,7 +219,11 @@ export default async function ArticlePage(props: PageProps) {
           </div>
         </header>
 
+        <SeriesBanner series={series} className="mb-8" />
+
         <MarkdownArticle body={article.body} />
+
+        <SeriesPager series={series} className="mt-12" />
 
         <DevToCallout
           devtoUrl={fm.devto_url}

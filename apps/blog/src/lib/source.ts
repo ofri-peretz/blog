@@ -162,3 +162,63 @@ export function getAllArticleSlugs(): string[] {
     .filter((f) => f.endsWith(".md"))
     .map((f) => f.replace(/\.md$/, ""));
 }
+
+export interface SeriesNeighbor {
+  slug: string;
+  title: string;
+}
+
+export interface SeriesContext {
+  name: string;
+  /** 1-based position in reading order (oldest first). */
+  index: number;
+  total: number;
+  prev: SeriesNeighbor | null;
+  next: SeriesNeighbor | null;
+}
+
+/**
+ * Series context for one article — 78 of 89 articles carry a `series`
+ * frontmatter field, but until 2026-08-24 none of them linked to each
+ * other: every article was a dead end and the series structure existed
+ * only in frontmatter. Reading order is published_at ASCENDING (a series
+ * is read oldest-first, unlike the index's newest-first).
+ *
+ * Pure over a caller-supplied corpus: getAllArticles() re-parses every
+ * markdown file per call, so the corpus is loaded ONCE and threaded in —
+ * both by the page and by tests iterating a whole series.
+ */
+export function buildSeriesContext(
+  all: readonly Article[],
+  slug: string,
+): SeriesContext | null {
+  const article = all.find((a) => a.slug === slug);
+  const series = article?.frontmatter.series;
+  if (!article || !series) return null;
+
+  const members = all
+    .filter((a) => a.frontmatter.series === series)
+    .sort((a, b) => {
+      const ad = a.frontmatter.published_at ?? "";
+      const bd = b.frontmatter.published_at ?? "";
+      return ad.localeCompare(bd);
+    });
+
+  const index = members.findIndex((a) => a.slug === slug);
+  if (index < 0) return null;
+
+  const toNeighbor = (a: Article | undefined): SeriesNeighbor | null =>
+    a ? { slug: a.slug, title: a.frontmatter.title } : null;
+
+  return {
+    name: series,
+    index: index + 1,
+    total: members.length,
+    prev: toNeighbor(members[index - 1]),
+    next: toNeighbor(members[index + 1]),
+  };
+}
+
+export function getSeriesContext(slug: string): SeriesContext | null {
+  return buildSeriesContext(getAllArticles(), slug);
+}
