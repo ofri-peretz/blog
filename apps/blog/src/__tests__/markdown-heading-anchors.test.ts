@@ -8,7 +8,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { renderMarkdown } from "@/components/markdown-article";
+import {
+  renderMarkdown,
+  renderMarkdownWithToc,
+} from "@/components/markdown-article";
 
 const render = (md: string) => renderMarkdown(md);
 
@@ -53,6 +56,25 @@ describe("explicit heading ids", () => {
     );
     expect(html).toContain('href="#detection"');
     expect(html).toMatch(/<h2[^>]*\bid="detection"/);
+  });
+});
+
+describe("renderMarkdownWithToc — h2 landmark collection", () => {
+  it("collects final ids and decoded plain-text labels, h2 only", async () => {
+    const { toc } = await renderMarkdownWithToc(
+      "## One {#uno}\n\ntext\n\n## Two & `code`\n\n### not a landmark",
+    );
+    expect(toc).toHaveLength(2);
+    expect(toc[0]).toEqual({ id: "uno", label: "One" });
+    // Label comes from tree text nodes: entities decoded, markup stripped.
+    expect(toc[1].label).toBe("Two & code");
+    expect(toc[1].id).toMatch(/^[a-z0-9-]+$/);
+  });
+
+  it("html and toc come from the same single pipeline pass", async () => {
+    const { html, toc } = await renderMarkdownWithToc("## Detection {#detection}");
+    expect(html).toMatch(/<h2[^>]*\bid="detection"/);
+    expect(toc).toEqual([{ id: "detection", label: "Detection" }]);
   });
 });
 

@@ -9,8 +9,10 @@ import {
   isPublished,
 } from "@/lib/source";
 import { SeriesBanner, SeriesPager } from "@/components/series-nav";
-import { MarkdownArticle, renderMarkdown } from "@/components/markdown-article";
-import { extractArticleToc } from "@/lib/article-toc";
+import {
+  MarkdownArticle,
+  renderMarkdownWithToc,
+} from "@/components/markdown-article";
 import { FloatingToc } from "@/components/floating-toc";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { localCover } from "@/lib/cover";
@@ -90,10 +92,11 @@ export default async function ArticlePage(props: PageProps) {
 
   const { frontmatter: fm } = article;
   const series = getSeriesContext(slug);
-  // Render once: the same HTML feeds the TOC extraction and the article
-  // body, so the pipeline (Shiki included) doesn't run twice per page.
-  const renderedHtml = await renderMarkdown(article.body);
-  const toc = extractArticleToc(renderedHtml);
+  // Render once: the pipeline emits the HTML and collects the h2 TOC in
+  // the same pass, so Shiki never runs twice per page.
+  const { html: renderedHtml, toc } = await renderMarkdownWithToc(
+    article.body,
+  );
   const url = fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`;
   const image =
     fm.social_image ??

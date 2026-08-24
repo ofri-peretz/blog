@@ -202,6 +202,40 @@ function rehypeExplicitHeadingIds() {
   };
 }
 
+export interface ArticleTocItem {
+  id: string;
+  label: string;
+}
+
+/**
+ * Collects h2 landmarks into `file.data.articleToc` while the tree is still
+ * structured — text nodes are already entity-decoded and ids are final
+ * (explicit `{#id}` or rehype-slug). Runs after rehypeSlug and BEFORE
+ * rehypeAutolinkHeadings so heading children are plain content, not the
+ * anchor wrapper. Extracting from the serialized HTML instead would mean
+ * re-parsing our own output with regexes — the fragile inverse of this.
+ */
+function rehypeCollectToc() {
+  return (tree: unknown, file: { data: Record<string, unknown> }) => {
+    const toc: ArticleTocItem[] = [];
+    const textOf = (node: HastLike): string => {
+      if (node.type === "text") return node.value ?? "";
+      return (node.children ?? []).map(textOf).join("");
+    };
+    const walk = (node: HastLike): void => {
+      if (node.type === "element" && node.tagName === "h2") {
+        const id = node.properties?.id;
+        const label = textOf(node).trim();
+        if (typeof id === "string" && label) toc.push({ id, label });
+        return;
+      }
+      for (const child of node.children ?? []) walk(child);
+    };
+    walk(tree as HastLike);
+    file.data.articleToc = toc;
+  };
+}
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -213,6 +247,7 @@ const processor = unified()
   .use(rehypeSanitize, sanitizeSchema)
   .use(rehypeExplicitHeadingIds)
   .use(rehypeSlug)
+  .use(rehypeCollectToc)
   .use(rehypeAutolinkHeadings, {
     behavior: "wrap",
     properties: { className: ["anchor"], ariaHidden: "true" },
@@ -223,10 +258,21 @@ const processor = unified()
   .use(rehypeScrollableTables)
   .use(rehypeStringify);
 
-/** The markdown -> HTML pipeline, exported so the rendering rules it applies
- *  can be tested without rendering a React server component. */
+/** The markdown -> HTML pipeline plus the h2 TOC it collected on the way.
+ *  Exported so the rendering rules can be tested without rendering a React
+ *  server component, and so pages can render once and get both outputs. */
+export async function renderMarkdownWithToc(
+  body: string,
+): Promise<{ html: string; toc: ArticleTocItem[] }> {
+  const file = await processor.process(preprocessMarkdown(body));
+  return {
+    html: String(file),
+    toc: (file.data.articleToc as ArticleTocItem[] | undefined) ?? [],
+  };
+}
+
 export async function renderMarkdown(body: string): Promise<string> {
-  return String(await processor.process(preprocessMarkdown(body)));
+  return (await renderMarkdownWithToc(body)).html;
 }
 
 export async function MarkdownArticle({
