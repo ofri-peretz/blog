@@ -41,6 +41,25 @@ describe("CorpusMap static markup", () => {
     expect(html).toContain("Standalone");
   });
 
+  it("announces the encoding: axis header row first, key in the caption", () => {
+    // The axis renders BEFORE the first lane strip so left-to-right = time
+    // is announced before any dots (2026-08-24 legibility pass).
+    const axis = html.indexOf('data-slot="corpus-map-axis"');
+    const firstLane = html.indexOf("Foundations");
+    expect(axis).toBeGreaterThan(-1);
+    expect(axis).toBeLessThan(firstLane);
+    // The caption spells out all three encodings.
+    expect(html).toContain("publication date");
+    expect(html).toContain("row: series");
+    expect(html).toContain("dot size: reading time");
+  });
+
+  it("lane labels carry their article counts", () => {
+    // Fixture: Foundations has 2 articles, Standalone 1.
+    expect(html).toMatch(/Foundations<\/span>[^<]*<span[^>]*>2</);
+    expect(html).toMatch(/Standalone<\/span>[^<]*<span[^>]*>1</);
+  });
+
   it("dots carry accessible names with title, series, date, minutes", () => {
     expect(html).toMatch(/aria-label="Alpha — Foundations, Jan 10, 2026, 5 min"/);
   });

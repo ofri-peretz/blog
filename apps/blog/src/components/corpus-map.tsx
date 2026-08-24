@@ -43,7 +43,9 @@ const STANDALONE = "Standalone";
 const VW = 560; // strip width — rendered 1:1, so viewBox units ARE pixels
 const LANE_H = 44;
 
-function laneOrder(points: readonly CorpusPoint[]): string[] {
+function laneOrder(
+  points: readonly CorpusPoint[],
+): { name: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const p of points) {
     const key = p.series ?? STANDALONE;
@@ -53,7 +55,7 @@ function laneOrder(points: readonly CorpusPoint[]): string[] {
     .sort((a, b) =>
       a[0] === STANDALONE ? 1 : b[0] === STANDALONE ? -1 : b[1] - a[1],
     )
-    .map(([name]) => name);
+    .map(([name, count]) => ({ name, count }));
 }
 
 const fmtDate = (iso: string): string =>
@@ -96,6 +98,7 @@ export function CorpusMap({
       return { lanes: [], dotsByLane: new Map<string, Dot[]>(), ticks: [] };
     }
     const lanes = laneOrder(points);
+    const laneNames = lanes.map((l) => l.name);
     const times = points.map((p) => new Date(`${p.date}T00:00:00Z`).getTime());
     const min = Math.min(...times);
     const max = Math.max(...times);
@@ -106,7 +109,7 @@ export function CorpusMap({
     // columns spilling right in 10px steps. The x-drift trades sub-week
     // precision for actually showing every article in a burst.
     const groups = new Map<string, number>();
-    const dotsByLane = new Map<string, Dot[]>(lanes.map((l) => [l, []]));
+    const dotsByLane = new Map<string, Dot[]>(laneNames.map((l) => [l, []]));
     points.forEach((p, i) => {
       const lane = p.series ?? STANDALONE;
       const key = `${lane}|${p.date}`;
@@ -170,24 +173,75 @@ export function CorpusMap({
       {...rest}
     >
       <figcaption className="mb-3 text-sm text-muted-foreground">
-        Every article, by series and publication date — hover to preview,
-        click to read.
+        <span className="text-foreground">Every article, mapped.</span> Left
+        to right: publication date · row: series · dot size: reading time.
+        Hover to preview, click to read.
       </figcaption>
       <div ref={scrollerRef} className="overflow-x-auto">
         <div className="grid w-max grid-cols-[10rem_560px]">
-          {lanes.map((lane) => (
-            <div key={lane} className="contents">
-              {/* Sticky HTML label: stays put while the strips scroll. */}
-              <div className="sticky left-0 z-10 flex h-11 items-center border-b border-border/60 bg-card pr-3 text-[11px] font-medium leading-tight text-foreground">
-                {lane}
+          {/* Time axis as the header row — the first thing read, so the
+              left-to-right = time encoding is announced before any dots. */}
+          <div className="sticky left-0 z-10 border-b border-border bg-card" />
+          <svg
+            data-slot="corpus-map-axis"
+            viewBox={`0 0 ${VW} 20`}
+            width={VW}
+            height={20}
+            aria-hidden
+            className="h-5 w-[560px] border-b border-border"
+          >
+            <g className="text-muted-foreground">
+              {ticks.map((t) => (
+                <g key={t.x}>
+                  <line
+                    x1={t.x}
+                    x2={t.x}
+                    y1={14}
+                    y2={20}
+                    className="stroke-border"
+                  />
+                  <text
+                    x={t.x}
+                    y={11}
+                    textAnchor="middle"
+                    className="fill-current text-[10px]"
+                  >
+                    {t.label}
+                  </text>
+                </g>
+              ))}
+            </g>
+          </svg>
+          {lanes.map((lane, i) => (
+            <div key={lane.name} className="contents">
+              {/* Sticky HTML label: stays put while the strips scroll.
+                  Zebra rows + the article count make "row = one series"
+                  readable at a glance. */}
+              <div
+                className={cn(
+                  "sticky left-0 z-10 flex h-11 items-baseline gap-1.5 border-b border-border/60 pr-3 pt-3 text-[11px] font-medium leading-tight text-foreground",
+                  // Opaque tokens only: the sticky label must cover dots
+                  // scrolling beneath it, and stacking bg-card with a
+                  // translucent zebra overlay leaves the winner to
+                  // stylesheet order.
+                  i % 2 === 1 ? "bg-muted" : "bg-card",
+                )}
+              >
+                <span>{lane.name}</span>
+                <span className="text-[10px] font-normal tabular-nums text-muted-foreground">
+                  {lane.count}
+                </span>
               </div>
               <svg
                 viewBox={`0 0 ${VW} ${LANE_H}`}
                 width={VW}
                 height={LANE_H}
                 role="group"
-                aria-label={`${lane} articles`}
-                className="h-11 w-[560px] border-b border-border/60"
+                aria-label={`${lane.name} — ${lane.count} articles`}
+                className={cn(
+                  "h-11 w-[560px] border-b border-border/60",
+                  i % 2 === 1 && "bg-muted",
+                )}
               >
                 <g className="text-muted-foreground/60">
                   {ticks.map((t) => (
@@ -203,7 +257,7 @@ export function CorpusMap({
                   ))}
                 </g>
                 <g className="text-[var(--chart-1)]">
-                  {(dotsByLane.get(lane) ?? []).map(({ p, cx, cy, r, key }) => (
+                  {(dotsByLane.get(lane.name) ?? []).map(({ p, cx, cy, r, key }) => (
                     <a
                       key={key}
                       href={`/articles/${p.slug}`}
@@ -224,29 +278,6 @@ export function CorpusMap({
               </svg>
             </div>
           ))}
-          {/* Shared axis strip */}
-          <div className="sticky left-0 z-10 bg-card" />
-          <svg
-            viewBox={`0 0 ${VW} 22`}
-            width={VW}
-            height={22}
-            aria-hidden
-            className="h-5 w-[560px]"
-          >
-            <g className="text-muted-foreground">
-              {ticks.map((t) => (
-                <text
-                  key={t.x}
-                  x={t.x}
-                  y={15}
-                  textAnchor="middle"
-                  className="fill-current text-[10px]"
-                >
-                  {t.label}
-                </text>
-              ))}
-            </g>
-          </svg>
         </div>
       </div>
       {/* Fixed-height detail strip — the hover layer without a floating
