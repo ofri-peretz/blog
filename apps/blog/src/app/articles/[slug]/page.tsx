@@ -9,7 +9,11 @@ import {
   isPublished,
 } from "@/lib/source";
 import { SeriesBanner, SeriesPager } from "@/components/series-nav";
-import { MarkdownArticle } from "@/components/markdown-article";
+import {
+  MarkdownArticle,
+  renderMarkdownWithToc,
+} from "@/components/markdown-article";
+import { FloatingToc } from "@/components/floating-toc";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { localCover } from "@/lib/cover";
 import { Container } from "@/components/ui/container";
@@ -88,6 +92,11 @@ export default async function ArticlePage(props: PageProps) {
 
   const { frontmatter: fm } = article;
   const series = getSeriesContext(slug);
+  // Render once: the pipeline emits the HTML and collects the h2 TOC in
+  // the same pass, so Shiki never runs twice per page.
+  const { html: renderedHtml, toc } = await renderMarkdownWithToc(
+    article.body,
+  );
   const url = fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`;
   const image =
     fm.social_image ??
@@ -221,7 +230,11 @@ export default async function ArticlePage(props: PageProps) {
 
         <SeriesBanner series={series} className="mb-8" />
 
-        <MarkdownArticle body={article.body} />
+        {/* Jump menu only where it earns its place — short pieces with one
+            or two sections don't need a TOC hovering over them. */}
+        {toc.length >= 3 && <FloatingToc items={toc} />}
+
+        <MarkdownArticle body={article.body} renderedHtml={renderedHtml} />
 
         <SeriesPager series={series} className="mt-12" />
 

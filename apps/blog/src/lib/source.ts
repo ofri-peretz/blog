@@ -13,6 +13,8 @@ export interface ArticleFrontmatter {
   devto_id?: number;
   /** Tri-state on purpose: true / false / absent. See isPublished(). */
   published?: boolean;
+  /** Authoring date, normalized to ISO yyyy-mm-dd (fallback when published_at is absent). */
+  date?: string;
   published_at?: string;
   edited_at?: string | null;
   cover_image?: string | null;
@@ -86,6 +88,14 @@ function normalize(fm: Record<string, unknown>): ArticleFrontmatter {
     devto_id: fm.devto_id as number | undefined,
     published: typeof fm.published === "boolean" ? fm.published : undefined,
     published_at: fm.published_at as string | undefined,
+    // YAML parses an unquoted `date: 2026-07-19` as a JS Date — normalize
+    // to ISO yyyy-mm-dd here so consumers never see the two shapes.
+    date:
+      fm.date instanceof Date
+        ? fm.date.toISOString().slice(0, 10)
+        : typeof fm.date === "string"
+          ? fm.date.slice(0, 10)
+          : undefined,
     edited_at: (fm.edited_at as string | null) ?? null,
     cover_image: (fm.cover_image as string | null) ?? null,
     social_image: (fm.social_image as string | null) ?? null,
