@@ -69,7 +69,14 @@ describe("buildSeriesContext — real corpus semantics", () => {
 
   it("returns null for an article without a series", () => {
     const loner = ALL.find((a) => !a.frontmatter.series);
-    if (loner) expect(buildSeriesContext(ALL, loner.slug)).toBeNull();
+    // Hard precondition, not a silent skip: if the corpus ever has zero
+    // series-less articles this test would pass while asserting nothing —
+    // fail loudly instead so it gets updated consciously.
+    expect(
+      loner,
+      "corpus has no series-less articles — this test is vacuous, rework it",
+    ).toBeDefined();
+    expect(buildSeriesContext(ALL, loner!.slug)).toBeNull();
   });
 });
 

@@ -201,7 +201,9 @@ export function buildSeriesContext(
     .sort((a, b) => {
       const ad = a.frontmatter.published_at ?? "";
       const bd = b.frontmatter.published_at ?? "";
-      return ad.localeCompare(bd);
+      // Slug as tie-breaker: without it, same-day articles keep the
+      // caller's (newest-first) order — the reverse of reading order.
+      return ad.localeCompare(bd) || a.slug.localeCompare(b.slug);
     });
 
   const index = members.findIndex((a) => a.slug === slug);
@@ -219,6 +221,15 @@ export function buildSeriesContext(
   };
 }
 
+// Production memo: SSG renders every article page in one build process, so
+// without this the build does pages × files corpus parses (~7,900 reads at
+// 89 articles). Dev stays un-memoized so content edits show without restart.
+let corpusMemo: Article[] | null = null;
+function getCorpus(): Article[] {
+  if (process.env.NODE_ENV !== "production") return getAllArticles();
+  return (corpusMemo ??= getAllArticles());
+}
+
 export function getSeriesContext(slug: string): SeriesContext | null {
-  return buildSeriesContext(getAllArticles(), slug);
+  return buildSeriesContext(getCorpus(), slug);
 }
