@@ -1,11 +1,12 @@
 /**
  * Homepage composition lock — see CLAUDE.md.
  *
- * The home page composition order is meaningful: hero first, then "the
- * numbers" (impact metrics), then narrative (about + featured), then depth
- * (career + philosophy + writing + skills + faq). Reordering or removing
- * a section silently breaks the storytelling rhythm; this lock makes any
- * structural drift visible in CI.
+ * The composition order is the brand argument (2026-08-24 decision): hero
+ * states the agenda, Impact proves it with numbers, Agenda names the ideas,
+ * Featured is the shipped product, Writing is the ideas in long form, and
+ * Experience is the leadership record. The page sells a leader with an
+ * agenda — NOT a developer's skill inventory, which is why the old Stack
+ * and FAQ sections are locked OUT below, not just absent.
  *
  * Pattern: file-text grep on src/app/page.tsx. We don't render the page —
  * the home page is `async` server-component + fetches live APIs. We pin
@@ -47,11 +48,8 @@ describe("homepage composition lock", () => {
   it("imports every required landing section", () => {
     const REQUIRED_IMPORTS = [
       "HeroBackdrop",
-      "About",
-      "Skills",
+      "Agenda",
       "FeaturedProject",
-      "Faq",
-      "Philosophy",
       "WorkExperience",
       "DevToArticles",
       "ImpactMetricsBlock",
@@ -61,17 +59,14 @@ describe("homepage composition lock", () => {
     }
   });
 
-  it("renders sections in the expected order", () => {
+  it("renders sections in the agenda-led order", () => {
     const ORDER = [
       "HeroBackdrop",
       "ImpactMetricsBlock",
-      "<About",
+      "<Agenda",
       "<FeaturedProject",
-      "<WorkExperience",
-      "<Philosophy",
       "<DevToArticles",
-      "<Skills",
-      "<Faq",
+      "<WorkExperience",
     ];
     let cursor = 0;
     for (const marker of ORDER) {
@@ -82,6 +77,16 @@ describe("homepage composition lock", () => {
       ).toBeGreaterThan(-1);
       cursor = idx;
     }
+  });
+
+  it("does NOT sell a skill inventory — Stack and FAQ stay gone", () => {
+    // The 2026-08-24 brand decision: ideas, products, impact — not a list
+    // of technologies. A future "add back a skills grid" PR must fail here
+    // and argue with this comment first.
+    expect(HOMEPAGE).not.toMatch(/<Skills\b/);
+    expect(HOMEPAGE).not.toMatch(/<Faq\b/);
+    expect(HOMEPAGE).not.toMatch(/landing\/skills/);
+    expect(HOMEPAGE).not.toMatch(/landing\/faq/);
   });
 
   it("uses the Container and Section primitives (no open-coded layout)", () => {

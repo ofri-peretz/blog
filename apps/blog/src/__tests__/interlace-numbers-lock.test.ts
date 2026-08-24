@@ -24,9 +24,8 @@ const PROJECT_ROOT = resolve(__dirname, "../..");
 // Every surface that makes an ecosystem plugin/rule count claim.
 const COVERED_SURFACES = [
   "src/app/page.tsx",
-  "src/components/landing/about.tsx",
+  "src/components/landing/agenda.tsx",
   "src/components/landing/featured-project.tsx",
-  "src/components/landing/faq.tsx",
   "src/components/landing/work-experience.tsx",
   "src/components/structured-data.tsx",
   "src/app/og/route.tsx",
