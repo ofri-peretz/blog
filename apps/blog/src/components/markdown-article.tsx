@@ -158,6 +158,44 @@ function rehypeScrollableTables() {
   };
 }
 
+const HEADINGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
+const EXPLICIT_ID = /\s*\{#([A-Za-z][\w-]*)\}\s*$/;
+
+/**
+ * Honors the `## Heading {#custom-id}` markdown convention: strips the
+ * marker from the visible text and applies it as the heading's id.
+ *
+ * Nothing in the pipeline handled this syntax, so 36 of the articles
+ * rendered their anchors as literal `{#the-four-layers}` text in every
+ * heading. Runs after rehypeSanitize (our own markup, same as
+ * rehypeSlug) and BEFORE rehypeSlug, which skips headings that already
+ * carry an id — so explicit anchors win and the rest keep slug ids.
+ */
+function rehypeExplicitHeadingIds() {
+  return (tree: unknown) => {
+    const walk = (node: HastLike): void => {
+      const children = node.children;
+      if (!children) return;
+      if (node.type === "element" && HEADINGS.has(node.tagName ?? "")) {
+        const last = children[children.length - 1];
+        if (last?.type === "text" && typeof last.value === "string") {
+          const match = last.value.match(EXPLICIT_ID);
+          if (match) {
+            const stripped = last.value.replace(EXPLICIT_ID, "");
+            if (stripped === "") children.pop();
+            else last.value = stripped.replace(/\s+$/, "");
+            const props = (node.properties ??= {});
+            if (props.id === undefined) props.id = match[1];
+          }
+        }
+        return;
+      }
+      for (const child of children) walk(child);
+    };
+    walk(tree as HastLike);
+  };
+}
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -167,6 +205,7 @@ const processor = unified()
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
   .use(rehypeSanitize, sanitizeSchema)
+  .use(rehypeExplicitHeadingIds)
   .use(rehypeSlug)
   .use(rehypeAutolinkHeadings, {
     behavior: "wrap",

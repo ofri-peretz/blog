@@ -24,7 +24,8 @@ import { getNpmPagePackages } from "@/lib/npm-page-data";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "npm packages — Ofri Peretz",
+  // Bare page name — the root layout's title template appends the suffix.
+  title: "npm packages",
   description:
     "Per-package breakdown of every npm package I actively maintain — lifetime + recent downloads, install commands, source links.",
   alternates: { canonical: "https://ofriperetz.dev/npm" },
