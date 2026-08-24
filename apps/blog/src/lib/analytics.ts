@@ -29,9 +29,15 @@ export type BlogEvent =
   /** Does the end-of-article CTA convert readers into playground users? */
   | { name: "article:playground_cta_click"; props: { slug: string } };
 
-export function track<E extends BlogEvent>(
-  name: E["name"],
-  props: E["props"],
+/** Props type for one event name — keeps name/props correlated at call sites. */
+export type EventProps<N extends BlogEvent["name"]> = Extract<
+  BlogEvent,
+  { name: N }
+>["props"];
+
+export function track<N extends BlogEvent["name"]>(
+  name: N,
+  props: EventProps<N>,
 ): void {
   // The singleton is inert until the provider ran posthog.init(); capture
   // on an uninitialized instance is a silent no-op, which is the correct

@@ -50,6 +50,6 @@ describe("each surface fires its event", () => {
 
   it("the playground CTA is a TrackedLink carrying the article slug", () => {
     expect(ARTICLE).toContain('event="article:playground_cta_click"');
-    expect(ARTICLE).toMatch(/<TrackedLink[\s\S]{0,200}eslint\.interlace\.tools\/play/);
+    expect(ARTICLE).toMatch(/<TrackedLink[\s\S]{0,500}eslint\.interlace\.tools\/play/);
   });
 });

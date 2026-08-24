@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { track, type BlogEvent } from "@/lib/analytics";
+import { track, type BlogEvent, type EventProps } from "@/lib/analytics";
 
 /**
  * Link that fires one typed analytics event on click.
@@ -11,7 +11,7 @@ import { track, type BlogEvent } from "@/lib/analytics";
  * components themselves — only this leaf hydrates. Internal hrefs render
  * a Next <Link>; external ones a plain anchor with the safe rel.
  */
-export function TrackedLink({
+export function TrackedLink<N extends BlogEvent["name"]>({
   href,
   event,
   props,
@@ -20,8 +20,9 @@ export function TrackedLink({
   ...rest
 }: {
   href: string;
-  event: BlogEvent["name"];
-  props: BlogEvent["props"];
+  event: N;
+  /** Correlated to `event` — a pager event can't carry map props. */
+  props: EventProps<N>;
   className?: string;
   children: React.ReactNode;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick">) {
