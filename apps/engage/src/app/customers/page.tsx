@@ -325,9 +325,10 @@ export default function Customers() {
         </div>
 
         {prData?.totals ? (
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-6">
             {[
               ["open", prData.totals.open, null],
+              ["blocked", prData.totals.blocked, "var(--color-bad)"],
               ["our move", prData.totals.ourMove, "var(--color-bad)"],
               ["stalled", prData.totals.stalled, "var(--color-warn)"],
               ["no reply yet", prData.totals.silent, null],
@@ -391,11 +392,13 @@ export default function Customers() {
               key={p.url}
               className="flex flex-col gap-1.5 rounded-xl border bg-[var(--color-panel)] p-3"
               style={{
-                borderColor: p.phase.startsWith("our move")
+                borderColor: p.blockers?.length
                   ? "var(--color-bad)"
-                  : p.phase === "stalled"
-                    ? "var(--color-warn)"
-                    : "var(--color-line)",
+                  : p.phase.startsWith("our move")
+                    ? "var(--color-bad)"
+                    : p.phase === "stalled"
+                      ? "var(--color-warn)"
+                      : "var(--color-line)",
               }}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -457,6 +460,19 @@ export default function Customers() {
                   </span>
                 ) : null}
               </div>
+
+              {p.blockers?.length ? (
+                <ul className="flex flex-col gap-0.5">
+                  {p.blockers.map((b: string) => (
+                    <li
+                      key={b}
+                      className="font-mono text-[10.5px] text-[var(--color-bad)]"
+                    >
+                      · {b}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
 
               {p.failingChecks?.length ? (
                 <p className="font-mono text-[10.5px] text-[var(--color-bad)]">

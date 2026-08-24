@@ -95,7 +95,14 @@ export async function GET() {
       const conversation = [...issueComments, ...reviewComments]
         .map((c) => ({
           who: c.user?.login ?? "?",
-          bot: Boolean(c.user?.login?.endsWith("[bot]")),
+          // Not every bot is spelled `[bot]`. CLAassistant and dependabot-style
+          // accounts comment as ordinary users, and counting one as a human
+          // put a permanent false "our move" on any PR they watch.
+          bot:
+            Boolean(c.user?.login?.endsWith("[bot]")) ||
+            /^(cla-?assistant|github-actions|codecov|sonarcloud|coderabbitai|vercel|netlify)$/i.test(
+              c.user?.login ?? "",
+            ),
           at: c.created_at,
           body: String(c.body ?? "").slice(0, 400),
         }))
@@ -106,6 +113,31 @@ export async function GET() {
       const human = conversation.filter((c) => !c.bot);
       const last = conversation.at(-1);
       const lastHuman = human.at(-1);
+
+      /**
+       * Why a finished PR cannot move.
+       *
+       * These are not review feedback and not CI failures — they are gates the
+       * author has to clear personally, and neither the checks list nor the
+       * comment thread says so in a way this page could show. Two of the first
+       * six adoption PRs were parked on exactly these, invisibly.
+       */
+      const blockers: string[] = [];
+      const allText = conversation.map((c) => c.body).join("\n");
+      if (/cla-assistant\.io|contributor license agreement/i.test(allText)) {
+        blockers.push("CLA not signed — needs a person, not a push");
+      }
+      if (
+        /could not be fully verified|requires all commits to be signed/i.test(
+          allText,
+        )
+      ) {
+        blockers.push(
+          "commits unsigned — repository requires signature verification",
+        );
+      }
+      if (detail.mergeable_state === "dirty")
+        blockers.push("conflicts with the base branch");
 
       const checks = detail.head?.sha
         ? await gh<any>(
@@ -158,6 +190,7 @@ export async function GET() {
         comments: conversation.length,
         humanComments: human.length,
         reviewStates: reviews.map((r) => r.state).filter(Boolean),
+        blockers,
         approved: reviews.some((r) => r.state === "APPROVED"),
         changesRequested: reviews.some((r) => r.state === "CHANGES_REQUESTED"),
         failingChecks: failing,
@@ -179,15 +212,17 @@ export async function GET() {
          * Ours beats theirs beats stalled: something we owe is always the most
          * actionable item on the list, and the only delay we can remove alone.
          */
-        phase: ours
-          ? "our move"
-          : failing.length
-            ? "our move — checks red"
-            : theirs
-              ? "waiting on them"
-              : idle != null && idle > STALE_DAYS
-                ? "stalled"
-                : "awaiting first response",
+        phase: blockers.length
+          ? "blocked — needs you"
+          : ours
+            ? "our move"
+            : failing.length
+              ? "our move — checks red"
+              : theirs
+                ? "waiting on them"
+                : idle != null && idle > STALE_DAYS
+                  ? "stalled"
+                  : "awaiting first response",
         // What we know about the repository from the pipeline, so the tracker
         // does not need a second lookup to say why this PR matters.
         sector: customers.get(slug)?.sector ?? null,
@@ -217,6 +252,7 @@ export async function GET() {
     totals: {
       open: prs.length,
       ourMove: prs.filter((p) => p.phase.startsWith("our move")).length,
+      blocked: prs.filter((p) => p.blockers.length > 0).length,
       waiting: prs.filter((p) => p.phase === "waiting on them").length,
       stalled: prs.filter((p) => p.phase === "stalled").length,
       silent: prs.filter((p) => p.phase === "awaiting first response").length,
