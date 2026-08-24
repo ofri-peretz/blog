@@ -92,7 +92,9 @@ describe("vendored scorecard surfaces stay honest too", () => {
 
   it("vendored NumberTicker renders the FINAL value in static markup", () => {
     expect(vendoredTicker).toContain("{formatNumber(value)}");
-    expect(vendoredTicker).not.toContain("{formatNumber(from)}");
+    // Whitespace-insensitive per review: a reformatted `{ formatNumber( from ) }`
+    // must not slip past the pin.
+    expect(vendoredTicker).not.toMatch(/\{\s*formatNumber\(\s*from\s*\)/);
   });
 
   it("momentum panel suppresses −100% cooling rows (data gaps, not facts)", () => {

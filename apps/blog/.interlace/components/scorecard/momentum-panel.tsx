@@ -41,6 +41,9 @@ export function MomentumPanel({
   // unauthenticated-GitHub gap rendered three of these at once) and reads
   // as collapse either way. Real slowdowns (−14%, −49%) stay; hard zeros
   // are a data gap, not a fact — same rule as the homepage impact grid.
+  // −99.5 rather than exactly −100: the pct arrives float-formatted
+  // (−99.97…), and on a 30-day window anything ≥99.5% down is
+  // indistinguishable from a dead source anyway.
   const cooling = trends.filter(
     (t) => t.trend === "cooling" && (t.momentum_pct ?? 0) > -99.5,
   );
