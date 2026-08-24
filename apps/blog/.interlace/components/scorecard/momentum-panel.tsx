@@ -36,7 +36,14 @@ export function MomentumPanel({
   ...rest
 }: MomentumPanelProps) {
   const rising = trends.filter((t) => t.trend === "rising");
-  const cooling = trends.filter((t) => t.trend === "cooling");
+  // A −100% "cooling" row means the current window reports ZERO — on a
+  // public surface that is indistinguishable from a broken source (the
+  // unauthenticated-GitHub gap rendered three of these at once) and reads
+  // as collapse either way. Real slowdowns (−14%, −49%) stay; hard zeros
+  // are a data gap, not a fact — same rule as the homepage impact grid.
+  const cooling = trends.filter(
+    (t) => t.trend === "cooling" && (t.momentum_pct ?? 0) > -99.5,
+  );
   const spikes = (anomalies ?? []).filter(
     (a) => a.flag === "spike" || a.flag === "stall",
   );

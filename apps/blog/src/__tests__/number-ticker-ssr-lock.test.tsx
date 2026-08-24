@@ -5,6 +5,8 @@
 // reader-mode, and JS-off visitor — the exact audiences that never see the
 // count-up. renderToStaticMarkup is the honest proxy for that audience:
 // effects never run there, so whatever this test sees is what they get.
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NumberTicker } from "@/components/ui/number-ticker";
@@ -65,5 +67,35 @@ describe("Impact section static markup", () => {
     // A metric legitimately valued 0 would render "0" — but with the fixture
     // above all-nonzero, any ">0<" means a ticker regressed to startValue.
     expect(html).not.toMatch(/>0</);
+  });
+});
+
+describe("vendored scorecard surfaces stay honest too", () => {
+  // The /scorecard page imports the VENDORED #interlace ticker, not the
+  // app's own — the SSR-honesty fix silently missed it and the North Star
+  // rendered a giant "0" to crawlers (found in the 2026-08-24 live
+  // review). These source pins keep both vendored fixes from reverting.
+  const vendoredTicker = readFileSync(
+    path.resolve(
+      __dirname,
+      "../../.interlace/components/ui/number-ticker.tsx",
+    ),
+    "utf-8",
+  );
+  const momentumPanel = readFileSync(
+    path.resolve(
+      __dirname,
+      "../../.interlace/components/scorecard/momentum-panel.tsx",
+    ),
+    "utf-8",
+  );
+
+  it("vendored NumberTicker renders the FINAL value in static markup", () => {
+    expect(vendoredTicker).toContain("{formatNumber(value)}");
+    expect(vendoredTicker).not.toContain("{formatNumber(from)}");
+  });
+
+  it("momentum panel suppresses −100% cooling rows (data gaps, not facts)", () => {
+    expect(momentumPanel).toMatch(/momentum_pct\s*\?\?\s*0\)\s*>\s*-99\.5/);
   });
 });

@@ -57,7 +57,10 @@ async function PackageGrid() {
   const total30d = packages.reduce((s, p) => s + p.downloads30d, 0);
   return (
     <div className="flex flex-col gap-8">
-      <dl className="grid grid-cols-3 gap-4 rounded-xl border bg-card p-6">
+      {/* Stacked on mobile: three cells sharing a 280-390px row collided
+          ("397,886" overlapping the neighbor) — same family as the homepage
+          impact-grid overflow. */}
+      <dl className="grid grid-cols-1 gap-4 rounded-xl border bg-card p-6 sm:grid-cols-3">
         <div>
           <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Packages
@@ -76,7 +79,7 @@ async function PackageGrid() {
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Downloads (lifetime)
+            Downloads (lifetime, these packages)
           </dt>
           <dd className="mt-1 text-2xl font-semibold tabular-nums">
             {fmt(totalLifetime)}
@@ -120,8 +123,9 @@ export default function NpmPage() {
         </h1>
         <p className="max-w-2xl text-muted-foreground">
           Every actively-promoted package, with downloads over time, install
-          commands, and links to source. Daily downloads come from the npm
-          registry via Supabase. Cached for 12 hours.
+          commands, and links to source. Totals here cover these packages;
+          the homepage counts everything ever published. Refreshed daily
+          from the npm registry.
         </p>
       </header>
 
