@@ -14,6 +14,7 @@ import {
   renderMarkdownWithToc,
 } from "@/components/markdown-article";
 import { FloatingToc } from "@/components/floating-toc";
+import { TrackedLink } from "@/components/tracked-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { localCover } from "@/lib/cover";
 import { Container } from "@/components/ui/container";
@@ -236,9 +237,10 @@ export default async function ArticlePage(props: PageProps) {
 
         <MarkdownArticle body={article.body} renderedHtml={renderedHtml} />
 
-        <SeriesPager series={series} className="mt-12" />
+        <SeriesPager series={series} currentSlug={slug} className="mt-12" />
 
         <DevToCallout
+          slug={slug}
           devtoUrl={fm.devto_url}
           username={fm.author?.username ?? "ofri-peretz"}
         />
@@ -267,9 +269,11 @@ export default async function ArticlePage(props: PageProps) {
 }
 
 function DevToCallout({
+  slug,
   devtoUrl,
   username,
 }: {
+  slug: string;
   devtoUrl?: string;
   username: string;
 }) {
@@ -301,14 +305,14 @@ function DevToCallout({
         .
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <a
+        <TrackedLink
           href="https://eslint.interlace.tools/play"
-          target="_blank"
-          rel="noopener noreferrer"
+          event="article:playground_cta_click"
+          props={{ slug }}
           className={buttonVariants({ variant: "default", size: "sm" })}
         >
           Try the rules in the playground ↗
-        </a>
+        </TrackedLink>
         <a
           href={profileUrl}
           target="_blank"
