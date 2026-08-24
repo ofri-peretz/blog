@@ -100,4 +100,17 @@ describe("vendored scorecard surfaces stay honest too", () => {
   it("momentum panel suppresses −100% cooling rows (data gaps, not facts)", () => {
     expect(momentumPanel).toMatch(/momentum_pct\s*\?\?\s*0\)\s*>\s*-99\.5/);
   });
+
+  it("ratchet-card trend chip suppresses −100% cooling too", () => {
+    // Found live AFTER the momentum-panel fix: each ratchet card renders
+    // its own trend chip from a separate component — same data-gap rule.
+    const ratchetCard = readFileSync(
+      path.resolve(
+        __dirname,
+        "../../.interlace/components/scorecard/ratchet-card.tsx",
+      ),
+      "utf-8",
+    );
+    expect(ratchetCard).toMatch(/momentum_pct\s*\?\?\s*0\)\s*<=\s*-99\.5/);
+  });
 });
