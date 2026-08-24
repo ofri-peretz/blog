@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/analytics";
 
 /**
  * CorpusMap — the writing as an explorable territory.
@@ -264,6 +265,17 @@ export function CorpusMap({
                       aria-label={`${p.title} — ${p.series ?? STANDALONE}, ${fmtDate(p.date)}, ${p.minutes} min`}
                       onMouseEnter={() => setActive(p)}
                       onFocus={() => setActive(p)}
+                      // Native <a href> — Enter activates and focus works by
+                      // definition; the a11y rules below don't credit SVG
+                      // anchors as native links. Adding onKeyDown would
+                      // double-fire activation, not improve access.
+                      // eslint-disable-next-line react-a11y/click-events-have-key-events
+                      onClick={() =>
+                        track("corpus_map:dot_click", {
+                          slug: p.slug,
+                          series: p.series,
+                        })
+                      }
                       className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
                     >
                       <circle

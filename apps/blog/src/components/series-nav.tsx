@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { TrackedLink } from "@/components/tracked-link";
 import type { SeriesContext } from "@/lib/source";
 import { cn } from "@/lib/utils";
 
@@ -34,9 +34,12 @@ export function SeriesBanner({
 
 export function SeriesPager({
   series,
+  currentSlug,
   className,
 }: {
   series: SeriesContext | null;
+  /** Slug of the article being read — the `from` side of pager events. */
+  currentSlug: string;
   className?: string;
 }) {
   if (!series || (!series.prev && !series.next)) return null;
@@ -47,8 +50,14 @@ export function SeriesPager({
       className={cn("grid gap-3 sm:grid-cols-2", className)}
     >
       {series.prev ? (
-        <Link
+        <TrackedLink
           href={`/articles/${series.prev.slug}`}
+          event="series:pager_click"
+          props={{
+            from_slug: currentSlug,
+            to_slug: series.prev.slug,
+            direction: "prev",
+          }}
           className="group rounded-lg border border-border p-4 transition-colors hover:bg-muted/40"
         >
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -57,13 +66,19 @@ export function SeriesPager({
           <span className="mt-1 block font-medium text-foreground group-hover:underline group-hover:underline-offset-4">
             {series.prev.title}
           </span>
-        </Link>
+        </TrackedLink>
       ) : (
         <span aria-hidden className="hidden sm:block" />
       )}
       {series.next && (
-        <Link
+        <TrackedLink
           href={`/articles/${series.next.slug}`}
+          event="series:pager_click"
+          props={{
+            from_slug: currentSlug,
+            to_slug: series.next.slug,
+            direction: "next",
+          }}
           className="group rounded-lg border border-border p-4 text-right transition-colors hover:bg-muted/40"
         >
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -72,7 +87,7 @@ export function SeriesPager({
           <span className="mt-1 block font-medium text-foreground group-hover:underline group-hover:underline-offset-4">
             {series.next.title}
           </span>
-        </Link>
+        </TrackedLink>
       )}
     </nav>
   );
