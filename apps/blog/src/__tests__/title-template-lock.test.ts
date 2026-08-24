@@ -30,11 +30,16 @@ describe("metadata title template", () => {
   it("no page hard-codes the template suffix in its own title", () => {
     const offenders: string[] = [];
     for (const file of pageFiles(APP_DIR)) {
-      const src = readFileSync(file, "utf-8");
+      // Strip comments first so prose mentioning "openGraph" (or a titled
+      // example in a docstring) can neither hide an offender nor create one.
+      const src = readFileSync(file, "utf-8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
       // openGraph/twitter titles do NOT go through the template, so an
       // explicit suffix there is legitimate — only inspect the source
-      // before the openGraph block.
-      const head = src.split(/\bopenGraph\b/)[0];
+      // before the openGraph KEY (colon required: only the object key
+      // position can start that block, not a string or identifier).
+      const head = src.split(/\bopenGraph\s*:/)[0];
       if (/title:\s*"[^"]*— Ofri Peretz"/.test(head)) {
         offenders.push(file.replace(APP_DIR, "src/app"));
       }

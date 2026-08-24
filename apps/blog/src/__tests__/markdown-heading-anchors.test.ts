@@ -57,19 +57,21 @@ describe("explicit heading ids", () => {
 });
 
 describe("corpus: no article renders a literal {#id} in a heading", () => {
-  // Cheap corpus-wide guard: the marker regex applied to every heading LINE
-  // of every article must be handled by the plugin's pattern. If an author
-  // writes a marker shape the plugin doesn't match (uppercase start, unicode,
-  // leading digit), this fails naming the file instead of shipping garbage.
-  it("every {#...} marker in the corpus matches the plugin's pattern", () => {
+  // Cheap corpus-wide guard: ANY `{#` in a heading line that the plugin
+  // would not consume — wrong shape (uppercase start, unicode, leading
+  // digit) OR wrong position (marker not trailing, e.g. followed by bold
+  // text) — fails here naming the file, instead of shipping literal
+  // `{#...}` garbage to readers. The plugin deliberately only handles the
+  // trailing-text-node convention; this guard is what keeps the corpus
+  // inside that convention.
+  it("every {#...} in a heading is a trailing marker the plugin consumes", () => {
     const dir = resolve(__dirname, "../../content/articles");
     const offenders: string[] = [];
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".md"))) {
       const body = readFileSync(join(dir, file), "utf-8");
       for (const line of body.split("\n")) {
-        if (!/^#{1,6}\s/.test(line)) continue;
-        const marker = line.match(/\{#([^}]*)\}\s*$/);
-        if (marker && !/^[A-Za-z][\w-]*$/.test(marker[1])) {
+        if (!/^#{1,6}\s/.test(line) || !line.includes("{#")) continue;
+        if (!/\{#[A-Za-z][\w-]*\}\s*$/.test(line)) {
           offenders.push(`${file}: ${line.trim()}`);
         }
       }
