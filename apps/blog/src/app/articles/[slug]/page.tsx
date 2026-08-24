@@ -253,6 +253,11 @@ function DevToCallout({
   devtoUrl?: string;
   username: string;
 }) {
+  // Funnel decision (2026-08-24): the PRIMARY action after reading routes
+  // to OUR product surface, not to a third-party platform. The old primary
+  // was "Follow on dev.to" — sending the best-converted readers off-site
+  // at the exact moment they were most convinced. dev.to stays as the
+  // secondary follow/discussion link.
   const profileUrl = `https://dev.to/${username}`;
   return (
     <aside
@@ -260,10 +265,11 @@ function DevToCallout({
       className="mt-12 rounded-lg border border-border bg-muted/30 p-6"
     >
       <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-        Enjoyed this?
+        Keep going
       </p>
       <p className="mt-2 text-base text-foreground">
-        I publish on{" "}
+        Everything here ships as runnable lint rules — try them live in the
+        playground, or start with the docs. New pieces land on{" "}
         <a
           href={profileUrl}
           target="_blank"
@@ -271,15 +277,23 @@ function DevToCallout({
           className="font-medium underline underline-offset-2 hover:text-foreground/80"
         >
           dev.to/{username}
-        </a>{" "}
-        — follow for new pieces on ESLint, security, and AI-assisted code.
+        </a>
+        .
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <a
+          href="https://eslint.interlace.tools/play"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonVariants({ variant: "default", size: "sm" })}
+        >
+          Try the rules in the playground ↗
+        </a>
         <a
           href={profileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={buttonVariants({ variant: "default", size: "sm" })}
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           Follow on dev.to ↗
         </a>
@@ -290,7 +304,7 @@ function DevToCallout({
             rel="noopener noreferrer"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            Read this on dev.to ↗
+            Discuss on dev.to ↗
           </a>
         )}
       </div>
