@@ -6,7 +6,9 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { localCover } from "@/lib/cover";
 import { getAllArticles } from "@/lib/source";
-import { CorpusMap, type CorpusPoint } from "@/components/corpus-map";
+import { WovenCorpusMap } from "@/components/woven-corpus-map";
+import type { TimelineMapItem } from "@/components/ui/timeline-map";
+import { extractInternalLinks } from "@/lib/corpus-links";
 
 const PAGE_SIZE = 12;
 
@@ -57,16 +59,21 @@ export default async function ArticlesPage(props: PageProps) {
   // is the territory view; the grid below is the filtered, paginated one.
   // published_at falls back to date: 4 published articles carry only the
   // latter, and filtering them out silently hid them from the map.
-  const mapPoints: CorpusPoint[] = all
+  const knownSlugs = new Set(all.map((a) => a.slug));
+  const maxMinutes = Math.max(1, ...all.map((a) => a.readingTimeMinutes));
+  const mapItems: TimelineMapItem[] = all
     .map((a) => ({
-      slug: a.slug,
-      title: a.frontmatter.title,
-      series: a.frontmatter.series ?? null,
+      id: a.slug,
+      href: `/articles/${a.slug}`,
+      label: a.frontmatter.title,
+      category: a.frontmatter.series ?? null,
       date: String(a.frontmatter.published_at ?? a.frontmatter.date ?? "").slice(
         0,
         10,
       ),
-      minutes: a.readingTimeMinutes,
+      weight: a.readingTimeMinutes / maxMinutes,
+      // The link weave: which other articles this one cites.
+      links: extractInternalLinks(a.body, a.slug, knownSlugs),
     }))
     .filter((p) => p.date.length === 10);
 
@@ -90,7 +97,7 @@ export default async function ArticlesPage(props: PageProps) {
               </Link>
             </p>
           )}
-          <CorpusMap points={mapPoints} className="mt-8" />
+          <WovenCorpusMap items={mapItems} />
         </header>
 
         {articles.length === 0 ? (

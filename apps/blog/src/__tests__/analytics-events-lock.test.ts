@@ -20,7 +20,9 @@ const read = (rel: string): string =>
   readFileSync(path.resolve(__dirname, "..", rel), "utf-8");
 
 const ANALYTICS = read("lib/analytics.ts");
-const MAP = read("components/corpus-map.tsx");
+// The map is now the DS TimelineMap; the analytics seam lives in the
+// client wrapper that injects Link + onItemClick.
+const MAP = read("components/woven-corpus-map.tsx");
 const PAGER = read("components/series-nav.tsx");
 const ARTICLE = read("app/articles/[slug]/page.tsx");
 
