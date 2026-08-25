@@ -185,6 +185,8 @@ export interface SeriesContext {
   total: number;
   prev: SeriesNeighbor | null;
   next: SeriesNeighbor | null;
+  /** Every part in reading order — the expandable series list. */
+  parts: SeriesNeighbor[];
 }
 
 /**
@@ -228,6 +230,7 @@ export function buildSeriesContext(
     total: members.length,
     prev: toNeighbor(members[index - 1]),
     next: toNeighbor(members[index + 1]),
+    parts: members.map((a) => ({ slug: a.slug, title: a.frontmatter.title })),
   };
 }
 

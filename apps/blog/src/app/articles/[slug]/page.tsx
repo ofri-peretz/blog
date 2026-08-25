@@ -109,7 +109,12 @@ export default async function ArticlePage(props: PageProps) {
     // loudly at build time if a refactor ever breaks that contract.
     const a = corpusBySlug.get(s);
     if (!a) throw new Error(`thread slug ${s} not in the published corpus`);
-    return { slug: s, title: a.frontmatter.title, series: a.frontmatter.series };
+    return {
+      slug: s,
+      title: a.frontmatter.title,
+      series: a.frontmatter.series,
+      minutes: a.readingTimeMinutes,
+    };
   };
   // Render once: the pipeline emits the HTML and collects the h2 TOC in
   // the same pass, so Shiki never runs twice per page.
@@ -247,7 +252,7 @@ export default async function ArticlePage(props: PageProps) {
           </div>
         </header>
 
-        <SeriesBanner series={series} className="mb-8" />
+        <SeriesBanner series={series} currentSlug={slug} className="mb-8" />
 
         {/* Jump menu only where it earns its place — short pieces with one
             or two sections don't need a TOC hovering over them. */}
