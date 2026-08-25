@@ -12,23 +12,82 @@ import { cn } from "@/lib/utils";
  */
 export function SeriesBanner({
   series,
+  currentSlug,
   className,
 }: {
   series: SeriesContext | null;
+  /** Slug of the article being read — marked, not linked, in the list. */
+  currentSlug: string;
   className?: string;
 }) {
   if (!series) return null;
   return (
-    <p
+    // Native <details>: the full series list ships in the SSR HTML
+    // (every part crawlable from every part — 22 internal links a page
+    // was hiding), opens with zero JS, and keyboard/AT behavior comes
+    // from the platform.
+    <details
       data-slot="series-banner"
       className={cn(
-        "rounded-md border border-border bg-muted/30 px-4 py-2.5 text-sm text-muted-foreground",
+        "group rounded-md border border-border bg-muted/30 text-sm",
         className,
       )}
     >
-      Part {series.index} of {series.total} in{" "}
-      <span className="font-medium text-foreground">{series.name}</span>
-    </p>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-muted-foreground [&::-webkit-details-marker]:hidden">
+        <span>
+          Part {series.index} of {series.total} in{" "}
+          <span className="font-medium text-foreground">{series.name}</span>
+        </span>
+        <span
+          aria-hidden="true"
+          className="shrink-0 text-xs transition-transform duration-200 group-open:rotate-180"
+        >
+          ▾
+        </span>
+      </summary>
+      <ol
+        data-slot="series-banner-parts"
+        className="border-t border-border/60 px-2 py-2"
+      >
+        {series.parts.map((part, i) => {
+          const number = (
+            <span
+              aria-hidden="true"
+              className="w-6 shrink-0 text-right font-mono text-xs text-muted-foreground [font-variant-numeric:tabular-nums]"
+            >
+              {i + 1}.
+            </span>
+          );
+          return (
+            <li key={part.slug}>
+              {part.slug === currentSlug ? (
+                <span
+                  aria-current="page"
+                  className="flex items-baseline gap-2.5 rounded bg-muted/50 px-2 py-1.5 font-medium text-foreground"
+                >
+                  {number}
+                  {part.title}
+                </span>
+              ) : (
+                <TrackedLink
+                  href={`/articles/${part.slug}`}
+                  event="series:pager_click"
+                  props={{
+                    from_slug: currentSlug,
+                    to_slug: part.slug,
+                    direction: "jump",
+                  }}
+                  className="flex items-baseline gap-2.5 rounded px-2 py-1.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                >
+                  {number}
+                  {part.title}
+                </TrackedLink>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </details>
   );
 }
 

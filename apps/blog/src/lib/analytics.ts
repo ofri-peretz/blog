@@ -24,7 +24,12 @@ export type BlogEvent =
   /** Does series navigation chain one read into the next? */
   | {
       name: "series:pager_click";
-      props: { from_slug: string; to_slug: string; direction: "prev" | "next" };
+      props: {
+        from_slug: string;
+        to_slug: string;
+        /** prev/next = the pager; jump = the expandable series list. */
+        direction: "prev" | "next" | "jump";
+      };
     }
   /** Does the end-of-article CTA convert readers into playground users? */
   | { name: "article:playground_cta_click"; props: { slug: string } }

@@ -19,6 +19,8 @@ export interface ThreadItem {
   slug: string;
   title: string;
   series?: string | null;
+  /** Reading minutes — the same time-budget cue the corpus map speaks. */
+  minutes?: number;
 }
 
 // The ink budget, applied to lists: hub articles collect 50+ backlinks
@@ -106,9 +108,11 @@ function ThreadGroup({
             >
               {item.title}
             </TrackedLink>
-            {item.series && (
+            {(item.series || item.minutes != null) && (
               <span className="shrink-0 text-xs text-muted-foreground">
-                · {item.series}
+                · {[item.series, item.minutes != null && `${item.minutes} min`]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
             )}
           </li>
