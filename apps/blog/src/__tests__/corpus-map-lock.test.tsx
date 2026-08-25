@@ -43,7 +43,23 @@ describe("consumption contract", () => {
     expect(MAP_SOURCE).toContain("interlace#56");
     // Upstream fixes must arrive by re-vendoring, never local patches.
     expect(MAP_SOURCE).toContain("#59");
+    expect(MAP_SOURCE).toContain("#61");
     expect(MAP_SOURCE).toMatch(/visibleOrder\.some\(\(i\) => i\.id === focusedId\)/);
+  });
+
+  it("the landscape is domain × reading time, not publication date", () => {
+    // The reader-facing decision (2026-08-25): readers navigate by topic
+    // and time budget; when a piece shipped serves the author. The axis
+    // object is a module constant — its identity feeds the layout memo.
+    const SEAM = read("components", "woven-corpus-map.tsx");
+    expect(SEAM).toContain('kind: "number"');
+    expect(SEAM).toContain("axis={MINUTES_AXIS}");
+    expect(SEAM).toMatch(/format: \(v\) => `\$\{v\} min`/);
+    expect(PAGE_SOURCE).toContain("value: a.readingTimeMinutes");
+    // Size now carries community resonance, and no date filter exists —
+    // every published article lands on the map.
+    expect(PAGE_SOURCE).toContain("maxReactions");
+    expect(PAGE_SOURCE).not.toContain("p.date.length === 10");
   });
 
   it("/articles consumes the DS map and the link extraction", () => {
