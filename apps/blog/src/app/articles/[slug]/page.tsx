@@ -12,6 +12,7 @@ import {
 import { computeThreads } from "@/lib/corpus-links";
 import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
 import { ReadingStrand } from "@/components/ui/reading-strand";
+import { RecordReading } from "@/components/record-reading";
 import { SeriesBanner, SeriesPager } from "@/components/series-nav";
 import {
   MarkdownArticle,
@@ -255,6 +256,9 @@ export default async function ArticlePage(props: PageProps) {
         {/* The strand tracks the BODY span only: progress hits 100% when
             the reading ends, not when the footer scrolls by. */}
         <ReadingStrand target="article-reading-span" data-testid="reading-strand" />
+        {/* This read becomes a step of the reader's thread on the corpus
+            map (reading-history.ts — localStorage only, never sent). */}
+        <RecordReading slug={slug} />
         <div id="article-reading-span">
           <MarkdownArticle body={article.body} renderedHtml={renderedHtml} />
         </div>

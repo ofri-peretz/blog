@@ -36,7 +36,12 @@ export type BlogEvent =
         to_slug: string;
         direction: "draws_on" | "pulled_by";
       };
-    };
+    }
+  /**
+   * How many return readers actually see their own thread on the map?
+   * Aggregate count only — the thread itself never leaves the browser.
+   */
+  | { name: "corpus_map:your_thread"; props: { read_count: number } };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<
