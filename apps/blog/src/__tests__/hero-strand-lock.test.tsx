@@ -59,9 +59,10 @@ describe("decorative + dash-math contract (rendered)", () => {
   );
 
   it("aria-hidden survives any override, pointer-transparent, both strands", () => {
+    // No @ts-expect-error on purpose: TS accepts aria-* JSX attributes
+    // even against #64's Omit (verified empirically), which is exactly
+    // why the RUNTIME guard is the enforced layer this pins.
     const overridden = renderToStaticMarkup(
-      // @ts-expect-error — aria-hidden is Omit-ed from the props (#64,
-      // the compile-time layer); this pins the RUNTIME layer for JS.
       <HeroStrand data-testid="hs" counter aria-hidden={false} />,
     );
     expect(overridden).toMatch(/aria-hidden="true"/);
