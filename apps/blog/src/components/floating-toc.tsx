@@ -12,6 +12,32 @@ export interface TocItem {
   level?: number;
 }
 
+/**
+ * The lint run — which sections count as READ. Honest semantics: a
+ * section is read when the reader has moved PAST it (some later section
+ * has been active), never merely opened; the last section needs the
+ * page end reached. Pure and exported for the lock.
+ */
+export function computeReadIds(
+  items: readonly TocItem[],
+  everActive: ReadonlySet<string>,
+  reachedEnd: boolean,
+): Set<string> {
+  const read = new Set<string>();
+  let maxActive = -1;
+  items.forEach((item, i) => {
+    if (everActive.has(item.id)) maxActive = i;
+  });
+  items.forEach((item, i) => {
+    if (i < maxActive) read.add(item.id);
+    if (i === items.length - 1 && reachedEnd) read.add(item.id);
+  });
+  // Reaching the end reads everything above it too — a reader who
+  // scrolled straight to the footer has seen every section pass by.
+  if (reachedEnd) items.forEach((item) => read.add(item.id));
+  return read;
+}
+
 interface FloatingTocProps extends React.HTMLAttributes<HTMLElement> {
   items: TocItem[];
   /** Render a "Scroll to top" control at the foot of the expanded list. */
@@ -30,6 +56,12 @@ export function FloatingToc({
   const [expanded, setExpanded] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // The lint run: sections the reader has been in (ever), and whether
+  // the page end was reached — computeReadIds turns these into ✓s.
+  const [everActive, setEverActive] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [reachedEnd, setReachedEnd] = useState(false);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -43,7 +75,16 @@ export function FloatingToc({
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) setActiveId(visible[0].target.id);
+        if (visible[0]) {
+          const id = visible[0].target.id;
+          setActiveId(id);
+          setEverActive((prev) => {
+            if (prev.has(id)) return prev;
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+          });
+        }
       },
       { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
     );
@@ -52,9 +93,26 @@ export function FloatingToc({
     return () => observer.disconnect();
   }, [items]);
 
+  // The last ✓ needs the page end: one passive listener that retires
+  // itself the moment it fires.
+  useEffect(() => {
+    const onScroll = () => {
+      const doc = document.documentElement;
+      if (window.scrollY + window.innerHeight >= doc.scrollHeight - 200) {
+        setReachedEnd(true);
+        window.removeEventListener("scroll", onScroll);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   if (items.length === 0) return null;
 
   const activeItem = items.find((item) => item.id === activeId) ?? null;
+  const readIds = computeReadIds(items, everActive, reachedEnd);
+  const allRead = items.length > 0 && readIds.size === items.length;
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -133,6 +191,17 @@ export function FloatingToc({
                         item.level && item.level > 1 && "pl-4",
                       )}
                     >
+                      {/* The lint run: a section you've read past earns its
+                          tick — the product's own voice as reading progress.
+                          Decorative (aria-hidden); state, never motion. */}
+                      {readIds.has(item.id) && (
+                        <span
+                          aria-hidden="true"
+                          className="mr-1.5 font-mono text-brand-green"
+                        >
+                          ✓
+                        </span>
+                      )}
                       {item.label}
                     </span>
                     <span
@@ -141,7 +210,9 @@ export function FloatingToc({
                         "relative block h-0.5 shrink-0 rounded-full transition-[width,background-color] duration-300 ease-out",
                         isActive
                           ? "w-6 bg-transparent"
-                          : "w-3 bg-muted-foreground/40 group-hover:w-5 group-hover:bg-muted-foreground",
+                          : readIds.has(item.id)
+                            ? "w-3 bg-brand-green/50 group-hover:w-5 group-hover:bg-brand-green"
+                            : "w-3 bg-muted-foreground/40 group-hover:w-5 group-hover:bg-muted-foreground",
                       )}
                     >
                       {isActive && (
@@ -161,6 +232,23 @@ export function FloatingToc({
               );
             })}
           </ul>
+          {allRead && (
+            <div
+              data-slot="floating-toc-lint-pass"
+              className={cn(
+                "overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out",
+                expanded ? "mt-1 max-h-8 opacity-100" : "mt-0 max-h-0 opacity-0",
+              )}
+              aria-hidden={!expanded}
+            >
+              <p className="border-t border-border/60 pt-2 pb-1 text-center font-mono text-xs text-muted-foreground">
+                <span aria-hidden="true">
+                  <span className="text-brand-green">✓</span> 0 problems
+                </span>
+                <span className="sr-only">All sections read.</span>
+              </p>
+            </div>
+          )}
           {showScrollToTop && (
             <div
               className={cn(
