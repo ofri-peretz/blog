@@ -403,10 +403,11 @@ describe("lighthouse findings stay fixed", () => {
     // strict-dynamic without a nonce made browsers ignore 'self' — every
     // chunk violated and the policy could never be enforced on SSG.
     // Scoped to the policy array so prose in comments can't trip it.
-    const policyBlock = CONFIG.slice(
-      CONFIG.indexOf("const csp = ["),
-      CONFIG.indexOf('].join("; ")'),
-    );
+    // Regex, not indexOf slices (review): a reformatted `.join` made the
+    // old slice degrade to almost-the-whole-file and the guard passed
+    // vacuously. The match is asserted non-empty so it fails LOUDLY.
+    const policyBlock = CONFIG.match(/const csp = \[[\s\S]*?\]\.join\(/)?.[0];
+    expect(policyBlock, "policy array not found — lock cannot scan").toBeTruthy();
     expect(policyBlock).not.toContain("strict-dynamic");
     // Meaningful only under enforcement; restored with it.
     expect(CONFIG).toMatch(/"upgrade-insecure-requests"/);
