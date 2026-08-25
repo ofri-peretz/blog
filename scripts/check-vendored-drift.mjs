@@ -53,7 +53,10 @@ function normalizeVendored(src) {
     .replace('import { cn } from "@/lib/utils";', "import { cn } from '../lib/cn.js';");
 }
 
-let drifted = [];
+// A fetch failure must not hide drift in the REMAINING files (review):
+// accumulate both, keep comparing, and report everything at the end.
+const drifted = [];
+const failed = [];
 for (const [vendored, canonical] of Object.entries(VENDORED)) {
   const local = normalizeVendored(
     readFileSync(path.join("apps/blog/src", vendored), "utf-8"),
@@ -61,7 +64,8 @@ for (const [vendored, canonical] of Object.entries(VENDORED)) {
   const res = await fetch(`${RAW}/${canonical}`);
   if (!res.ok) {
     console.error(`FETCH FAILED (${res.status}): ${canonical}`);
-    process.exit(2);
+    failed.push(canonical);
+    continue;
   }
   const remote = await res.text();
   if (local.trim() !== remote.trim()) drifted.push(vendored);
@@ -69,6 +73,7 @@ for (const [vendored, canonical] of Object.entries(VENDORED)) {
 
 if (drifted.length > 0) {
   console.log(drifted.join("\n"));
-  process.exit(1);
+  process.exit(1); // drift outranks fetch trouble — it is actionable now
 }
+if (failed.length > 0) process.exit(2);
 console.log("all vendored components in sync with canonical");
