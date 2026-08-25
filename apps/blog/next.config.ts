@@ -75,8 +75,9 @@ const nextConfig: NextConfig = {
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      // Meaningful again now that the policy is enforced (it is ignored in
-      // Report-Only mode and logged console errors there).
+      // Meaningful again now that the policy is enforced (Report-Only
+      // ignored it and Chrome logged a console error for it on every page
+      // — the reason #174 removed it; this branch is that graduation).
       "upgrade-insecure-requests",
     ].join("; ");
 
