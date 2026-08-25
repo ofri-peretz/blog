@@ -30,7 +30,7 @@ describe("NumberTicker static markup", () => {
 describe("Impact section static markup", () => {
   it("omits zero-valued metrics entirely — a 0 here is a data gap, not a fact", () => {
     const html = renderToStaticMarkup(
-      <ImpactMetricsBlock
+      <ImpactMetricsBlock index={1}
         stats={{
           github: { totalStars: 16, totalRepos: 36, totalContributions: 0 },
           npm: { totalDownloads: 409111, packageCount: 36 },
@@ -49,7 +49,7 @@ describe("Impact section static markup", () => {
 
   it("shows real metrics, never a wall of zeros", () => {
     const html = renderToStaticMarkup(
-      <ImpactMetricsBlock
+      <ImpactMetricsBlock index={1}
         stats={{
           github: { totalStars: 16, totalRepos: 36, totalContributions: 4210 },
           npm: { totalDownloads: 409111, packageCount: 36 },

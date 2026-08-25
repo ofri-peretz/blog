@@ -2,9 +2,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
+import { SectionIndex } from "@/components/ui/section-index";
 import numbers from "@/data/interlace-numbers.json";
 
 interface AgendaProps extends React.HTMLAttributes<HTMLElement> {
+  /** 1-based position in the homepage sequence — the numbered eyebrow. */
+  index: number;
   /** Stable selector for E2E tests; consumer provides — no default. */
   "data-testid"?: string;
 }
@@ -37,6 +40,7 @@ const IDEAS = [
 ] as const;
 
 export function Agenda({
+  index,
   className,
   "data-testid": testId,
   ...rest
@@ -51,9 +55,9 @@ export function Agenda({
       {...rest}
     >
       <Container size="content">
-        <p className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+        <SectionIndex value={index} data-testid="agenda-index" className="mb-3">
           The agenda
-        </p>
+        </SectionIndex>
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
           <Avatar className="size-20 shrink-0 ring-2 ring-border ring-offset-4 ring-offset-background">
             <AvatarImage

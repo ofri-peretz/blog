@@ -50,6 +50,12 @@
      every Interlace surface. Only woven gestures may use strand-b. */
   --strand-a: var(--brand-orange);
   --strand-b: oklch(0.55 0.12 230);
+  /* Brand orange as TEXT — the DS ladder's measured AAA pair
+     (interlace-theme.css: #7d350c = 8.80:1 on white; the dark value
+     #fbb99a = 11.79:1 on near-black lives in .dark below). strand-a
+     itself is scoped to woven gestures and only clears 3:1 decorative
+     — the SectionIndex numeral is 14px text and needs this instead. */
+  --brand-orange-text: #7d350c;
   /* Decorative-primitive tokens — replace baked-in hex defaults inside
      ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
   --beam-from: var(--brand-orange);
@@ -84,6 +90,7 @@
   --brand-snappy: var(--brand-orange);
   /* chart-1/2 and strand-a inherit the brand var()s and re-resolve here. */
   --strand-b: oklch(0.78 0.1 230);
+  --brand-orange-text: #fbb99a; /* 11.79:1 on near-black (AAA) */
   --chart-3: oklch(0.72 0.17 264);
   --chart-4: oklch(0.78 0.18 60);
   --chart-5: oklch(0.7 0.16 320);
@@ -122,6 +129,7 @@
      HeroStrand): pathLength=100 normalizes every path onto this one
      keyframe; 600ms is the doctrine's draw-gesture ceiling. */
   --animate-strand-draw: strand-draw 600ms ease-out forwards;
+  --color-brand-orange-text: var(--brand-orange-text);
 
   @keyframes strand-draw {
     from {
@@ -198,6 +206,14 @@ body {
     transform: translateX(-50%) translateY(2vh) scale(1.05);
     opacity: 1;
   }
+}
+
+/* SectionIndex numeral: the blog's `--primary` is achromatic, so the
+   vendored primitive's `text-primary` would lose the meaning-point
+   accent. Styled by slot — exactly what data-slot exists for (R6): the
+   vendored source stays byte-identical to canonical. */
+[data-slot="section-index-numeral"] {
+  color: var(--brand-orange-text);
 }
 
 @media (prefers-reduced-motion: reduce) {
