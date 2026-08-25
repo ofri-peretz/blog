@@ -108,9 +108,9 @@ function ThreadGroup({
             >
               {item.title}
             </TrackedLink>
-            {(item.series || item.minutes) && (
+            {(item.series || item.minutes != null) && (
               <span className="shrink-0 text-xs text-muted-foreground">
-                · {[item.series, item.minutes && `${item.minutes} min`]
+                · {[item.series, item.minutes != null && `${item.minutes} min`]
                   .filter(Boolean)
                   .join(" · ")}
               </span>
