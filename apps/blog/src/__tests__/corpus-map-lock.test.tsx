@@ -41,6 +41,9 @@ describe("consumption contract", () => {
   it("the map is the vendored DS component, with provenance", () => {
     expect(MAP_SOURCE).toContain("VENDORED from the Interlace DS");
     expect(MAP_SOURCE).toContain("interlace#56");
+    // Upstream fixes must arrive by re-vendoring, never local patches.
+    expect(MAP_SOURCE).toContain("#59");
+    expect(MAP_SOURCE).toMatch(/visibleOrder\.some\(\(i\) => i\.id === focusedId\)/);
   });
 
   it("/articles consumes the DS map and the link extraction", () => {
