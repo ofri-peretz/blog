@@ -22,6 +22,8 @@ describe("consumption contract", () => {
     const SRC = read("components", "ui", "hero-strand.tsx");
     expect(SRC).toContain("VENDORED from the Interlace DS");
     expect(SRC).toContain("interlace#63");
+    // The aria-hidden type omission travels with the copy (#64).
+    expect(SRC).toContain("'children' | 'aria-hidden'");
   });
 
   it("globals.css carries the draw verb: token, keyframe, reduce clamp", () => {
@@ -58,6 +60,8 @@ describe("decorative + dash-math contract (rendered)", () => {
 
   it("aria-hidden survives any override, pointer-transparent, both strands", () => {
     const overridden = renderToStaticMarkup(
+      // @ts-expect-error — aria-hidden is Omit-ed from the props (#64,
+      // the compile-time layer); this pins the RUNTIME layer for JS.
       <HeroStrand data-testid="hs" counter aria-hidden={false} />,
     );
     expect(overridden).toMatch(/aria-hidden="true"/);

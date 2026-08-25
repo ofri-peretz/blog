@@ -1,10 +1,10 @@
 import * as React from 'react';
 
 // VENDORED from the Interlace DS (canonical: interlace repo
-// packages/ui/src/effects/hero-strand.tsx — interlace#63).
-// Copy-with-provenance until the registry install path replaces it —
-// fix bugs upstream first, then re-vendor. Local deltas: the `cn`
-// import path only.
+// packages/ui/src/effects/hero-strand.tsx — interlace#63 + the
+// aria-hidden type omission from #64). Copy-with-provenance until the
+// registry install path replaces it — fix bugs upstream first, then
+// re-vendor. Local deltas: the `cn` import path only.
 
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,10 @@ import { cn } from "@/lib/utils";
  */
 
 export interface HeroStrandProps
-  extends Omit<React.ComponentPropsWithoutRef<'svg'>, 'children'> {
+  // aria-hidden omitted at the TYPE level too (review, blog#181): the
+  // strand is always-decorative — the runtime override guard below is
+  // the second layer, this makes the contract a compile-time error.
+  extends Omit<React.ComponentPropsWithoutRef<'svg'>, 'children' | 'aria-hidden'> {
   /** Stable selector for E2E tests; consumer provides — no default (R5). */
   'data-testid': string;
   /**
