@@ -31,6 +31,7 @@ const FROZEN_EVENTS = [
   "series:pager_click",
   "article:playground_cta_click",
   "article:thread_click",
+  "corpus_map:your_thread",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -54,6 +55,13 @@ describe("each surface fires its event", () => {
   it("the playground CTA is a TrackedLink carrying the article slug", () => {
     expect(ARTICLE).toContain('event="article:playground_cta_click"');
     expect(ARTICLE).toMatch(/<TrackedLink[\s\S]{0,500}eslint\.interlace\.tools\/play/);
+  });
+
+  it("the map fires your-thread with the aggregate count only", () => {
+    expect(MAP).toContain('track("corpus_map:your_thread"');
+    expect(MAP).toContain("read_count: readSlugs.length");
+    // The thread itself never leaves the browser — no slugs in the event.
+    expect(MAP).not.toMatch(/your_thread[\s\S]{0,120}slugs?:/);
   });
 
   it("thread links are TrackedLinks with from/to + direction", () => {
