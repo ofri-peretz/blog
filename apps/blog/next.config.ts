@@ -101,10 +101,22 @@ const nextConfig: NextConfig = {
   // form-action self, img/font allowlists. Revisit script-src if Next
   // ever supports hashes/nonces for static flight payloads.
   async headers() {
+    // Dev-only: webpack's dev runtime evaluates modules with eval-style
+    // devtool, so the enforced policy silently kills hydration on EVERY
+    // `next dev` page — the site renders but nothing is interactive
+    // (found live: a scroll-driven component frozen at its SSR state,
+    // console showing EvalError). Production chunks never use eval, so
+    // the shipped policy is unchanged.
+    // The rule is right for shipped policies; this literal only exists
+    // behind the development guard, and the homepage CSP lock asserts it
+    // can never appear inside the policy array itself.
+    const devEval =
+      // eslint-disable-next-line browser-security/no-unsafe-eval-csp
+      process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
     const csp = [
       "default-src 'self'",
       // eslint-disable-next-line browser-security/no-unsafe-inline-csp
-      "script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com",
+      `script-src 'self' 'unsafe-inline'${devEval} https://us-assets.i.posthog.com`,
       // Tailwind and next/font emit inline style attributes with no nonce hook,
       // so this cannot be removed without dropping both. Scoped to styles, never
       // scripts: no script execution is permitted by this directive. Revisit if

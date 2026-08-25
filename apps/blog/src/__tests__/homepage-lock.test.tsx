@@ -409,6 +409,12 @@ describe("lighthouse findings stay fixed", () => {
     const policyBlock = CONFIG.match(/const csp = \[[\s\S]*?\]\.join\(/)?.[0];
     expect(policyBlock, "policy array not found — lock cannot scan").toBeTruthy();
     expect(policyBlock).not.toContain("strict-dynamic");
+    // The dev-only eval carve-out (webpack's dev runtime needs it or
+    // hydration dies on every `next dev` page) must stay dev-only: the
+    // literal never sits inside the policy array, only behind the
+    // NODE_ENV guard.
+    expect(policyBlock).not.toContain("unsafe-eval");
+    expect(CONFIG).toMatch(/NODE_ENV === "development"\s*\?\s*" 'unsafe-eval'"/);
     // Meaningful only under enforcement; restored with it.
     expect(CONFIG).toMatch(/"upgrade-insecure-requests"/);
   });
