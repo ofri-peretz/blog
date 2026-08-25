@@ -43,7 +43,23 @@ describe("consumption contract", () => {
     expect(MAP_SOURCE).toContain("interlace#56");
     // Upstream fixes must arrive by re-vendoring, never local patches.
     expect(MAP_SOURCE).toContain("#59");
+    expect(MAP_SOURCE).toContain("#61");
     expect(MAP_SOURCE).toMatch(/visibleOrder\.some\(\(i\) => i\.id === focusedId\)/);
+  });
+
+  it("the landscape is domain × reading time, not publication date", () => {
+    // The reader-facing decision (2026-08-25): readers navigate by topic
+    // and time budget; when a piece shipped serves the author. The axis
+    // object is a module constant — its identity feeds the layout memo.
+    const SEAM = read("components", "woven-corpus-map.tsx");
+    expect(SEAM).toContain('kind: "number"');
+    expect(SEAM).toContain("axis={MINUTES_AXIS}");
+    expect(SEAM).toMatch(/format: \(v\) => `\$\{v\} min`/);
+    expect(PAGE_SOURCE).toContain("value: a.readingTimeMinutes");
+    // Size now carries community resonance, and no date filter exists —
+    // every published article lands on the map.
+    expect(PAGE_SOURCE).toContain("maxReactions");
+    expect(PAGE_SOURCE).not.toContain("p.date.length === 10");
   });
 
   it("/articles consumes the DS map and the link extraction", () => {
@@ -114,5 +130,40 @@ describe("static markup (crawler truth)", () => {
 
   it("standalone pieces share the labeled last lane", () => {
     expect(html).toContain("Standalone");
+  });
+});
+
+describe("static markup — number axis (the production path)", () => {
+  // The date-axis block above can't catch a number-mode regression (items
+  // silently dropped for lacking `value`, empty ticks) — this renders the
+  // exact axis shape /articles ships (review gap on the landscape PR).
+  const NUM_FIXTURE = [
+    { id: "a", href: "/articles/a", label: "Alpha", category: "Foundations", value: 5, weight: 0.4, links: ["c"] },
+    { id: "b", href: "/articles/b", label: "Beta", category: "Foundations", value: 12, weight: 0.6 },
+    { id: "c", href: "/articles/c", label: "Gamma", category: null, value: 22, weight: 1 },
+  ];
+  const html = renderToStaticMarkup(
+    <TimelineMap
+      items={NUM_FIXTURE}
+      axis={{ kind: "number", format: (v) => `${v} min` }}
+      data-testid="corpus-map"
+      uncategorizedLabel="Standalone"
+    >
+      <TimelineMap.Chart />
+      <TimelineMap.Detail idle="Hover a dot." />
+    </TimelineMap>,
+  );
+
+  it("all value-only items render as real anchors (no date needed)", () => {
+    for (const i of NUM_FIXTURE) expect(html).toContain(`href="${i.href}"`);
+  });
+
+  it("tick labels speak minutes through the format", () => {
+    expect(html).toMatch(/\d+ min</);
+  });
+
+  it("aria-labels carry the formatted value, never a date", () => {
+    expect(html).toContain('aria-label="Gamma — 22 min"');
+    expect(html).not.toMatch(/aria-label="[^"]*\d{4}-\d{2}-\d{2}/);
   });
 });

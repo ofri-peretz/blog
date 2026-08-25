@@ -8,9 +8,17 @@
 import Link from "next/link";
 import {
   TimelineMap,
+  type TimelineMapAxis,
   type TimelineMapItem,
 } from "@/components/ui/timeline-map";
 import { track } from "@/lib/analytics";
+
+// Module constant, not inline: the axis object's identity feeds the
+// layout memo — a fresh object per render would recompute it every time.
+const MINUTES_AXIS: TimelineMapAxis = {
+  kind: "number",
+  format: (v) => `${v} min`,
+};
 
 export function WovenCorpusMap({
   items,
@@ -22,6 +30,7 @@ export function WovenCorpusMap({
       items={items}
       data-testid="corpus-map"
       uncategorizedLabel="Standalone"
+      axis={MINUTES_AXIS}
       linkComponent={Link}
       onItemClick={(item) =>
         track("corpus_map:dot_click", {
@@ -33,9 +42,9 @@ export function WovenCorpusMap({
     >
       <figcaption className="mb-3 text-sm text-muted-foreground">
         <span className="text-foreground">Every article, mapped.</span> Left
-        to right: publication date · row: series · dot size: reading time ·
-        threads: where one article weaves into another. Hover to preview,
-        click to read.
+        to right: reading time — pick your time budget · row: series · dot
+        size: community reactions · threads: where one article weaves into
+        another. Hover to preview, click to read.
       </figcaption>
       <TimelineMap.Filter />
       <TimelineMap.Chart />

@@ -57,25 +57,25 @@ export default async function ArticlesPage(props: PageProps) {
 
   // The map shows the WHOLE corpus regardless of tag filter or page — it
   // is the territory view; the grid below is the filtered, paginated one.
-  // published_at falls back to date: 4 published articles carry only the
-  // latter, and filtering them out silently hid them from the map.
+  // Domain × reading time, not domain × publication date: readers navigate
+  // by topic and time budget — when a piece shipped serves the author.
+  // A bonus of the number axis: no date filter, so literally every
+  // published article lands on the map.
   const knownSlugs = new Set(all.map((a) => a.slug));
-  const maxMinutes = Math.max(1, ...all.map((a) => a.readingTimeMinutes));
-  const mapItems: TimelineMapItem[] = all
-    .map((a) => ({
-      id: a.slug,
-      href: `/articles/${a.slug}`,
-      label: a.frontmatter.title,
-      category: a.frontmatter.series ?? null,
-      date: String(a.frontmatter.published_at ?? a.frontmatter.date ?? "").slice(
-        0,
-        10,
-      ),
-      weight: a.readingTimeMinutes / maxMinutes,
-      // The link weave: which other articles this one cites.
-      links: extractInternalLinks(a.body, a.slug, knownSlugs),
-    }))
-    .filter((p) => p.date.length === 10);
+  const maxReactions = Math.max(1, ...all.map((a) => a.frontmatter.reactions ?? 0));
+  const mapItems: TimelineMapItem[] = all.map((a) => ({
+    id: a.slug,
+    href: `/articles/${a.slug}`,
+    label: a.frontmatter.title,
+    category: a.frontmatter.series ?? null,
+    value: a.readingTimeMinutes,
+    // Size = community resonance (dev.to reactions), now that x carries
+    // reading time. The Detail strip restates the minutes; size stays a
+    // secondary cue, never the only carrier.
+    weight: (a.frontmatter.reactions ?? 0) / maxReactions,
+    // The link weave: which other articles this one cites.
+    links: extractInternalLinks(a.body, a.slug, knownSlugs),
+  }));
 
   return (
     <main id="main" data-slot="articles-page">
