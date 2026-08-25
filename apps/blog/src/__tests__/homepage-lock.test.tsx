@@ -389,6 +389,7 @@ describe("lighthouse findings stay fixed", () => {
       expect(src).not.toMatch(/text-foreground underline-offset-4 hover:underline/);
     }
     expect(HOMEPAGE).toContain("underline underline-offset-4");
+    expect(AGENDA).toContain("underline underline-offset-4");
   });
 
   it("CSP Report-Only omits upgrade-insecure-requests (ignored + console error)", () => {
