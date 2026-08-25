@@ -38,7 +38,13 @@ describe("consumption contract", () => {
 
   it("the page owns the sequence: 1..5 in section order", () => {
     const PAGE = read("app", "page.tsx");
-    const order = [...PAGE.matchAll(/index=\{(\d)\}/g)].map((m) => Number(m[1]));
+    // Anchored to the five landing components (review): a future
+    // unrelated `index={n}` prop on the page must not corrupt this lock.
+    const order = [
+      ...PAGE.matchAll(
+        /<(?:ImpactMetricsBlock|Agenda|FeaturedProject|DevToArticles|WorkExperience)[\s\S]{0,120}?index=\{(\d)\}/g,
+      ),
+    ].map((m) => Number(m[1]));
     expect(order).toEqual([1, 2, 3, 4, 5]);
   });
 
