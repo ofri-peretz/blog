@@ -1,0 +1,55 @@
+# Weekly vendored-DS drift check — files an issue when a copy-with-
+# provenance component in apps/blog no longer matches its canonical
+# source in the interlace repo (modulo the declared vendor deltas).
+#
+# A CRON, deliberately not PR CI: canonical moves on its own schedule,
+# and an external repo's changes must never wedge this repo's merges.
+# Drift is a maintenance signal, not a build failure.
+name: Vendored DS drift
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Compare vendored components against canonical
+        id: drift
+        run: |
+          set +e
+          OUT=$(node scripts/check-vendored-drift.mjs)
+          CODE=$?
+          set -e
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<EOF"
+            echo "$OUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$CODE" = "2" ]; then
+            echo "::warning title=drift check inconclusive::canonical fetch failed — see log"
+          fi
+      - name: File (or update) the drift issue
+        if: steps.drift.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="Vendored DS components drifted from canonical"
+          BODY=$(printf 'The weekly drift check found these vendored files out of sync with the interlace repo:\n\n```\n%s\n```\n\nRe-vendor from `origin/main` of the interlace repo (the recipe lives in each file header), run the suite, and ship a `fix(blog): re-vendor …` PR.' "${{ steps.drift.outputs.files }}")
+          EXISTING=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label maintenance || gh issue create --title "$TITLE" --body "$BODY"
+          fi

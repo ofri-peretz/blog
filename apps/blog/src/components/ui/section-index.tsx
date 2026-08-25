@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react';
 
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/section-index.tsx — interlace#66).
