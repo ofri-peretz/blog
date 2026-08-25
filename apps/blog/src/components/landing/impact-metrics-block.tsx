@@ -3,6 +3,7 @@ import { BorderBeam } from "@/components/ui/border-beam";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
+import { SectionIndex } from "@/components/ui/section-index";
 
 interface Stats {
   github: {
@@ -20,6 +21,8 @@ interface Stats {
 }
 
 interface ImpactMetricsBlockProps extends React.HTMLAttributes<HTMLElement> {
+  /** 1-based position in the homepage sequence — the numbered eyebrow. */
+  index: number;
   stats: Stats;
   /** Stable selector for E2E tests; consumer provides — no default. */
   "data-testid"?: string;
@@ -101,6 +104,7 @@ function buildAllMetrics(stats: Stats): Metric[] {
 }
 
 export function ImpactMetricsBlock({
+  index,
   stats,
   className,
   "data-testid": testId,
@@ -119,9 +123,9 @@ export function ImpactMetricsBlock({
       {...rest}
     >
       <Container size="wide">
-        <p className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+        <SectionIndex value={index} data-testid="impact-metrics-block-index" className="mb-3">
           Impact
-        </p>
+        </SectionIndex>
         <h2 className="text-3xl font-semibold tracking-tight">
           The numbers behind the work
         </h2>

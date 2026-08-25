@@ -127,15 +127,16 @@ export default async function HomePage() {
       </Section>
 
       <FloatingToc items={TOC_ITEMS} />
-      {stats && <ImpactMetricsBlock id="impact" stats={stats} />}
-      <Agenda id="agenda" />
+      {stats && <ImpactMetricsBlock id="impact" index={1} stats={stats} />}
+      <Agenda id="agenda" index={2} />
       <FeaturedProject
         id="featured"
+        index={3}
         stars={stats?.github.totalStars}
         downloads={stats?.npm.totalDownloads}
       />
-      <DevToArticles id="writing" articles={getAllArticles().slice(0, 6)} />
-      <WorkExperience id="experience" />
+      <DevToArticles id="writing" index={4} articles={getAllArticles().slice(0, 6)} />
+      <WorkExperience id="experience" index={5} />
     </main>
   );
 }
