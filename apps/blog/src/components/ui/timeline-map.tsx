@@ -585,9 +585,13 @@ function TimelineMapChart({ className, ...rest }: TimelineMapChartProps) {
   const focusRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (focusedId && focusRef.current !== null && focusRef.current !== focusedId) {
-      const el = scrollerRef.current?.querySelector<HTMLElement>(
-        `[data-item-id="${CSS.escape(focusedId)}"]`,
-      );
+      // Dataset comparison, not selector interpolation: consumer-supplied
+      // ids need no escaping this way, and it drops the dependency on the
+      // CSS.escape global (absent in jsdom — surfaced by the mounted
+      // keyboard test).
+      const el = [
+        ...(scrollerRef.current?.querySelectorAll<HTMLElement>('[data-item-id]') ?? []),
+      ].find((e) => e.dataset.itemId === focusedId);
       el?.focus();
     }
     focusRef.current = focusedId;
