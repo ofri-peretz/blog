@@ -71,7 +71,11 @@ const nextConfig: NextConfig = {
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      "upgrade-insecure-requests",
+      // NOT upgrade-insecure-requests: the directive is ignored in a
+      // Report-Only policy and Chrome logs a console error for it on every
+      // page (Lighthouse errors-in-console, all routes). Vercel serves
+      // HTTPS-only regardless; reinstate when this policy graduates to
+      // enforced.
     ].join("; ");
 
     return [
