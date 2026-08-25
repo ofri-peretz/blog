@@ -43,6 +43,13 @@
   --chart-3: oklch(0.62 0.16 264);
   --chart-4: oklch(0.7 0.18 60);
   --chart-5: oklch(0.62 0.16 320);
+  /* Strand pair — the woven brand gesture (interlace BRAND_PHILOSOPHY.md).
+     strand-a is the mark's orange; strand-b is the doctrine's cool
+     counter (steel blue, hue 230) — deliberately NOT the brand green:
+     the crossing reads warm-passing-cool, and the pair is identical on
+     every Interlace surface. Only woven gestures may use strand-b. */
+  --strand-a: var(--brand-orange);
+  --strand-b: oklch(0.55 0.12 230);
   /* Decorative-primitive tokens — replace baked-in hex defaults inside
      ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
   --beam-from: var(--brand-orange);
@@ -75,7 +82,8 @@
   --brand-orange: oklch(0.71 0.163 40.8); /* #f4794a */
   --brand-green: oklch(0.589 0.132 159.4); /* #0d9460 */
   --brand-snappy: var(--brand-orange);
-  /* chart-1/2 inherit the brand var()s from :root and re-resolve here. */
+  /* chart-1/2 and strand-a inherit the brand var()s and re-resolve here. */
+  --strand-b: oklch(0.78 0.1 230);
   --chart-3: oklch(0.72 0.17 264);
   --chart-4: oklch(0.78 0.18 60);
   --chart-5: oklch(0.7 0.16 320);
@@ -108,6 +116,8 @@
   --color-brand-orange: var(--brand-orange);
   --color-brand-green: var(--brand-green);
   --color-brand-snappy: var(--brand-snappy);
+  --color-strand-a: var(--strand-a);
+  --color-strand-b: var(--strand-b);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

@@ -16,6 +16,12 @@ import { cn } from "@/lib/utils";
 
 interface MarkdownArticleProps extends React.HTMLAttributes<HTMLElement> {
   body: string;
+  /**
+   * Pre-rendered pipeline output for `body`. Pass when the caller already
+   * ran `renderMarkdown` (e.g. to extract a TOC) so the pipeline — Shiki
+   * included — runs once per page, not twice.
+   */
+  renderedHtml?: string;
   /** Stable selector for E2E tests; consumer provides — no default. */
   "data-testid"?: string;
 }
@@ -158,6 +164,78 @@ function rehypeScrollableTables() {
   };
 }
 
+const HEADINGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
+const EXPLICIT_ID = /\s*\{#([A-Za-z][\w-]*)\}\s*$/;
+
+/**
+ * Honors the `## Heading {#custom-id}` markdown convention: strips the
+ * marker from the visible text and applies it as the heading's id.
+ *
+ * Nothing in the pipeline handled this syntax, so 36 of the articles
+ * rendered their anchors as literal `{#the-four-layers}` text in every
+ * heading. Runs after rehypeSanitize (our own markup, same as
+ * rehypeSlug) and BEFORE rehypeSlug, which skips headings that already
+ * carry an id — so explicit anchors win and the rest keep slug ids.
+ */
+function rehypeExplicitHeadingIds() {
+  return (tree: unknown) => {
+    const walk = (node: HastLike): void => {
+      const children = node.children;
+      if (!children) return;
+      if (node.type === "element" && HEADINGS.has(node.tagName ?? "")) {
+        const last = children[children.length - 1];
+        if (last?.type === "text" && typeof last.value === "string") {
+          const match = last.value.match(EXPLICIT_ID);
+          if (match) {
+            const stripped = last.value.replace(EXPLICIT_ID, "");
+            if (stripped === "") children.pop();
+            else last.value = stripped.replace(/\s+$/, "");
+            const props = (node.properties ??= {});
+            if (props.id === undefined) props.id = match[1];
+          }
+        }
+        return;
+      }
+      for (const child of children) walk(child);
+    };
+    walk(tree as HastLike);
+  };
+}
+
+export interface ArticleTocItem {
+  id: string;
+  label: string;
+}
+
+/**
+ * Collects h2 landmarks into `file.data.articleToc` while the tree is still
+ * structured — text nodes are already entity-decoded and ids are final
+ * (explicit `{#id}` or rehype-slug). Runs after rehypeSlug and BEFORE
+ * rehypeAutolinkHeadings so heading children are plain content, not the
+ * anchor wrapper. Extracting from the serialized HTML instead would mean
+ * re-parsing our own output with regexes — the fragile inverse of this.
+ */
+function rehypeCollectToc() {
+  return (tree: unknown, file: { data: Record<string, unknown> }) => {
+    const toc: ArticleTocItem[] = [];
+    const textOf = (node: HastLike): string => {
+      if (node.type === "text") return node.value ?? "";
+      return (node.children ?? []).map(textOf).join("");
+    };
+    const walk = (node: HastLike): void => {
+      if (node.type === "element" && node.tagName === "h2") {
+        const id = node.properties?.id;
+        const label = textOf(node).trim();
+        if (typeof id === "string" && label) toc.push({ id, label });
+        return;
+      }
+      for (const child of node.children ?? []) walk(child);
+    };
+    walk(tree as HastLike);
+    file.data.articleToc = toc;
+  };
+}
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -167,10 +245,18 @@ const processor = unified()
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
   .use(rehypeSanitize, sanitizeSchema)
+  .use(rehypeExplicitHeadingIds)
   .use(rehypeSlug)
+  .use(rehypeCollectToc)
   .use(rehypeAutolinkHeadings, {
     behavior: "wrap",
-    properties: { className: ["anchor"], ariaHidden: "true" },
+    // NO ariaHidden with behavior:"wrap": the anchor wraps the visible
+    // heading text and is focusable — aria-hidden'ing it hid every heading
+    // link from assistive tech while keeping it tabbable (WCAG 4.1.2,
+    // Lighthouse aria-hidden-focus) and broke the accessibility tree for
+    // AI agents (agentic score 50). The link's accessible name is the
+    // heading text itself, which is exactly right.
+    properties: { className: ["anchor"] },
   })
   .use(rehypeShiki, {
     themes: { light: "github-light", dark: "github-dark" },
@@ -178,19 +264,31 @@ const processor = unified()
   .use(rehypeScrollableTables)
   .use(rehypeStringify);
 
-/** The markdown -> HTML pipeline, exported so the rendering rules it applies
- *  can be tested without rendering a React server component. */
+/** The markdown -> HTML pipeline plus the h2 TOC it collected on the way.
+ *  Exported so the rendering rules can be tested without rendering a React
+ *  server component, and so pages can render once and get both outputs. */
+export async function renderMarkdownWithToc(
+  body: string,
+): Promise<{ html: string; toc: ArticleTocItem[] }> {
+  const file = await processor.process(preprocessMarkdown(body));
+  return {
+    html: String(file),
+    toc: (file.data.articleToc as ArticleTocItem[] | undefined) ?? [],
+  };
+}
+
 export async function renderMarkdown(body: string): Promise<string> {
-  return String(await processor.process(preprocessMarkdown(body)));
+  return (await renderMarkdownWithToc(body)).html;
 }
 
 export async function MarkdownArticle({
   body,
+  renderedHtml,
   className,
   "data-testid": testId,
   ...rest
 }: MarkdownArticleProps) {
-  const html = await renderMarkdown(body);
+  const html = renderedHtml ?? (await renderMarkdown(body));
 
   return (
     <article

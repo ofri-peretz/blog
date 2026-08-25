@@ -6,6 +6,9 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { localCover } from "@/lib/cover";
 import { getAllArticles } from "@/lib/source";
+import { WovenCorpusMap } from "@/components/woven-corpus-map";
+import type { TimelineMapItem } from "@/components/ui/timeline-map";
+import { extractInternalLinks } from "@/lib/corpus-links";
 
 const PAGE_SIZE = 12;
 
@@ -18,7 +21,9 @@ interface PageProps {
 // page is set via a Cache-Control header on /articles in next.config.ts.
 
 export const metadata: Metadata = {
-  title: "Articles — Ofri Peretz",
+  // Bare page name — the root layout's title template appends "— Ofri
+  // Peretz"; hard-coding it here doubled the suffix in the tab title.
+  title: "Articles",
   description:
     "Engineering writing on JavaScript static analysis, ESLint, security, and AI-native developer tooling.",
   alternates: {
@@ -50,6 +55,28 @@ export default async function ArticlesPage(props: PageProps) {
       ? `/articles?tag=${encodeURIComponent(tag)}&page=${p}`
       : `/articles?page=${p}`;
 
+  // The map shows the WHOLE corpus regardless of tag filter or page — it
+  // is the territory view; the grid below is the filtered, paginated one.
+  // published_at falls back to date: 4 published articles carry only the
+  // latter, and filtering them out silently hid them from the map.
+  const knownSlugs = new Set(all.map((a) => a.slug));
+  const maxMinutes = Math.max(1, ...all.map((a) => a.readingTimeMinutes));
+  const mapItems: TimelineMapItem[] = all
+    .map((a) => ({
+      id: a.slug,
+      href: `/articles/${a.slug}`,
+      label: a.frontmatter.title,
+      category: a.frontmatter.series ?? null,
+      date: String(a.frontmatter.published_at ?? a.frontmatter.date ?? "").slice(
+        0,
+        10,
+      ),
+      weight: a.readingTimeMinutes / maxMinutes,
+      // The link weave: which other articles this one cites.
+      links: extractInternalLinks(a.body, a.slug, knownSlugs),
+    }))
+    .filter((p) => p.date.length === 10);
+
   return (
     <main id="main" data-slot="articles-page">
       <Container size="content" className="py-16">
@@ -70,6 +97,7 @@ export default async function ArticlesPage(props: PageProps) {
               </Link>
             </p>
           )}
+          <WovenCorpusMap items={mapItems} />
         </header>
 
         {articles.length === 0 ? (

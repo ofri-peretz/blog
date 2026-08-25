@@ -1,11 +1,12 @@
 /**
  * Homepage composition lock — see CLAUDE.md.
  *
- * The home page composition order is meaningful: hero first, then "the
- * numbers" (impact metrics), then narrative (about + featured), then depth
- * (career + philosophy + writing + skills + faq). Reordering or removing
- * a section silently breaks the storytelling rhythm; this lock makes any
- * structural drift visible in CI.
+ * The composition order is the brand argument (2026-08-24 decision): hero
+ * states the agenda, Impact proves it with numbers, Agenda names the ideas,
+ * Featured is the shipped product, Writing is the ideas in long form, and
+ * Experience is the leadership record. The page sells a leader with an
+ * agenda — NOT a developer's skill inventory, which is why the old Stack
+ * and FAQ sections are locked OUT below, not just absent.
  *
  * Pattern: file-text grep on src/app/page.tsx. We don't render the page —
  * the home page is `async` server-component + fetches live APIs. We pin
@@ -47,11 +48,8 @@ describe("homepage composition lock", () => {
   it("imports every required landing section", () => {
     const REQUIRED_IMPORTS = [
       "HeroBackdrop",
-      "About",
-      "Skills",
+      "Agenda",
       "FeaturedProject",
-      "Faq",
-      "Philosophy",
       "WorkExperience",
       "DevToArticles",
       "ImpactMetricsBlock",
@@ -61,17 +59,14 @@ describe("homepage composition lock", () => {
     }
   });
 
-  it("renders sections in the expected order", () => {
+  it("renders sections in the agenda-led order", () => {
     const ORDER = [
       "HeroBackdrop",
       "ImpactMetricsBlock",
-      "<About",
+      "<Agenda",
       "<FeaturedProject",
-      "<WorkExperience",
-      "<Philosophy",
       "<DevToArticles",
-      "<Skills",
-      "<Faq",
+      "<WorkExperience",
     ];
     let cursor = 0;
     for (const marker of ORDER) {
@@ -82,6 +77,16 @@ describe("homepage composition lock", () => {
       ).toBeGreaterThan(-1);
       cursor = idx;
     }
+  });
+
+  it("does NOT sell a skill inventory — Stack and FAQ stay gone", () => {
+    // The 2026-08-24 brand decision: ideas, products, impact — not a list
+    // of technologies. A future "add back a skills grid" PR must fail here
+    // and argue with this comment first.
+    expect(HOMEPAGE).not.toMatch(/<Skills\b/);
+    expect(HOMEPAGE).not.toMatch(/<Faq\b/);
+    expect(HOMEPAGE).not.toMatch(/landing\/skills/);
+    expect(HOMEPAGE).not.toMatch(/landing\/faq/);
   });
 
   it("uses the Container and Section primitives (no open-coded layout)", () => {
@@ -366,5 +371,53 @@ describe("hero atmospherics — Nuxt blog-old parity", () => {
       expect(CLOUDS).toContain("useReducedMotion");
       expect(CLOUDS).toMatch(/if\s*\(\s*reduced\s*\)\s*return\s+null/);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Lighthouse-audit locks (2026-08-25 mobile audit of the live site).
+// ─────────────────────────────────────────────────────────────────────
+describe("lighthouse findings stay fixed", () => {
+  it("in-text links carry a resting underline, never color alone (WCAG 1.4.1)", () => {
+    // link-in-text-block: hover-only underlines leave color as the only
+    // resting distinguisher inside prose.
+    const AGENDA = readFileSync(
+      path.resolve(__dirname, "..", "components", "landing", "agenda.tsx"),
+      "utf-8",
+    );
+    for (const src of [HOMEPAGE, AGENDA]) {
+      expect(src).not.toMatch(/text-foreground underline-offset-4 hover:underline/);
+    }
+    expect(HOMEPAGE).toContain("underline underline-offset-4");
+    expect(AGENDA).toContain("underline underline-offset-4");
+  });
+
+  it("CSP is ENFORCED and never regresses to Report-Only or strict-dynamic theater", () => {
+    const CONFIG = readFileSync(
+      path.resolve(__dirname, "..", "..", "next.config.ts"),
+      "utf-8",
+    );
+    // Enforced header, not Report-Only.
+    expect(CONFIG).toContain('key: "Content-Security-Policy", value: csp');
+    expect(CONFIG).not.toContain("Content-Security-Policy-Report-Only");
+    // strict-dynamic without a nonce made browsers ignore 'self' — every
+    // chunk violated and the policy could never be enforced on SSG.
+    // Scoped to the policy array so prose in comments can't trip it.
+    // Regex, not indexOf slices (review): a reformatted `.join` made the
+    // old slice degrade to almost-the-whole-file and the guard passed
+    // vacuously. The match is asserted non-empty so it fails LOUDLY.
+    const policyBlock = CONFIG.match(/const csp = \[[\s\S]*?\]\.join\(/)?.[0];
+    expect(policyBlock, "policy array not found — lock cannot scan").toBeTruthy();
+    expect(policyBlock).not.toContain("strict-dynamic");
+    // Meaningful only under enforcement; restored with it.
+    expect(CONFIG).toMatch(/"upgrade-insecure-requests"/);
+  });
+
+  it("FloatingToc's collapsed button name starts with its visible label (WCAG 2.5.3)", () => {
+    const TOC = readFileSync(
+      path.resolve(__dirname, "..", "components", "floating-toc.tsx"),
+      "utf-8",
+    );
+    expect(TOC).toContain('aria-label="On this page');
   });
 });
