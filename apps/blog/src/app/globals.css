@@ -118,6 +118,19 @@
   --color-brand-snappy: var(--brand-snappy);
   --color-strand-a: var(--strand-a);
   --color-strand-b: var(--strand-b);
+  /* The draw verb (DS tokens.css `strand-draw`, vendored with the
+     HeroStrand): pathLength=100 normalizes every path onto this one
+     keyframe; 600ms is the doctrine's draw-gesture ceiling. */
+  --animate-strand-draw: strand-draw 600ms ease-out forwards;
+
+  @keyframes strand-draw {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -191,6 +204,15 @@ body {
   .animate-meteor,
   .animate-sunny-pulse {
     animation: none !important;
+  }
+
+  /* The draw gesture (DS MOTION_PHILOSOPHY's draw-gesture exception)
+     completes instantly instead of vanishing: `animation: none` would
+     hold stroke-dashoffset at 100 — the strand invisible forever —
+     removing information, not motion. 0.01ms + the shorthand's
+     `forwards` fill lands the honest drawn end state. */
+  .animate-strand-draw {
+    animation-duration: 0.01ms !important;
   }
 }
 

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { localCover } from "@/lib/cover";
 import { getAllArticles } from "@/lib/source";
 import { WovenCorpusMap } from "@/components/woven-corpus-map";
+import { HeroStrand } from "@/components/ui/hero-strand";
 import type { TimelineMapItem } from "@/components/ui/timeline-map";
 import { extractInternalLinks } from "@/lib/corpus-links";
 
@@ -81,11 +82,21 @@ export default async function ArticlesPage(props: PageProps) {
     <main id="main" data-slot="articles-page">
       <Container size="content" className="py-16">
         <header className="mb-12">
-          <h1 className="text-4xl font-bold tracking-tight">Articles</h1>
-          <p className="mt-3 text-muted-foreground">
-            Engineering writing on static analysis, ESLint, security, and
-            AI-native developer tooling.
-          </p>
+          {/* The page's opening gesture, same vocabulary as the map below:
+              the woven crossing draws behind the title, then the eye lands
+              on the corpus it stands for. Scoped to the title block — the
+              map is its own surface and the ink budget is one gesture per
+              region. */}
+          <div className="relative py-6">
+            <HeroStrand data-testid="articles-hero-strand" counter />
+            <h1 className="relative text-4xl font-bold tracking-tight">
+              Articles
+            </h1>
+            <p className="relative mt-3 text-muted-foreground">
+              Engineering writing on static analysis, ESLint, security, and
+              AI-native developer tooling.
+            </p>
+          </div>
           {tag && (
             <p className="mt-4 text-sm">
               Filtered by tag <span className="font-medium">#{tag}</span> ·{" "}
