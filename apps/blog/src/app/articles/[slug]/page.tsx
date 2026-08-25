@@ -11,6 +11,7 @@ import {
 } from "@/lib/source";
 import { computeThreads } from "@/lib/corpus-links";
 import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
+import { ReadingStrand } from "@/components/ui/reading-strand";
 import { SeriesBanner, SeriesPager } from "@/components/series-nav";
 import {
   MarkdownArticle,
@@ -251,7 +252,12 @@ export default async function ArticlePage(props: PageProps) {
             or two sections don't need a TOC hovering over them. */}
         {toc.length >= 3 && <FloatingToc items={toc} />}
 
-        <MarkdownArticle body={article.body} renderedHtml={renderedHtml} />
+        {/* The strand tracks the BODY span only: progress hits 100% when
+            the reading ends, not when the footer scrolls by. */}
+        <ReadingStrand target="article-reading-span" data-testid="reading-strand" />
+        <div id="article-reading-span">
+          <MarkdownArticle body={article.body} renderedHtml={renderedHtml} />
+        </div>
 
         <SeriesPager series={series} currentSlug={slug} className="mt-12" />
 
