@@ -48,6 +48,9 @@ export function readingThread(): string[] {
  * events, so a thread grown in another tab flows in live.
  */
 export function subscribeThread(onChange: () => void): () => void {
+  // React never calls subscribe during SSR, but the export shouldn't
+  // rely on every future caller knowing that (review).
+  if (typeof window === "undefined") return () => {};
   window.addEventListener("storage", onChange);
   return () => window.removeEventListener("storage", onChange);
 }

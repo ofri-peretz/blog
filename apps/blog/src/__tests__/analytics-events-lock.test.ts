@@ -59,7 +59,7 @@ describe("each surface fires its event", () => {
 
   it("the map fires your-thread with the aggregate count only", () => {
     expect(MAP).toContain('track("corpus_map:your_thread"');
-    expect(MAP).toContain("read_count: readSlugs.length");
+    expect(MAP).toContain("read_count: trace.ids.length");
     // The thread itself never leaves the browser — no slugs in the event.
     expect(MAP).not.toMatch(/your_thread[\s\S]{0,120}slugs?:/);
   });

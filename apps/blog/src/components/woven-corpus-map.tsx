@@ -9,7 +9,7 @@
 // server-rendered map is honestly trace-free for crawlers.
 
 import Link from "next/link";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import {
   TimelineMap,
@@ -61,12 +61,17 @@ export function WovenCorpusMap({
     };
   }, [readSlugs, items.length]);
 
-  // The wow receipt: how many return readers actually see their thread.
-  // Fired once per mount, only when a thread is shown.
+  // The wow receipt: how many map views actually show a thread. Once per
+  // MOUNT by design (review): this is an IMPRESSION, like a pageview —
+  // per-session dedup would undercount it, and PostHog already dedupes
+  // unique readers server-side.
+  const threadShownFired = useRef(false);
   useEffect(() => {
-    if (trace) track("corpus_map:your_thread", { read_count: readSlugs.length });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per mount, when the thread first resolves
-  }, [trace !== undefined]);
+    if (trace && !threadShownFired.current) {
+      threadShownFired.current = true;
+      track("corpus_map:your_thread", { read_count: trace.ids.length });
+    }
+  }, [trace]);
 
   return (
     <TimelineMap
