@@ -79,7 +79,7 @@ export function Agenda({
           This agenda is behind the{" "}
           <a
             href="https://eslint.interlace.tools"
-            className="text-foreground underline-offset-4 hover:underline"
+            className="text-foreground underline underline-offset-4"
           >
             Interlace ESLint Ecosystem
           </a>{" "}

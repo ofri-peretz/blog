@@ -250,7 +250,13 @@ const processor = unified()
   .use(rehypeCollectToc)
   .use(rehypeAutolinkHeadings, {
     behavior: "wrap",
-    properties: { className: ["anchor"], ariaHidden: "true" },
+    // NO ariaHidden with behavior:"wrap": the anchor wraps the visible
+    // heading text and is focusable — aria-hidden'ing it hid every heading
+    // link from assistive tech while keeping it tabbable (WCAG 4.1.2,
+    // Lighthouse aria-hidden-focus) and broke the accessibility tree for
+    // AI agents (agentic score 50). The link's accessible name is the
+    // heading text itself, which is exactly right.
+    properties: { className: ["anchor"] },
   })
   .use(rehypeShiki, {
     themes: { light: "github-light", dark: "github-dark" },

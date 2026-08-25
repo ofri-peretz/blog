@@ -187,7 +187,7 @@ export function FloatingToc({
 
       <Popover.Root open={mobileOpen} onOpenChange={setMobileOpen}>
         <Popover.Trigger
-          aria-label="Open section navigation"
+          aria-label="On this page — open section navigation"
           data-slot="floating-toc-mobile-trigger"
           className="fixed bottom-4 right-4 z-40 flex max-w-[min(80vw,18rem)] items-center gap-2 rounded-full border border-border bg-background/85 px-3.5 py-2 text-xs font-medium shadow-lg backdrop-blur-md transition-colors hover:bg-background lg:hidden"
         >

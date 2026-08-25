@@ -102,7 +102,7 @@ export default async function HomePage() {
             the trust layer for it. Architect of the{" "}
             <Link
               href="https://eslint.interlace.tools"
-              className="text-foreground underline-offset-4 hover:underline"
+              className="text-foreground underline underline-offset-4"
             >
               Interlace ESLint Ecosystem
             </Link>{" "}

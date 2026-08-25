@@ -373,3 +373,38 @@ describe("hero atmospherics — Nuxt blog-old parity", () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// Lighthouse-audit locks (2026-08-25 mobile audit of the live site).
+// ─────────────────────────────────────────────────────────────────────
+describe("lighthouse findings stay fixed", () => {
+  it("in-text links carry a resting underline, never color alone (WCAG 1.4.1)", () => {
+    // link-in-text-block: hover-only underlines leave color as the only
+    // resting distinguisher inside prose.
+    const AGENDA = readFileSync(
+      path.resolve(__dirname, "..", "components", "landing", "agenda.tsx"),
+      "utf-8",
+    );
+    for (const src of [HOMEPAGE, AGENDA]) {
+      expect(src).not.toMatch(/text-foreground underline-offset-4 hover:underline/);
+    }
+    expect(HOMEPAGE).toContain("underline underline-offset-4");
+    expect(AGENDA).toContain("underline underline-offset-4");
+  });
+
+  it("CSP Report-Only omits upgrade-insecure-requests (ignored + console error)", () => {
+    const CONFIG = readFileSync(
+      path.resolve(__dirname, "..", "..", "next.config.ts"),
+      "utf-8",
+    );
+    expect(CONFIG).not.toMatch(/"upgrade-insecure-requests"/);
+  });
+
+  it("FloatingToc's collapsed button name starts with its visible label (WCAG 2.5.3)", () => {
+    const TOC = readFileSync(
+      path.resolve(__dirname, "..", "components", "floating-toc.tsx"),
+      "utf-8",
+    );
+    expect(TOC).toContain('aria-label="On this page');
+  });
+});

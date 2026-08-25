@@ -59,6 +59,20 @@ describe("explicit heading ids", () => {
   });
 });
 
+describe("heading autolinks are accessible", () => {
+  it("wrap-behavior anchors are NOT aria-hidden (focusable-but-hidden trap)", async () => {
+    // ariaHidden:"true" on a wrap-behavior autolink hid every heading link
+    // from assistive tech while keeping it tabbable (WCAG 4.1.2) and broke
+    // the accessibility tree for AI agents (Lighthouse agentic 50/100 on
+    // every article, 2026-08-25 audit). The anchor's accessible name is
+    // the heading text — exactly right without any aria attribute.
+    const html = await render("## Detection is the trap");
+    const anchor = html.match(/<a[^>]*class="anchor"[^>]*>/)?.[0] ?? "";
+    expect(anchor).not.toBe("");
+    expect(anchor).not.toContain("aria-hidden");
+  });
+});
+
 describe("renderMarkdownWithToc — h2 landmark collection", () => {
   it("collects final ids and decoded plain-text labels, h2 only", async () => {
     const { toc } = await renderMarkdownWithToc(
