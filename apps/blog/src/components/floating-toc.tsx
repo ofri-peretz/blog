@@ -30,10 +30,10 @@ export function computeReadIds(
   });
   items.forEach((item, i) => {
     if (i < maxActive) read.add(item.id);
-    if (i === items.length - 1 && reachedEnd) read.add(item.id);
   });
-  // Reaching the end reads everything above it too — a reader who
-  // scrolled straight to the footer has seen every section pass by.
+  // Reaching the end reads everything — including the last section,
+  // which "moved past" can never reach, and everything a reader who
+  // scrolled straight to the footer flew by.
   if (reachedEnd) items.forEach((item) => read.add(item.id));
   return read;
 }
