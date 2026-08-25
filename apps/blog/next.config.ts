@@ -107,7 +107,11 @@ const nextConfig: NextConfig = {
     // (found live: a scroll-driven component frozen at its SSR state,
     // console showing EvalError). Production chunks never use eval, so
     // the shipped policy is unchanged.
+    // The rule is right for shipped policies; this literal only exists
+    // behind the development guard, and the homepage CSP lock asserts it
+    // can never appear inside the policy array itself.
     const devEval =
+      // eslint-disable-next-line browser-security/no-unsafe-eval-csp
       process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
     const csp = [
       "default-src 'self'",
