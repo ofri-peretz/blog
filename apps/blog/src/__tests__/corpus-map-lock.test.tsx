@@ -132,3 +132,38 @@ describe("static markup (crawler truth)", () => {
     expect(html).toContain("Standalone");
   });
 });
+
+describe("static markup — number axis (the production path)", () => {
+  // The date-axis block above can't catch a number-mode regression (items
+  // silently dropped for lacking `value`, empty ticks) — this renders the
+  // exact axis shape /articles ships (review gap on the landscape PR).
+  const NUM_FIXTURE = [
+    { id: "a", href: "/articles/a", label: "Alpha", category: "Foundations", value: 5, weight: 0.4, links: ["c"] },
+    { id: "b", href: "/articles/b", label: "Beta", category: "Foundations", value: 12, weight: 0.6 },
+    { id: "c", href: "/articles/c", label: "Gamma", category: null, value: 22, weight: 1 },
+  ];
+  const html = renderToStaticMarkup(
+    <TimelineMap
+      items={NUM_FIXTURE}
+      axis={{ kind: "number", format: (v) => `${v} min` }}
+      data-testid="corpus-map"
+      uncategorizedLabel="Standalone"
+    >
+      <TimelineMap.Chart />
+      <TimelineMap.Detail idle="Hover a dot." />
+    </TimelineMap>,
+  );
+
+  it("all value-only items render as real anchors (no date needed)", () => {
+    for (const i of NUM_FIXTURE) expect(html).toContain(`href="${i.href}"`);
+  });
+
+  it("tick labels speak minutes through the format", () => {
+    expect(html).toMatch(/\d+ min</);
+  });
+
+  it("aria-labels carry the formatted value, never a date", () => {
+    expect(html).toContain('aria-label="Gamma — 22 min"');
+    expect(html).not.toMatch(/aria-label="[^"]*\d{4}-\d{2}-\d{2}/);
+  });
+});
