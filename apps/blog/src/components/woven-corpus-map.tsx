@@ -9,7 +9,7 @@
 // server-rendered map is honestly trace-free for crawlers.
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import {
   TimelineMap,
@@ -18,7 +18,12 @@ import {
   type TimelineMapTrace,
 } from "@/components/ui/timeline-map";
 import { track } from "@/lib/analytics";
-import { readingThread } from "@/lib/reading-history";
+import {
+  parseThreadSnapshot,
+  serverThreadSnapshot,
+  subscribeThread,
+  threadSnapshot,
+} from "@/lib/reading-history";
 
 // Module constant, not inline: the axis object's identity feeds the
 // layout memo — a fresh object per render would recompute it every time.
@@ -33,14 +38,20 @@ export function WovenCorpusMap({
   items: readonly TimelineMapItem[];
 }) {
   // The reader's thread: first-read order from localStorage, narrowed to
-  // slugs that are actually on the map. One article read is a beginning,
-  // not yet a thread — the DS draws nothing below two points, and we
-  // don't claim one in the caption either.
-  const [readSlugs, setReadSlugs] = useState<readonly string[]>([]);
-  useEffect(() => {
+  // slugs that are actually on the map. useSyncExternalStore, not
+  // effect+setState (the linter rightly flags cascading renders): the
+  // raw stored string is the snapshot — value identity, so an unchanged
+  // thread never re-renders — the server snapshot is empty (the honest
+  // crawler view), and a thread grown in another tab flows in live.
+  const rawThread = useSyncExternalStore(
+    subscribeThread,
+    threadSnapshot,
+    serverThreadSnapshot,
+  );
+  const readSlugs = useMemo(() => {
     const known = new Set(items.map((i) => i.id));
-    setReadSlugs(readingThread().filter((s) => known.has(s)));
-  }, [items]);
+    return parseThreadSnapshot(rawThread).filter((s) => known.has(s));
+  }, [rawThread, items]);
 
   const trace = useMemo<TimelineMapTrace | undefined>(() => {
     if (readSlugs.length < 2) return undefined;

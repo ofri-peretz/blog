@@ -71,7 +71,11 @@ describe("wiring", () => {
     expect(MAP).toMatch(/Your thread: \$\{readSlugs\.length\} of \$\{items\.length\} read\./);
     // The visible caption tells sighted readers what the warm strand is.
     expect(MAP).toContain("The warm strand is you");
-    // History narrows to slugs actually on the map before counting.
-    expect(MAP).toMatch(/readingThread\(\)\.filter\(\(s\) => known\.has\(s\)\)/);
+    // History narrows to slugs actually on the map before counting, and
+    // arrives via useSyncExternalStore (no effect+setState cascade; the
+    // server snapshot is the honest empty crawler view).
+    expect(MAP).toMatch(/parseThreadSnapshot\(rawThread\)\.filter\(\(s\) => known\.has\(s\)\)/);
+    expect(MAP).toContain("useSyncExternalStore(");
+    expect(MAP).toContain("serverThreadSnapshot");
   });
 });

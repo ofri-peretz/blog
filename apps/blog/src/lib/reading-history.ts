@@ -41,6 +41,42 @@ export function readingThread(): string[] {
   return safeRead();
 }
 
+/**
+ * useSyncExternalStore adapters — the raw stored string is the snapshot
+ * (string identity is value-based, so an unchanged thread never
+ * re-renders), parsed on demand. `subscribeThread` listens for storage
+ * events, so a thread grown in another tab flows in live.
+ */
+export function subscribeThread(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  return () => window.removeEventListener("storage", onChange);
+}
+
+export function threadSnapshot(): string {
+  try {
+    return window.localStorage.getItem(KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** The server snapshot: no browser, no thread — the honest crawler view. */
+export function serverThreadSnapshot(): string {
+  return "";
+}
+
+/** Parse a snapshot into slugs; same tolerance as readingThread. */
+export function parseThreadSnapshot(raw: string): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as StoredThread;
+    if (parsed.v !== VERSION || !Array.isArray(parsed.slugs)) return [];
+    return parsed.slugs.filter((s): s is string => typeof s === "string");
+  } catch {
+    return [];
+  }
+}
+
 /** Record a visit. First-read order; revisits are not new steps. */
 export function recordReading(slug: string): void {
   if (typeof window === "undefined") return;
