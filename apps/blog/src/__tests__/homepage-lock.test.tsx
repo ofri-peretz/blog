@@ -392,12 +392,24 @@ describe("lighthouse findings stay fixed", () => {
     expect(AGENDA).toContain("underline underline-offset-4");
   });
 
-  it("CSP Report-Only omits upgrade-insecure-requests (ignored + console error)", () => {
+  it("CSP is ENFORCED and never regresses to Report-Only or strict-dynamic theater", () => {
     const CONFIG = readFileSync(
       path.resolve(__dirname, "..", "..", "next.config.ts"),
       "utf-8",
     );
-    expect(CONFIG).not.toMatch(/"upgrade-insecure-requests"/);
+    // Enforced header, not Report-Only.
+    expect(CONFIG).toContain('key: "Content-Security-Policy", value: csp');
+    expect(CONFIG).not.toContain("Content-Security-Policy-Report-Only");
+    // strict-dynamic without a nonce made browsers ignore 'self' — every
+    // chunk violated and the policy could never be enforced on SSG.
+    // Scoped to the policy array so prose in comments can't trip it.
+    const policyBlock = CONFIG.slice(
+      CONFIG.indexOf("const csp = ["),
+      CONFIG.indexOf('].join("; ")'),
+    );
+    expect(policyBlock).not.toContain("strict-dynamic");
+    // Meaningful only under enforcement; restored with it.
+    expect(CONFIG).toMatch(/"upgrade-insecure-requests"/);
   });
 
   it("FloatingToc's collapsed button name starts with its visible label (WCAG 2.5.3)", () => {

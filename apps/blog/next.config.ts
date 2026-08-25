@@ -38,25 +38,29 @@ const nextConfig: NextConfig = {
   // Security headers. All free — they ride on responses Vercel already sends.
   // HSTS is set by Vercel; these are the ones that were missing.
   //
-  // CSP ships as Report-Only on purpose: Next injects inline scripts for
-  // hydration, so an enforcing policy needs nonces and would break the site if
-  // any origin is missed. Report-Only surfaces violations in the console
-  // without blocking. Promote to `Content-Security-Policy` once the reports
-  // come back clean for a few days.
+  // CSP is ENFORCED (2026-08-25). The previous Report-Only policy paired
+  // 'strict-dynamic' with "the per-request nonce Next emits" — but Next only
+  // emits nonces under middleware + dynamic rendering, and this site is
+  // SSG-first on purpose (per-request nonces cannot be baked into static
+  // HTML; a build-constant nonce is discoverable and therefore theater).
+  // Under 'strict-dynamic' with no nonce anywhere, browsers ignore 'self',
+  // so every legitimate chunk was reported as a violation: the policy was
+  // aspirational and could never graduate. An enforceable policy that
+  // matches the architecture beats an unenforceable strict one.
   //
-  // No 'unsafe-eval' and no 'unsafe-inline' on script-src — our own
-  // eslint-plugin-browser-security rightly flags both (CWE-79 / CWE-95): a
-  // policy carrying them buys almost no XSS protection. Next's inline
-  // hydration scripts are covered by 'strict-dynamic' + the per-request nonce
-  // Next emits; browsers that don't grok strict-dynamic fall back to the
-  // host allowlist. style-src keeps 'unsafe-inline' because Tailwind and
-  // next/font inject style attributes with no nonce hook — that is a
-  // materially smaller risk than script injection, and it is the reason this
-  // stays Report-Only until the reports are clean.
+  // The tax: script-src carries 'unsafe-inline' because App Router embeds
+  // per-page flight payloads as inline scripts with no SSG nonce hook —
+  // our own eslint-plugin-browser-security rightly notes this weakens
+  // script-injection protection specifically. The compensating controls
+  // are the rest of the ENFORCED policy: connect-src pins exfiltration to
+  // 'self'+PostHog, object-src none, base-uri self, frame-ancestors none,
+  // form-action self, img/font allowlists. Revisit script-src if Next
+  // ever supports hashes/nonces for static flight payloads.
   async headers() {
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'strict-dynamic' https://us-assets.i.posthog.com",
+      // eslint-disable-next-line browser-security/no-unsafe-inline-csp
+      "script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com",
       // Tailwind and next/font emit inline style attributes with no nonce hook,
       // so this cannot be removed without dropping both. Scoped to styles, never
       // scripts: no script execution is permitted by this directive. Revisit if
@@ -71,11 +75,9 @@ const nextConfig: NextConfig = {
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      // NOT upgrade-insecure-requests: the directive is ignored in a
-      // Report-Only policy and Chrome logs a console error for it on every
-      // page (Lighthouse errors-in-console, all routes). Vercel serves
-      // HTTPS-only regardless; reinstate when this policy graduates to
-      // enforced.
+      // Meaningful again now that the policy is enforced (it is ignored in
+      // Report-Only mode and logged console errors there).
+      "upgrade-insecure-requests",
     ].join("; ");
 
     return [
@@ -103,7 +105,7 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
-          { key: "Content-Security-Policy-Report-Only", value: csp },
+          { key: "Content-Security-Policy", value: csp },
         ],
       },
     ];
