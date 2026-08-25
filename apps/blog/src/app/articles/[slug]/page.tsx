@@ -3,11 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
+  getAllArticles,
   getAllArticleSlugs,
   getArticleBySlug,
   getSeriesContext,
   isPublished,
 } from "@/lib/source";
+import { computeThreads } from "@/lib/corpus-links";
+import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
 import { SeriesBanner, SeriesPager } from "@/components/series-nav";
 import {
   MarkdownArticle,
@@ -93,6 +96,19 @@ export default async function ArticlePage(props: PageProps) {
 
   const { frontmatter: fm } = article;
   const series = getSeriesContext(slug);
+  // The corpus is published-only (getAllArticles filters), so the Threads
+  // section can never surface the release queue. Static pages make the
+  // O(corpus²) whole-graph scan a build-time cost, not a request-time one.
+  const corpus = getAllArticles();
+  const threads = computeThreads(slug, article.body, corpus);
+  const corpusBySlug = new Map(corpus.map((a) => [a.slug, a]));
+  const toThreadItem = (s: string): ThreadItem => {
+    // computeThreads only returns slugs drawn from this corpus; throw
+    // loudly at build time if a refactor ever breaks that contract.
+    const a = corpusBySlug.get(s);
+    if (!a) throw new Error(`thread slug ${s} not in the published corpus`);
+    return { slug: s, title: a.frontmatter.title, series: a.frontmatter.series };
+  };
   // Render once: the pipeline emits the HTML and collects the h2 TOC in
   // the same pass, so Shiki never runs twice per page.
   const { html: renderedHtml, toc } = await renderMarkdownWithToc(
@@ -238,6 +254,12 @@ export default async function ArticlePage(props: PageProps) {
         <MarkdownArticle body={article.body} renderedHtml={renderedHtml} />
 
         <SeriesPager series={series} currentSlug={slug} className="mt-12" />
+
+        <ArticleThreads
+          currentSlug={slug}
+          drawsOn={threads.drawsOn.map(toThreadItem)}
+          pulledBy={threads.pulledBy.map(toThreadItem)}
+        />
 
         <DevToCallout
           slug={slug}

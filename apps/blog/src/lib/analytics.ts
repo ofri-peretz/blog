@@ -27,7 +27,16 @@ export type BlogEvent =
       props: { from_slug: string; to_slug: string; direction: "prev" | "next" };
     }
   /** Does the end-of-article CTA convert readers into playground users? */
-  | { name: "article:playground_cta_click"; props: { slug: string } };
+  | { name: "article:playground_cta_click"; props: { slug: string } }
+  /** Does the Threads section chain one read into the next? */
+  | {
+      name: "article:thread_click";
+      props: {
+        from_slug: string;
+        to_slug: string;
+        direction: "draws_on" | "pulled_by";
+      };
+    };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<

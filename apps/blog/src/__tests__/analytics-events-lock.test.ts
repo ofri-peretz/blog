@@ -30,6 +30,7 @@ const FROZEN_EVENTS = [
   "corpus_map:dot_click",
   "series:pager_click",
   "article:playground_cta_click",
+  "article:thread_click",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -53,5 +54,13 @@ describe("each surface fires its event", () => {
   it("the playground CTA is a TrackedLink carrying the article slug", () => {
     expect(ARTICLE).toContain('event="article:playground_cta_click"');
     expect(ARTICLE).toMatch(/<TrackedLink[\s\S]{0,500}eslint\.interlace\.tools\/play/);
+  });
+
+  it("thread links are TrackedLinks with from/to + direction", () => {
+    const THREADS = read("components/article-threads.tsx");
+    expect(THREADS).toContain('event="article:thread_click"');
+    expect(THREADS).toContain("from_slug: currentSlug");
+    expect(THREADS).toContain("to_slug: item.slug");
+    expect(THREADS).toContain("direction,");
   });
 });

@@ -25,3 +25,36 @@ export function extractInternalLinks(
   }
   return [...found];
 }
+
+export interface Threads {
+  /** Slugs this article cites, in first-mention order. */
+  drawsOn: string[];
+  /** Slugs of corpus articles citing this one, in the corpus's order. */
+  pulledBy: string[];
+}
+
+/**
+ * Both directions of the thread through one article: what it draws on,
+ * and what pulls on it. The corpus is whatever the caller passes —
+ * `getAllArticles()` is already published-only and newest-first, so a
+ * queued slug can neither appear nor be linked to, and `pulledBy` comes
+ * back newest-first. A queued CURRENT article (reachable but unreleased)
+ * simply isn't in the corpus: its `pulledBy` is empty by construction.
+ */
+export function computeThreads(
+  selfSlug: string,
+  selfBody: string,
+  corpus: readonly { slug: string; body: string }[],
+): Threads {
+  const known = new Set(corpus.map((a) => a.slug));
+  return {
+    drawsOn: extractInternalLinks(selfBody, selfSlug, known),
+    pulledBy: corpus
+      .filter(
+        (a) =>
+          a.slug !== selfSlug &&
+          extractInternalLinks(a.body, a.slug, known).includes(selfSlug),
+      )
+      .map((a) => a.slug),
+  };
+}
