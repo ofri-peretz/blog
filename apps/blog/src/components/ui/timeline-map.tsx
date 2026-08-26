@@ -613,14 +613,21 @@ function TimelineMapFilter({ className, ...rest }: TimelineMapFilterProps) {
           aria-pressed={active.has(name)}
           onClick={() => toggleCategory(name)}
           className={cn(
-            'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+            // min-h-6 + inline-flex: px-2.5/py-0.5 alone rendered a
+            // 22px-tall pill, under the 24px floor of WCAG 2.2 SC 2.5.8
+            // (caught by the blog's real-layout audit, every viewport).
+            'inline-flex min-h-6 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
             active.has(name)
               ? 'border-strand-a/50 bg-strand-a/10 text-foreground'
               : 'border-border text-muted-foreground hover:text-foreground',
           )}
         >
           {name}
-          <span className="ml-1 text-muted-foreground">{count}</span>
+          {/* The count INHERITS the pill's text colour: a hardcoded
+              muted-foreground measured 4.37:1 on the ACTIVE pill's
+              strand-a/10 tint — under the 4.5 AA floor. Inactive pills
+              are muted anyway, so nothing changes visually there. */}
+          <span className="ml-1">{count}</span>
         </button>
       ))}
     </div>
@@ -804,7 +811,12 @@ function TimelineMapChart({ className, ...rest }: TimelineMapChartProps) {
               role="group"
               aria-label={`${lane.name} items`}
               className={cn(
-                'h-11 border-b border-border/60',
+                // overflow-visible: the hit circles on top/bottom-row
+                // dots extend 3px past the lane box, and the UA's
+                // svg overflow:hidden shaved them to ~21px (review).
+                // Nothing PAINTS outside — dots + strokes stay in
+                // bounds — so only pointer geometry escapes.
+                'h-11 overflow-visible border-b border-border/60',
                 laneIdx % 2 === 1 && 'bg-muted/40',
               )}
             >
@@ -835,6 +847,24 @@ function TimelineMapChart({ className, ...rest }: TimelineMapChartProps) {
                     onClick={() => onItemClick?.(d.item)}
                     className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
                   >
+                    {/* SVG hit-slop: the visible dot can be as small as
+                        10px, under the 24px target floor of WCAG 2.2
+                        SC 2.5.8 (caught by the blog's layout audit at
+                        every viewport) — and a 10px dot is genuinely
+                        hard to tap. The transparent circle carries the
+                        pointer geometry; the painted one stays the
+                        map's visual scale. pointer-events on the link
+                        make both circles hit-testable. r=13, not 12:
+                        a nominal 24px union measured 23px in the
+                        gate's real-browser audit (sub-pixel rounding),
+                        so the radius carries a 2px margin. */}
+                    <circle
+                      cx={d.cx}
+                      cy={d.cy}
+                      r={13}
+                      fill="transparent"
+                      stroke="none"
+                    />
                     <circle
                       cx={d.cx}
                       cy={d.cy}
