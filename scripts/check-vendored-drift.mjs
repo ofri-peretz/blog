@@ -26,13 +26,27 @@ const VENDORED = {
   "components/ui/code-block.tsx": "primitives/code-block.tsx",
   "components/ui/skeleton.tsx": "primitives/skeleton.tsx",
   "components/ui/skeleton-variants.ts": "primitives/skeleton-variants.ts",
+  "components/ui/time-series.tsx": "charts/time-series.tsx",
+  "components/ui/series-table.tsx": "charts/series-table.tsx",
+  "components/ui/scale.ts": "charts/scale.ts",
+  "components/ui/data-state.tsx": "primitives/data-state.tsx",
+  "components/ui/data-state-model.ts": "primitives/data-state-model.ts",
+  "components/ui/toggle.tsx": "primitives/toggle.tsx",
 };
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-/** Reverse the vendor recipe: drop the provenance block, restore cn. */
-function normalizeVendored(src) {
+/**
+ * Reverse the vendor recipe: drop the provenance block, restore cn.
+ *
+ * Sibling-import restoration is canonical-directory-aware: a vendored
+ * `./skeleton` came from `../primitives/skeleton.js` when the canonical
+ * lives in `charts/`, but from `./skeleton.js` when it lives in
+ * `primitives/` — the flat vendored dir erases that distinction, so the
+ * canonical path has to put it back.
+ */
+function normalizeVendored(src, canonical) {
   const lines = src.split("\n");
   const out = [];
   let inProvenance = false;
@@ -53,17 +67,32 @@ function normalizeVendored(src) {
     }
     out.push(line);
   }
-  return out
+  const joined = out
     .join("\n")
-    .replace('import { cn } from "@/lib/utils";', "import { cn } from '../lib/cn.js';")
-    // Sibling imports: the blog drops the .js extension (webpack resolves
-    // extensionless; canonical is ESM-explicit — TS maps .js→.ts but
-    // webpack does not). replaceAll: skeleton.tsx references its variants
-    // module TWICE (import + bottom re-export); a single replace left the
-    // second one broken. No-ops on files that lack the string.
+    .replace('import { cn } from "@/lib/utils";', "import { cn } from '../lib/cn.js';");
+  // Sibling imports: the blog drops the .js extension (webpack resolves
+  // extensionless; canonical is ESM-explicit — TS maps .js→.ts but
+  // webpack does not). replaceAll: skeleton.tsx references its variants
+  // module TWICE (import + bottom re-export); a single replace left the
+  // second one broken. No-ops on files that lack the string.
+  if (canonical.startsWith("charts/")) {
+    return joined
+      .replaceAll("} from './skeleton';", "} from '../primitives/skeleton.js';")
+      .replaceAll("} from './data-state';", "} from '../primitives/data-state.js';")
+      .replaceAll("from './scale';", "from './scale.js';")
+      .replaceAll("from './series-table';", "from './series-table.js';");
+  }
+  if (canonical.startsWith("patterns/")) {
+    return joined.replaceAll(
+      "} from './toggle';",
+      "} from '../primitives/toggle.js';",
+    );
+  }
+  return joined
     .replaceAll("} from './dialog';", "} from './dialog.js';")
     .replaceAll("} from './skeleton';", "} from './skeleton.js';")
-    .replaceAll("} from './skeleton-variants';", "} from './skeleton-variants.js';");
+    .replaceAll("} from './skeleton-variants';", "} from './skeleton-variants.js';")
+    .replaceAll("from './data-state-model';", "from './data-state-model.js';");
 }
 
 // A fetch failure must not hide drift in the REMAINING files (review):
@@ -73,6 +102,7 @@ const failed = [];
 for (const [vendored, canonical] of Object.entries(VENDORED)) {
   const local = normalizeVendored(
     readFileSync(path.join("apps/blog/src", vendored), "utf-8"),
+    canonical,
   );
   const res = await fetch(`${RAW}/${canonical}`);
   if (!res.ok) {
