@@ -36,7 +36,7 @@ Devkit at `1.0.0`:
 }
 ```
 
-Four peers, two marked optional. npm 7+ auto-installs the ones that aren't. So 24MB of `tsc` came down, for code that used the compiler for one thing: a handful of `ts.TypeFlags` integers.
+Four peers, two marked optional. npm 7+ auto-installs the ones that aren't ([npm/cli#4828](https://github.com/npm/cli/issues/4828)). So 24MB of `tsc` came down, for code that used the compiler for one thing: a handful of `ts.TypeFlags` integers.
 
 One caveat: 24MB is TypeScript 6.x; TypeScript 7's Go port is 2MB. The size changed, the decision did not — force-installing a compiler nobody asked for was wrong at 24MB and is still wrong at 2MB.
 
@@ -64,13 +64,13 @@ Somewhere in the 8.x line `utils` picked up its own **non-optional** `typescript
 | Aug 2 | 5,432 KB |
 | **Aug 23** | **3,037 KB** |
 
-−44.1%. And none of the four cuts caused it: a package's own `unpackedSize` excludes its dependencies, so removing one cannot move this column. That drop is dead bytes: source maps for `.ts` files the tarball never shipped, `AGENTS.md`, JSDoc in emitted `.js`.
+−44.1%. And none of the three cuts caused it: a package's own `unpackedSize` excludes its dependencies, so removing one cannot move this column. That drop is dead bytes: source maps for `.ts` files the tarball never shipped, `AGENTS.md`, JSDoc in emitted `.js`.
 
 Two wins, two axes. Conflating them is the mistake I nearly published.
 
 ---
 
-## The four cuts {#cuts}
+## The three cuts {#cuts}
 
 **`typescript`, 24MB.** Used for `ts.TypeFlags`, integer constants. Integers do not need a compiler. Inlined.
 
