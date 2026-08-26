@@ -319,7 +319,7 @@ body {
    `--shiki-dark:#6A737D` per span, so this lifts exactly the comment token and
    nothing else. The light theme needs no equivalent — its comment measures
    4.82:1 on white and already passes. */
-.dark .shiki span[style*="--shiki-dark:#6A737D"] {
+.dark [data-slot="code-block-pre"] span[style*="--shiki-dark:#6A737D"] {
   color: #8b949e !important;
 }
 
@@ -333,7 +333,7 @@ body {
    Scoped to :root:not(.dark) deliberately. Unscoped, this !important rule also
    outranked the dark-theme activation above it — #bc4c00 on #24292e is 2.91:1,
    so "fixing" light contrast broke dark contrast worse than the original. */
-:root:not(.dark) .shiki span[style*="color:#E36209"],
-:root:not(.dark) .shiki span[style*="color:#e36209"] {
+:root:not(.dark) [data-slot="code-block-pre"] span[style*="color:#E36209"],
+:root:not(.dark) [data-slot="code-block-pre"] span[style*="color:#e36209"] {
   color: #bc4c00 !important;
 }
