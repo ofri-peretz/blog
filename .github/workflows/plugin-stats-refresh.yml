@@ -35,7 +35,14 @@ jobs:
           git add apps/blog/src/data/plugin-stats.json
           git commit -m "chore(blog): weekly plugin-stats refresh $(date -u +%F)"
           git push --force origin HEAD:chore/plugin-stats-refresh
-          gh pr create --base main --head chore/plugin-stats-refresh \
+          # No tee-pipe: it would mask gh failures with tee's exit 0
+          # (CWE-390, review). Capture, print, and only tolerate the
+          # branch-already-has-a-PR case.
+          if OUT=$(gh pr create --base main --head chore/plugin-stats-refresh \
             --title "chore(blog): weekly plugin-stats refresh $(date -u +%F)" \
-            --body "Automated weekly npm stats sync for the live article plugin cards. Numbers only — review is a sanity glance." \
-            2>&1 | tee /tmp/pr.out || grep -q "already exists" /tmp/pr.out
+            --body "Automated weekly npm stats sync for the live article plugin cards. Numbers only — review is a sanity glance." 2>&1); then
+            echo "$OUT"
+          else
+            echo "$OUT"
+            echo "$OUT" | grep -q "already exists" || exit 1
+          fi

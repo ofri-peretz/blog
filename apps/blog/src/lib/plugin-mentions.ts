@@ -23,8 +23,9 @@ export function detectPlugins(body: string, max = 3): PluginMention[] {
   for (const [name, s] of Object.entries(PLUGINS)) {
     // Boundary-guarded: `eslint-plugin-pg` must not fire inside a longer
     // package name, and peers that share a suffix stay unmatched.
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const mentions =
-      body.match(new RegExp(`(?<![\\w-])${name}(?![\\w-])`, "g"))?.length ?? 0;
+      body.match(new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, "g"))?.length ?? 0;
     if (mentions > 0) found.push({ name, mentions, ...s });
   }
   // The most-discussed packages first; the cap is the ink budget.
