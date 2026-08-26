@@ -23,6 +23,9 @@ const VENDORED = {
   "components/ui/section-index.tsx": "primitives/section-index.tsx",
   "components/ui/dialog.tsx": "primitives/dialog.tsx",
   "components/ui/command-palette.tsx": "primitives/command-palette.tsx",
+  "components/ui/code-block.tsx": "primitives/code-block.tsx",
+  "components/ui/skeleton.tsx": "primitives/skeleton.tsx",
+  "components/ui/skeleton-variants.ts": "primitives/skeleton-variants.ts",
 };
 
 import { readFileSync } from "node:fs";
@@ -53,10 +56,14 @@ function normalizeVendored(src) {
   return out
     .join("\n")
     .replace('import { cn } from "@/lib/utils";', "import { cn } from '../lib/cn.js';")
-    // command-palette's sibling import: the blog drops the .js extension
-    // (webpack resolves extensionless; canonical is ESM-explicit). A no-op
-    // on every file that lacks the string.
-    .replace("} from './dialog';", "} from './dialog.js';");
+    // Sibling imports: the blog drops the .js extension (webpack resolves
+    // extensionless; canonical is ESM-explicit — TS maps .js→.ts but
+    // webpack does not). replaceAll: skeleton.tsx references its variants
+    // module TWICE (import + bottom re-export); a single replace left the
+    // second one broken. No-ops on files that lack the string.
+    .replaceAll("} from './dialog';", "} from './dialog.js';")
+    .replaceAll("} from './skeleton';", "} from './skeleton.js';")
+    .replaceAll("} from './skeleton-variants';", "} from './skeleton-variants.js';");
 }
 
 // A fetch failure must not hide drift in the REMAINING files (review):

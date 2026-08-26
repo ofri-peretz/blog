@@ -58,7 +58,17 @@ export type BlogEvent =
    */
   | { name: "quick_open:palette_view"; props: { source: "hotkey" | "button" } }
   /** Does a search convert into a read? Destination only, no query. */
-  | { name: "quick_open:result_click"; props: { to_slug: string } };
+  | { name: "quick_open:result_click"; props: { to_slug: string } }
+  /**
+   * Which snippets get copied — the strongest "this article did its
+   * job" signal a code-first blog has. Fires only on a successful
+   * clipboard write (the DS CodeBlock onCopied seam), never on a bare
+   * click that copied nothing.
+   */
+  | {
+      name: "article:code_copy_click";
+      props: { slug: string; language: string | null };
+    };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<

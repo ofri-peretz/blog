@@ -19,7 +19,7 @@ import { RecordReading } from "@/components/record-reading";
 import { SeriesBanner, SeriesPager } from "@/components/series-nav";
 import {
   MarkdownArticle,
-  renderMarkdownWithToc,
+  renderArticleReact,
 } from "@/components/markdown-article";
 import { FloatingToc } from "@/components/floating-toc";
 import { TrackedLink } from "@/components/tracked-link";
@@ -143,10 +143,12 @@ export default async function ArticlePage(props: PageProps) {
       minutes: a.readingTimeMinutes,
     };
   };
-  // Render once: the pipeline emits the HTML and collects the h2 TOC in
-  // the same pass, so Shiki never runs twice per page.
-  const { html: renderedHtml, toc } = await renderMarkdownWithToc(
+  // Render once: the pipeline compiles the React tree (code fences become
+  // DS CodeBlock islands with the copy affordance) and collects the h2
+  // TOC in the same pass, so Shiki never runs twice per page.
+  const { node: renderedNode, toc } = await renderArticleReact(
     article.body,
+    slug,
   );
   const url = fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`;
   const image =
@@ -301,7 +303,7 @@ export default async function ArticlePage(props: PageProps) {
             map (reading-history.ts — localStorage only, never sent). */}
         <RecordReading slug={slug} />
         <div id="article-reading-span">
-          <MarkdownArticle body={article.body} renderedHtml={renderedHtml} />
+          <MarkdownArticle body={article.body}>{renderedNode}</MarkdownArticle>
         </div>
 
         <SeriesPager series={series} currentSlug={slug} className="mt-12" />
