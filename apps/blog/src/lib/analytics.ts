@@ -46,7 +46,12 @@ export type BlogEvent =
    * How many return readers actually see their own thread on the map?
    * Aggregate count only — the thread itself never leaves the browser.
    */
-  | { name: "corpus_map:your_thread"; props: { read_count: number } };
+  | { name: "corpus_map:your_thread"; props: { read_count: number } }
+  /** Do live plugin cards convert readers toward the product? */
+  | {
+      name: "article:plugin_card_click";
+      props: { slug: string; package: string };
+    };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<

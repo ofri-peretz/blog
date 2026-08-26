@@ -10,6 +10,9 @@ import {
   isPublished,
 } from "@/lib/source";
 import { computeThreads } from "@/lib/corpus-links";
+import { detectPlugins } from "@/lib/plugin-mentions";
+import pluginStats from "@/data/plugin-stats.json";
+import { ArticlePlugins } from "@/components/article-plugins";
 import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
 import { ReadingStrand } from "@/components/ui/reading-strand";
 import { RecordReading } from "@/components/record-reading";
@@ -307,6 +310,12 @@ export default async function ArticlePage(props: PageProps) {
           currentSlug={slug}
           drawsOn={threads.drawsOn.map(toThreadItem)}
           pulledBy={threads.pulledBy.map(toThreadItem)}
+        />
+
+        <ArticlePlugins
+          currentSlug={slug}
+          plugins={detectPlugins(article.body)}
+          generatedAt={pluginStats.generatedAt}
         />
 
         <DevToCallout
