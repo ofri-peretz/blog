@@ -13,6 +13,8 @@ import { computeThreads } from "@/lib/corpus-links";
 import { detectPlugins } from "@/lib/plugin-mentions";
 import pluginStats from "@/data/plugin-stats.json";
 import { ArticlePlugins } from "@/components/article-plugins";
+import benchReceipts from "@/data/bench-receipts.json";
+import { ArticleBenchReceipt } from "@/components/article-bench-receipt";
 import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
 import { ReadingStrand } from "@/components/ui/reading-strand";
 import { RecordReading } from "@/components/record-reading";
@@ -313,6 +315,12 @@ export default async function ArticlePage(props: PageProps) {
           drawsOn={threads.drawsOn.map(toThreadItem)}
           pulledBy={threads.pulledBy.map(toThreadItem)}
         />
+
+        {/* Only the series whose pieces make the performance claims —
+            a perf receipt on a detection-metrics article is noise. */}
+        {fm.series === "Inside our linter benchmarks" ? (
+          <ArticleBenchReceipt currentSlug={slug} data={benchReceipts} />
+        ) : null}
 
         <ArticlePlugins
           currentSlug={slug}

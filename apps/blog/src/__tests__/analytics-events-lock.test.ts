@@ -36,6 +36,7 @@ const FROZEN_EVENTS = [
   "quick_open:palette_view",
   "quick_open:result_click",
   "article:code_copy_click",
+  "article:bench_receipt_click",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -85,6 +86,12 @@ describe("each surface fires its event", () => {
     expect(SEARCH).not.toMatch(
       /track\("quick_open:(palette_view|result_click)"[\s\S]{0,120}quer/,
     );
+  });
+
+  it("the bench receipt's run link is a TrackedLink carrying the slug", () => {
+    const RECEIPT = read("components/article-bench-receipt.tsx");
+    expect(RECEIPT).toContain('event="article:bench_receipt_click"');
+    expect(RECEIPT).toContain("props={{ slug: currentSlug }}");
   });
 
   it("thread links are TrackedLinks with from/to + direction", () => {
