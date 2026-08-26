@@ -73,8 +73,11 @@ describe("wiring", () => {
     expect(MAP).toContain("The warm strand is you");
     // History narrows to slugs actually on the map before counting, and
     // arrives via useSyncExternalStore (no effect+setState cascade; the
-    // server snapshot is the honest empty crawler view).
-    expect(MAP).toMatch(/parseThreadSnapshot\(rawThread\)\.filter\(\(s\) => known\.has\(s\)\)/);
+    // server snapshot is the honest empty crawler view). The parse now
+    // lives in one upstream memo (blog#192 review) that the filter
+    // derives from.
+    expect(MAP).toMatch(/allThreadSlugs\.filter\(\(s\) => known\.has\(s\)\)/);
+    expect(MAP).toMatch(/parseThreadSnapshot\(rawThread\)/);
     expect(MAP).toContain("useSyncExternalStore(");
     expect(MAP).toContain("serverThreadSnapshot");
   });
