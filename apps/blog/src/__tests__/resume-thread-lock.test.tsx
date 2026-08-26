@@ -78,7 +78,7 @@ describe("wiring", () => {
     expect(MAP).toContain('event="series:resume_click"');
     expect(MAP).toContain("props={{ to_slug: resume.next.slug }}");
     // The offer reads the FULL thread, not the map-narrowed slugs.
-    expect(MAP).toContain("pickResume(parseThreadSnapshot(rawThread), seriesIndex)");
+    expect(MAP).toContain("pickResume(allThreadSlugs, seriesIndex)");
   });
 
   it("the articles page builds the series index from one ordering source", () => {

@@ -53,10 +53,15 @@ export function WovenCorpusMap({
     threadSnapshot,
     serverThreadSnapshot,
   );
+  // One parse per thread change; both derivations below ride it (review).
+  const allThreadSlugs = useMemo(
+    () => parseThreadSnapshot(rawThread),
+    [rawThread],
+  );
   const readSlugs = useMemo(() => {
     const known = new Set(items.map((i) => i.id));
-    return parseThreadSnapshot(rawThread).filter((s) => known.has(s));
-  }, [rawThread, items]);
+    return allThreadSlugs.filter((s) => known.has(s));
+  }, [allThreadSlugs, items]);
 
   const trace = useMemo<TimelineMapTrace | undefined>(() => {
     if (readSlugs.length < 2) return undefined;
@@ -71,8 +76,8 @@ export function WovenCorpusMap({
   // readSlugs — a read article filtered off the map still counts as
   // read). Null renders nothing — the quiet default.
   const resume = useMemo(
-    () => pickResume(parseThreadSnapshot(rawThread), seriesIndex),
-    [rawThread, seriesIndex],
+    () => pickResume(allThreadSlugs, seriesIndex),
+    [allThreadSlugs, seriesIndex],
   );
 
   // The wow receipt: how many map views actually show a thread. Once per
