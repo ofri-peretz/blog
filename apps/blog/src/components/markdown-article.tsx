@@ -3,6 +3,10 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeShiki from "@shikijs/rehype";
+import {
+  transformerNotationDiff,
+  transformerNotationHighlight,
+} from "@shikijs/transformers";
 import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
@@ -281,6 +285,13 @@ function buildPipeline() {
         // `language-{lang}` on the <code> element — the DS CodeBlock's
         // header tag and the copy event's `language` prop read it.
         addLanguageClass: true,
+        // `// [!code highlight]` / `[!code ++]` / `[!code --]` markers →
+        // `highlighted` / `diff add` / `diff remove` classes on the line
+        // spans. The vendored DS CodeBlock owns their look (washes, +/-
+        // gutter markers) and its copy affordance skips removed lines.
+        // The dev.to publish path strips these markers — see
+        // devto-link-transforms.mjs.
+        transformers: [transformerNotationHighlight(), transformerNotationDiff()],
       })
       .use(rehypeScrollableTables)
   );

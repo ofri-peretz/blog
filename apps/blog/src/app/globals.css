@@ -56,6 +56,14 @@
      itself is scoped to woven gestures and only clears 3:1 decorative
      — the SectionIndex numeral is 14px text and needs this instead. */
   --brand-orange-text: #7d350c;
+  /* Status pair the vendored CodeBlock's notation contract consumes
+     (diff add/remove washes + gutter markers). Values are the interlace
+     canonical ones (interlace-theme.css): #065f46 is 7.1:1 on white,
+     #991b1b 6.4:1 — AA for the +/- marker text. */
+  --success: #065f46;
+  --success-foreground: #ffffff;
+  --destructive: #991b1b;
+  --destructive-foreground: #ffffff;
   /* Container width the vendored ui/dialog caps its popup at
      (`sm:max-w-(--container-prose)`) — the DS foundation.css value.
      Without it the var() is invalid at computed-value time and the
@@ -96,6 +104,12 @@
   /* chart-1/2 and strand-a inherit the brand var()s and re-resolve here. */
   --strand-b: oklch(0.78 0.1 230);
   --brand-orange-text: #fbb99a; /* 11.79:1 on near-black (AAA) */
+  /* Status pair, dark values from interlace-theme.css: #34d399 is 8.4:1
+     and #fca5a5 8.0:1 on the near-black card surface. */
+  --success: #34d399;
+  --success-foreground: #052e16;
+  --destructive: #fca5a5;
+  --destructive-foreground: #0a0a0a;
   --chart-3: oklch(0.72 0.17 264);
   --chart-4: oklch(0.78 0.18 60);
   --chart-5: oklch(0.7 0.16 320);
@@ -128,6 +142,10 @@
   --color-brand-orange: var(--brand-orange);
   --color-brand-green: var(--brand-green);
   --color-brand-snappy: var(--brand-snappy);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-strand-a: var(--strand-a);
   --color-strand-b: var(--strand-b);
   /* DS foundation tokens the vendored code-block + skeleton consume

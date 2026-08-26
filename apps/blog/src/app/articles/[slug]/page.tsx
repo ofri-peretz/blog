@@ -55,6 +55,16 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     ...(isPublished(fm) ? {} : { robots: { index: false, follow: false } }),
     alternates: {
       canonical: fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`,
+      // The raw-markdown twin (llms.txt lists these) — advertised from the
+      // HTML head so an agent that landed on the page finds it. Published
+      // only: a draft's .md endpoint 404s by design.
+      ...(isPublished(fm)
+        ? {
+            types: {
+              "text/markdown": `https://ofriperetz.dev/articles/${slug}.md`,
+            },
+          }
+        : {}),
     },
     // Social cards want the 1200x630 OG ratio: prefer social_image (the
     // authored /cdn/blog-cover-image/<slug>-og.jpg), fall back to the
