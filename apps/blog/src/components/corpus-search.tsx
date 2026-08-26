@@ -17,6 +17,7 @@ import {
   CommandPaletteTrigger,
   useCommandPaletteHotkey,
 } from "./ui/command-palette";
+import { ReadTick } from "./read-tick";
 import { track } from "@/lib/analytics";
 import { searchHaystack, type SearchDoc } from "@/lib/search-docs";
 
@@ -109,6 +110,12 @@ export function CorpusSearch() {
       <CommandPaletteContent
         items={docs ?? []}
         itemToStringLabel={searchHaystack}
+        // Highlight = intent: prefetch the route under the cursor so the
+        // Enter that follows lands on a warm cache. router.prefetch
+        // dedupes internally — rapid arrowing costs one fetch per slug.
+        onItemHighlighted={(doc: SearchDoc | undefined) => {
+          if (doc) router.prefetch(`/articles/${doc.slug}`);
+        }}
         onValueChange={(doc: SearchDoc | null) => {
           if (!doc) return;
           track("quick_open:result_click", { to_slug: doc.slug });
@@ -137,6 +144,9 @@ export function CorpusSearch() {
           {(doc: SearchDoc) => (
             <CommandPaletteItem key={doc.slug} value={doc}>
               <span className="min-w-0 flex-1 truncate">{doc.title}</span>
+              {/* The reader's own state, in the results: the same ✓ the
+                  series navigator earns (read-tick.tsx, localStorage). */}
+              <ReadTick slug={doc.slug} />
               {doc.series ? (
                 <span className="hidden max-w-32 truncate text-xs text-muted-foreground sm:inline">
                   {doc.series}
