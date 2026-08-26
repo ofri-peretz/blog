@@ -25,6 +25,12 @@ import matter from "gray-matter";
 
 import { isPublished, type ArticleFrontmatter } from "@/lib/source";
 import { GET } from "@/app/rss.xml/route";
+import { GET as llmsTxt } from "@/app/llms.txt/route";
+import {
+  GET as articleMd,
+  generateStaticParams as articleMdParams,
+  dynamicParams as articleMdDynamicParams,
+} from "@/app/md/[slug]/route";
 import sitemap from "@/app/sitemap";
 import { generateMetadata } from "@/app/articles/[slug]/page";
 
@@ -142,6 +148,55 @@ describe("draft exposure", () => {
       params: Promise.resolve({ slug: published[0] }),
     });
     expect(liveMeta.robots).toBeUndefined();
+  });
+});
+
+describe("agent corpus (llms.txt + .md twins)", () => {
+  it("llms.txt lists every published article's .md twin and no drafts", async () => {
+    const txt = await llmsTxt().text();
+    const { drafts, live } = partitionSlugs();
+    for (const slug of live) {
+      expect(txt, `published article missing from llms.txt: ${slug}`).toContain(
+        `/articles/${slug}.md)`,
+      );
+    }
+    for (const slug of drafts) {
+      expect(txt, `queued draft leaked into llms.txt: ${slug}`).not.toContain(
+        `/articles/${slug}`,
+      );
+    }
+  });
+
+  it("the .md route prerenders published slugs only, and slams the door on the rest", async () => {
+    const { drafts, live } = partitionSlugs();
+    const params = articleMdParams().map((p) => p.slug);
+    expect(new Set(params)).toEqual(new Set(live));
+
+    // Belt: unknown params must 404 at the routing layer, not render
+    // on demand. If someone flips this to true, drafts become fetchable
+    // the moment their file lands on disk.
+    expect(articleMdDynamicParams).toBe(false);
+
+    // Suspenders: the handler itself refuses drafts, so even a future
+    // routing change cannot leak the release queue.
+    if (drafts.length > 0) {
+      const res = await articleMd(new Request("https://ofriperetz.dev"), {
+        params: Promise.resolve({ slug: drafts[0] }),
+      });
+      expect(res.status).toBe(404);
+    }
+  });
+
+  it("serves a published article as markdown with title and canonical", async () => {
+    const { live } = partitionSlugs();
+    const res = await articleMd(new Request("https://ofriperetz.dev"), {
+      params: Promise.resolve({ slug: live[0] }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/markdown");
+    const md = await res.text();
+    expect(md.startsWith("# ")).toBe(true);
+    expect(md).toContain(`https://ofriperetz.dev/articles/${live[0]}`);
   });
 });
 

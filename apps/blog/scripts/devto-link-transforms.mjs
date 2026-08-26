@@ -22,7 +22,11 @@
  *
  * Guarantees:
  *   - Links already pointing at /go/ are never rewritten (idempotent).
- *   - Fenced code blocks are left byte-identical.
+ *   - Fenced code blocks are left byte-identical, with ONE exception:
+ *     Shiki notation markers (`[!code ...]`) are blog-only render
+ *     directives — dev.to would print them verbatim — so they are
+ *     stripped, and `[!code --]` (removed) lines are dropped so dev.to
+ *     shows the post-diff code.
  *   - Non-http destinations (anchors, mailto:) pass through untouched.
  *
  * @author Ofri Peretz
@@ -55,6 +59,16 @@ const INLINE_ANCHOR_REGEX = /(`+)[\s\S]*?\1|[ \t]*\{#[a-zA-Z0-9_-]+\}/g;
 
 /** The blog-only "**Skip to:**" jump-nav line (dead on dev.to — no heading ids). */
 const SKIP_TO_REGEX = /^\s*\*\*Skip to:\*\*/;
+
+// Shiki notation marker at the end of a code line — `// [!code highlight]`,
+// `# [!code ++]`, `/* [!code --] */`, `<!-- [!code focus] -->`. dev.to's
+// highlighter knows nothing about these and would print them verbatim, so
+// the publish path strips them. The optional comment opener/closer around
+// the bracket goes too — a bare trailing `//` is worse than no marker.
+const NOTATION_MARKER_REGEX =
+  /\s*(?:\/\/|#|\/\*|<!--|--|;;?)?\s*\[!code [^\]]+\]\s*(?:\*\/|-->)?\s*$/;
+/** Specifically a REMOVED-line marker (`[!code --]`, with optional `:N`). */
+const NOTATION_REMOVE_REGEX = /\[!code --(?::\d+)?\]/;
 
 /** Check if a hostname is the blog's own domain. */
 function isSiteHost(hostname) {
@@ -235,7 +249,8 @@ export function collectDevtoLinks(body, articleSlug) {
 /**
  * Transform a dev.to body: drop the blog-only heading anchors + jump-nav
  * dev.to can't render, then route every inline link through /go/. Pure and
- * idempotent; fenced code blocks pass through byte-identical.
+ * idempotent; fenced code blocks pass through byte-identical except for
+ * Shiki notation markers (stripped; `[!code --]` lines dropped).
  *
  * dev.to gives rendered headings no `id`, so `## H {#anchor}` would print the
  * `{#anchor}` verbatim and `[x](#anchor)` jump links would have no target. We
@@ -256,6 +271,16 @@ export function transformBodyForDevto(body, articleSlug) {
       continue;
     }
     if (inFence) {
+      // Shiki notation markers are blog-only render directives. A
+      // `[!code --]` line is the OLD code a reader is being told to
+      // delete — dev.to gets the post-diff state, same as the blog's
+      // copy button. Every other marker is stripped in place. Lines
+      // without markers pass through byte-identical.
+      if (NOTATION_MARKER_REGEX.test(line)) {
+        if (NOTATION_REMOVE_REGEX.test(line)) continue;
+        out.push(line.replace(NOTATION_MARKER_REGEX, ""));
+        continue;
+      }
       out.push(line);
       continue;
     }

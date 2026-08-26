@@ -64,19 +64,31 @@ const nextConfig: NextConfig = {
   // `/ingest/e/` -> `/ingest/e`, and posthog-js does not follow the redirect.
   skipTrailingSlashRedirect: true,
   async rewrites() {
-    return [
-      // Static assets (the recorder/surveys bundles) come from a different
-      // upstream host than the event API — order matters, this must precede
-      // the catch-all below or `:path*` swallows it.
-      {
-        source: "/ingest/static/:path*",
-        destination: "https://us-assets.i.posthog.com/static/:path*",
-      },
-      {
-        source: "/ingest/:path*",
-        destination: "https://us.i.posthog.com/:path*",
-      },
-    ];
+    return {
+      // `/articles/<slug>.md` — the raw-markdown twin every llms.txt entry
+      // links (served by app/md/[slug]/route.ts). beforeFiles is required:
+      // the `articles/[slug]` PAGE segment happily matches "foo.md" as a
+      // slug, so an afterFiles rewrite would never fire.
+      beforeFiles: [
+        {
+          source: "/articles/:slug.md",
+          destination: "/md/:slug",
+        },
+      ],
+      afterFiles: [
+        // Static assets (the recorder/surveys bundles) come from a different
+        // upstream host than the event API — order matters, this must precede
+        // the catch-all below or `:path*` swallows it.
+        {
+          source: "/ingest/static/:path*",
+          destination: "https://us-assets.i.posthog.com/static/:path*",
+        },
+        {
+          source: "/ingest/:path*",
+          destination: "https://us.i.posthog.com/:path*",
+        },
+      ],
+    };
   },
 
   // Security headers. All free — they ride on responses Vercel already sends.

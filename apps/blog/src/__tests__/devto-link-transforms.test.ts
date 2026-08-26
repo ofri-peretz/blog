@@ -430,3 +430,49 @@ describe("transformBodyForDevto", () => {
     expect(transformBodyForDevto(body, SLUG)).toBe(body);
   });
 });
+
+describe("shiki notation markers (fenced code)", () => {
+  const fence = [
+    "```ts",
+    "function validate(input: string) {",
+    "  return eval(input); // [!code --]",
+    "  return schema.parse(input); // [!code ++]",
+    "  audit(input); // [!code highlight]",
+    "}",
+    "```",
+  ].join("\n");
+
+  it("strips markers and drops removed lines — dev.to gets the post-diff code", () => {
+    const out = transformBodyForDevto(fence, SLUG);
+    expect(out).not.toContain("[!code");
+    // The removed (vulnerable) line goes entirely; kept lines lose only
+    // the trailing marker comment.
+    expect(out).not.toContain("eval(input)");
+    expect(out).toContain("  return schema.parse(input);");
+    expect(out).toContain("  audit(input);");
+  });
+
+  it("is idempotent and leaves marker-free fences byte-identical", () => {
+    const once = transformBodyForDevto(fence, SLUG);
+    expect(transformBodyForDevto(once, SLUG)).toBe(once);
+
+    const plain = "```ts\nconst a = 1; // not a marker\n```";
+    expect(transformBodyForDevto(plain, SLUG)).toBe(plain);
+  });
+
+  it("handles hash-comment and block-comment marker forms", () => {
+    const bash = "```bash\nnpm install pkg # [!code highlight]\n```";
+    expect(transformBodyForDevto(bash, SLUG)).toBe(
+      "```bash\nnpm install pkg\n```",
+    );
+    const css = "```css\na { color: red; } /* [!code --] */\nb { color: blue; } /* [!code ++] */\n```";
+    expect(transformBodyForDevto(css, SLUG)).toBe(
+      "```css\nb { color: blue; }\n```",
+    );
+  });
+
+  it("prose mentioning [!code ...] outside a fence is untouched", () => {
+    const prose = "Use the `[!code highlight]` marker to mark a line.";
+    expect(transformBodyForDevto(prose, SLUG)).toBe(prose);
+  });
+});
