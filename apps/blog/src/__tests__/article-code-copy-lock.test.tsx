@@ -16,6 +16,12 @@ const read = (rel: string): string =>
 
 const FENCED = "# Title\n\n## Section one\n\n```ts\nconst x = 1;\n```\n";
 
+// Whichever pipeline test runs first pays Shiki's cold highlighter
+// init (theme + oniguruma load) — measured over vitest's 5s default on
+// the CI runner while warm runs take ~30ms. The budget covers the cold
+// start only; it is not a license for slow assertions.
+const SHIKI_COLD_START_MS = 30_000;
+
 describe("the React article pipeline", () => {
   it("a fenced block becomes the DS CodeBlock with copy + language tag", async () => {
     const { node } = await renderArticleReact(FENCED, "test-slug");
@@ -29,7 +35,7 @@ describe("the React article pipeline", () => {
     // Shiki's own <pre> (inline light background and all) is dropped —
     // the DS figure owns the box with theme tokens.
     expect(html).not.toContain("shiki-themes");
-  });
+  }, SHIKI_COLD_START_MS);
 
   it("headings keep their ids and anchor wrap, and the TOC still collects", async () => {
     const { node, toc } = await renderArticleReact(FENCED, "test-slug");
@@ -37,7 +43,7 @@ describe("the React article pipeline", () => {
     expect(html).toContain('id="section-one"');
     expect(html).toContain('class="anchor"');
     expect(toc).toEqual([{ id: "section-one", label: "Section one" }]);
-  });
+  }, SHIKI_COLD_START_MS);
 
   it("a raw <pre> without <code> (article-embedded HTML) stays authored", async () => {
     const { node } = await renderArticleReact(
@@ -47,7 +53,7 @@ describe("the React article pipeline", () => {
     const html = renderToStaticMarkup(<>{node}</>);
     expect(html).toContain("plain preformatted");
     expect(html).not.toContain('data-slot="code-block-copy"');
-  });
+  }, SHIKI_COLD_START_MS);
 });
 
 describe("the copy receipt", () => {
