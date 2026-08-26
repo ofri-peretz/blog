@@ -114,13 +114,33 @@ describe("the copy receipt", () => {
 });
 
 describe("dark-mode highlighting survives the swap", () => {
+  const CSS = readFileSync(
+    path.resolve(__dirname, "../app/globals.css"),
+    "utf-8",
+  );
+
   it("globals scopes the --shiki-dark flip to the CodeBlock pre slot", () => {
-    const CSS = readFileSync(
-      path.resolve(__dirname, "../app/globals.css"),
-      "utf-8",
-    );
     expect(CSS).toContain('.dark [data-slot="code-block-pre"] span');
     expect(CSS).toContain("var(--shiki-dark)");
+  });
+
+  it("the AA token overrides ride the slot scope too", () => {
+    // The comment-colour (#6A737D → #8b949e, 3.72:1 regressed live) and
+    // constant-colour (#e36209 → #bc4c00) fixes were left scoped to
+    // `.shiki` when the swap dropped that element — dead CSS, caught by
+    // Lighthouse on production (a11y 100 → 97).
+    expect(CSS).toContain(
+      '.dark [data-slot="code-block-pre"] span[style*="--shiki-dark:#6A737D"]',
+    );
+    expect(CSS).toContain(
+      ':root:not(.dark) [data-slot="code-block-pre"] span[style*="color:#e36209"]',
+    );
+  });
+
+  it("no selector targets .shiki — that element no longer exists", () => {
+    // Any future .shiki-scoped rule is dead on arrival; comments may
+    // mention the class, selectors may not.
+    expect(CSS).not.toMatch(/^[^\n/]*\.shiki[^\n]*\{/m);
   });
 });
 
