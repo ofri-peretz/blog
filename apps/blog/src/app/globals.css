@@ -43,6 +43,19 @@
   --chart-3: oklch(0.62 0.16 264);
   --chart-4: oklch(0.7 0.18 60);
   --chart-5: oklch(0.62 0.16 320);
+  /* Viz chrome — grid/axis/crosshair for the vendored DS charts
+     (time-series.tsx). var() aliases of theme tokens, so both schemes
+     resolve without a .dark override: grid rides border (deliberately
+     decorative), axis + crosshair ride muted-foreground (4.5:1+ in
+     both modes — above the 3:1 non-text floor). Annotation marks map
+     to the closest blog tokens; the DS's info/warning have no blog
+     equivalent yet. */
+  --viz-grid: var(--border);
+  --viz-axis: var(--muted-foreground);
+  --viz-crosshair: var(--muted-foreground);
+  --viz-annotation-publish: var(--brand-orange);
+  --viz-annotation-release: var(--chart-3);
+  --viz-annotation-action: var(--chart-4);
   /* Strand pair — the woven brand gesture (interlace BRAND_PHILOSOPHY.md).
      strand-a is the mark's orange; strand-b is the doctrine's cool
      counter (steel blue, hue 230) — deliberately NOT the brand green:
@@ -177,6 +190,12 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-viz-grid: var(--viz-grid);
+  --color-viz-axis: var(--viz-axis);
+  --color-viz-crosshair: var(--viz-crosshair);
+  --color-viz-annotation-publish: var(--viz-annotation-publish);
+  --color-viz-annotation-release: var(--viz-annotation-release);
+  --color-viz-annotation-action: var(--viz-annotation-action);
   --color-beam-from: var(--beam-from);
   --color-beam-to: var(--beam-to);
   --color-meteor-trail: var(--meteor-trail);

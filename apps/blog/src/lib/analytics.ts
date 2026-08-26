@@ -72,7 +72,28 @@ export type BlogEvent =
   /** Do weekly-re-earned numbers pull readers into the full public run? */
   | { name: "article:bench_receipt_click"; props: { slug: string } }
   /** Does the resume offer chain a return visit into the next part? */
-  | { name: "series:resume_click"; props: { to_slug: string } };
+  | { name: "series:resume_click"; props: { to_slug: string } }
+  /**
+   * Do visitors actually compose on the Loom, or only look at the
+   * default weave? `series` is comma-joined catalog ids — our own
+   * vocabulary, never user input.
+   */
+  | {
+      name: "loom:weave_change";
+      props: {
+        series: string;
+        form: "weave" | "grid";
+        window: "90d" | "1y" | "all";
+        normalize: "abs" | "idx";
+      };
+    }
+  /** Do the curated preset stories work as entry points into weaving? */
+  | { name: "loom:preset_click"; props: { preset: string } }
+  /**
+   * Is a composed weave worth sharing? Fires only on a successful
+   * clipboard write, mirroring article:code_copy_click.
+   */
+  | { name: "loom:permalink_copy"; props: { series: string } };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<

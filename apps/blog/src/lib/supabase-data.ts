@@ -33,11 +33,13 @@ import type { ShortLinkRow } from "@/app/go/resolver";
 
 import "server-only";
 
-const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
+// Exported for sibling cached fetchers (loom-corpus.ts) so every Supabase
+// read in the app shares one TTL and one invalidation channel.
+export const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
 // Cache-bust tags. revalidateTag('ratchet') from a webhook flips every entry
 // tagged below in a single call.
-const TAG_RATCHET = "ratchet";
+export const TAG_RATCHET = "ratchet";
 
 // Separate tag for the /go/ short-link table: routing rows change on
 // publish (publisher upsert), not on the daily metrics ingest, so they get
@@ -70,7 +72,7 @@ const getClient = cache((): SupabaseClient | null => {
  * Callers decide how to degrade — and they degrade for one request, not twelve
  * hours.
  */
-function requireClient(what: string): SupabaseClient {
+export function requireClient(what: string): SupabaseClient {
   const client = getClient();
   if (!client) {
     throw new Error(

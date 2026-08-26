@@ -38,6 +38,9 @@ const FROZEN_EVENTS = [
   "article:code_copy_click",
   "article:bench_receipt_click",
   "series:resume_click",
+  "loom:weave_change",
+  "loom:preset_click",
+  "loom:permalink_copy",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -107,5 +110,21 @@ describe("each surface fires its event", () => {
     expect(THREADS).toContain("from_slug: currentSlug");
     expect(THREADS).toContain("to_slug: item.slug");
     expect(THREADS).toContain("direction,");
+  });
+
+  it("the loom fires weave_change on every applied state", () => {
+    const LOOM = read("components/loom/loom-composer.tsx");
+    expect(LOOM).toContain('track("loom:weave_change"');
+    expect(LOOM).toContain("series: next.series.join(\",\")");
+  });
+
+  it("loom presets and permalink copy each carry their own event", () => {
+    const LOOM = read("components/loom/loom-composer.tsx");
+    expect(LOOM).toContain('track("loom:preset_click", { preset: preset.id })');
+    // Copy fires only AFTER the clipboard write resolves — same honesty
+    // rule as article:code_copy_click.
+    expect(LOOM).toMatch(
+      /await navigator\.clipboard\.writeText[\s\S]{0,200}track\("loom:permalink_copy"/,
+    );
   });
 });
