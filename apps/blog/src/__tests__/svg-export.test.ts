@@ -11,10 +11,14 @@ import { describe, expect, it } from "vitest";
 
 import { inlineSvgStyles } from "../lib/svg-export";
 
+const SVG_NS =
+  // eslint-disable-next-line browser-security/detect-mixed-content, browser-security/no-http-urls -- XML NAMESPACE identifier (createElementNS), never fetched; http:// is its spec-frozen spelling
+  "http://www.w3.org/2000/svg";
+
 const chart = (): SVGSVGElement => {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 100 50");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const path = document.createElementNS(SVG_NS, "path");
   path.setAttribute("d", "M0,0L100,50");
   path.setAttribute("class", "stroke-chart-1");
   svg.appendChild(path);
