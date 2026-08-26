@@ -32,6 +32,7 @@ const FROZEN_EVENTS = [
   "article:playground_cta_click",
   "article:thread_click",
   "corpus_map:your_thread",
+  "article:plugin_card_click",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -62,6 +63,12 @@ describe("each surface fires its event", () => {
     expect(MAP).toContain("read_count: trace.ids.length");
     // The thread itself never leaves the browser — no slugs in the event.
     expect(MAP).not.toMatch(/your_thread[\s\S]{0,120}slugs?:/);
+  });
+
+  it("plugin cards are TrackedLinks carrying slug + package", () => {
+    const CARDS = read("components/article-plugins.tsx");
+    expect(CARDS).toContain('event="article:plugin_card_click"');
+    expect(CARDS).toContain("slug: currentSlug, package: p.name");
   });
 
   it("thread links are TrackedLinks with from/to + direction", () => {

@@ -1,0 +1,41 @@
+# Weekly plugin-stats refresh — keeps the article cards' "Live from
+# npm, synced <date>" claim true. Same shape as the vendored-drift
+# check: a cron, never PR CI, shipping its result as a reviewed PR
+# (the bench-refresh pattern — protected main takes no direct pushes).
+name: Plugin stats refresh
+
+on:
+  schedule:
+    - cron: "30 9 * * 1" # Mondays 09:30 UTC, after the drift check
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Sync stats from npm
+        run: node apps/blog/scripts/sync-plugin-stats.mjs
+      - name: Ship the refresh as a PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet apps/blog/src/data/plugin-stats.json; then
+            echo "stats unchanged — nothing to ship"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/blog/src/data/plugin-stats.json
+          git commit -m "chore(blog): weekly plugin-stats refresh $(date -u +%F)"
+          git push --force origin HEAD:chore/plugin-stats-refresh
+          gh pr create --base main --head chore/plugin-stats-refresh \
+            --title "chore(blog): weekly plugin-stats refresh $(date -u +%F)" \
+            --body "Automated weekly npm stats sync for the live article plugin cards. Numbers only — review is a sanity glance." \
+            2>&1 | tee /tmp/pr.out || grep -q "already exists" /tmp/pr.out
