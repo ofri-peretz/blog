@@ -29,7 +29,6 @@
 import * as React from "react";
 
 import { RadialWeave } from "@/components/ui/radial-weave";
-import { StrandField } from "@/components/ui/strand-field";
 import { TimeSeries } from "@/components/ui/time-series";
 import { Toggle, toggleVariants } from "@/components/ui/toggle";
 import { track } from "@/lib/analytics";
@@ -72,8 +71,6 @@ export function LoomComposer({
 }) {
   const [state, setState] = React.useState(initialState);
   const [copied, setCopied] = React.useState(false);
-  // The strand field's pose — theatre, so deliberately NOT URL state.
-  const [lifted, setLifted] = React.useState(true);
   const copyTimerRef = React.useRef<number | null>(null);
   const exportRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -167,15 +164,6 @@ export function LoomComposer({
   // and reset the crosshair when the drawn geometry changes BY VALUE —
   // a remount here would throw that continuity away.
 
-  /** The field's gesture: pull a thread to the front of the weave. */
-  const pullThread = (id: string) => {
-    if (state.series[0] === id) return;
-    apply({
-      ...state,
-      series: [id, ...state.series.filter((s) => s !== id)],
-    });
-  };
-
   const exportWeave = () => {
     // The button is not rendered on the grid form (several plots, no
     // single "the chart"); this guard states the same invariant where
@@ -197,40 +185,11 @@ export function LoomComposer({
 
   return (
     <div data-testid="loom-composer" className="flex flex-col gap-8">
-      {/* The strand field — the composed weave lifted into depth
-          (interlace#77's StrandField, CSS 3D, zero dependencies). Pure
-          theatre over the accessible thread pills below: aria-hidden,
-          pointer-only, and honest about it in the caption. Clicking a
-          strand pulls that thread to the front of the weave. */}
-      <div className="flex flex-col gap-2">
-        <StrandField
-          data-testid="loom-field"
-          series={woven.map((w) => ({
-            id: w.series.id,
-            label: w.series.label,
-            points: w.points,
-          }))}
-          activeIds={state.series}
-          onStrandSelect={pullThread}
-          woven={!lifted}
-          className="h-56 md:h-72"
-        />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Toggle
-            variant="pill"
-            size="xs"
-            data-testid="loom-field-lift"
-            pressed={lifted}
-            onPressedChange={setLifted}
-          >
-            {lifted ? "Weave flat" : "Lift the weave"}
-          </Toggle>
-          <p className="text-xs text-muted-foreground">
-            Each thread shows its own shape — scales differ up here. The
-            chart below shares one honest axis.
-          </p>
-        </div>
-      </div>
+      {/* No 3D field above the chart, by verdict: it rendered the SAME
+          threads the honest chart below already shows — a duplicate with
+          worse legibility, not an exhibit. The DS StrandField stays
+          released for the guided walk, where depth can RESOLVE INTO the
+          chart instead of sitting beside it. */}
 
       {/* Presets — the guided entry. Each is just a URL state. */}
       <div

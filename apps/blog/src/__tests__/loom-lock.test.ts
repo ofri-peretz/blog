@@ -168,19 +168,18 @@ describe("the Living Weave — waves 2+3 ride the DS, not local forks", () => {
     );
   });
 
-  it("the radial form and the field are the vendored DS components", () => {
+  it("the radial form is the vendored DS component", () => {
     expect(COMPOSER).toContain("<RadialWeave");
-    expect(COMPOSER).toContain("<StrandField");
     expect(COMPOSER).toContain('from "@/components/ui/radial-weave"');
-    expect(COMPOSER).toContain('from "@/components/ui/strand-field"');
   });
 
-  it("the field is wired as theatre over the accessible pills", () => {
-    // Selection through the field is the pull-to-front shortcut; the
-    // Toggle pills remain the accessible path (DS-first lock above).
-    expect(COMPOSER).toContain("onStrandSelect={pullThread}");
-    // The pose toggle is a real DS Toggle, not a hand-rolled button.
-    expect(COMPOSER).toMatch(/data-testid="loom-field-lift"[\s\S]{0,120}pressed={lifted}/);
+  it("no 3D field duplicates the chart — removed by verdict, stays removed", () => {
+    // The field rendered the SAME threads the honest chart already
+    // shows, directly above it (user, 2026-08-26: "looks redundant").
+    // Depth returns only when it can RESOLVE INTO the chart (the guided
+    // walk), never as a second rendering beside it.
+    expect(COMPOSER).not.toContain("<StrandField");
+    expect(COMPOSER).not.toContain('from "@/components/ui/strand-field"');
   });
 
   it("radial is a first-class URL form", () => {
@@ -199,7 +198,6 @@ describe("vendored chart stack stays under drift watch", () => {
   const VENDORED_FILES = [
     "components/ui/time-series.tsx",
     "components/ui/radial-weave.tsx",
-    "components/ui/strand-field.tsx",
     "components/ui/series-table.tsx",
     "components/ui/scale.ts",
     "components/ui/data-state.tsx",
