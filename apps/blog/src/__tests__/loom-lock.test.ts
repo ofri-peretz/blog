@@ -48,9 +48,22 @@ describe("quota safety — visitors never touch an upstream API", () => {
 });
 
 describe("no internal series leak", () => {
-  it("metric_snapshots is read through enumerated source+kind picks", () => {
-    expect(CORPUS).toContain('.in("source"');
-    expect(CORPUS).toContain('.in("kind"');
+  it("metric_snapshots is fetched by exact (source, kind) pairs — the DB is the boundary", () => {
+    // Pairwise .or(and(source.eq…,kind.eq…)), never a cross-product
+    // .in()×.in(): an internal series whose source and kind each appear
+    // in the pick list in a different combination must not even be
+    // fetched (review, CWE-284).
+    expect(CORPUS).toContain("and(source.eq.");
+    expect(CORPUS).toContain(",kind.eq.");
+    expect(CORPUS).not.toContain('.in("source"');
+  });
+
+  it("npm weekly cutoff derives from npm's own newest row, not the global max", () => {
+    // A partial ingest (GitHub succeeds, npm fails) must not un-drop
+    // npm's trailing partial week (review).
+    expect(CORPUS).toContain("npmObservedThrough");
+    expect(CORPUS).toMatch(/weeklyTotals\(\s*\[\.\.\.totalByDay[\s\S]{0,120}npmObservedThrough/);
+    expect(CORPUS).toContain("weeklyTotals(daily, npmObservedThrough)");
   });
 
   it("the pick list stays clear of internal sources", () => {

@@ -181,8 +181,17 @@ async function assembleLoomCorpus(): Promise<LoomCorpus> {
     client
       .from("metric_snapshots")
       .select("source, kind, observed_on, value")
-      .in("source", [...new Set(SNAPSHOT_PICKS.map((p) => p.source))])
-      .in("kind", [...new Set(SNAPSHOT_PICKS.map((p) => p.kind))])
+      // Exact (source, kind) pairs, not a cross-product .in()×.in()
+      // (review catch, CWE-284): the pairwise .or() makes the DB query
+      // itself the enforcement boundary, so an internal series whose
+      // source and kind each appear in the pick list — just in a
+      // different combination — is never even fetched. The in-memory
+      // pairwise filter below stays as the belt.
+      .or(
+        SNAPSHOT_PICKS.map(
+          (p) => `and(source.eq.${p.source},kind.eq.${p.kind})`,
+        ).join(","),
+      )
       .order("observed_on", { ascending: true }),
   ]);
   if (pluginsRes.error) {
@@ -207,6 +216,16 @@ async function assembleLoomCorpus(): Promise<LoomCorpus> {
     ...creators.map((r) => r.observed_on),
     ...snapshots.map((r) => r.observed_on),
   ].reduce((a, b) => (a > b ? a : b), LOOM_EPOCH);
+
+  // npm's weekly cutoff derives from npm's OWN newest row, never the
+  // global max (review catch): a partial ingest — GitHub cron succeeds,
+  // npm cron fails — pushes the global date past npm's data, and the
+  // trailing npm week would stop being dropped, drawing the exact
+  // Monday-morning cliff weeklyTotals exists to prevent.
+  const npmObservedThrough = pluginDaily.reduce(
+    (a, r) => (r.observed_on > a ? r.observed_on : a),
+    LOOM_EPOCH,
+  );
 
   const series: LoomSeries[] = [];
 
@@ -237,7 +256,7 @@ async function assembleLoomCorpus(): Promise<LoomCorpus> {
     unit: "downloads/week",
     points: weeklyTotals(
       [...totalByDay.entries()].map(([day, value]) => ({ day, value })),
-      observedThrough,
+      npmObservedThrough,
     ),
     provenance: NPM_PROVENANCE,
   });
@@ -252,7 +271,7 @@ async function assembleLoomCorpus(): Promise<LoomCorpus> {
         group: "npm" as const,
         label: name,
         unit: "downloads/week",
-        points: weeklyTotals(daily, observedThrough),
+        points: weeklyTotals(daily, npmObservedThrough),
         provenance: NPM_PROVENANCE,
         recent: daily.slice(-28).reduce((s, d) => s + d.value, 0),
       };

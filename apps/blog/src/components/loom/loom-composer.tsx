@@ -69,6 +69,18 @@ export function LoomComposer({
 }) {
   const [state, setState] = React.useState(initialState);
   const [copied, setCopied] = React.useState(false);
+  const copyTimerRef = React.useRef<number | null>(null);
+
+  // Clear a pending "Copied" reset if the composer unmounts inside the
+  // 2s window (review nit — harmless under React 18, still tidy).
+  React.useEffect(
+    () => () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const byId = React.useMemo(
     () => new Map(corpus.series.map((s) => [s.id, s])),
@@ -121,7 +133,10 @@ export function LoomComposer({
     }
     track("loom:permalink_copy", { series: state.series.join(",") });
     setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+    if (copyTimerRef.current !== null) {
+      window.clearTimeout(copyTimerRef.current);
+    }
+    copyTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
   };
 
   const active = state.series
