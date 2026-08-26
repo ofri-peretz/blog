@@ -6,7 +6,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PackageCard } from "@/components/npm/package-card";
-import { getNpmPagePackages } from "@/lib/npm-page-data";
+import {
+  getNpmPageLifetimeTotal,
+  getNpmPagePackages,
+} from "@/lib/npm-page-data";
 
 // force-dynamic, NOT revalidate: the build runs in GitHub Actions, where
 // SUPABASE_URL / SUPABASE_ANON_KEY are not available — `vercel pull` cannot
@@ -50,10 +53,11 @@ async function PackageGrid() {
       </p>
     );
   }
-  const totalLifetime = packages.reduce(
-    (s, p) => s + p.downloadsLifetime,
-    0,
-  );
+  // Subset sum — only the packages rendered below. Used as the degraded
+  // fallback for the headline, and nothing else.
+  const listedLifetime = packages.reduce((s, p) => s + p.downloadsLifetime, 0);
+  // Headline: the site-wide figure the homepage shows, from the one source.
+  const totalLifetime = await getNpmPageLifetimeTotal(listedLifetime);
   const total30d = packages.reduce((s, p) => s + p.downloads30d, 0);
   return (
     <div className="flex flex-col gap-8">
@@ -63,7 +67,7 @@ async function PackageGrid() {
       <dl className="grid grid-cols-1 gap-4 rounded-xl border bg-card p-6 sm:grid-cols-3">
         <div>
           <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Packages
+            Packages listed
           </dt>
           <dd className="mt-1 text-2xl font-semibold tabular-nums">
             {packages.length}
@@ -79,7 +83,7 @@ async function PackageGrid() {
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Downloads (lifetime, these packages)
+            Downloads (lifetime, all packages)
           </dt>
           <dd className="mt-1 text-2xl font-semibold tabular-nums">
             {fmt(totalLifetime)}
@@ -123,9 +127,11 @@ export default function NpmPage() {
         </h1>
         <p className="max-w-2xl text-muted-foreground">
           Every actively-promoted package, with downloads over time, install
-          commands, and links to source. Totals here cover these packages;
-          the homepage counts everything ever published. Refreshed daily
-          from the npm registry.
+          commands, and links to source. The lifetime total is the site-wide
+          figure — the same number the homepage shows, covering everything
+          ever published; the cards below cover the packages still actively
+          promoted, so their totals sum to less. Refreshed daily from the npm
+          registry.
         </p>
       </header>
 

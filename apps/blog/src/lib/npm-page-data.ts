@@ -11,7 +11,10 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
-import { getCachedPluginsDailyRaw } from "@/lib/supabase-data";
+import {
+  getCachedNpmAlltimeTotal,
+  getCachedPluginsDailyRaw,
+} from "@/lib/supabase-data";
 
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
@@ -131,4 +134,26 @@ async function loadNpmPagePackages(): Promise<NpmPagePackage[]> {
     .sort((a, b) => b.downloadsLifetime - a.downloadsLifetime);
 
   return packages;
+}
+
+// Site-wide lifetime downloads — the SAME v_npm_alltime_ecosystem read that
+// /api/homepage-stats uses (getCachedNpmAlltimeTotal). /npm used to headline
+// its own sum over the visible packages instead, so the homepage said 422,330
+// while /npm said 405,707: the same words over two different scopes. That is
+// the 155k-vs-192k bug from PR #51 growing back on the other page, so the
+// headline now comes from the one source and the per-card "All time" values
+// stay scoped to the packages actually listed.
+//
+// `fallback` is the subset sum: on a Supabase blip we show a slightly low
+// number rather than 500-ing the page. Not cached here — getCachedNpmAlltimeTotal
+// already owns the 12h/tag:'ratchet' cache, and a rejected promise is not cached.
+export async function getNpmPageLifetimeTotal(
+  fallback: number,
+): Promise<number> {
+  try {
+    return await getCachedNpmAlltimeTotal();
+  } catch (err) {
+    console.error("[npm-page-data] ecosystem lifetime", err);
+    return fallback;
+  }
 }
