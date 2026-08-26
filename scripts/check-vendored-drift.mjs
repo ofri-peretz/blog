@@ -28,7 +28,6 @@ const VENDORED = {
   "components/ui/skeleton-variants.ts": "primitives/skeleton-variants.ts",
   "components/ui/time-series.tsx": "charts/time-series.tsx",
   "components/ui/radial-weave.tsx": "charts/radial-weave.tsx",
-  "components/ui/strand-field.tsx": "effects/strand-field.tsx",
   "components/ui/series-table.tsx": "charts/series-table.tsx",
   "components/ui/scale.ts": "charts/scale.ts",
   "components/ui/data-state.tsx": "primitives/data-state.tsx",
