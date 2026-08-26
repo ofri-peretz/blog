@@ -1,26 +1,24 @@
 import numbers from "@/data/interlace-numbers.json";
-import { getCachedNpmAlltimeTotal } from "@/lib/supabase-data";
 
 const SITE_URL = "https://ofriperetz.dev";
 
-// Compact form for prose ("433K"), so the JSON-LD blurb doesn't churn on
-// every single download while still tracking the real figure.
-const compact = (n: number) =>
-  new Intl.NumberFormat("en-US", { notation: "compact" }).format(n);
-
-// Was a hardcoded "35K+ downloads" — 12x understated by 2026-08-26 (the real
-// figure was 433,686) and injected into every page's Person schema, which is
-// what search engines read. Any metric frozen into static metadata rots; this
-// now comes from the same v_npm_alltime_ecosystem read the homepage, /npm and
-// /scorecard use, so all four state one number.
-const buildPersonSchema = (npmDownloads: number) => ({
+// The description carried a hardcoded "35K+ downloads" until 2026-08-26, by
+// which point the real figure was 433,686 — a 12x understatement shipped to
+// search engines on every page. A download count has no business in static
+// metadata: it rots the moment it is written. Reading it live was worse — it
+// put a Supabase round-trip in the request path of EVERY page on the site,
+// because this renders in the root layout, all to decorate a blurb. The claim
+// is simply gone. Downloads are stated where they are measured and refreshed:
+// the homepage impact card, /npm, and /scorecard, all on v_npm_alltime_ecosystem.
+const personSchema = {
   "@context": "https://schema.org",
   "@type": "Person",
   name: "Ofri Peretz",
   url: SITE_URL,
   image: `${SITE_URL}/ofri-profile.webp`,
   jobTitle: "Engineering Leader",
-  description: `Engineering Leader & Open Source Creator. Building security-focused ESLint plugins with ${compact(npmDownloads)}+ downloads.`,
+  description:
+    "Engineering Leader & Open Source Creator. Building security-focused ESLint plugins.",
   worksFor: {
     "@type": "Organization",
     name: "Snappy",
@@ -44,7 +42,7 @@ const buildPersonSchema = (npmDownloads: number) => ({
     "Open Source Software",
     "AI-Native Development",
   ],
-});
+};
 
 const websiteSchema = {
   "@context": "https://schema.org",
@@ -70,21 +68,7 @@ const ecosystemSchema = {
   url: "https://github.com/ofri-peretz/eslint",
 };
 
-export async function StructuredData() {
-  // Degrade to omitting the claim rather than 500-ing the whole layout, and
-  // never fall back to a stale literal — a wrong number in schema.org markup
-  // is worse than no number.
-  let npmDownloads: number | null = null;
-  try {
-    npmDownloads = await getCachedNpmAlltimeTotal();
-  } catch (err) {
-    console.error("[structured-data] npm total", err);
-  }
-  const personSchema = buildPersonSchema(npmDownloads ?? 0);
-  if (!npmDownloads) {
-    personSchema.description =
-      "Engineering Leader & Open Source Creator. Building security-focused ESLint plugins.";
-  }
+export function StructuredData() {
   return (
     <>
       <script

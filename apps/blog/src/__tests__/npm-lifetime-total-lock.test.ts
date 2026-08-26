@@ -104,32 +104,28 @@ describe("JSON-LD download claim lock", () => {
   /**
    * 2026-08-26: the site-wide Person schema hardcoded "35K+ downloads" while
    * every rendered surface said 433,686 — a 12x understatement shipped to
-   * search engines on every page. A metric frozen into static metadata has no
-   * mechanism to stay true.
+   * search engines on every page.
+   *
+   * The first fix read the live total instead. That was worse: StructuredData
+   * renders in the ROOT LAYOUT, so it put a Supabase round-trip in the request
+   * path of every page on the site to decorate an SEO blurb. The claim is now
+   * simply absent — a metric belongs where it is measured and refreshed, not
+   * frozen into static metadata.
    */
-  it("states no hardcoded download figure", () => {
-    // Strip comments first — the block explaining the old "35K+ downloads"
-    // literal is documentation, not a claim the page emits.
+  it("states no download figure at all", () => {
+    // Strip comments — the block explaining the old literal is documentation,
+    // not a claim the page emits.
     const code = STRUCTURED_DATA.replace(/\/\*[\s\S]*?\*\//g, "").replace(
       /^\s*\/\/.*$/gm,
       "",
     );
     expect(code).not.toMatch(/\d+K\+? downloads/);
+    expect(code).not.toMatch(/downloads/i);
   });
 
-  it("derives the figure from the shared ecosystem read", () => {
-    expect(STRUCTURED_DATA).toContain("getCachedNpmAlltimeTotal");
-    // Must be awaited in the component, not captured at module scope, or it
-    // freezes at first import exactly like the literal it replaced.
-    expect(STRUCTURED_DATA).toMatch(
-      /export async function StructuredData[\s\S]*await getCachedNpmAlltimeTotal\(\)/,
-    );
-  });
-
-  it("drops the claim entirely when the read fails", () => {
-    // A stale-but-plausible number in schema.org markup is worse than silence.
-    expect(STRUCTURED_DATA).toMatch(
-      /ESLint plugins\.\"?\s*;?\s*$/m,
-    );
+  it("stays synchronous, so the root layout keeps no data dependency", () => {
+    expect(STRUCTURED_DATA).toMatch(/export function StructuredData\(\)/);
+    expect(STRUCTURED_DATA).not.toContain("export async function StructuredData");
+    expect(STRUCTURED_DATA).not.toContain("getCachedNpmAlltimeTotal");
   });
 });
