@@ -17,6 +17,7 @@ import {
   type TimelineMapItem,
   type TimelineMapTrace,
 } from "@/components/ui/timeline-map";
+import { TrackedLink } from "@/components/tracked-link";
 import { track } from "@/lib/analytics";
 import {
   parseThreadSnapshot,
@@ -24,6 +25,7 @@ import {
   subscribeThread,
   threadSnapshot,
 } from "@/lib/reading-history";
+import { pickResume, type SeriesIndex } from "@/lib/series-resume";
 
 // Module constant, not inline: the axis object's identity feeds the
 // layout memo — a fresh object per render would recompute it every time.
@@ -34,8 +36,11 @@ const MINUTES_AXIS: TimelineMapAxis = {
 
 export function WovenCorpusMap({
   items,
+  seriesIndex,
 }: {
   items: readonly TimelineMapItem[];
+  /** Public series structure for the resume offer (server-built). */
+  seriesIndex: SeriesIndex;
 }) {
   // The reader's thread: first-read order from localStorage, narrowed to
   // slugs that are actually on the map. useSyncExternalStore, not
@@ -60,6 +65,15 @@ export function WovenCorpusMap({
       label: `Your thread: ${readSlugs.length} of ${items.length} read.`,
     };
   }, [readSlugs, items.length]);
+
+  // The resume offer: the reader's most recent series engagement,
+  // continued forward. Uses the FULL thread (not the map-narrowed
+  // readSlugs — a read article filtered off the map still counts as
+  // read). Null renders nothing — the quiet default.
+  const resume = useMemo(
+    () => pickResume(parseThreadSnapshot(rawThread), seriesIndex),
+    [rawThread, seriesIndex],
+  );
 
   // The wow receipt: how many map views actually show a thread. Once per
   // MOUNT by design (review): this is an IMPRESSION, like a pageview —
@@ -101,6 +115,20 @@ export function WovenCorpusMap({
               The warm strand is you
             </span>{" "}
             — {trace.label.toLowerCase()}
+          </>
+        )}
+        {resume && (
+          <>
+            {" "}
+            Resume {resume.series} ({resume.readInSeries}/{resume.total}):{" "}
+            <TrackedLink
+              href={`/articles/${resume.next.slug}`}
+              event="series:resume_click"
+              props={{ to_slug: resume.next.slug }}
+              className="text-foreground underline underline-offset-4 hover:text-foreground/80"
+            >
+              {resume.next.title} →
+            </TrackedLink>
           </>
         )}
       </figcaption>

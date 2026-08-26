@@ -5,8 +5,9 @@ import { ArticleCard } from "@/components/ui/article-card";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { localCover } from "@/lib/cover";
-import { getAllArticles } from "@/lib/source";
+import { getAllArticles, getSeriesContext } from "@/lib/source";
 import { WovenCorpusMap } from "@/components/woven-corpus-map";
+import type { SeriesIndex } from "@/lib/series-resume";
 import { HeroStrand } from "@/components/ui/hero-strand";
 import type { TimelineMapItem } from "@/components/ui/timeline-map";
 import { extractInternalLinks } from "@/lib/corpus-links";
@@ -62,6 +63,23 @@ export default async function ArticlesPage(props: PageProps) {
   // by topic and time budget — when a piece shipped serves the author.
   // A bonus of the number axis: no date filter, so literally every
   // published article lands on the map.
+  // The resume offer's public structure: slug → series plus each
+  // series' ordered parts. One getSeriesContext call per series so the
+  // ordering has exactly one source of truth (buildSeriesContext).
+  const seriesIndex: SeriesIndex = { seriesOf: {}, parts: {} };
+  for (const a of all) {
+    const name = a.frontmatter.series;
+    if (!name) continue;
+    seriesIndex.seriesOf[a.slug] = name;
+    if (!seriesIndex.parts[name]) {
+      const ctx = getSeriesContext(a.slug);
+      seriesIndex.parts[name] = (ctx?.parts ?? []).map((p) => ({
+        slug: p.slug,
+        title: p.title,
+      }));
+    }
+  }
+
   const knownSlugs = new Set(all.map((a) => a.slug));
   const maxReactions = Math.max(1, ...all.map((a) => a.frontmatter.reactions ?? 0));
   const mapItems: TimelineMapItem[] = all.map((a) => ({
@@ -108,7 +126,7 @@ export default async function ArticlesPage(props: PageProps) {
               </Link>
             </p>
           )}
-          <WovenCorpusMap items={mapItems} />
+          <WovenCorpusMap items={mapItems} seriesIndex={seriesIndex} />
         </header>
 
         {articles.length === 0 ? (

@@ -1,3 +1,4 @@
+import { ReadTick } from "@/components/read-tick";
 import { TrackedLink } from "@/components/tracked-link";
 import type { SeriesContext } from "@/lib/source";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,7 @@ export function SeriesBanner({
                 >
                   {number}
                   {part.title}
+                  <ReadTick slug={part.slug} />
                 </span>
               ) : (
                 <TrackedLink
@@ -81,6 +83,7 @@ export function SeriesBanner({
                 >
                   {number}
                   {part.title}
+                  <ReadTick slug={part.slug} />
                 </TrackedLink>
               )}
             </li>

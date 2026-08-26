@@ -37,6 +37,7 @@ const FROZEN_EVENTS = [
   "quick_open:result_click",
   "article:code_copy_click",
   "article:bench_receipt_click",
+  "series:resume_click",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -86,6 +87,12 @@ describe("each surface fires its event", () => {
     expect(SEARCH).not.toMatch(
       /track\("quick_open:(palette_view|result_click)"[\s\S]{0,120}quer/,
     );
+  });
+
+  it("the resume offer is a TrackedLink carrying the destination", () => {
+    const MAP = read("components/woven-corpus-map.tsx");
+    expect(MAP).toContain('event="series:resume_click"');
+    expect(MAP).toContain("props={{ to_slug: resume.next.slug }}");
   });
 
   it("the bench receipt's run link is a TrackedLink carrying the slug", () => {
