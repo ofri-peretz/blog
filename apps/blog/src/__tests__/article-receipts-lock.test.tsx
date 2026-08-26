@@ -28,6 +28,7 @@ describe("receipts contract (source pins)", () => {
     // truthy check is the CORRECT guard here, and this comment-pin
     // records that it is deliberate.
     expect(PAGE).toMatch(/fm\.reactions \? \{ label: "reactions"/);
+    expect(PAGE).toMatch(/fm\.comments \? \{ label: "comments"/);
     expect(PAGE).toMatch(/fm\.views \? \{ label: "views"/);
     expect(PAGE).toContain("DATA GAP");
   });
