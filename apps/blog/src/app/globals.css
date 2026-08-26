@@ -130,6 +130,16 @@
   --color-brand-snappy: var(--brand-snappy);
   --color-strand-a: var(--strand-a);
   --color-strand-b: var(--strand-b);
+  /* DS foundation tokens the vendored code-block + skeleton consume
+     (values from interlace foundation.css — p-md, gap-sm, text-ui-sm,
+     text-code utilities generate from these). */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --text-ui-sm: 0.8125rem;
+  --text-ui-sm--line-height: 1.5;
+  --text-code: 0.875rem;
+  --text-code--line-height: 1.6;
   /* The draw verb (DS tokens.css `strand-draw`, vendored with the
      HeroStrand): pathLength=100 normalizes every path onto this one
      keyframe; 600ms is the doctrine's draw-gesture ceiling. */
@@ -270,9 +280,15 @@ body {
    3.49:1 the audit kept reporting came from.
 
    !important is required: Shiki writes the light theme as inline style, which
-   outranks any class. */
-.dark .shiki,
-.dark .shiki span {
+   outranks any class.
+
+   Scoped to the DS CodeBlock's pre slot, not `.shiki`: article code now
+   renders through the vendored CodeBlock, which drops Shiki's own <pre>
+   (and its inline light background — the figure's bg-card token owns the
+   box in both themes). Only the per-span token colours remain inline, so
+   only spans need the dark flip. A span without a --shiki-dark-* var
+   leaves that declaration invalid-at-computed-value — harmlessly inert. */
+.dark [data-slot="code-block-pre"] span {
   color: var(--shiki-dark) !important;
   background-color: var(--shiki-dark-bg) !important;
   font-style: var(--shiki-dark-font-style) !important;

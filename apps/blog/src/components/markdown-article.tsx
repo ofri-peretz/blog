@@ -11,6 +11,9 @@ import rehypeSanitize, {
   type Options as SanitizeOptions,
 } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
+import { toJsxRuntime, type Jsx } from "hast-util-to-jsx-runtime";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
+import { ArticleCodeBlock } from "./article-code-block";
 import { preprocessMarkdown } from "@/lib/markdown";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +25,12 @@ interface MarkdownArticleProps extends React.HTMLAttributes<HTMLElement> {
    * included — runs once per page, not twice.
    */
   renderedHtml?: string;
+  /**
+   * Pre-compiled React tree from `renderArticleReact`. Takes precedence
+   * over `renderedHtml`/`body` — the article page uses this path so code
+   * fences render through the DS CodeBlock.
+   */
+  children?: React.ReactNode;
   /** Stable selector for E2E tests; consumer provides — no default. */
   "data-testid"?: string;
 }
@@ -236,33 +245,48 @@ function rehypeCollectToc() {
   };
 }
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  // allowDangerousHtml + rehypeRaw lets us parse inline HTML in trusted
-  // article markdown; rehype-sanitize below enforces the allowlist before
-  // we serialize.
-  .use(remarkRehype, { allowDangerousHtml: true })
-  .use(rehypeRaw)
-  .use(rehypeSanitize, sanitizeSchema)
-  .use(rehypeExplicitHeadingIds)
-  .use(rehypeSlug)
-  .use(rehypeCollectToc)
-  .use(rehypeAutolinkHeadings, {
-    behavior: "wrap",
-    // NO ariaHidden with behavior:"wrap": the anchor wraps the visible
-    // heading text and is focusable — aria-hidden'ing it hid every heading
-    // link from assistive tech while keeping it tabbable (WCAG 4.1.2,
-    // Lighthouse aria-hidden-focus) and broke the accessibility tree for
-    // AI agents (agentic score 50). The link's accessible name is the
-    // heading text itself, which is exactly right.
-    properties: { className: ["anchor"] },
-  })
-  .use(rehypeShiki, {
-    themes: { light: "github-light", dark: "github-dark" },
-  })
-  .use(rehypeScrollableTables)
-  .use(rehypeStringify);
+/**
+ * The shared plugin chain, up to (not including) the compiler. Two
+ * compilers ride on it: `rehypeStringify` for the string pipeline (the
+ * rendering-rule tests), and a React compiler for the article page so
+ * code fences render through the vendored DS CodeBlock — the copy
+ * affordance plus its `article:code_copy_click` measurement seam.
+ */
+function buildPipeline() {
+  return (
+    unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      // allowDangerousHtml + rehypeRaw lets us parse inline HTML in trusted
+      // article markdown; rehype-sanitize below enforces the allowlist before
+      // we serialize.
+      .use(remarkRehype, { allowDangerousHtml: true })
+      .use(rehypeRaw)
+      .use(rehypeSanitize, sanitizeSchema)
+      .use(rehypeExplicitHeadingIds)
+      .use(rehypeSlug)
+      .use(rehypeCollectToc)
+      .use(rehypeAutolinkHeadings, {
+        behavior: "wrap",
+        // NO ariaHidden with behavior:"wrap": the anchor wraps the visible
+        // heading text and is focusable — aria-hidden'ing it hid every heading
+        // link from assistive tech while keeping it tabbable (WCAG 4.1.2,
+        // Lighthouse aria-hidden-focus) and broke the accessibility tree for
+        // AI agents (agentic score 50). The link's accessible name is the
+        // heading text itself, which is exactly right.
+        properties: { className: ["anchor"] },
+      })
+      .use(rehypeShiki, {
+        themes: { light: "github-light", dark: "github-dark" },
+        // `language-{lang}` on the <code> element — the DS CodeBlock's
+        // header tag and the copy event's `language` prop read it.
+        addLanguageClass: true,
+      })
+      .use(rehypeScrollableTables)
+  );
+}
+
+const processor = buildPipeline().use(rehypeStringify);
 
 /** The markdown -> HTML pipeline plus the h2 TOC it collected on the way.
  *  Exported so the rendering rules can be tested without rendering a React
@@ -281,23 +305,79 @@ export async function renderMarkdown(body: string): Promise<string> {
   return (await renderMarkdownWithToc(body)).html;
 }
 
+/**
+ * The React article pipeline: same plugin chain, compiled to a React
+ * tree instead of an HTML string, with `pre` mapped to ArticleCodeBlock
+ * (the vendored DS CodeBlock plus the copy-measurement seam). Only the
+ * code blocks hydrate — everything else stays server-rendered elements.
+ */
+export async function renderArticleReact(
+  body: string,
+  slug: string,
+): Promise<{ node: React.ReactNode; toc: ArticleTocItem[] }> {
+  const reactCompiler = function (this: {
+    compiler: (tree: unknown) => React.ReactNode;
+  }) {
+    this.compiler = (tree) =>
+      toJsxRuntime(tree as Parameters<typeof toJsxRuntime>[0], {
+        Fragment,
+        // The react/jsx-runtime signatures are wider than the lib's Jsx
+        // type — the documented production-options cast.
+        jsx: jsx as Jsx,
+        jsxs: jsxs as Jsx,
+        components: {
+          pre: (props: React.ComponentProps<"pre">) => (
+            <ArticleCodeBlock slug={slug} {...props} />
+          ),
+        },
+      });
+  };
+  const file = await buildPipeline()
+    // Unified's Plugin generics don't model a custom compiler's `this`;
+    // the cast is confined to this registration.
+    .use(reactCompiler as never)
+    .process(preprocessMarkdown(body));
+  return {
+    node: file.result as React.ReactNode,
+    toc: (file.data.articleToc as ArticleTocItem[] | undefined) ?? [],
+  };
+}
+
 export async function MarkdownArticle({
   body,
   renderedHtml,
+  children,
   className,
   "data-testid": testId,
   ...rest
 }: MarkdownArticleProps) {
+  const shell = cn(
+    "prose prose-neutral dark:prose-invert max-w-none prose-pre:rounded-md prose-pre:bg-transparent prose-code:before:hidden prose-code:after:hidden prose-a:[&.anchor]:no-underline",
+    className,
+  );
+
+  // React path: the page already compiled the body via renderArticleReact
+  // (code fences become the DS CodeBlock islands) and passes the tree in.
+  if (children != null) {
+    return (
+      <article
+        data-slot="markdown-article"
+        data-testid={testId}
+        className={shell}
+        {...rest}
+      >
+        {children}
+      </article>
+    );
+  }
+
   const html = renderedHtml ?? (await renderMarkdown(body));
 
   return (
     <article
       data-slot="markdown-article"
       data-testid={testId}
-      className={cn(
-        "prose prose-neutral dark:prose-invert max-w-none prose-pre:rounded-md prose-pre:bg-transparent prose-code:before:hidden prose-code:after:hidden prose-a:[&.anchor]:no-underline",
-        className,
-      )}
+      className={shell}
       // HTML is sanitized via rehype-sanitize before serialization.
       dangerouslySetInnerHTML={{ __html: html }}
       {...rest}
