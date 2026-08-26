@@ -56,6 +56,11 @@
      itself is scoped to woven gestures and only clears 3:1 decorative
      — the SectionIndex numeral is 14px text and needs this instead. */
   --brand-orange-text: #7d350c;
+  /* Container width the vendored ui/dialog caps its popup at
+     (`sm:max-w-(--container-prose)`) — the DS foundation.css value.
+     Without it the var() is invalid at computed-value time and the
+     dialog silently loses its desktop width cap. */
+  --container-prose: 65ch;
   /* Decorative-primitive tokens — replace baked-in hex defaults inside
      ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
   --beam-from: var(--brand-orange);

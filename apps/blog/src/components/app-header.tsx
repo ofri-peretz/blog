@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 import { MobileNav } from "./mobile-nav";
 import { BrandMark } from "./brand-mark";
+import { CorpusSearch } from "./corpus-search";
+import { buildSearchDocs } from "@/lib/search-docs";
+import { getAllArticles } from "@/lib/source";
 import { cn } from "@/lib/utils";
 
 // /scorecard is the canonical metrics surface (supabase-backed North Star).
@@ -63,6 +66,9 @@ export function AppHeader({
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          {/* Server component: the search index is built here at render
+              time from the article source — no client fetch. */}
+          <CorpusSearch docs={buildSearchDocs(getAllArticles())} />
           <ThemeToggle />
           <MobileNav links={NAV_LINKS} />
         </div>

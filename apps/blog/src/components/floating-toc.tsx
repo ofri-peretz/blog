@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUpIcon, ListIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { Popover } from "@base-ui-components/react/popover";
+import { Popover } from "@base-ui/react/popover";
 import { cn } from "@/lib/utils";
 
 export interface TocItem {

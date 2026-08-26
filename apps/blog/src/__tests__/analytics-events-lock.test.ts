@@ -33,6 +33,8 @@ const FROZEN_EVENTS = [
   "article:thread_click",
   "corpus_map:your_thread",
   "article:plugin_card_click",
+  "quick_open:palette_view",
+  "quick_open:result_click",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -69,6 +71,19 @@ describe("each surface fires its event", () => {
     const CARDS = read("components/article-plugins.tsx");
     expect(CARDS).toContain('event="article:plugin_card_click"');
     expect(CARDS).toContain("slug: currentSlug, package: p.name");
+  });
+
+  it("quick-open fires open (source only) and select (slug only)", () => {
+    const SEARCH = read("components/corpus-search.tsx");
+    expect(SEARCH).toContain('track("quick_open:palette_view", { source: "hotkey" })');
+    expect(SEARCH).toContain('track("quick_open:palette_view", { source: "button" })');
+    expect(SEARCH).toContain('track("quick_open:result_click", { to_slug: doc.slug })');
+    // The typed query never leaves the browser — search terms are
+    // free-text and the analytics contract is aggregate-only. Anchored
+    // on the track CALLS: prose may say "query"; a payload must not.
+    expect(SEARCH).not.toMatch(
+      /track\("quick_open:(palette_view|result_click)"[\s\S]{0,120}quer/,
+    );
   });
 
   it("thread links are TrackedLinks with from/to + direction", () => {
