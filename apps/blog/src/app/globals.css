@@ -308,6 +308,14 @@ body {
      short link measuring 8x24. */
   min-height: 24px;
   min-width: 24px;
+  /* inline-flex stops the link's text from soft-wrapping, so a long
+     standalone link (the 📦 npm-install lines) sized to its full text
+     and scrolled the whole DOCUMENT 43px sideways at 390px — the exact
+     mobile bug class this repo's contract warns about. Cap the box and
+     let the text break; measured back to zero page overflow on a real
+     390px viewport. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 /* github-dark's comment colour is #6A737D, which measures 3.05:1 on the theme's
