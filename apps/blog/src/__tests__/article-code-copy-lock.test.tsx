@@ -1,9 +1,14 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { renderArticleReact } from "../components/markdown-article";
+import { ArticleCodeBlock } from "../components/article-code-block";
+import { track } from "../lib/analytics";
+
+vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 
 /**
  * Article code-copy locks — fenced blocks render through the vendored
@@ -57,6 +62,48 @@ describe("the React article pipeline", () => {
 });
 
 describe("the copy receipt", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.mocked(track).mockClear();
+  });
+
+  // The source scan below guards against accidental deletion; this is
+  // the behavioral half (review): a real click drives clipboard →
+  // onCopied → track with the exact event and props.
+  it("clicking copy fires track with the event, slug, and language", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+
+    const { container, findByText } = render(
+      <ArticleCodeBlock slug="pool-article">
+        <code className="language-ts">{"const a = 1;"}</code>
+      </ArticleCodeBlock>,
+    );
+    await act(async () => {
+      fireEvent.click(container.querySelector('[data-slot="code-block-copy"]')!);
+    });
+
+    await findByText("Copied!");
+    expect(writeText).toHaveBeenCalledWith("const a = 1;");
+    expect(track).toHaveBeenCalledExactlyOnceWith("article:code_copy_click", {
+      slug: "pool-article",
+      language: "ts",
+    });
+  });
+
+  it("a failed write fires nothing — copies, not clicks, are the receipt", async () => {
+    vi.stubGlobal("navigator", {});
+    const { container } = render(
+      <ArticleCodeBlock slug="pool-article">
+        <code className="language-ts">{"const a = 1;"}</code>
+      </ArticleCodeBlock>,
+    );
+    await act(async () => {
+      fireEvent.click(container.querySelector('[data-slot="code-block-copy"]')!);
+    });
+    expect(track).not.toHaveBeenCalled();
+  });
+
   it("ArticleCodeBlock fires article:code_copy_click from the onCopied seam", () => {
     const SRC = read("components/article-code-block.tsx");
     expect(SRC).toContain("onCopied={()");
