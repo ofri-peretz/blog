@@ -36,6 +36,7 @@ const FROZEN_EVENTS = [
   "quick_open:palette_view",
   "quick_open:result_click",
   "article:code_copy_click",
+  "article:bench_receipt_click",
 ] as const;
 
 describe("typed event names are frozen", () => {

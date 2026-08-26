@@ -68,7 +68,9 @@ export type BlogEvent =
   | {
       name: "article:code_copy_click";
       props: { slug: string; language: string | null };
-    };
+    }
+  /** Do weekly-re-earned numbers pull readers into the full public run? */
+  | { name: "article:bench_receipt_click"; props: { slug: string } };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<

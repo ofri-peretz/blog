@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-08-25T13:10:19.605Z",
+  "repo": "shadcn-ui",
+  "versions": {
+    "eslint": "v9.39.4",
+    "oxlint": "1.63.0",
+    "node": "v24.19.0"
+  },
+  "rows": [
+    {
+      "key": "ours",
+      "label": "Interlace (ESLint)",
+      "coldMs": 1981.2341960000003,
+      "warmMs": 1006.7875950000016
+    },
+    {
+      "key": "competitor",
+      "label": "Community plugins (ESLint)",
+      "coldMs": 3726.835437000005,
+      "warmMs": 1137.5267620000086
+    },
+    {
+      "key": "oxlintNative",
+      "label": "oxlint (native)",
+      "coldMs": 1160.253432999998,
+      "warmMs": 1156.7094609999913
+    }
+  ]
+}
