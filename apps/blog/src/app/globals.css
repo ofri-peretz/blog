@@ -185,6 +185,19 @@
       stroke-dashoffset: 0;
     }
   }
+  /* The draw verb's second mechanism (DS tokens.css `weave-reveal`,
+     vendored with the TimeSeries motion contract, interlace#77): the
+     chart's dash patterns ARE series identity, so the true paths are
+     REVEALED by a clip rect scaling open left→right. From-only
+     keyframe — its resting state is fully revealed, so with no
+     animation at all nothing is ever hidden. */
+  --animate-weave-reveal: weave-reveal 600ms ease-out;
+
+  @keyframes weave-reveal {
+    from {
+      transform: scaleX(0);
+    }
+  }
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -270,7 +283,11 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-meteor,
-  .animate-sunny-pulse {
+  .animate-sunny-pulse,
+  /* weave-reveal belongs in THIS list, unlike strand-draw below: its
+     keyframe is from-only, so `animation: none` rests at the fully
+     revealed end state — nothing to clamp, nothing hidden. */
+  .animate-weave-reveal {
     animation: none !important;
   }
 

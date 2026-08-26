@@ -28,9 +28,12 @@
 
 import * as React from "react";
 
+import { RadialWeave } from "@/components/ui/radial-weave";
+import { StrandField } from "@/components/ui/strand-field";
 import { TimeSeries } from "@/components/ui/time-series";
 import { Toggle, toggleVariants } from "@/components/ui/toggle";
 import { track } from "@/lib/analytics";
+import { downloadSvg } from "@/lib/svg-export";
 import {
   indexTo100,
   windowPoints,
@@ -69,7 +72,10 @@ export function LoomComposer({
 }) {
   const [state, setState] = React.useState(initialState);
   const [copied, setCopied] = React.useState(false);
+  // The strand field's pose — theatre, so deliberately NOT URL state.
+  const [lifted, setLifted] = React.useState(true);
   const copyTimerRef = React.useRef<number | null>(null);
+  const exportRef = React.useRef<HTMLDivElement | null>(null);
 
   // Clear a pending "Copied" reset if the composer unmounts inside the
   // 2s window (review nit — harmless under React 18, still tidy).
@@ -156,16 +162,76 @@ export function LoomComposer({
     state.normalize === "abs" &&
     new Set(active.map((s) => s.unit)).size > 1;
 
-  // Chart identity: remount when the composition changes, so the
-  // crosshair cursor never carries over between different weaves.
-  const chartKey = [state.series.join(","), state.window, state.normalize].join(
-    "|",
-  );
+  // No chart key, on purpose: the DS owns transition identity now
+  // (interlace#77). TimeSeries/RadialWeave replay their weave-reveal
+  // and reset the crosshair when the drawn geometry changes BY VALUE —
+  // a remount here would throw that continuity away.
+
+  /** The field's gesture: pull a thread to the front of the weave. */
+  const pullThread = (id: string) => {
+    if (state.series[0] === id) return;
+    apply({
+      ...state,
+      series: [id, ...state.series.filter((s) => s !== id)],
+    });
+  };
+
+  const exportWeave = () => {
+    // The button is not rendered on the grid form (several plots, no
+    // single "the chart"); this guard states the same invariant where
+    // the type checker can see it, narrowing `form` below (review).
+    if (state.form === "grid") return;
+    const svg = exportRef.current?.querySelector<SVGSVGElement>(
+      'svg[data-slot$="-plot"]',
+    );
+    if (!svg) return;
+    const name = `loom-${state.series.join("+").replace(/[^a-zA-Z0-9+_-]/g, "-")}`;
+    downloadSvg(svg, name);
+    track("loom:export", {
+      series: state.series.join(","),
+      form: state.form,
+    });
+  };
 
   const groups = ["npm", "devto", "github", "site"] as const;
 
   return (
     <div data-testid="loom-composer" className="flex flex-col gap-8">
+      {/* The strand field — the composed weave lifted into depth
+          (interlace#77's StrandField, CSS 3D, zero dependencies). Pure
+          theatre over the accessible thread pills below: aria-hidden,
+          pointer-only, and honest about it in the caption. Clicking a
+          strand pulls that thread to the front of the weave. */}
+      <div className="flex flex-col gap-2">
+        <StrandField
+          data-testid="loom-field"
+          series={woven.map((w) => ({
+            id: w.series.id,
+            label: w.series.label,
+            points: w.points,
+          }))}
+          activeIds={state.series}
+          onStrandSelect={pullThread}
+          woven={!lifted}
+          className="h-56 md:h-72"
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Toggle
+            variant="pill"
+            size="xs"
+            data-testid="loom-field-lift"
+            pressed={lifted}
+            onPressedChange={setLifted}
+          >
+            {lifted ? "Weave flat" : "Lift the weave"}
+          </Toggle>
+          <p className="text-xs text-muted-foreground">
+            Each thread shows its own shape — scales differ up here. The
+            chart below shares one honest axis.
+          </p>
+        </div>
+      </div>
+
       {/* Presets — the guided entry. Each is just a URL state. */}
       <div
         role="group"
@@ -269,7 +335,7 @@ export function LoomComposer({
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         {(
           [
-            ["Form", "form", [["weave", "One weave"], ["grid", "Small multiples"]]],
+            ["Form", "form", [["weave", "One weave"], ["grid", "Small multiples"], ["radial", "Radial"]]],
             ["Window", "window", [["90d", "90 days"], ["1y", "1 year"], ["all", "All time"]]],
             ["Scale", "normalize", [["abs", "Absolute"], ["idx", "Indexed (start = 100)"]]],
           ] as const
@@ -306,6 +372,18 @@ export function LoomComposer({
         >
           {copied ? "Copied — this weave is a link" : "Copy link to this weave"}
         </button>
+        {/* Grid renders several plots; "download THE chart" only names
+            one thing on the single-plot forms. */}
+        {state.form !== "grid" && (
+          <button
+            type="button"
+            data-testid="loom-export"
+            className={PILL_ACTION}
+            onClick={exportWeave}
+          >
+            Download SVG
+          </button>
+        )}
       </div>
 
       {mixedUnits && (
@@ -323,38 +401,55 @@ export function LoomComposer({
         </p>
       )}
 
-      {/* The weave itself. */}
-      {state.form === "weave" ? (
-        <TimeSeries
-          key={chartKey}
-          data-testid="loom-weave"
-          points={woven[0]?.points ?? []}
-          label={woven[0]?.series.label}
-          unit={woven[0]?.unit}
-          compare={woven.slice(1).map((w) => ({
-            points: w.points,
-            label: w.series.label,
-            unit: w.unit,
-          }))}
-          height={260}
-        />
-      ) : (
-        <div
-          data-testid="loom-grid"
-          className="grid grid-cols-1 gap-6 md:grid-cols-2"
-        >
-          {woven.map((w) => (
-            <TimeSeries
-              key={`${chartKey}-${w.series.id}`}
-              data-testid={`loom-grid-${w.series.id}`}
-              points={w.points}
-              label={w.series.label}
-              unit={w.unit}
-              height={200}
-            />
-          ))}
-        </div>
-      )}
+      {/* The weave itself. Wrapped for export: "Download SVG" serializes
+          the plot inside this div, computed styles inlined. */}
+      <div ref={exportRef}>
+        {state.form === "weave" ? (
+          <TimeSeries
+            data-testid="loom-weave"
+            points={woven[0]?.points ?? []}
+            label={woven[0]?.series.label}
+            unit={woven[0]?.unit}
+            compare={woven.slice(1).map((w) => ({
+              points: w.points,
+              label: w.series.label,
+              unit: w.unit,
+            }))}
+            height={260}
+          />
+        ) : state.form === "radial" ? (
+          <RadialWeave
+            data-testid="loom-radial"
+            points={woven[0]?.points ?? []}
+            label={woven[0]?.series.label}
+            unit={woven[0]?.unit}
+            compare={woven.slice(1).map((w) => ({
+              points: w.points,
+              label: w.series.label,
+              unit: w.unit,
+            }))}
+            // Explicit measure: the blog's `--spacing-md` theme token
+            // shadows Tailwind v4's `max-w-md` (it resolved to 24px).
+            className="mx-auto max-w-[28rem]"
+          />
+        ) : (
+          <div
+            data-testid="loom-grid"
+            className="grid grid-cols-1 gap-6 md:grid-cols-2"
+          >
+            {woven.map((w) => (
+              <TimeSeries
+                key={w.series.id}
+                data-testid={`loom-grid-${w.series.id}`}
+                points={w.points}
+                label={w.series.label}
+                unit={w.unit}
+                height={200}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Provenance — the audit chain, rendered. */}
       <footer

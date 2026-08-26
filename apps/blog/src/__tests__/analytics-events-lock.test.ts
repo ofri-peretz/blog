@@ -41,6 +41,7 @@ const FROZEN_EVENTS = [
   "loom:weave_change",
   "loom:preset_click",
   "loom:permalink_copy",
+  "loom:export",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -126,5 +127,12 @@ describe("each surface fires its event", () => {
     expect(LOOM).toMatch(
       /await navigator\.clipboard\.writeText[\s\S]{0,200}track\("loom:permalink_copy"/,
     );
+  });
+
+  it("loom export fires only after the download was actually handed over", () => {
+    const LOOM = read("components/loom/loom-composer.tsx");
+    // Same honesty rule: the guard (`if (!svg) return`) sits above, so a
+    // click with nothing to serialize reports nothing.
+    expect(LOOM).toMatch(/downloadSvg\(svg, name\);[\s\S]{0,120}track\("loom:export"/);
   });
 });

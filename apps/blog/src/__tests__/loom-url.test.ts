@@ -46,6 +46,17 @@ describe("round-trip", () => {
     expect(serializeLoomState(LOOM_DEFAULT)).toBe("");
   });
 
+  it("the radial poster form round-trips like any other", () => {
+    const state = {
+      series: ["npm:total"],
+      form: "radial",
+      window: "1y",
+      normalize: "abs",
+    } as const;
+    expect(parse(serializeLoomState(state))).toEqual(state);
+    expect(parse("form=radial").form).toBe("radial");
+  });
+
   it("a single non-default field serializes alone", () => {
     expect(serializeLoomState({ ...LOOM_DEFAULT, window: "90d" })).toBe(
       "win=90d",
