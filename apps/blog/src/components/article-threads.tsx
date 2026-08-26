@@ -110,9 +110,14 @@ function ThreadGroup({
             </TrackedLink>
             {(item.series || item.minutes != null) && (
               <span className="shrink-0 text-xs text-muted-foreground">
-                · {[item.series, item.minutes != null && `${item.minutes} min`]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {/* The series name hides below sm (same rule as the
+                    palette rows): at 320px the full meta pushed the
+                    whole document 22px sideways — the browser audit's
+                    catch. Minutes always render; they are the budget. */}
+                {item.series ? (
+                  <span className="hidden sm:inline">· {item.series} </span>
+                ) : null}
+                {item.minutes != null ? <>· {item.minutes} min</> : null}
               </span>
             )}
           </li>

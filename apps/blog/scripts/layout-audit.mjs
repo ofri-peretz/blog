@@ -140,6 +140,21 @@ const AUDIT_FN = function auditPage() {
     );
   };
 
+  // Children of a CLOSED <details> are laid out but not painted in
+  // Chrome (find-in-page keeps their geometry), so getBoundingClientRect
+  // reports full-size boxes for rows nobody can see or touch. The series
+  // navigator's parts list produced 15 phantom li×p "overlaps" per
+  // article page this way — the maiden CI run's dominant false
+  // positive. Nothing inside a closed details (except its summary) can
+  // overlap, overflow, be tapped, or be read, so every audit skips it.
+  const inClosedDetails = (el) => {
+    if (el.closest("summary")) return false;
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      if (p.tagName === "DETAILS" && !p.open) return true;
+    }
+    return false;
+  };
+
   // ── 1. Horizontal overflow ───────────────────────────────────────────────
   // The document itself scrolling sideways is always a bug. Individual
   // elements sticking out are only a bug when nothing clips or scrolls them —
@@ -155,6 +170,7 @@ const AUDIT_FN = function auditPage() {
   for (const el of document.querySelectorAll("body *")) {
     const cs = getComputedStyle(el);
     if (cs.position === "fixed" || cs.display === "none") continue;
+    if (inClosedDetails(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     if (r.right > vw + 1 && !isHandled(el)) {
@@ -183,7 +199,7 @@ const AUDIT_FN = function auditPage() {
   )) {
     const cs = getComputedStyle(el);
     if (cs.position !== "static" || cs.display === "none") continue;
-    if (!inFlow(el)) continue;
+    if (!inFlow(el) || inClosedDetails(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) continue;
     if (!el.textContent?.trim() && !el.matches("input,select,textarea"))
@@ -234,7 +250,7 @@ const AUDIT_FN = function auditPage() {
   )) {
     const cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden") continue;
-    if (isScreenReaderOnly(cs)) continue;
+    if (isScreenReaderOnly(cs) || inClosedDetails(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     // SC 2.5.8's "Inline" exception: a target in a sentence, or whose size is
@@ -356,6 +372,7 @@ const AUDIT_FN = function auditPage() {
       cs.opacity === "0"
     )
       continue;
+    if (inClosedDetails(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     const key = label(el) + "|" + text.slice(0, 20);
