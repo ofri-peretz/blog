@@ -21,6 +21,14 @@ import { track } from "@/lib/analytics";
 import { searchHaystack, type SearchDoc } from "@/lib/search-docs";
 
 /**
+ * The index is a static build artifact (/search-index.json), fetched
+ * on first INTENT (trigger hover/focus, or open) — serializing 82
+ * docs into every page's RSC payload measured 16.7KB, 11.2% of the
+ * homepage HTML, paid on every view for a palette most visits never
+ * open. A failed fetch clears the latch so the next intent retries.
+ */
+
+/**
  * Grep the corpus — the ⌘K surface over all published articles.
  *
  * A thin consumer of the vendored DS CommandPalette (which owns the
@@ -39,11 +47,27 @@ import { searchHaystack, type SearchDoc } from "@/lib/search-docs";
  * itself is never sent (aggregate-only analytics), and select carries
  * the destination slug alone.
  */
-export function CorpusSearch({ docs }: { docs: SearchDoc[] }) {
+export function CorpusSearch() {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [docs, setDocs] = React.useState<SearchDoc[] | null>(null);
+  const loadingRef = React.useRef(false);
+
+  const ensureDocs = React.useCallback(() => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    fetch("/search-index.json")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      )
+      .then((d: SearchDoc[]) => setDocs(d))
+      .catch(() => {
+        loadingRef.current = false;
+      });
+  }, []);
 
   useCommandPaletteHotkey(() => {
+    ensureDocs();
     if (!open) track("quick_open:palette_view", { source: "hotkey" });
     setOpen(true);
   });
@@ -56,6 +80,7 @@ export function CorpusSearch({ docs }: { docs: SearchDoc[] }) {
         // every close path (Escape, backdrop, select). The hotkey path
         // sets state directly above, so an open arriving here is the
         // button.
+        if (next) ensureDocs();
         if (next && !open) track("quick_open:palette_view", { source: "button" });
         setOpen(next);
       }}
@@ -66,6 +91,8 @@ export function CorpusSearch({ docs }: { docs: SearchDoc[] }) {
             type="button"
             aria-label="Search articles"
             data-slot="corpus-search-trigger"
+            onPointerEnter={ensureDocs}
+            onFocus={ensureDocs}
             className="inline-flex min-h-6 items-center gap-2 rounded-md px-2 py-1 text-muted-foreground transition-colors hover:text-foreground"
           >
             <SearchIcon aria-hidden="true" className="size-4 sm:hidden" />
@@ -80,7 +107,7 @@ export function CorpusSearch({ docs }: { docs: SearchDoc[] }) {
         }
       />
       <CommandPaletteContent
-        items={docs}
+        items={docs ?? []}
         itemToStringLabel={searchHaystack}
         onValueChange={(doc: SearchDoc | null) => {
           if (!doc) return;
@@ -101,7 +128,11 @@ export function CorpusSearch({ docs }: { docs: SearchDoc[] }) {
           </CommandPaletteDescription>
         </div>
         <CommandPaletteInput placeholder="grep articles…" />
-        <CommandPaletteEmpty>No matches — 0 of {docs.length} articles.</CommandPaletteEmpty>
+        <CommandPaletteEmpty>
+          {docs === null
+            ? "Loading the corpus…"
+            : `No matches — 0 of ${docs.length} articles.`}
+        </CommandPaletteEmpty>
         <CommandPaletteList>
           {(doc: SearchDoc) => (
             <CommandPaletteItem key={doc.slug} value={doc}>
