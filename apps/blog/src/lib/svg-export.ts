@@ -48,10 +48,16 @@ export function inlineSvgStyles(svg: SVGSVGElement): SVGSVGElement {
   const bg = svg.ownerDocument.createElementNS(svg.namespaceURI, "rect");
   bg.setAttribute("width", "100%");
   bg.setAttribute("height", "100%");
+  // `getComputedStyle` always returns a string, and a transparent body
+  // computes to `rgba(0, 0, 0, 0)` — truthy, so a `||` fallback would
+  // never fire and the ground would export transparent (review). The
+  // transparent spellings are checked explicitly instead.
+  const ground = window.getComputedStyle(svg.ownerDocument.body).backgroundColor;
   bg.setAttribute(
     "fill",
-    window.getComputedStyle(svg.ownerDocument.body).backgroundColor ||
-      "#ffffff",
+    ground === "" || ground === "transparent" || ground === "rgba(0, 0, 0, 0)"
+      ? "#ffffff"
+      : ground,
   );
   clone.insertBefore(bg, clone.firstChild);
   return clone;

@@ -177,6 +177,10 @@ export function LoomComposer({
   };
 
   const exportWeave = () => {
+    // The button is not rendered on the grid form (several plots, no
+    // single "the chart"); this guard states the same invariant where
+    // the type checker can see it, narrowing `form` below (review).
+    if (state.form === "grid") return;
     const svg = exportRef.current?.querySelector<SVGSVGElement>(
       'svg[data-slot$="-plot"]',
     );
@@ -185,7 +189,7 @@ export function LoomComposer({
     downloadSvg(svg, name);
     track("loom:export", {
       series: state.series.join(","),
-      form: state.form as "weave" | "radial",
+      form: state.form,
     });
   };
 

@@ -59,4 +59,12 @@ describe("inlineSvgStyles", () => {
     expect(first?.namespaceURI).toBe(clone.namespaceURI);
     expect(new XMLSerializer().serializeToString(clone)).toContain("xmlns=");
   });
+
+  it("never exports a transparent ground — the poster always has paper", () => {
+    // A transparent body computes to `rgba(0, 0, 0, 0)`, which is truthy;
+    // the transparent spellings must resolve to white, not pass through.
+    const clone = inlineSvgStyles(chart());
+    const fill = clone.firstElementChild?.getAttribute("fill");
+    expect(["", "transparent", "rgba(0, 0, 0, 0)"]).not.toContain(fill);
+  });
 });
