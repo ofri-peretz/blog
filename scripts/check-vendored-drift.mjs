@@ -21,6 +21,8 @@ const VENDORED = {
   "components/ui/reading-strand.tsx": "primitives/reading-strand.tsx",
   "components/ui/hero-strand.tsx": "effects/hero-strand.tsx",
   "components/ui/section-index.tsx": "primitives/section-index.tsx",
+  "components/ui/dialog.tsx": "primitives/dialog.tsx",
+  "components/ui/command-palette.tsx": "primitives/command-palette.tsx",
 };
 
 import { readFileSync } from "node:fs";
@@ -50,7 +52,11 @@ function normalizeVendored(src) {
   }
   return out
     .join("\n")
-    .replace('import { cn } from "@/lib/utils";', "import { cn } from '../lib/cn.js';");
+    .replace('import { cn } from "@/lib/utils";', "import { cn } from '../lib/cn.js';")
+    // command-palette's sibling import: the blog drops the .js extension
+    // (webpack resolves extensionless; canonical is ESM-explicit). A no-op
+    // on every file that lacks the string.
+    .replace("} from './dialog';", "} from './dialog.js';");
 }
 
 // A fetch failure must not hide drift in the REMAINING files (review):

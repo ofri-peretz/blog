@@ -51,7 +51,14 @@ export type BlogEvent =
   | {
       name: "article:plugin_card_click";
       props: { slug: string; package: string };
-    };
+    }
+  /**
+   * Is grep-the-corpus discovered — and via the ⌘K chord or the header
+   * button? The typed query is never sent (aggregate-only analytics).
+   */
+  | { name: "quick_open:palette_view"; props: { source: "hotkey" | "button" } }
+  /** Does a search convert into a read? Destination only, no query. */
+  | { name: "quick_open:result_click"; props: { to_slug: string } };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<
