@@ -198,6 +198,21 @@ describe("agent corpus (llms.txt + .md twins)", () => {
     expect(md.startsWith("# ")).toBe(true);
     expect(md).toContain(`https://ofriperetz.dev/articles/${live[0]}`);
   });
+
+  it("the twin composes the notation strip — agents never see [!code ...] markers", () => {
+    // No article uses notation markers yet, so asserting on served output
+    // would pass vacuously against a route that forgot the strip. Two
+    // non-vacuous halves instead: the strip itself does its job (its
+    // behavior suite lives in devto-link-transforms.test.ts), and the
+    // route SOURCE actually calls it on the body it serves.
+    const route = readFileSync(
+      join(PROJECT_ROOT, "src", "app", "md", "[slug]", "route.ts"),
+      "utf-8",
+    );
+    expect(route).toContain(
+      "stripNotationMarkers(preprocessMarkdown(article.body))",
+    );
+  });
 });
 
 describe("feed discoverability", () => {

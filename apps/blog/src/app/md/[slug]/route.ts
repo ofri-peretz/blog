@@ -1,5 +1,8 @@
 import { getAllArticles, getArticleBySlug, isPublished } from "@/lib/source";
 import { preprocessMarkdown } from "@/lib/markdown";
+// The same strip the dev.to publish path uses — one implementation of
+// "surfaces outside our renderer show plain, post-diff code".
+import { stripNotationMarkers } from "../../../../scripts/devto-link-transforms.mjs";
 
 /**
  * The raw-markdown twin of an article page, for AI agents and anything
@@ -50,8 +53,11 @@ export async function GET(
   ];
 
   // preprocessMarkdown converts the Nuxt-MDC block directives into plain
-  // fenced markdown — agents get standard CommonMark, no house syntax.
-  return new Response(header.join("\n") + preprocessMarkdown(article.body), {
-    headers: { "Content-Type": "text/markdown; charset=utf-8" },
-  });
+  // fenced markdown, and stripNotationMarkers removes Shiki `[!code ...]`
+  // render directives (dropping removed-diff lines) — agents get standard
+  // CommonMark showing the post-diff code, no house syntax.
+  return new Response(
+    header.join("\n") + stripNotationMarkers(preprocessMarkdown(article.body)),
+    { headers: { "Content-Type": "text/markdown; charset=utf-8" } },
+  );
 }

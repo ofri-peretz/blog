@@ -24,8 +24,12 @@ const FENCE = [
   "```",
 ].join("\n");
 
+// The first render pays Shiki's cold start (engine + grammars, ~8s on a
+// loaded machine) — well past vitest's 5s default.
+const SHIKI_COLD_START_MS = 30_000;
+
 describe("shiki notation", () => {
-  it("markers become line classes and never render as text", async () => {
+  it("markers become line classes and never render as text", { timeout: SHIKI_COLD_START_MS }, async () => {
     const html = await renderMarkdown(FENCE);
 
     // The directive text must be gone — a reader (or the copy button)
@@ -46,7 +50,7 @@ describe("shiki notation", () => {
     expect(html).toContain("eval");
   });
 
-  it("a fence without markers is untouched by the transformers", async () => {
+  it("a fence without markers is untouched by the transformers", { timeout: SHIKI_COLD_START_MS }, async () => {
     const html = await renderMarkdown(
       "```ts\nconst a = 1;\n```",
     );

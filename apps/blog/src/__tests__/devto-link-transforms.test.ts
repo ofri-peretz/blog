@@ -20,6 +20,7 @@ import {
   collectDevtoLinks,
   rewriteUrlForDevto,
   slugForExternal,
+  stripNotationMarkers,
   transformBodyForDevto,
 } from "../../scripts/devto-link-transforms.mjs";
 
@@ -474,5 +475,57 @@ describe("shiki notation markers (fenced code)", () => {
   it("prose mentioning [!code ...] outside a fence is untouched", () => {
     const prose = "Use the `[!code highlight]` marker to mark a line.";
     expect(transformBodyForDevto(prose, SLUG)).toBe(prose);
+  });
+});
+
+describe("stripNotationMarkers — :N ranges and bare marker lines", () => {
+  it("a trailing [!code --:N] drops that line plus the next N-1", () => {
+    const fence = [
+      "```ts",
+      "keep();",
+      "old1(); // [!code --:3]",
+      "old2();",
+      "old3();",
+      "alsoKeep();",
+      "```",
+    ].join("\n");
+    expect(stripNotationMarkers(fence)).toBe(
+      ["```ts", "keep();", "alsoKeep();", "```"].join("\n"),
+    );
+  });
+
+  it("a bare [!code --:N] line drops itself plus the next N", () => {
+    const fence = [
+      "```ts",
+      "// [!code --:2]",
+      "old1();",
+      "old2();",
+      "keep();",
+      "```",
+    ].join("\n");
+    expect(stripNotationMarkers(fence)).toBe(
+      ["```ts", "keep();", "```"].join("\n"),
+    );
+  });
+
+  it("a line that was only a highlight marker vanishes instead of going blank", () => {
+    const fence = ["```ts", "// [!code highlight:2]", "a();", "b();", "```"].join(
+      "\n",
+    );
+    expect(stripNotationMarkers(fence)).toBe(
+      ["```ts", "a();", "b();", "```"].join("\n"),
+    );
+  });
+
+  it("a range never crosses a fence edge", () => {
+    const body = [
+      "```ts",
+      "old(); // [!code --:9]",
+      "```",
+      "prose after the fence",
+    ].join("\n");
+    expect(stripNotationMarkers(body)).toBe(
+      ["```ts", "```", "prose after the fence"].join("\n"),
+    );
   });
 });

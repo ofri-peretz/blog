@@ -67,8 +67,63 @@ const SKIP_TO_REGEX = /^\s*\*\*Skip to:\*\*/;
 // the bracket goes too — a bare trailing `//` is worse than no marker.
 const NOTATION_MARKER_REGEX =
   /\s*(?:\/\/|#|\/\*|<!--|--|;;?)?\s*\[!code [^\]]+\]\s*(?:\*\/|-->)?\s*$/;
-/** Specifically a REMOVED-line marker (`[!code --]`, with optional `:N`). */
-const NOTATION_REMOVE_REGEX = /\[!code --(?::\d+)?\]/;
+/** A REMOVED-line marker, capturing the optional `:N` multi-line count. */
+const NOTATION_REMOVE_REGEX = /\[!code --(?::(\d+))?\]/;
+
+/**
+ * Strip Shiki notation markers from every fenced block, mirroring what the
+ * blog's real transformers do to the RENDERED output — so any non-blog
+ * surface (dev.to cross-posts, the /articles/<slug>.md agent twins) shows
+ * plain code with no house syntax:
+ *
+ *   - highlight/focus/etc. markers are erased in place; a line that was
+ *     ONLY a marker vanishes (Shiki deletes emptied marker lines too);
+ *   - `[!code --]` lines are the OLD code a reader is being told to
+ *     delete — they are dropped so the output is the post-diff state,
+ *     matching the blog CodeBlock's copy behavior. The `:N` form drops
+ *     the marker line's whole range (Shiki semantics: a bare marker line
+ *     marks the NEXT N lines; a marker trailing code marks that line
+ *     plus the next N-1).
+ *
+ * A marker's reach never crosses a fence edge. Prose outside fences is
+ * untouched. Idempotent: stripped output contains no markers.
+ */
+export function stripNotationMarkers(body) {
+  let inFence = false;
+  let dropRemaining = 0;
+  const out = [];
+  for (const line of body.split("\n")) {
+    if (FENCE_REGEX.test(line)) {
+      inFence = !inFence;
+      dropRemaining = 0;
+      out.push(line);
+      continue;
+    }
+    if (!inFence) {
+      out.push(line);
+      continue;
+    }
+    if (dropRemaining > 0) {
+      dropRemaining--;
+      continue;
+    }
+    if (NOTATION_MARKER_REGEX.test(line)) {
+      const removed = line.match(NOTATION_REMOVE_REGEX);
+      const rest = line.replace(NOTATION_MARKER_REGEX, "");
+      if (removed) {
+        const n = removed[1] ? Number(removed[1]) : 1;
+        dropRemaining = rest.trim() === "" ? n : n - 1;
+        continue;
+      }
+      // A line that was only its marker disappears rather than leaving
+      // a blank line behind.
+      if (rest.trim() !== "") out.push(rest);
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
 
 /** Check if a hostname is the blog's own domain. */
 function isSiteHost(hostname) {
@@ -264,23 +319,15 @@ export function transformBodyForDevto(body, articleSlug) {
   let inFence = false;
   const out = [];
 
-  for (const line of body.split("\n")) {
+  // Shiki notation markers are blog-only render directives — dev.to gets
+  // the post-diff, marker-free code (see stripNotationMarkers).
+  for (const line of stripNotationMarkers(body).split("\n")) {
     if (FENCE_REGEX.test(line)) {
       inFence = !inFence;
       out.push(line);
       continue;
     }
     if (inFence) {
-      // Shiki notation markers are blog-only render directives. A
-      // `[!code --]` line is the OLD code a reader is being told to
-      // delete — dev.to gets the post-diff state, same as the blog's
-      // copy button. Every other marker is stripped in place. Lines
-      // without markers pass through byte-identical.
-      if (NOTATION_MARKER_REGEX.test(line)) {
-        if (NOTATION_REMOVE_REGEX.test(line)) continue;
-        out.push(line.replace(NOTATION_MARKER_REGEX, ""));
-        continue;
-      }
       out.push(line);
       continue;
     }
