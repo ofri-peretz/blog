@@ -118,6 +118,24 @@ describe("the loom is reachable and drawable", () => {
   });
 });
 
+describe("DS-first — the pill styling has one home", () => {
+  it("chips are the DS Toggle pill variant, never local pill classes", () => {
+    expect(COMPOSER).toContain('variant="pill"');
+    expect(COMPOSER).toContain('toggleVariants({ variant: "pill", size: "xs" })');
+    // The literal chip recipe must not reappear here — it lives on the
+    // Toggle variant (interlace#76). This is the exact fork the user's
+    // DS-first rule exists to prevent.
+    expect(COMPOSER).not.toContain("rounded-full border px-2.5");
+    expect(COMPOSER).not.toContain("border-strand-a/50");
+  });
+
+  it("real on/off state is a Toggle (DS owns aria-pressed); actions are buttons", () => {
+    expect(COMPOSER).toContain("onPressedChange");
+    // No hand-rolled aria-pressed anywhere — Base UI renders it.
+    expect(COMPOSER).not.toContain("aria-pressed={");
+  });
+});
+
 describe("vendored chart stack stays under drift watch", () => {
   const VENDORED_FILES = [
     "components/ui/time-series.tsx",
@@ -125,6 +143,7 @@ describe("vendored chart stack stays under drift watch", () => {
     "components/ui/scale.ts",
     "components/ui/data-state.tsx",
     "components/ui/data-state-model.ts",
+    "components/ui/toggle.tsx",
   ];
 
   it.each(VENDORED_FILES)("%s is registered in check-vendored-drift", (f) => {

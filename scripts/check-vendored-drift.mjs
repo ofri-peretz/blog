@@ -31,6 +31,7 @@ const VENDORED = {
   "components/ui/scale.ts": "charts/scale.ts",
   "components/ui/data-state.tsx": "primitives/data-state.tsx",
   "components/ui/data-state-model.ts": "primitives/data-state-model.ts",
+  "components/ui/toggle.tsx": "primitives/toggle.tsx",
 };
 
 import { readFileSync } from "node:fs";
@@ -80,6 +81,12 @@ function normalizeVendored(src, canonical) {
       .replaceAll("} from './data-state';", "} from '../primitives/data-state.js';")
       .replaceAll("from './scale';", "from './scale.js';")
       .replaceAll("from './series-table';", "from './series-table.js';");
+  }
+  if (canonical.startsWith("patterns/")) {
+    return joined.replaceAll(
+      "} from './toggle';",
+      "} from '../primitives/toggle.js';",
+    );
   }
   return joined
     .replaceAll("} from './dialog';", "} from './dialog.js';")

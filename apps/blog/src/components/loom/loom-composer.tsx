@@ -29,6 +29,7 @@
 import * as React from "react";
 
 import { TimeSeries } from "@/components/ui/time-series";
+import { Toggle, toggleVariants } from "@/components/ui/toggle";
 import { track } from "@/lib/analytics";
 import {
   indexTo100,
@@ -50,14 +51,14 @@ import { cn } from "@/lib/utils";
 /** npm packages shown before the native `<details>` expander. */
 const NPM_ABOVE_FOLD = 9;
 
-const pill = (active: boolean, disabled = false) =>
-  cn(
-    "inline-flex min-h-6 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-    active
-      ? "border-strand-a/50 bg-strand-a/10 text-foreground"
-      : "border-border text-muted-foreground hover:text-foreground",
-    disabled && "cursor-not-allowed opacity-50 hover:text-muted-foreground",
-  );
+/**
+ * The pill look for elements that are NOT toggles (preset buttons, the
+ * copy-link action, the `<summary>` expander) — same DS recipe, no fake
+ * pressed semantics. Real on/off state renders `<Toggle variant="pill">`
+ * instead, and the DS owns aria-pressed. The styling has exactly one
+ * home: the toggle variant this borrows (interlace#76).
+ */
+const PILL_ACTION = toggleVariants({ variant: "pill", size: "xs" });
 
 export function LoomComposer({
   corpus,
@@ -164,7 +165,7 @@ export function LoomComposer({
             key={preset.id}
             type="button"
             data-testid={`loom-preset-${preset.id}`}
-            className={pill(false)}
+            className={PILL_ACTION}
             onClick={() => {
               track("loom:preset_click", { preset: preset.id });
               // A preset thread the corpus no longer carries is dropped;
@@ -196,22 +197,26 @@ export function LoomComposer({
             const capped =
               !isActive && state.series.length >= MAX_THREADS;
             return (
-              <button
+              <Toggle
                 key={s.id}
-                type="button"
+                variant="pill"
+                size="xs"
                 data-testid={`loom-thread-${s.id}`}
-                aria-pressed={isActive}
+                pressed={isActive}
                 aria-disabled={capped || undefined}
                 title={
                   capped
                     ? `${MAX_THREADS} threads max — a weave you can still read`
                     : undefined
                 }
-                className={pill(isActive, capped)}
-                onClick={() => toggleThread(s.id)}
+                className={cn(
+                  capped &&
+                    "cursor-not-allowed opacity-50 hover:text-muted-foreground",
+                )}
+                onPressedChange={() => toggleThread(s.id)}
               >
                 {s.label}
-              </button>
+              </Toggle>
             );
           };
           return (
@@ -231,7 +236,7 @@ export function LoomComposer({
                       the same wrapping row instead of a new block. */}
                   <summary
                     className={cn(
-                      pill(false),
+                      PILL_ACTION,
                       "cursor-pointer list-none [&::-webkit-details-marker]:hidden",
                     )}
                   >
@@ -264,24 +269,24 @@ export function LoomComposer({
               {label}
             </span>
             {options.map(([value, text]) => (
-              <button
+              <Toggle
                 key={value}
-                type="button"
-                aria-pressed={state[key] === value}
-                className={pill(state[key] === value)}
-                onClick={() =>
+                variant="pill"
+                size="xs"
+                pressed={state[key] === value}
+                onPressedChange={() =>
                   state[key] !== value && apply({ ...state, [key]: value })
                 }
               >
                 {text}
-              </button>
+              </Toggle>
             ))}
           </div>
         ))}
         <button
           type="button"
           data-testid="loom-permalink-copy"
-          className={pill(false)}
+          className={PILL_ACTION}
           onClick={copyPermalink}
         >
           {copied ? "Copied — this weave is a link" : "Copy link to this weave"}
