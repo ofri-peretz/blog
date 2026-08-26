@@ -461,11 +461,17 @@ try {
         for (const vp of VIEWPORTS) {
           await page.setViewportSize({ width: vp.w, height: vp.h });
           try {
+            // domcontentloaded, not load: the code-heaviest article
+            // carries enough third-party images that full `load` blew
+            // the 30s timeout on 16 CI combinations. Layout geometry is
+            // what's measured, and every <img> here carries explicit
+            // dimensions (CLS=0 doctrine), so paint completion isn't
+            // required — the settle below still lets webfonts land.
             await page.goto(BASE + route, {
-              waitUntil: "load",
+              waitUntil: "domcontentloaded",
               timeout: 30000,
             });
-            await page.waitForTimeout(400); // let webfonts settle
+            await page.waitForTimeout(600); // let webfonts settle
             const value = await page.evaluate(AUDIT_FN);
             // Assert, do not merely record. If the colour-scheme override ever
             // stopped reaching the app, every "light" pass would silently
