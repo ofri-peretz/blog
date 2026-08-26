@@ -57,6 +57,25 @@ describe("the rendered receipt", () => {
     expect(html).toContain("https://eslint.interlace.tools/docs/benchmarks");
   });
 
+  it("missing version keys render no husks — the segment just drops", () => {
+    const noVersions = renderToStaticMarkup(
+      <ArticleBenchReceipt
+        currentSlug="x"
+        data={{
+          generatedAt: "2026-08-25T13:10:19.605Z",
+          repo: "shadcn-ui",
+          versions: {},
+          rows: [
+            { key: "ours", label: "Interlace (ESLint)", coldMs: 1000, warmMs: 900 },
+          ],
+        }}
+      />,
+    );
+    expect(noVersions).not.toContain("eslint ·");
+    expect(noVersions).not.toContain("oxlint ·");
+    expect(noVersions).toContain("shadcn-ui");
+  });
+
   it("a data gap renders NOTHING — no card, no zeros", () => {
     expect(
       renderToStaticMarkup(<ArticleBenchReceipt currentSlug="x" data={null} />),
@@ -93,5 +112,7 @@ describe("wiring", () => {
     expect(SYNC).toContain('"ilb-headline-site/v1"');
     expect(SYNC).toContain("keeping cache");
     expect(SYNC).toContain("refusing to write empty receipts");
+    // An upstream key rename must reject the fetch, not blank the footer.
+    expect(SYNC).toContain("versions.${key} missing");
   });
 });

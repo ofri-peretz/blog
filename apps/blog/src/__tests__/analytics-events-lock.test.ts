@@ -88,6 +88,12 @@ describe("each surface fires its event", () => {
     );
   });
 
+  it("the bench receipt's run link is a TrackedLink carrying the slug", () => {
+    const RECEIPT = read("components/article-bench-receipt.tsx");
+    expect(RECEIPT).toContain('event="article:bench_receipt_click"');
+    expect(RECEIPT).toContain("props={{ slug: currentSlug }}");
+  });
+
   it("thread links are TrackedLinks with from/to + direction", () => {
     const THREADS = read("components/article-threads.tsx");
     expect(THREADS).toContain('event="article:thread_click"');

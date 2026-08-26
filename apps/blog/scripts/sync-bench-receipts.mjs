@@ -51,6 +51,14 @@ try {
       throw new Error(`row ${r.key} carries non-numeric timings`);
     }
   }
+  // The receipt footer prints these by name — an upstream key rename
+  // (e.g. eslint-version) would otherwise blank the field silently
+  // (review). Reject the fetch and keep the cache instead.
+  for (const key of ["eslint", "oxlint"]) {
+    if (typeof data.versions?.[key] !== "string") {
+      throw new Error(`versions.${key} missing — refusing a partial receipt`);
+    }
+  }
   next = {
     generatedAt: data.generatedAt,
     repo: data.repo,

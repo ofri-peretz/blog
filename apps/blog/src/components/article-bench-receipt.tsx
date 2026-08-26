@@ -65,8 +65,13 @@ export function ArticleBenchReceipt({
         ))}
       </ul>
       <p className="mt-2 text-xs text-muted-foreground">
-        Full lint of {data.repo} · eslint {data.versions.eslint} · oxlint{" "}
-        {data.versions.oxlint} ·{" "}
+        {/* Segments render only when present — a missing key must not
+            leave "eslint · oxlint ·" husks (the data-gap rule applies
+            to fragments too). The sync validates both keys, so absence
+            here means a stale hand-edited cache. */}
+        Full lint of {data.repo}
+        {data.versions.eslint ? <> · eslint {data.versions.eslint}</> : null}
+        {data.versions.oxlint ? <> · oxlint {data.versions.oxlint}</> : null} ·{" "}
         <TrackedLink
           href="https://eslint.interlace.tools/docs/benchmarks"
           event="article:bench_receipt_click"
