@@ -149,9 +149,57 @@ describe("DS-first — the pill styling has one home", () => {
   });
 });
 
+describe("the Living Weave — waves 2+3 ride the DS, not local forks", () => {
+  it("the motion contract is the DS's: no remount key, ever", () => {
+    // interlace#77: TimeSeries/RadialWeave replay their reveal and reset
+    // the crosshair when the drawn geometry changes BY VALUE. A local
+    // chartKey remount would throw that continuity away — this is the
+    // exact regression the motion work exists to prevent.
+    expect(COMPOSER).not.toContain("chartKey");
+  });
+
+  it("the weave-reveal token exists — without it charts appear with no draw", () => {
+    expect(GLOBALS).toContain("--animate-weave-reveal");
+    expect(GLOBALS).toContain("@keyframes weave-reveal");
+    // From-only keyframe rests revealed, so its clamp is `animation:
+    // none` in the reduce block — NOT the strand-draw duration trick.
+    expect(GLOBALS).toMatch(
+      /prefers-reduced-motion[\s\S]{0,600}\.animate-weave-reveal/,
+    );
+  });
+
+  it("the radial form and the field are the vendored DS components", () => {
+    expect(COMPOSER).toContain("<RadialWeave");
+    expect(COMPOSER).toContain("<StrandField");
+    expect(COMPOSER).toContain('from "@/components/ui/radial-weave"');
+    expect(COMPOSER).toContain('from "@/components/ui/strand-field"');
+  });
+
+  it("the field is wired as theatre over the accessible pills", () => {
+    // Selection through the field is the pull-to-front shortcut; the
+    // Toggle pills remain the accessible path (DS-first lock above).
+    expect(COMPOSER).toContain("onStrandSelect={pullThread}");
+    // The pose toggle is a real DS Toggle, not a hand-rolled button.
+    expect(COMPOSER).toMatch(/data-testid="loom-field-lift"[\s\S]{0,120}pressed={lifted}/);
+  });
+
+  it("radial is a first-class URL form", () => {
+    expect(URL_MODULE).toContain('"radial"');
+  });
+
+  it("export serializes the rendered plot and never fetches anything", () => {
+    const EXPORT = read("lib/svg-export.ts");
+    expect(EXPORT).not.toContain("fetch(");
+    expect(EXPORT).toContain("XMLSerializer");
+    expect(COMPOSER).toContain('track("loom:export"');
+  });
+});
+
 describe("vendored chart stack stays under drift watch", () => {
   const VENDORED_FILES = [
     "components/ui/time-series.tsx",
+    "components/ui/radial-weave.tsx",
+    "components/ui/strand-field.tsx",
     "components/ui/series-table.tsx",
     "components/ui/scale.ts",
     "components/ui/data-state.tsx",

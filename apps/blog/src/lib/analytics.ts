@@ -82,7 +82,7 @@ export type BlogEvent =
       name: "loom:weave_change";
       props: {
         series: string;
-        form: "weave" | "grid";
+        form: "weave" | "grid" | "radial";
         window: "90d" | "1y" | "all";
         normalize: "abs" | "idx";
       };
@@ -93,7 +93,16 @@ export type BlogEvent =
    * Is a composed weave worth sharing? Fires only on a successful
    * clipboard write, mirroring article:code_copy_click.
    */
-  | { name: "loom:permalink_copy"; props: { series: string } };
+  | { name: "loom:permalink_copy"; props: { series: string } }
+  /**
+   * Did the poster forms earn a life OUTSIDE the site? An SVG download
+   * is the strongest share signal the Loom has — a weave leaving as an
+   * artifact, not a link.
+   */
+  | {
+      name: "loom:export";
+      props: { series: string; form: "weave" | "radial" };
+    };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<

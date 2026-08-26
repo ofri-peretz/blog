@@ -13,7 +13,9 @@
 
 import type { LoomGroup } from "./loom-data";
 
-export const LOOM_FORMS = ["weave", "grid"] as const;
+// "radial" is the poster form (interlace#77's RadialWeave): the same
+// threads wrapped around the dial, composed to be looked at and shared.
+export const LOOM_FORMS = ["weave", "grid", "radial"] as const;
 export type LoomForm = (typeof LOOM_FORMS)[number];
 
 export const LOOM_WINDOWS = ["90d", "1y", "all"] as const;

@@ -27,6 +27,8 @@ const VENDORED = {
   "components/ui/skeleton.tsx": "primitives/skeleton.tsx",
   "components/ui/skeleton-variants.ts": "primitives/skeleton-variants.ts",
   "components/ui/time-series.tsx": "charts/time-series.tsx",
+  "components/ui/radial-weave.tsx": "charts/radial-weave.tsx",
+  "components/ui/strand-field.tsx": "effects/strand-field.tsx",
   "components/ui/series-table.tsx": "charts/series-table.tsx",
   "components/ui/scale.ts": "charts/scale.ts",
   "components/ui/data-state.tsx": "primitives/data-state.tsx",
@@ -80,7 +82,15 @@ function normalizeVendored(src, canonical) {
       .replaceAll("} from './skeleton';", "} from '../primitives/skeleton.js';")
       .replaceAll("} from './data-state';", "} from '../primitives/data-state.js';")
       .replaceAll("from './scale';", "from './scale.js';")
-      .replaceAll("from './series-table';", "from './series-table.js';");
+      .replaceAll("from './series-table';", "from './series-table.js';")
+      .replaceAll("from './time-series';", "from './time-series.js';");
+  }
+  if (canonical.startsWith("effects/")) {
+    // strand-field reaches ACROSS directories (charts/) for its scale
+    // math and hue identity; hero-strand imports only cn and no-ops here.
+    return joined
+      .replaceAll("from './scale';", "from '../charts/scale.js';")
+      .replaceAll("} from './time-series';", "} from '../charts/time-series.js';");
   }
   if (canonical.startsWith("patterns/")) {
     return joined.replaceAll(
