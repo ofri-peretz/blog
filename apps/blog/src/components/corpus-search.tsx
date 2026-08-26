@@ -89,14 +89,17 @@ export function CorpusSearch({ docs }: { docs: SearchDoc[] }) {
         }}
       >
         {/* A modal without an accessible name is announced as "dialog"
-            and nothing else — the title is required, visually hidden. */}
-        <span className="sr-only">
+            and nothing else — the title is required, visually hidden.
+            div, not span: Title renders an h2 and Description a p, and
+            block elements inside an inline span are invalid HTML
+            (review). */}
+        <div className="sr-only">
           <CommandPaletteTitle>Search articles</CommandPaletteTitle>
           <CommandPaletteDescription>
             Type to filter by title, series, or tag. Enter opens the
             article.
           </CommandPaletteDescription>
-        </span>
+        </div>
         <CommandPaletteInput placeholder="grep articles…" />
         <CommandPaletteEmpty>No matches — 0 of {docs.length} articles.</CommandPaletteEmpty>
         <CommandPaletteList>
