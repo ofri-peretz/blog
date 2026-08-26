@@ -74,6 +74,15 @@ describe("wiring (reachable + accessible)", () => {
     expect(SEARCH).toContain("loadingRef.current = false");
   });
 
+  it("rows carry the reader's ✓ and highlight prefetches the route", () => {
+    const SEARCH = read("components/corpus-search.tsx");
+    // Same read vocabulary as the series navigator — one ✓, everywhere.
+    expect(SEARCH).toContain("<ReadTick slug={doc.slug} />");
+    // Highlight = intent: Enter lands on a warm cache.
+    expect(SEARCH).toContain("router.prefetch(`/articles/${doc.slug}`)");
+    expect(SEARCH).toContain("onItemHighlighted");
+  });
+
   it("the palette has an accessible name and the opt-in hotkey", () => {
     const SEARCH = read("components/corpus-search.tsx");
     // A modal without a title is announced as "dialog" and nothing else.
