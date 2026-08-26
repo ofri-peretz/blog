@@ -94,6 +94,30 @@ function formatDate(iso?: string): string {
   });
 }
 
+/** 3200 → "3.2K" — receipts stay scannable at any magnitude. */
+const compact = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/**
+ * The article's receipts — real community numbers from the dev.to sync
+ * (evidence over confidence, applied to our own pages). A zero or
+ * missing value is a DATA GAP, not a fact, and renders nothing — the
+ * same rule the impact metrics block enforces.
+ */
+function articleReceipts(fm: {
+  reactions?: number;
+  comments?: number;
+  views?: number;
+}): { label: string; value: string }[] {
+  return [
+    fm.reactions ? { label: "reactions", value: compact.format(fm.reactions) } : null,
+    fm.comments ? { label: "comments", value: compact.format(fm.comments) } : null,
+    fm.views ? { label: "views", value: compact.format(fm.views) } : null,
+  ].filter((r): r is { label: string; value: string } => r !== null);
+}
+
 export default async function ArticlePage(props: PageProps) {
   const { slug } = await props.params;
   const article = getArticleBySlug(slug);
@@ -238,6 +262,15 @@ export default async function ArticlePage(props: PageProps) {
               </span>
             )}
             <span>· {article.readingTimeMinutes} min read</span>
+            {articleReceipts(fm).map((r) => (
+              <span key={r.label} data-slot="article-receipt">
+                ·{" "}
+                <span className="font-mono [font-variant-numeric:tabular-nums]">
+                  {r.value}
+                </span>{" "}
+                {r.label}
+              </span>
+            ))}
             {fm.tags.length > 0 && (
               <ul className="flex flex-wrap gap-2">
                 {fm.tags.map((tag) => (
