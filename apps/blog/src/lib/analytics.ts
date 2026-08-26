@@ -70,7 +70,9 @@ export type BlogEvent =
       props: { slug: string; language: string | null };
     }
   /** Do weekly-re-earned numbers pull readers into the full public run? */
-  | { name: "article:bench_receipt_click"; props: { slug: string } };
+  | { name: "article:bench_receipt_click"; props: { slug: string } }
+  /** Does the resume offer chain a return visit into the next part? */
+  | { name: "series:resume_click"; props: { to_slug: string } };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<
