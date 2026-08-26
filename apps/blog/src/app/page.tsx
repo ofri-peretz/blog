@@ -63,8 +63,14 @@ async function fetchStats(): Promise<HomepageStats | null> {
         : process.env.VERCEL_URL
           ? `https://${process.env.VERCEL_URL}`
           : `http://localhost:${process.env.PORT || 3001}`;
+    // tags:['ratchet'] is what makes the flush reach THIS page. The route
+    // below is tag-flushed already, but the homepage is statically prerendered
+    // and its HTML holds the rendered numbers — a time-only `revalidate` left
+    // that HTML on its own ISR clock, so POST /api/revalidate-tag refreshed the
+    // API while the page kept serving the previous run's figures (422,330 npm
+    // next to same-day dev.to views, 2026-08-26). Same tag the ingest flushes.
     const res = await fetch(`${base}/api/homepage-stats`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 60, tags: ["ratchet"] },
     });
     if (!res.ok) {
       console.error(`[homepage] stats → ${res.status}`);
