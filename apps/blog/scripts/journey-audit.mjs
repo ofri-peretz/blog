@@ -111,10 +111,10 @@ try {
     await page.waitForURL(new RegExp(`/articles/${doc.slug}$`), {
       timeout: 10000,
     });
-    const paletteGone = await page
+    const paletteCount = await page
       .locator('[data-slot="command-palette-content"]')
       .count();
-    if (paletteGone !== 0) throw new Error("navigated but the palette stayed open");
+    if (paletteCount !== 0) throw new Error("navigated but the palette stayed open");
     pass("palette: ⌘K → type → ↓ → Enter navigates to the exact match");
   } catch (err) {
     fail("palette: ⌘K → type → ↓ → Enter navigates to the exact match", err.message);

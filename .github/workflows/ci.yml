@@ -39,6 +39,10 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   browser-audit:
     runs-on: ubuntu-latest
+    # A hung `next start` or stalled navigation must not block every
+    # subsequent PR (review). 25, not 15: the observed matrix alone runs
+    # ~10 min and the full job ~16-18 — tune down once a p95 exists.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
