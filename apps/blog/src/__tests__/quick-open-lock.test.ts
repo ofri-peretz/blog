@@ -53,10 +53,25 @@ describe("search docs (the grep index)", () => {
 });
 
 describe("wiring (reachable + accessible)", () => {
-  it("the header renders CorpusSearch with server-built docs", () => {
+  it("the header renders CorpusSearch; the index is a static artifact", () => {
     const HEADER = read("components/app-header.tsx");
-    expect(HEADER).toContain("<CorpusSearch");
-    expect(HEADER).toContain("buildSearchDocs(getAllArticles())");
+    expect(HEADER).toContain("<CorpusSearch />");
+    // The docs must NOT ride every page's RSC payload (measured 16.7KB,
+    // 11.2% of the homepage HTML) — they live behind the static route.
+    expect(HEADER).not.toContain("buildSearchDocs");
+    const ROUTE = read("app/search-index.json/route.ts");
+    expect(ROUTE).toContain("buildSearchDocs(getAllArticles())");
+    expect(ROUTE).toContain('force-static');
+  });
+
+  it("the palette fetches the index on intent, with a retry latch", () => {
+    const SEARCH = read("components/corpus-search.tsx");
+    expect(SEARCH).toContain('fetch("/search-index.json")');
+    // Prefetch on hover/focus so the open feels instant…
+    expect(SEARCH).toContain("onPointerEnter={ensureDocs}");
+    expect(SEARCH).toContain("onFocus={ensureDocs}");
+    // …and a failed fetch clears the latch so the next intent retries.
+    expect(SEARCH).toContain("loadingRef.current = false");
   });
 
   it("the palette has an accessible name and the opt-in hotkey", () => {
