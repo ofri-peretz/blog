@@ -19,6 +19,10 @@ describe("installedPackage", () => {
     ["yarn add --dev eslint-plugin-pg", "eslint-plugin-pg"],
     ["bun add eslint-plugin-react-a11y", "eslint-plugin-react-a11y"],
     ["npm install @interlace/eslint-devkit", "@interlace/eslint-devkit"],
+    // Flags AND a scoped name together — the two regex legs compose
+    // independently, so this pairing needs its own row (review).
+    ["npm install --save-dev @interlace/eslint-devkit", "@interlace/eslint-devkit"],
+    ["pnpm add -D @interlace/eslint-testing", "@interlace/eslint-testing"],
     ["npm install eslint-config-interlace", "eslint-config-interlace"],
   ])("%s → %s", (text, expected) => {
     expect(installedPackage(text)).toBe(expected);
