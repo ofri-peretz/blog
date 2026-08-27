@@ -7,7 +7,7 @@
  * chart stack stays under drift watch. None of that is visible in a
  * screenshot, so each promise is pinned to the source that keeps it.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -15,6 +15,7 @@ const read = (rel: string): string =>
   readFileSync(path.resolve(__dirname, "..", rel), "utf-8");
 
 const CORPUS = read("lib/loom-corpus.ts");
+const ASSEMBLE = read("lib/loom-corpus-assemble.ts");
 const PAGE = read("app/loom/page.tsx");
 const COMPOSER = read("components/loom/loom-composer.tsx");
 const HEADER = read("components/app-header.tsx");
@@ -45,6 +46,50 @@ describe("quota safety — visitors never touch an upstream API", () => {
     expect(COMPOSER).not.toContain("fetch(");
     expect(COMPOSER).not.toContain("supabase");
   });
+
+  it("the assembly module is client-INJECTED — it can never reach Supabase alone", () => {
+    // The split exists so the embed sync runs the same code path under
+    // plain node; the module must stay import-safe there (no
+    // server-only) and credential-free (no client construction).
+    expect(ASSEMBLE).not.toContain('import "server-only"');
+    expect(ASSEMBLE).not.toContain("createClient(");
+    expect(ASSEMBLE).toContain("client: SupabaseClient");
+  });
+
+  it("only the cache wrapper and the sync script import the assembly", () => {
+    // A page importing the assembly directly would reach Supabase
+    // around the 12h cache — the exact quota hole the cache closes.
+    const src = path.resolve(__dirname, "..");
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        // eslint-disable-next-line node-security/no-zip-slip -- not an archive: entry names come from readdirSync of our own src tree, and the resolve+startsWith containment below bounds every read to it
+        const full = path.join(dir, entry.name);
+        // Locks may NAME the module; only app source is policed.
+        if (entry.isDirectory() && entry.name === "__tests__") continue;
+        if (entry.isDirectory()) walk(full);
+        else if (/\.(ts|tsx)$/.test(entry.name)) {
+          if (full.endsWith("lib/loom-corpus.ts")) continue;
+          if (full.endsWith("lib/loom-corpus-assemble.ts")) continue;
+          // Containment guard (no-zip-slip's ask): the walk reads only
+          // inside src, even if a symlinked entry pointed elsewhere.
+          const resolved = path.resolve(full);
+          if (!resolved.startsWith(src + path.sep)) continue;
+          if (readFileSync(resolved, "utf-8").includes("loom-corpus-assemble")) {
+            offenders.push(path.relative(src, full));
+          }
+        }
+      }
+    };
+    walk(src);
+    expect(offenders).toEqual([]);
+    // …and the sync script (outside src) is the OTHER licensed importer.
+    const script = readFileSync(
+      path.resolve(src, "../scripts/sync-loom-embeds.mts"),
+      "utf-8",
+    );
+    expect(script).toContain("loom-corpus-assemble");
+  });
 });
 
 describe("no internal series leak", () => {
@@ -53,22 +98,22 @@ describe("no internal series leak", () => {
     // .in()×.in(): an internal series whose source and kind each appear
     // in the pick list in a different combination must not even be
     // fetched (review, CWE-284).
-    expect(CORPUS).toContain("and(source.eq.");
-    expect(CORPUS).toContain(",kind.eq.");
-    expect(CORPUS).not.toContain('.in("source"');
+    expect(ASSEMBLE).toContain("and(source.eq.");
+    expect(ASSEMBLE).toContain(",kind.eq.");
+    expect(ASSEMBLE).not.toContain('.in("source"');
   });
 
   it("npm weekly cutoff derives from npm's own newest row, not the global max", () => {
     // A partial ingest (GitHub succeeds, npm fails) must not un-drop
     // npm's trailing partial week (review).
-    expect(CORPUS).toContain("npmObservedThrough");
-    expect(CORPUS).toMatch(/weeklyTotals\(\s*\[\.\.\.totalByDay[\s\S]{0,120}npmObservedThrough/);
-    expect(CORPUS).toContain("weeklyTotals(daily, npmObservedThrough)");
+    expect(ASSEMBLE).toContain("npmObservedThrough");
+    expect(ASSEMBLE).toMatch(/weeklyTotals\(\s*\[\.\.\.totalByDay[\s\S]{0,120}npmObservedThrough/);
+    expect(ASSEMBLE).toContain("weeklyTotals(daily, npmObservedThrough)");
   });
 
   it("the pick list stays clear of internal sources", () => {
     for (const internal of ["devto-intel", "codecov-health", "github-config"]) {
-      expect(CORPUS).not.toContain(`"${internal}"`);
+      expect(ASSEMBLE).not.toContain(`"${internal}"`);
     }
   });
 });
@@ -107,7 +152,7 @@ describe("preset ids exist in the catalog the corpus emits", () => {
   });
 
   it.each([...new Set(presetIds)])("%s is a catalog id literal", (id) => {
-    expect(CORPUS).toContain(`"${id}"`);
+    expect(ASSEMBLE).toContain(`"${id}"`);
   });
 });
 

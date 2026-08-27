@@ -1,0 +1,55 @@
+# Weekly loom-embeds refresh — keeps the article-embedded weaves'
+# committed snapshot (src/data/loom-embeds.json) tracking the impact
+# stack. Same shape as bench-receipts-refresh: a cron, never PR CI,
+# shipping its result as a reviewed PR (protected main takes no direct
+# pushes). Runs the SAME corpus assembly /loom's cache runs
+# (loom-corpus-assemble.ts), under the RLS-scoped read-only anon key.
+name: Loom embeds refresh
+
+on:
+  schedule:
+    - cron: "30 15 * * 1" # Mondays 15:30 UTC, alongside the data refreshes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install workspace deps (the sync runs the app's corpus assembly)
+        run: npm ci
+      - name: Sync the embed snapshot from the impact stack
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: npx tsx apps/blog/scripts/sync-loom-embeds.mts
+      - name: Ship the refresh as a PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet apps/blog/src/data/loom-embeds.json; then
+            echo "embed snapshot unchanged — nothing to ship"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/blog/src/data/loom-embeds.json
+          git commit -m "chore(blog): weekly loom-embeds refresh $(date -u +%F)"
+          git push --force origin HEAD:chore/loom-embeds-refresh
+          # No tee-pipe: it would mask gh failures with tee's exit 0
+          # (CWE-390). Capture, print, and only tolerate the
+          # branch-already-has-a-PR case.
+          if OUT=$(gh pr create --base main --head chore/loom-embeds-refresh \
+            --title "chore(blog): weekly loom-embeds refresh $(date -u +%F)" \
+            --body "Automated weekly sync of the article-embedded weaves' snapshot from the impact stack. Numbers only — review is a sanity glance." 2>&1); then
+            echo "$OUT"
+          else
+            echo "$OUT"
+            echo "$OUT" | grep -q "already exists" || exit 1
+          fi

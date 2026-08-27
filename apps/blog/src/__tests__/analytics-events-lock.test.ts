@@ -42,6 +42,7 @@ const FROZEN_EVENTS = [
   "loom:preset_click",
   "loom:permalink_copy",
   "loom:export",
+  "loom:embed_open",
 ] as const;
 
 describe("typed event names are frozen", () => {
