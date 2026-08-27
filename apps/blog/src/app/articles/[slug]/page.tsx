@@ -15,6 +15,9 @@ import pluginStats from "@/data/plugin-stats.json";
 import { ArticlePlugins } from "@/components/article-plugins";
 import benchReceipts from "@/data/bench-receipts.json";
 import { ArticleBenchReceipt } from "@/components/article-bench-receipt";
+import loomEmbeds from "@/data/loom-embeds.json";
+import { ArticleWeave } from "@/components/article-weave";
+import type { LoomEmbedSnapshot } from "@/lib/loom-embeds";
 import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
 import { ReadingStrand } from "@/components/ui/reading-strand";
 import { RecordReading } from "@/components/record-reading";
@@ -331,6 +334,14 @@ export default async function ArticlePage(props: PageProps) {
         {fm.series === "Inside our linter benchmarks" ? (
           <ArticleBenchReceipt currentSlug={slug} data={benchReceipts} />
         ) : null}
+
+        {/* Slug-mapped independently of any series: the embed renders
+            only for articles LOOM_EMBEDS names, and returns null
+            otherwise. */}
+        <ArticleWeave
+          currentSlug={slug}
+          data={loomEmbeds as LoomEmbedSnapshot}
+        />
 
         <ArticlePlugins
           currentSlug={slug}

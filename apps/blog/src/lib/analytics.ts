@@ -102,7 +102,13 @@ export type BlogEvent =
   | {
       name: "loom:export";
       props: { series: string; form: "weave" | "radial" };
-    };
+    }
+  /**
+   * The articles→Loom funnel: a reader followed an embedded weave into
+   * the instrument. This is the discovery signal the guided-walk wave
+   * is gated on.
+   */
+  | { name: "loom:embed_open"; props: { slug: string; series: string } };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<
