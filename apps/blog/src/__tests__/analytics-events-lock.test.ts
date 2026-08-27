@@ -36,6 +36,7 @@ const FROZEN_EVENTS = [
   "quick_open:palette_view",
   "quick_open:result_click",
   "article:code_copy_click",
+  "article:read_depth",
   "article:bench_receipt_click",
   "series:resume_click",
   "loom:weave_change",
@@ -128,6 +129,22 @@ describe("each surface fires its event", () => {
     expect(LOOM).toMatch(
       /await navigator\.clipboard\.writeText[\s\S]{0,200}track\("loom:permalink_copy"/,
     );
+  });
+
+  it("read depth fires once per milestone from a passive, self-removing listener", () => {
+    const DEPTH = read("components/reading-depth.tsx");
+    expect(DEPTH).toContain('track("article:read_depth"');
+    // Once per milestone — the fired set is the guard.
+    expect(DEPTH).toMatch(/fired\.has\(milestone\)/);
+    // Passive + rAF-throttled: reading measurement must never cost
+    // scroll performance.
+    expect(DEPTH).toContain("{ passive: true }");
+    expect(DEPTH).toContain("requestAnimationFrame");
+    // Both milestones exist, and the page renders the component.
+    expect(DEPTH).toContain('mark("half")');
+    expect(DEPTH).toContain('mark("full")');
+    const PAGE = read("app/articles/[slug]/page.tsx");
+    expect(PAGE).toContain("<ReadingDepth slug={slug} />");
   });
 
   it("loom export fires only after the download was actually handed over", () => {

@@ -67,7 +67,26 @@ export type BlogEvent =
    */
   | {
       name: "article:code_copy_click";
-      props: { slug: string; language: string | null };
+      props: {
+        slug: string;
+        language: string | null;
+        /**
+         * Our package named by an install-shaped copy (install-detect),
+         * or null for a regular snippet. THE Discover→Configure
+         * conversion dimension: `npm install eslint-plugin-x` copied is
+         * the strongest configure-intent signal an article can produce.
+         */
+        package: string | null;
+      };
+    }
+  /**
+   * How far readers actually get — `half` at 50% of the body, `full`
+   * at the end. Once per milestone per view (reading-depth.tsx); the
+   * read-completion half of the reading funnel.
+   */
+  | {
+      name: "article:read_depth";
+      props: { slug: string; milestone: "half" | "full" };
     }
   /** Do weekly-re-earned numbers pull readers into the full public run? */
   | { name: "article:bench_receipt_click"; props: { slug: string } }
