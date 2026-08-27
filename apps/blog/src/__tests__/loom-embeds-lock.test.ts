@@ -49,7 +49,7 @@ describe("the snapshot can draw every definition", () => {
     expect(snapshot.observedThrough).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     for (const series of Object.values(snapshot.series)) {
       for (const point of series.points) {
-        expect(point.t).toMatch(/^\d{4}-\d{2}-\d{2}/);
+        expect(point.t).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       }
     }
   });

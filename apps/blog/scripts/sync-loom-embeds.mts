@@ -48,37 +48,19 @@ if (!url || !key) {
   process.exit(previous ? 0 : 1);
 }
 
-let snapshot: LoomEmbedSnapshot | null = null;
+// Assembly failures (network, upstream hiccup) are ADVISORY — keep the
+// previous snapshot. The definition check below is deliberately outside
+// this try: it must stay a hard error (review — a throw inside would be
+// swallowed by this catch and land in the keep-previous path, which is
+// exactly the silent vanishing it exists to prevent).
+let corpus: Awaited<ReturnType<typeof assembleLoomCorpus>> | null = null;
 try {
-  const corpus = await assembleLoomCorpus(createClient(url, key));
-  const wanted = new Set(LOOM_EMBEDS.flatMap((d) => d.state.series));
-  const series: LoomEmbedSnapshot["series"] = {};
-  for (const s of corpus.series) {
-    if (!wanted.has(s.id)) continue;
-    series[s.id] = {
-      label: s.label,
-      unit: s.unit,
-      provenance: s.provenance,
-      points: [...s.points],
-    };
-  }
-  // A definition pointing at a series the corpus no longer carries is a
-  // hard error: the embed would render nothing and the article would
-  // silently lose its chart. Fail the sync so the definition gets fixed.
-  const missing = [...wanted].filter((id) => !series[id]);
-  if (missing.length > 0) {
-    throw new Error(`definitions reference missing series: ${missing.join(", ")}`);
-  }
-  snapshot = {
-    generatedAt: new Date().toISOString(),
-    observedThrough: corpus.observedThrough,
-    series,
-  };
+  corpus = await assembleLoomCorpus(createClient(url, key));
 } catch (error) {
   console.error(`[sync-loom-embeds] assembly failed: ${String(error)}`);
 }
 
-if (!snapshot) {
+if (!corpus) {
   if (previous) {
     console.warn("[sync-loom-embeds] keeping previous snapshot");
     process.exit(0);
@@ -86,6 +68,35 @@ if (!snapshot) {
   console.error("[sync-loom-embeds] no fresh snapshot and no cache");
   process.exit(1);
 }
+
+const wanted = new Set(LOOM_EMBEDS.flatMap((d) => d.state.series));
+const series: LoomEmbedSnapshot["series"] = {};
+for (const s of corpus.series) {
+  if (!wanted.has(s.id)) continue;
+  series[s.id] = {
+    label: s.label,
+    unit: s.unit,
+    provenance: s.provenance,
+    points: [...s.points],
+  };
+}
+
+// A definition pointing at a series the corpus no longer carries is a
+// HARD error, cache or no cache: the embed would render nothing and the
+// article would silently lose its chart. Fail so the definition is fixed.
+const missing = [...wanted].filter((id) => !series[id]);
+if (missing.length > 0) {
+  console.error(
+    `[sync-loom-embeds] definitions reference missing series: ${missing.join(", ")}`,
+  );
+  process.exit(1);
+}
+
+const snapshot: LoomEmbedSnapshot = {
+  generatedAt: new Date().toISOString(),
+  observedThrough: corpus.observedThrough,
+  series,
+};
 
 writeFileSync(OUT, `${JSON.stringify(snapshot, null, 2)}\n`);
 console.log(
