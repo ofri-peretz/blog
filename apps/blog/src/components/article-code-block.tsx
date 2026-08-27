@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { CodeBlock } from "./ui/code-block";
 import { track } from "@/lib/analytics";
+import { installedPackage } from "@/lib/install-detect";
 
 /**
  * The article code surface: every fenced block renders through the
@@ -46,8 +47,14 @@ export function ArticleCodeBlock({
     <CodeBlock
       language={language}
       data-testid="article-code-block"
-      onCopied={() =>
-        track("article:code_copy_click", { slug, language: language ?? null })
+      onCopied={(text) =>
+        track("article:code_copy_click", {
+          slug,
+          language: language ?? null,
+          // The conversion dimension: our package name when the copy is
+          // an install command, null for a regular snippet.
+          package: installedPackage(text),
+        })
       }
     >
       {code.props.children}
