@@ -1,6 +1,6 @@
 ---
-title: "I Grepped My Own Code for Injection and Forgot Seven Interpreters"
-description: "SQL injection has a name everyone knows. GraphQL, LDAP, XPath, XXE, template and format-string injection are the same bug in parsers nobody counts."
+title: "Everyone Greps for SQL Injection. Nobody Greps for the Other Eight."
+description: "SQL injection has a name everyone knows. Eight more injections aim the same defect at parsers nobody audits: GraphQL, LDAP, XPath, XXE, template and more."
 slug: "injection-beyond-sql"
 published: false
 canonical_url: "https://ofriperetz.dev/articles/injection-beyond-sql"
@@ -17,55 +17,55 @@ series: null
 author:
 ---
 
-I went looking for injection in my own code. I found the SQL, fixed it, and closed the file. Seven other interpreters were still sitting there.
+Ask a developer to find injection in a codebase and they grep for string concatenation near a database call. They will find the SQL. They will walk past eight other interpreters on the way.
 
 An interpreter nobody remembers is still an interpreter. Build a string, hand it to something that parses it, and you have the same bug — whether or not that parser speaks SQL.
 
-## Where the attention went {#attention}
+## The shape, not the syntax {#shape}
 
-`eslint-plugin-security` is the default answer for JavaScript security linting: **4,044,266 downloads last week**, 14 rules. Exactly 1 of the 8 injections below has a rule there — `detect-object-injection`. GraphQL, LDAP, XPath, XXE, template, directive and format-string injection have no rule there at all.
+The taxonomy already knew this. [CWE-943](https://cwe.mitre.org/data/definitions/943.html) is "improper neutralisation of special elements in data query logic" — the parent class that SQL injection is merely the famous child of. Its siblings are the same defect aimed at different parsers.
 
-That is not a knock on the plugin. It is a map of which injections got a name people recognise. SQL got the name. The parser in your LDAP filter did not.
-
-## The eight, and what actually parses the string {#eight}
-
-| Rule | CWE | The interpreter you forgot |
+| Injection | CWE | The interpreter you forgot |
 |---|---|---|
-| `no-graphql-injection` | CWE-89 | the query resolver |
-| `no-ldap-injection` | CWE-90 | the directory filter |
-| `no-xpath-injection` | CWE-643 | the XML path engine |
-| `no-xxe-injection` | CWE-611 | the XML entity resolver |
-| `no-template-injection` | CWE-94 | the template compiler |
-| `no-directive-injection` | CWE-96 | the server-side include |
-| `no-format-string-injection` | CWE-134 | the format specifier parser |
-| `detect-object-injection` | CWE-915 | the JavaScript engine itself |
+| GraphQL | [CWE-943](https://cwe.mitre.org/data/definitions/943.html) | the query resolver |
+| LDAP | [CWE-90](https://cwe.mitre.org/data/definitions/90.html) | the directory filter |
+| XPath | [CWE-643](https://cwe.mitre.org/data/definitions/643.html) | the XML path engine |
+| XXE | [CWE-611](https://cwe.mitre.org/data/definitions/611.html) | the XML entity resolver |
+| Template | [CWE-94](https://cwe.mitre.org/data/definitions/94.html) | the template compiler |
+| Directive | [CWE-96](https://cwe.mitre.org/data/definitions/96.html) | the server-side include |
+| Format string | [CWE-134](https://cwe.mitre.org/data/definitions/134.html) | the format specifier parser |
+| Object / prototype | [CWE-915](https://cwe.mitre.org/data/definitions/915.html) | the JavaScript engine itself |
 
-Eight CWEs, one shape. The taxonomy already knew: [CWE-943](/articles/cwe-taxonomy-explained) is "improper neutralisation of special elements in data query logic" — the parent class SQL injection is merely the famous child of. [OWASP](/articles/owasp-top-10-explained) collapses the whole family into A03, and PortSwigger's server-side template injection research showed a template engine will hand you RCE as readily as a database hands you rows.
+Be precise about what that parent covers, because the honest version is narrower than the tidy one. MITRE lists exactly four children under CWE-943, all of them query languages: [SQL](/articles/sql-injection-node-postgres-pattern) (CWE-89), LDAP (CWE-90), XPath (CWE-643) and XQuery ([CWE-652](https://cwe.mitre.org/data/definitions/652.html)).
 
-XXE is the one I would put first. It needs no injected operator at all — parse attacker XML with entity resolution on and the parser fetches files for you. The payload is the document.
+Everything else in the table is *commonly mapped* there rather than formally filed under it. GraphQL has no dedicated CWE at all; neither do the [NoSQL operator injections](/articles/getting-started-eslint-plugin-mongodb-security). And XXE, format string and prototype pollution are not siblings in any sense — they are separate defects that happen to share a blind spot, not a parent.
 
-GraphQL is the one most likely to be live in your stack right now, and it is the odd entry in the table: its rule carries four CWEs, not one. Injection is only half of it. A query the client controls is also a depth and cost problem — CWE-400, resource exhaustion — because the caller, not you, decides how many nested resolvers run. That is the same unbounded-allocation shape that shows up in agent loops, and it is the reason a query-cost limit is a security control rather than a performance tweak.
+Eight interpreters plus SQL, and two distinct shapes between them. SQL got the name people recognise. The parser inside your LDAP filter did not, and that is the entire reason it goes unaudited.
 
-LDAP deserves a mention for how quietly it fails. `(uid=` plus a string is a filter, and a `)` in the wrong place turns an authentication check into a wildcard that matches every entry in the directory. No error, no stack trace — just a login that succeeds.
+## Three that fail in ways SQL does not {#three}
 
-## What these rules cannot do {#limits}
+**XXE needs no injected operator at all.** Parse attacker-supplied XML with entity resolution enabled and the parser fetches local files on their behalf. There is no quote to escape, no operator to smuggle. The payload is the document.
 
-They are pattern detectors, not [taint analysis](/articles/taint-vs-heuristic-detection). They see a template literal or a `+` flowing into a sink. They do not prove the value reached it from a request, and they do not follow it through three helpers into another file.
+**LDAP fails silently.** `(uid=` plus a string is a filter, and a stray `)` turns an authentication check into a wildcard matching every entry in the directory. No error, no stack trace — a login that simply succeeds.
 
-So they over-report on code that concatenates a constant, and they go quiet when the concatenation happens one function away. Reach matters more than the rule count here, and I would rather say that than let eight look like coverage.
+**Template injection escalates further than SQL.** [PortSwigger's server-side template injection research](https://portswigger.net/research/server-side-template-injection) showed a template engine will hand over remote code execution as readily as a database hands over rows. A templating call is not a formatting convenience; it is an evaluator.
 
-The honest one: `detect-object-injection` is the single rule I share with the incumbent, and it is the weakest of the eight. It flags `variable[key]` as either operand — which is ordinary JavaScript. Every safe lookup table trips it. I keep it because CWE-915 is real, not because the signal is good, and anyone enabling it should expect to triage.
+GraphQL is the odd one, because injection is only half of it. A query the client shapes is also a cost problem — the caller, not you, decides how many nested resolvers run. That is resource exhaustion ([CWE-400](https://cwe.mitre.org/data/definitions/400.html)) wearing a query's clothes, and it is why a depth or cost limit is a security control rather than a performance tweak.
 
-## What I would actually do {#do}
+## Why grep finds SQL and misses the rest {#why}
 
-Do not start with the rules. Grep your own code for the constructors: `XPathEvaluator`, `libxmljs`, an LDAP `filter:`, a template `compile(`, any `%s` you assemble. Then ask whether user input can reach the string.
+[OWASP](https://owasp.org/Top10/A03_2021-Injection/) folds this whole family into A03. Most tooling does not, because a pattern matcher looks for a *sink it has been taught* — a `query(`, an `execute(`. Nobody teaches it `XPathEvaluator`, `libxmljs`, an LDAP `filter:`, a `compile(`.
 
-If the answer is "probably not, but I would have to check" — that is the same answer I gave myself about SQL, right before I found seven more.
+That is also the honest limit of pattern matching generally. Seeing a `+` flowing into a sink does not prove the value came from a request, and it goes quiet when the concatenation happens one helper away. That gap between "looks dangerous" and "is reachable" is the whole subject of [taint analysis](/articles/taint-vs-heuristic-detection), and it is why a rule count is a poor proxy for coverage.
 
-The eight rules ship in `eslint-plugin-secure-coding`:
+## What to actually do {#do}
 
-```bash
-npm i -D eslint-plugin-secure-coding
-```
+Do not start from a checklist. Grep your own code for the *constructors*: `XPathEvaluator`, `libxmljs`, an LDAP `filter:`, a template `compile(`, any `%s` you assemble by hand. For each, ask one question — can user input reach this string?
 
-More of these at [dev.to/ofri-peretz](https://dev.to/ofri-peretz) — I publish what the measurements actually said, including when they said I was wrong.
+Grep is the triage list, not the verdict: it tells you *where to look*, taint tells you *whether it reaches*.
+
+If the answer is "probably not, but I would have to check", that is exactly the answer most people give about SQL right before they find the other eight.
+
+Which interpreter is live in your stack right now that you have never grepped for? My money is on GraphQL.
+
+More on how these classes get named and ranked: [the CWE taxonomy](/articles/cwe-taxonomy-explained) and [the OWASP Top 10](/articles/owasp-top-10-explained). I write these at [dev.to/ofri-peretz](https://dev.to/ofri-peretz).
