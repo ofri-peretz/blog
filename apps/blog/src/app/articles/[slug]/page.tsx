@@ -17,6 +17,7 @@ import benchReceipts from "@/data/bench-receipts.json";
 import { ArticleBenchReceipt } from "@/components/article-bench-receipt";
 import loomEmbeds from "@/data/loom-embeds.json";
 import { ArticleWeave } from "@/components/article-weave";
+import { ArticlePlayground } from "@/components/article-playground";
 import type { LoomEmbedSnapshot } from "@/lib/loom-embeds";
 import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
 import { ReadingStrand } from "@/components/ui/reading-strand";
@@ -344,6 +345,11 @@ export default async function ArticlePage(props: PageProps) {
           currentSlug={slug}
           data={loomEmbeds as LoomEmbedSnapshot}
         />
+
+        {/* Slug-mapped like the weave above: renders only for articles
+            LINT_EMBEDS names, null otherwise. The linter bundle loads
+            behind its own click, never with the page. */}
+        <ArticlePlayground currentSlug={slug} />
 
         <ArticlePlugins
           currentSlug={slug}
