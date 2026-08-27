@@ -63,6 +63,7 @@ describe("quota safety — visitors never touch an upstream API", () => {
     const offenders: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        // eslint-disable-next-line node-security/no-zip-slip -- not an archive: entry names come from readdirSync of our own src tree, and the resolve+startsWith containment below bounds every read to it
         const full = path.join(dir, entry.name);
         // Locks may NAME the module; only app source is policed.
         if (entry.isDirectory() && entry.name === "__tests__") continue;
@@ -70,7 +71,11 @@ describe("quota safety — visitors never touch an upstream API", () => {
         else if (/\.(ts|tsx)$/.test(entry.name)) {
           if (full.endsWith("lib/loom-corpus.ts")) continue;
           if (full.endsWith("lib/loom-corpus-assemble.ts")) continue;
-          if (readFileSync(full, "utf-8").includes("loom-corpus-assemble")) {
+          // Containment guard (no-zip-slip's ask): the walk reads only
+          // inside src, even if a symlinked entry pointed elsewhere.
+          const resolved = path.resolve(full);
+          if (!resolved.startsWith(src + path.sep)) continue;
+          if (readFileSync(resolved, "utf-8").includes("loom-corpus-assemble")) {
             offenders.push(path.relative(src, full));
           }
         }
