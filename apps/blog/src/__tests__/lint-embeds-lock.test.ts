@@ -127,9 +127,7 @@ describe("wiring and measurement", () => {
     );
     for (const file of ["components/ui/code-editor.tsx", "components/ui/lint-playground.tsx"]) {
       expect(drift).toContain(`"${file}"`);
-      expect(read(file.replace("components/ui/", "components/ui/"))).toContain(
-        "VENDORED from the Interlace DS",
-      );
+      expect(read(file)).toContain("VENDORED from the Interlace DS");
     }
   });
 });

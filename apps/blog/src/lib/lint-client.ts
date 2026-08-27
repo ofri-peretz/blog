@@ -36,10 +36,15 @@ function getWorker(): Worker {
     else entry.reject(new Error(event.data.error));
   };
   // A dead worker fails every in-flight request loudly — the DS surface
-  // renders "unknown, not clean", never a silent empty list.
+  // renders "unknown, not clean", never a silent empty list — and NULLS
+  // the singleton (review): keeping the terminated handle would make
+  // every later lint post into a corpse. The next keystroke gets a
+  // fresh worker instead — the playground self-heals.
   worker.onerror = () => {
     const entries = [...pending.values()];
     pending.clear();
+    worker?.terminate();
+    worker = null;
     for (const entry of entries) entry.reject(new Error("lint worker failed"));
   };
   return worker;
@@ -55,6 +60,14 @@ export function makeBrowserLint(
       const id = nextId++;
       pending.set(id, { resolve, reject });
       const request: LintRequest = { id, code, pluginId, rules };
-      getWorker().postMessage(request);
+      try {
+        getWorker().postMessage(request);
+      } catch (error) {
+        // postMessage on a just-died worker throws synchronously; clean
+        // this request up and let the next call recreate the worker.
+        pending.delete(id);
+        worker = null;
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
     });
 }
