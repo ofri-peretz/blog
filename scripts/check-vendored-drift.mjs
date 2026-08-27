@@ -24,6 +24,8 @@ const VENDORED = {
   "components/ui/dialog.tsx": "primitives/dialog.tsx",
   "components/ui/command-palette.tsx": "primitives/command-palette.tsx",
   "components/ui/code-block.tsx": "primitives/code-block.tsx",
+  "components/ui/code-editor.tsx": "primitives/code-editor.tsx",
+  "components/ui/lint-playground.tsx": "patterns/lint-playground.tsx",
   "components/ui/skeleton.tsx": "primitives/skeleton.tsx",
   "components/ui/skeleton-variants.ts": "primitives/skeleton-variants.ts",
   "components/ui/time-series.tsx": "charts/time-series.tsx",
@@ -92,10 +94,12 @@ function normalizeVendored(src, canonical) {
       .replaceAll("} from './time-series';", "} from '../charts/time-series.js';");
   }
   if (canonical.startsWith("patterns/")) {
-    return joined.replaceAll(
-      "} from './toggle';",
-      "} from '../primitives/toggle.js';",
-    );
+    return joined
+      .replaceAll("} from './toggle';", "} from '../primitives/toggle.js';")
+      .replaceAll(
+        "} from './code-editor';",
+        "} from '../primitives/code-editor.js';",
+      );
   }
   return joined
     .replaceAll("} from './dialog';", "} from './dialog.js';")
