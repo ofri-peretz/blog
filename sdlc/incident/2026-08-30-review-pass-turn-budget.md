@@ -90,35 +90,59 @@ were invisible locally and both are now locked. That is the chain working, but
 it is also the honest cost of a corpus-wide change: the review pass that would
 have caught them was the thing being fixed.
 
-## Third failure — a green check on a review that never ran
+## Third finding — a latent bug, and a misdiagnosis worth recording
 
 Fixing the duplicate key, I moved the explanation _inside_ the `claude_args`
 block. `claude_args` is a **command-line argument string, not YAML**: a `#`
-line in it is not a comment, it is handed to the CLI as arguments.
+line in it is not a comment, it is handed to the CLI as arguments. That is a
+real latent defect, now fixed and locked — `workflow-yaml-lock.test.ts` rejects
+any `#` line inside a `claude_args` value, verified to fail when one is
+reintroduced.
 
-The result was the worst outcome of the three. The run reported **SUCCESS** in
-about one second, with **zero agent turns** — a green check on a review that
-never happened. The two earlier failures were loud and safe; this one was
-silent and wrong, and it is exactly the failure mode `REVIEW.md` warns about:
-passing not because the code is clean but because the rubric was never applied.
+**But it was not the cause of the zero-turn run, and the first version of this
+incident said it was.** The actual cause is the action's own security guard:
 
-Fixed by moving the explanation above the key. Locked by a second assertion in
-`workflow-yaml-lock.test.ts` that rejects any `#` line inside a `claude_args`
-value, verified to fail when one is reintroduced.
+```
+##[warning]Skipping action due to workflow validation: Workflow validation
+failed. The workflow file must exist and have identical content to the version
+on the repository's default branch.
+```
+
+On a `pull_request`, `anthropics/claude-code-action` refuses to run when the
+workflow file differs from the copy on `main` — so a pull request cannot modify
+the reviewer that reviews it. That is correct and desirable behaviour, and it
+means **any PR editing `claude-code-review.yml` shows this pass as a one-second
+skip.** The same warning appears in the run I originally blamed on the `#`
+comments; a run on a branch that never touched the workflow shows zero
+validation warnings.
+
+Consequence for this PR: the corrected turn budget cannot be observed working
+here. It is verified as configuration — the log shows
+`--model claude-sonnet-4-6 / --max-turns 60 / --allowedTools ...` with no stray
+`#` lines — and it takes effect on the first PR after this one merges.
+
+The misdiagnosis is recorded rather than quietly overwritten, because it is the
+same class the chain exists to catch: a confident causal claim resting on a
+plausible correlation instead of on the log.
 
 ## Class summary
 
 Three self-inflicted failures on one workflow file, in escalating subtlety:
 
-| #   | Defect                            | Symptom                         | Caught by                      |
-| --- | --------------------------------- | ------------------------------- | ------------------------------ |
-| 1   | turn budget too low               | red check, readable log         | the log                        |
-| 2   | duplicate YAML key                | zero-job run, **no log at all** | parsing every workflow locally |
-| 3   | `#` comments inside `claude_args` | **green check, zero turns**     | reading the run's turn count   |
+| #   | Defect                            | Symptom                            | Caught by                      |
+| --- | --------------------------------- | ---------------------------------- | ------------------------------ |
+| 1   | turn budget too low               | red check, readable log            | the log                        |
+| 2   | duplicate YAML key                | zero-job run, **no log at all**    | parsing every workflow locally |
+| 3   | `#` comments inside `claude_args` | latent — passed to the CLI as args | the workflow lock              |
+| —   | PR edits its own reviewer         | one-second skip, reported success  | the run's validation warning   |
 
-Only the first was visible from the PR page. That is the argument for the lock
-rather than for more care: each of these was invisible to reading, and each is
-now a test that fails in under a second.
+Only the first was visible from the PR page. That is the argument for locks
+rather than for more care: each was invisible to reading, and each is now a
+test that fails in under a second.
+
+The last row is not a defect at all — the action is behaving correctly — but it
+looks exactly like one, and mistaking it for the `#` bug put a wrong entry in
+this file before the log was read properly.
 
 Re-check: the next `claude-code-review.yml` run should be a `pull_request` run
 with one job, a non-zero agent turn count, and a posted summary.

@@ -99,6 +99,13 @@ If a review fails on turns again, raise the budget or split the PR. Do not
 respond by narrowing the rubric: a review that skips pass 1 to fit its budget
 is worse than no review, because it reports green.
 
+**A PR that edits `claude-code-review.yml` shows this pass as a one-second
+skip.** The action requires the workflow file to match the copy on `main`, so a
+pull request cannot modify the reviewer that reviews it. That is deliberate.
+Check the run log for `Skipping action due to workflow validation` before
+concluding the review is broken — from the PR page it looks identical to a
+failure.
+
 ## Separation of duties
 
 - The agent that wrote the article is not the agent that reviews it.
