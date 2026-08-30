@@ -84,10 +84,16 @@ corpus-wide change can exhaust it before the agent posts anything — the first
 run of this rubric died at `error_max_turns` on a 102-file PR, having read the
 diff and returned nothing.
 
-Two mitigations, both in `claude-code-review.yml`: the budget is set explicitly
-(`--max-turns 60`, not the default 20), and the prompt instructs the agent to
-triage a large diff — group mechanical or repeated changes, sample a few to
-confirm the pattern, and spend the depth on files carrying logic.
+Two mitigations, both in `claude-code-review.yml`: the budget in the existing
+`claude_args` block was raised from the 20 it was pinned at to 60, and the
+prompt instructs the agent to triage a large diff — group mechanical or
+repeated changes, sample a few to confirm the pattern, and spend the depth on
+files carrying logic.
+
+Edit that block in place. Adding a second `claude_args` key produces duplicate
+keys, which stops the file parsing; GitHub then emits a zero-job `failure` run
+with no readable log and the workflow silently stops running.
+`workflow-yaml-lock.test.ts` catches that before it reaches a push.
 
 If a review fails on turns again, raise the budget or split the PR. Do not
 respond by narrowing the rubric: a review that skips pass 1 to fit its budget

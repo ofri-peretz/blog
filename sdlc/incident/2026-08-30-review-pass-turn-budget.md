@@ -29,7 +29,12 @@ findings returned, and a red check that says nothing about the code.
 
 **Budget, not rubric.** `REVIEW.md` was never reached — the agent ran out of
 turns while reading. Reading a file costs roughly a turn and this PR touches
-102 files, so the default was always going to fail on a corpus-wide change.
+102 files, so 20 was always going to fail on a corpus-wide change.
+
+Correction to the first draft of this incident: 20 was **not** the action's
+default. It was pinned explicitly in a `claude_args` block already present in
+the workflow, further down the same `with:`. Missing that produced a second
+failure, below.
 
 The instructive part is the failure _mode_. A review that dies mid-read
 reports red, which is loud and safe. The dangerous variant is a review that
@@ -59,5 +64,31 @@ not yet been observed succeeding end to end. It is verified as _configuration_
 — `claude_args` is a supported input on the pinned action SHA — but not yet as
 a _green run_. This commit retriggers it.
 
-Re-check: the next `claude-code-review.yml` run on this branch should complete
-without `error_max_turns` and post a summary comment on the PR.
+## Second failure — the fix broke the workflow outright
+
+The first fix added a **new** `claude_args` key without noticing the one
+already in the file. Duplicate keys are a YAML parse error, so the workflow
+stopped parsing entirely.
+
+The symptom is worth recording because it is nearly silent: GitHub creates a
+run with **zero jobs**, marks it `failure`, and serves no log. `gh run view
+--log-failed` returns _"log not found"_, and `.../jobs` returns
+`total_count: 0`. On the PR it looks like a failing review; it is actually a
+workflow that no longer runs at all. Two pushes produced phantom runs before
+the cause was found, and it was only found by parsing every workflow file
+locally with a real YAML parser.
+
+Fixed by editing the existing block in place (`--max-turns 20` → `60`) and
+deleting the duplicate. Locked by
+`apps/blog/src/__tests__/workflow-yaml-lock.test.ts`, which parses every
+workflow file, requires triggers and at least one job with steps, and was
+verified to fail when the duplicate key is reintroduced.
+
+**Class note:** this is the second self-inflicted defect on this branch caught
+by a machine rather than by reading (the first rewrote two cover assets). Both
+were invisible locally and both are now locked. That is the chain working, but
+it is also the honest cost of a corpus-wide change: the review pass that would
+have caught them was the thing being fixed.
+
+Re-check: the next `claude-code-review.yml` run on this branch should be a
+`pull_request` run with one job that completes without `error_max_turns`.

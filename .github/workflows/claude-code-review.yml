@@ -58,13 +58,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
-          # The action defaults to 20 turns, which is not enough for a
-          # corpus-wide change: the first run against a 102-file PR died with
-          # `error_max_turns` after 21 turns, having read the diff but never
-          # posted its summary -- a review that costs money and returns
-          # nothing. Reading N files costs roughly N turns, so this is sized
-          # for the largest PR this repo realistically sees.
-          claude_args: "--max-turns 60"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
@@ -98,5 +91,10 @@ jobs:
             for the summary.
           claude_args: |
             --model claude-sonnet-4-6
-            --max-turns 20
+            # 20 turns was not enough for a corpus-wide change: the first run
+            # against a 102-file PR died with `error_max_turns` after 21 turns,
+            # having read the diff but never posted its summary -- a review
+            # that costs money and returns nothing. Reading a file costs about
+            # a turn, so this is sized for the largest PR this repo sees.
+            --max-turns 60
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
