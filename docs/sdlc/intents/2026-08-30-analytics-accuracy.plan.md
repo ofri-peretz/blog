@@ -33,24 +33,31 @@ and reverting it would fix nothing.
 Three independent repairs. Only the third has an unknown root cause, so it is
 the only one that needs investigation rather than implementation.
 
-**A. Internal-traffic flag (blog-local).** A `?internal=1` visit registers a
-PostHog *super property* `is_internal: true`, which posthog-js persists in its
-own storage and attaches to every later event, including `$pageview` and
-everything in `lib/analytics.ts`. One visit per browser, no per-call-site
-changes.
+**A. Analysis-time population rule, not app code.** Exclude persons with
+`active_days >= 3 AND events >= 50`; everyone else is a reader. Full rationale,
+the measured distribution it sits in, and runnable SQL are in
+[`../analysis-population.md`](../analysis-population.md).
 
-Rejected alternative: IP or PostHog's built-in internal-user filtering. IPs
-rotate across our laptop, phone, and any network we work from, and the
-built-in filter keys off identified users — we never call `identify`, by
-design. A super property is the only option that survives all three.
+Rejected alternatives, in the order they were tried:
 
-The property is deliberately **absent** for real readers rather than `false`,
-so a query that forgets the filter over-counts strangers instead of silently
-hiding them. Failing loud beats failing clean.
+- **`?internal=1` super-property flag.** Built, then removed at Ofri's call.
+  Needs a deliberate visit per browser per device; forgetting one contaminates
+  data silently; and it can only work forwards, leaving every existing number
+  mixed.
+- **Referrer-based population** ("count only readers with an external first
+  referrer"). Killed by the data: 182 of ~270 people are `direct` and only 80
+  come from Google, so this discards most genuine readers. It also surfaced
+  that **zero** people arrived from dev.to in 60 days.
+- **IP allowlist / PostHog built-in internal filtering.** IPs roam across
+  laptop, phone, and networks; the built-in filter keys off identified users
+  and we never call `identify`, by design.
 
-**B. Strip the flag from the URL after reading.** A shared or indexed link
-carrying `?internal=1` would mark genuine readers internal and quietly delete
-them from the dataset.
+The rule is calibrated to **fail toward including strangers** — the two
+ambiguous rows near the cliff stay in the reader population. Over-counting
+readers makes our numbers look worse than reality, which is the safe direction.
+
+**B. Nothing ships in app code.** This repair is entirely a definition, which
+is why it has no runtime surface to break.
 
 **C. `short_link_click` outage — diagnose before changing.** The capture runs
 inside `after()` and swallows failures into `console.warn`, which is why
@@ -66,24 +73,25 @@ include a signal that would have caught it.
 A and B are one small change and ship together. C is independent and gated on
 reading production logs — it does not block A/B.
 
-1. `InternalTrafficFlag` component, mounted in the app shell. *(done)*
-2. Lock: the flag registers a super property, is reversible, and strips the
-   parameter. *(next)*
-3. Mark our own browsers via `?internal=1`, once each.
-4. C: read Vercel logs, identify the ingest failure, repair, and add a
-   detector so a future outage is loud.
+1. Population rule written down with its measured distribution. *(done)*
+2. Lock: the definition exists and carries both thresholds plus runnable SQL —
+   a rule that lives only in a chat log is not a rule. *(done)*
+3. C: read Vercel logs, identify the ingest failure, repair, and add a
+   detector so a future outage is loud. *(open — needs log access)*
 
 ## Gates
 
-- The lock must fail on a version that registers nothing — verify by removing
-  the `register` call before trusting green.
+- The lock must fail when the definition file is absent or loses its
+  thresholds; verified before trusting green.
 - No change to the playground footer or its promise.
-- Item 3 is a human step; the flag does nothing until someone visits the URL.
+- No human step. That was the defect in the first approach, not a detail of it.
 
 ## Risks
 
-- A super property is per-browser. A device we forget to flag keeps
-  contaminating the data, and there is no way to tell from the dashboard. Low
-  cost, and better than the current state of no separation at all.
-- Historical data cannot be retro-flagged. Every figure before today mixes us
-  with readers, so the baselines in the operating memo stay labelled as such.
+- The rule is a heuristic, not ground truth. It is calibrated to over-count
+  readers rather than hide them, so it errs toward making us look worse.
+- The cliff can move. Re-read the distribution at each Maintain review; if a
+  genuinely engaged reader ever clears the threshold, that is good news and the
+  numbers move up.
+- Historical baselines quoted before 2026-08-30 were computed without this
+  rule and stay labelled as mixed.

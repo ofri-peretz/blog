@@ -42,12 +42,19 @@ instrument produces confident, wrong conclusions faster than doing nothing.
 - **Tier 3, prerequisite:** `short_link_click` produces events again, with
   `uniq(distinct_id) > 1` on any day with more than ten clicks. Today it is
   literally 1, and has been for every day it ever fired.
-- **Tier 3, quality:** every reported figure can be filtered by
-  `is_internal != true`, and a query run with and without that filter differs
-  on at least one of our own known browsing sessions — proving the flag is
-  actually attaching.
+- **Tier 3, quality:** every reported figure is computed over a single written
+  population definition, applied identically twice a month apart. Success is
+  that two analyses are comparable — not that a number moved.
 
-Both are pass/fail counts, not rates, which is the right shape at this volume.
+Both are pass/fail, not rates, which is the right shape at this volume.
+
+**Revised 2026-08-30, same day.** The first attempt at the second criterion
+was a `?internal=1` super-property flag. Ofri declined it, correctly: it
+requires a manual visit per browser per device, and forgetting one contaminates
+the data silently. Replaced with an analysis-time population rule
+([`../analysis-population.md`](../analysis-population.md)) that needs nothing
+from anyone and, unlike the flag, applies retroactively to the history we
+already have.
 
 ## Not doing
 

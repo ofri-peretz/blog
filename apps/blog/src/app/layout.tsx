@@ -7,7 +7,6 @@ import { PostHogProvider } from "#interlace/components/analytics/posthog-provide
 import { VisitorProfileTracker } from "#interlace/components/analytics/visitor-profile-tracker";
 import { ThemeProvider } from "@/components/theme-provider";
 import { StructuredData } from "@/components/structured-data";
-import { InternalTrafficFlag } from "@/components/internal-traffic-flag";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -89,7 +88,6 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <StructuredData />
         <PostHogProvider app="blog">
-          <InternalTrafficFlag />
           <VisitorProfileTracker />
           <ThemeProvider
             attribute="class"

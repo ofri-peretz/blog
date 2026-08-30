@@ -1,10 +1,13 @@
 /**
- * Locks on the things that make our numbers safe to decide from.
+ * Locks on the SDLC artifacts that keep a claim traceable to the command
+ * that produced it.
  *
- * The August baseline could not separate our own browsing from a reader's,
- * which at ~11 pageviews a day makes every small number suspect. These pin
- * the separation mechanism and the SDLC artifacts that are supposed to keep
- * a claim traceable to the command that produced it.
+ * Separating our own browsing from a reader's is deliberately NOT done in
+ * app code. A `?internal=1` flag was built and rejected: it needs a manual
+ * visit per browser per device, it silently rots the moment one is missed,
+ * and it can only ever work forwards. The replacement is an analysis-time
+ * population rule (docs/sdlc/analysis-population.md) which needs nothing
+ * from anyone and applies retroactively to data we already have.
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -13,42 +16,21 @@ import { describe, expect, it } from "vitest";
 const SRC = path.resolve(__dirname, "..");
 // src → apps/blog → apps → repo root
 const REPO = path.resolve(SRC, "../../..");
-const read = (rel: string): string => readFileSync(path.resolve(SRC, rel), "utf-8");
 
-describe("internal traffic is separable from readers", () => {
-  const FLAG = read("components/internal-traffic-flag.tsx");
+describe("the analysis population is defined somewhere durable", () => {
+  const DOC = path.join(REPO, "docs/sdlc/analysis-population.md");
 
-  it("registers a persistent super property, not a one-off event property", () => {
-    // register() is what makes posthog-js attach the flag to EVERY later
-    // event, including $pageview and everything in lib/analytics.ts. A
-    // capture() here would flag one event and nothing else.
-    expect(FLAG).toContain("posthog.register({ is_internal: true })");
-    expect(FLAG).toContain('posthog.unregister("is_internal")');
+  it("exists — an exclusion rule that lives only in a chat log is not a rule", () => {
+    expect(existsSync(DOC)).toBe(true);
   });
 
-  it("is reversible and only reacts to the two known values", () => {
-    expect(FLAG).toMatch(/flag !== "1" && flag !== "0"/);
-  });
-
-  it("strips the parameter so a shared link cannot flag a real reader", () => {
-    expect(FLAG).toContain('searchParams.delete("internal")');
-    expect(FLAG).toContain("history.replaceState");
-  });
-
-  it("is mounted inside the PostHog provider, or it can never register", () => {
-    const layout = read("app/layout.tsx");
-    expect(layout).toContain("<InternalTrafficFlag />");
-    // Must sit INSIDE the provider subtree: registering before posthog.init
-    // is a silent no-op on an inert singleton.
-    const provider = layout.indexOf('<PostHogProvider app="blog">');
-    const flag = layout.indexOf("<InternalTrafficFlag />");
-    expect(provider).toBeGreaterThan(-1);
-    expect(flag).toBeGreaterThan(provider);
-  });
-
-  it("never lets analytics break the page", () => {
-    // Three independent try blocks: reading the URL, registering, tidying up.
-    expect(FLAG.match(/try \{/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+  it("states both thresholds and ships runnable SQL", () => {
+    const body = readFileSync(DOC, "utf-8");
+    // The thresholds ARE the definition; prose describing them without
+    // numbers cannot be applied consistently twice.
+    expect(body).toMatch(/active_days\s*>=\s*3/);
+    expect(body).toMatch(/events\s*>=\s*50/);
+    expect(body).toContain("SELECT");
   });
 });
 
