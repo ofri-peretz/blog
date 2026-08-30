@@ -1,0 +1,17 @@
+{
+  "slug": "the-article-slug",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/the-article-slug.md",
+  "reviewed": "2026-01-01",
+  "round": 1,
+  "lenses": {
+    "growth_hook": { "score": 0, "why": "" },
+    "security_correctness": { "score": 0, "why": "" },
+    "structure_framing_voice": { "score": 0, "why": "" },
+    "compatibility": { "score": 0, "why": "" },
+    "reproducibility": { "score": 0, "why": "" }
+  },
+  "min": 0,
+  "verdict": "blocked"
+}

@@ -1,0 +1,76 @@
+name: SDLC · maintain
+
+# Stage 6 of the artifact chain. Runs the three detectors on a schedule with
+# no person in the invocation path; a breach lands as a committed intent in the
+# triage queue with its evidence already attached.
+#
+# Health checks belong on a schedule, never in the PR path — a weekly cron that
+# opens work is cheap; the same checks on every push are a tax on every PR.
+
+on:
+  schedule:
+    # Mondays 06:00 UTC — findings are waiting at the start of the week.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run detectors without opening intents"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sdlc-maintain
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+        with:
+          node-version: 24
+
+      - run: npm install --no-audit --no-fund --include=optional
+
+      - name: Run detectors
+        id: detect
+        run: |
+          node scripts/sdlc/detect.mjs ${{ inputs.dry_run && '--dry-run' || '' }} \
+            | tee "$RUNNER_TEMP/detect.log"
+          {
+            echo '## SDLC stage 6 — detector run'
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/detect.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open a PR for anything that entered the triage queue
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain sdlc/)" ]; then
+            echo "::notice title=No breach::Nothing entered the triage queue."
+            exit 0
+          fi
+          BRANCH="sdlc/detect-$(date -u +%Y%m%d)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add sdlc/
+          git commit -m "chore(sdlc): detectors opened new intents
+
+          Stage 6 of the artifact chain. Each intent is \`proposed\` — a
+          detector may open one, only a human approves it into stage 2."
+          git push -u origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "chore(sdlc): detector findings for triage" \
+            --body "$(cat "$RUNNER_TEMP/detect.log")"
