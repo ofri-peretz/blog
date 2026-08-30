@@ -41,7 +41,7 @@ env:
 gh workflow list --all --json name,state   # state: disabled_manually
 ```
 
-A green dashboard is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics) for a working delivery pipeline, and like every proxy it fails in the direction that flatters you — [the metric quietly becoming the target](https://ofriperetz.dev/articles/goodharts-law-explained): a pipeline emitting *nothing* scores identically to one emitting success. Neither pipeline showed red. One showed stale green, the other showed silence, and silence renders as green if you don't look closely.
+A green dashboard is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics) for a working delivery pipeline, and like every proxy it fails in the direction that flatters you — [the metric quietly becoming the target](https://ofriperetz.dev/articles/goodharts-law-explained): a pipeline emitting _nothing_ scores identically to one emitting success. Neither pipeline showed red. One showed stale green, the other showed silence, and silence renders as green if you don't look closely.
 
 So here is the check I run now, and the one thing from that weekend I'd hand to someone else as-is:
 

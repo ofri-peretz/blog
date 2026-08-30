@@ -36,15 +36,15 @@ the numbers are incident/operational facts, so the rule doesn't bite.
 
 That is a clean bill of health. It failed the gate.
 
-The parser dropped lines meaning "nothing here" with `/^none/i`. The prompt asks reviewers to *explain* why nothing is wrong, so they write the explanation instead of the word — and **"no biography" is not "none"**.
+The parser dropped lines meaning "nothing here" with `/^none/i`. The prompt asks reviewers to _explain_ why nothing is wrong, so they write the explanation instead of the word — and **"no biography" is not "none"**.
 
-**Why it survives review:** the regex is correct for the string it was written against. Nobody writes a test for the sentence a model *didn't* emit.
+**Why it survives review:** the regex is correct for the string it was written against. Nobody writes a test for the sentence a model _didn't_ emit.
 
 The fix wasn't a longer regex. Guessing every phrasing of "nothing is wrong" is unbounded. The prompts already state the contract — fully in scope means `BLOCKERS: None` **and** `SCORE: 10` — so a 10 that also reports a blocker is self-contradictory:
 
 ```ts
 if (score === 10 && blockers.length) {
-  improvements.push(...blockers);  // demote, never drop
+  improvements.push(...blockers); // demote, never drop
   blockers = [];
 }
 ```
@@ -65,11 +65,11 @@ It was tested against the reviewer's **entire output**. My corpus is security ar
 
 Three finished reviews, scores visible in the text that got thrown away. That article lost 4 of 9 reviewers and failed two batch runs before I looked. It reads as an account problem, which is exactly why it survived.
 
-The tell separates the two cleanly: a real quota banner is the *only* thing on stdout. A review that merely discusses limits has a `SCORE:` line sitting right there.
+The tell separates the two cleanly: a real quota banner is the _only_ thing on stdout. A review that merely discusses limits has a `SCORE:` line sitting right there.
 
 ## An excluded reviewer voting anyway {#excluded}
 
-One reviewer is informational — its rubric weights brand fit 40%, which structurally caps anything outside that niche. It was excluded from the gate *score*.
+One reviewer is informational — its rubric weights brand fit 40%, which structurally caps anything outside that niche. It was excluded from the gate _score_.
 
 It was not excluded from blockers. So it vetoed through the back door — and what it files under `BLOCKERS` is its own arithmetic:
 
@@ -82,16 +82,22 @@ Four "blockers" on an article it had just called original and reproducible. A ha
 
 ## The pattern {#pattern}
 
-Every one of these is the harness misreading agreement as disagreement, and all three fail in the same direction: **quietly, toward rejection.** A false pass is loud — something bad ships and you see it. A false *fail* looks exactly like a strict gate doing its job, so it can run for weeks while you assume the work is merely not good enough yet. It is the same asymmetry that makes [a leaderboard wrong in the flattering direction](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), and the same reason [measurement bias](https://ofriperetz.dev/articles/bias-in-measurement) survives longest when it agrees with what you expected.
+Every one of these is the harness misreading agreement as disagreement, and all three fail in the same direction: **quietly, toward rejection.** A false pass is loud — something bad ships and you see it. A false _fail_ looks exactly like a strict gate doing its job, so it can run for weeks while you assume the work is merely not good enough yet. It is the same asymmetry that makes [a leaderboard wrong in the flattering direction](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong), and the same reason [measurement bias](https://ofriperetz.dev/articles/bias-in-measurement) survives longest when it agrees with what you expected.
 
 If you run an LLM as a judge, assert on the disagreements it cannot logically have: a perfect score with a blocker, a reviewer excluded from the score that still blocks, a transport error carrying a parsed result. Those are contradictions, and contradictions are testable without predicting a single word the model will say.
 
 ```ts
-assert.equal(parse("SCORE: 10\nBLOCKERS:\n- none found here").blockers.length, 0);
-assert.equal(parse("SCORE: 7\nBLOCKERS:\n- the claim has no date").blockers.length, 1);
+assert.equal(
+  parse("SCORE: 10\nBLOCKERS:\n- none found here").blockers.length,
+  0,
+);
+assert.equal(
+  parse("SCORE: 7\nBLOCKERS:\n- the claim has no date").blockers.length,
+  1,
+);
 ```
 
-Both directions. A one-sided test would have passed on all three bugs — my earlier fix for the *opposite* failure is what introduced the second one. That is the same lesson [ground truth taught me that unit tests could not](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed): a test written from the failure you already know about only ever proves you fixed that one.
+Both directions. A one-sided test would have passed on all three bugs — my earlier fix for the _opposite_ failure is what introduced the second one. That is the same lesson [ground truth taught me that unit tests could not](https://ofriperetz.dev/articles/what-ground-truth-caught-that-unit-tests-missed): a test written from the failure you already know about only ever proves you fixed that one.
 
 ---
 

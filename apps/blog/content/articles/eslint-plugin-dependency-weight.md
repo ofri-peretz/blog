@@ -29,15 +29,15 @@ So I measured the baseline first, then subtracted it.
 
 Resolved with `npm install --package-lock-only` into an empty project, one plugin at a time, on 2026-08-12. Bare `eslint` alone resolves to **69 packages** — that is the zero point.
 
-| plugin | tree | adds | direct deps |
-|---|---|---|---|
-| eslint-plugin-import | 205 | **136** | 19 |
-| eslint-plugin-react | 204 | **135** | 18 |
-| eslint-plugin-jsx-a11y | 194 | **125** | 15 |
-| eslint-plugin-unicorn | 110 | 41 | 20 |
-| eslint-plugin-sonarjs | 83 | 14 | 13 |
-| eslint-plugin-n | 80 | 11 | 8 |
-| eslint-plugin-promise | 70 | **1** | 1 |
+| plugin                 | tree | adds    | direct deps |
+| ---------------------- | ---- | ------- | ----------- |
+| eslint-plugin-import   | 205  | **136** | 19          |
+| eslint-plugin-react    | 204  | **135** | 18          |
+| eslint-plugin-jsx-a11y | 194  | **125** | 15          |
+| eslint-plugin-unicorn  | 110  | 41      | 20          |
+| eslint-plugin-sonarjs  | 83   | 14      | 13          |
+| eslint-plugin-n        | 80   | 11      | 8           |
+| eslint-plugin-promise  | 70   | **1**   | 1           |
 
 Now look at the two columns on the right together, because they do not agree.
 
@@ -59,12 +59,12 @@ npm i -D eslint eslint-plugin-react eslint-plugin-jsx-a11y eslint-plugin-import
 
 I maintain a plugin suite, so here is my own row, measured identically:
 
-| plugin | tree | adds | direct deps |
-|---|---|---|---|
-| eslint-plugin-react-features | 71 | **2** | 1 |
-| eslint-plugin-modernization | 71 | **2** | 1 |
-| eslint-plugin-browser-security | 71 | **2** | 1 |
-| eslint-plugin-import-next | 97 | 28 | 2 |
+| plugin                         | tree | adds  | direct deps |
+| ------------------------------ | ---- | ----- | ----------- |
+| eslint-plugin-react-features   | 71   | **2** | 1           |
+| eslint-plugin-modernization    | 71   | **2** | 1           |
+| eslint-plugin-browser-security | 71   | **2** | 1           |
+| eslint-plugin-import-next      | 97   | 28    | 2           |
 
 Two packages: one shared internal toolkit, which itself has zero dependencies, plus the plugin. `import-next` adds 28 because it carries a real resolver — [that is the trade it makes for being much faster](https://ofriperetz.dev/articles/eslint-plugin-import-vs-eslint-plugin-import-next-up-to-100x-faster).
 

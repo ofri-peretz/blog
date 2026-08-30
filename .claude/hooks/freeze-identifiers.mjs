@@ -14,7 +14,17 @@
 import { readFileSync, existsSync } from "node:fs";
 import matter from "gray-matter";
 
-const FROZEN = ["slug", "devto_id", "devto_url", "canonical_url"];
+// cover_image / social_image are asset filenames derived from the slug, so a
+// prose-level rename must never reach them — it 404s the cover with no visible
+// symptom in the build.
+const FROZEN = [
+  "slug",
+  "devto_id",
+  "devto_url",
+  "canonical_url",
+  "cover_image",
+  "social_image",
+];
 const ARTICLE = /apps\/blog\/content\/articles\/[^/]+\.md$/;
 
 const allow = () => process.exit(0);

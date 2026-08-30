@@ -34,24 +34,28 @@ I ran four modernization rules over **389 `.ts`/`.tsx` files** across four of my
 ```ts
 // before
 const latest = baseline[baseline.length - 1] ?? null;
-for (const a of accrual[accrual.length - 2].articles) { /* … */ }
+for (const a of accrual[accrual.length - 2].articles) {
+  /* … */
+}
 
 // after --fix
 const latest = baseline.at(-1) ?? null;
-for (const a of accrual.at(-2).articles) { /* … */ }
+for (const a of accrual.at(-2).articles) {
+  /* … */
+}
 ```
 
 `prefer-template-literal` — 44 findings, the bulk of them:
 
 ```ts
 // before
-String(res.stderr || res.stdout || "claude exited " + res.status)
+String(res.stderr || res.stdout || "claude exited " + res.status);
 
 // after --fix
-String(res.stderr || res.stdout || `claude exited ${res.status}`)
+String(res.stderr || res.stdout || `claude exited ${res.status}`);
 ```
 
-**Why this survives review forever:** there is no bug to find. A reviewer's job is to reject *broken* code, and none of this is broken. `arr[arr.length - 1]` is correct in every runtime that has ever existed. So the only thing that could flag it is a tool that knows what year it is.
+**Why this survives review forever:** there is no bug to find. A reviewer's job is to reject _broken_ code, and none of this is broken. `arr[arr.length - 1]` is correct in every runtime that has ever existed. So the only thing that could flag it is a tool that knows what year it is.
 
 ## The two that found nothing {#the-silent-two}
 
@@ -63,7 +67,7 @@ The failure mode to actually fear is the opposite: a rule that fires on everythi
 
 ## Lint as codemod, not as style {#codemod}
 
-Most lint rules ask you to *decide* something. These ask you to *apply* something — the rewrite is mechanical, the semantics are identical, and the fixer is exact.
+Most lint rules ask you to _decide_ something. These ask you to _apply_ something — the rewrite is mechanical, the semantics are identical, and the fixer is exact.
 
 That makes the adoption path different from a normal rule. You do not triage 55 findings. You run the fixer once, read the diff as a single commit, and from then on the rule holds the line so the old idiom cannot come back. It is a one-time migration plus a ratchet, in the same way [an autofix turns a hardcoded secret into a one-command repair](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix) rather than a ticket.
 

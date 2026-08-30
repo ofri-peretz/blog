@@ -60,7 +60,11 @@ ours to fix — but they must be reported, never silently accepted.
 ## Pass 5 — Identifier freeze `blocking`
 
 For any article that already has a `devto_id`, these fields are immutable:
-`slug`, `devto_id`, `devto_url`, `canonical_url`.
+`slug`, `devto_id`, `devto_url`, `canonical_url`, `cover_image`, `social_image`.
+
+The two image fields are on that list because they are asset filenames whose
+stem is the slug. A find-and-replace over prose will happily rewrite them and
+404 both covers, and nothing in the build reports it.
 
 dev.to permalinks cannot be renamed. Changing a published slug 404s every
 inbound link that ever pointed at it. When retitling, change the frontmatter

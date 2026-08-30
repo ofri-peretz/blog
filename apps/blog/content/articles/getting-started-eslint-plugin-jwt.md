@@ -1,6 +1,6 @@
 ---
 title: "JWT Vulnerabilities Your Code Review Approves Every Day — 13 ESLint Rules Stop Them in CI"
-description: "alg:none token forgery, RS256↔HS256 confusion, weak/hardcoded secrets, missing exp/iss/aud — the JWT auth mistakes that hand attackers a valid session. The 13 CWE-mapped rules in eslint-plugin-jwt v2.2.7 that turn them into CI errors, which preset you actually need, and the four rules `recommended` leaves off."
+description: "alg:none token forgery, RS256↔HS256 confusion, weak/hardcoded secrets, missing exp/iss/aud — the JWT auth mistakes that hand attackers a valid session. The 13 CWE-mapped rules in eslint-plugin-jwt-security v2.2.7 that turn them into CI errors, which preset you actually need, and the four rules `recommended` leaves off."
 slug: "getting-started-eslint-plugin-jwt"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt"
 tier: "TUTORIAL"
@@ -26,7 +26,7 @@ series: "The Hardened Stack"
 
 Five JWT vulnerabilities. Every one merged. Every one approved by a human reviewer.
 
-I put all five in a repro project and ran `eslint-plugin-jwt` over it — v2.2.7, ESLint 9.39.2, Node v24.18.0, measured 2026-07-28. `configs.recommended` failed the build on four of them. The fifth, the missing `audience` check, needs `configs.strict`.
+I put all five in a repro project and ran `eslint-plugin-jwt-security` over it — v2.2.7, ESLint 9.39.2, Node v24.18.0, measured 2026-07-28. `configs.recommended` failed the build on four of them. The fifth, the missing `audience` check, needs `configs.strict`.
 
 That gap is the most useful thing in this guide, and it is the one thing a preset table won't tell you. Install first, then each vulnerability, why review waved it through, and the rule that stops it.
 
@@ -37,12 +37,12 @@ That gap is the most useful thing in this guide, and it is the one thing a prese
 ## Install it first (60 seconds)
 
 ```bash
-npm install --save-dev eslint-plugin-jwt
+npm install --save-dev eslint-plugin-jwt-security
 ```
 
 ```js
 // eslint.config.js — `configs` is a NAMED export
-import { configs } from "eslint-plugin-jwt";
+import { configs } from "eslint-plugin-jwt-security";
 
 export default [
   configs.strict, // all 13 rules — what the five examples below are measured against
@@ -357,7 +357,7 @@ Passing all 13 rules is a lint-time property, not an architecture review — it'
 
 ## Compatibility
 
-Verified against `eslint-plugin-jwt` v2.2.7 (latest on npm, 2026-07-28):
+Verified against `eslint-plugin-jwt-security` v2.2.7 (latest on npm, 2026-07-28):
 
 | Surface              | Support                                                                                                                                                                                                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -383,17 +383,17 @@ This fits into the broader static-analysis onboarding protocol I use when auditi
 
 ## Where this sits in the ecosystem
 
-`eslint-plugin-jwt` is the dedicated JWT layer — signature bypass, algorithm confusion, secret strength, claim validation — each finding tagged with a CWE. Generic security plugins don't cover this layer; it's [one of the gaps I found benchmarking 17 of them](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared). In [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) terms it lands in A02 (Cryptographic Failures) and A07 (Identification and Authentication Failures) — categories, not severities, which is exactly why the CWE and the CVSS score do the ranking work here; [the full rule-to-category mapping is here](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules). It pairs with [`eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) and [`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) as the auth member of the **Hardened Stack** series.
+`eslint-plugin-jwt-security` is the dedicated JWT layer — signature bypass, algorithm confusion, secret strength, claim validation — each finding tagged with a CWE. Generic security plugins don't cover this layer; it's [one of the gaps I found benchmarking 17 of them](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared). In [OWASP Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) terms it lands in A02 (Cryptographic Failures) and A07 (Identification and Authentication Failures) — categories, not severities, which is exactly why the CWE and the CVSS score do the ranking work here; [the full rule-to-category mapping is here](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules). It pairs with [`eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) and [`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) as the auth member of the **Hardened Stack** series.
 
-> **The Hardened Stack** · [← `eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) | **`eslint-plugin-jwt` (current)** | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules)
+> **The Hardened Stack** · [← `eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) | **`eslint-plugin-jwt-security` (current)** | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules)
 
 ---
 
 ## Links
 
-- 📦 [npm: eslint-plugin-jwt](https://www.npmjs.com/package/eslint-plugin-jwt) — v2.2.7
+- 📦 [npm: eslint-plugin-jwt-security](https://www.npmjs.com/package/eslint-plugin-jwt-security) — v2.2.7
 - 📖 [Full rule docs (per-rule CWE + examples)](https://eslint.interlace.tools/docs/security/plugin-jwt)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-jwt)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-jwt-security)
 
 Run `configs.strict` against the oldest service you have that verifies a token — the one written before anyone on the team had opinions about `aud`. Something will fire. That is the good outcome, not the bad one: the pattern was already in production, and now it has a CWE, a score, and a line number. Fix the errors, read the warnings, ship.
 
@@ -401,10 +401,10 @@ Then read [The JWT `algorithm: none` Attack](https://ofriperetz.dev/articles/the
 
 **Which JWT incident changed how you review auth code — and being honest about it, would a linter have caught that one?** I'd like to know how many of these are configuration and how many are architecture. My guess is it splits about even.
 
-::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-jwt"}
-📦 `npm install --save-dev eslint-plugin-jwt` — 13 rules, one dev dependency.
+::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-jwt-security"}
+📦 `npm install --save-dev eslint-plugin-jwt-security` — 13 rules, one dev dependency.
 ::
 
 ---
 
-_[eslint-plugin-jwt](https://www.npmjs.com/package/eslint-plugin-jwt) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [X @ofriperetzdev](https://x.com/ofriperetzdev)_
+_[eslint-plugin-jwt-security](https://www.npmjs.com/package/eslint-plugin-jwt-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [X @ofriperetzdev](https://x.com/ofriperetzdev)_

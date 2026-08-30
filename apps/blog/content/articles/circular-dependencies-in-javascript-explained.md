@@ -36,10 +36,10 @@ A circular dependency exists when module A imports from module B, which imports 
 
 ```typescript
 // user.service.ts
-import { formatUser } from './user.utils';
+import { formatUser } from "./user.utils";
 
 // user.utils.ts
-import { UserService } from './user.service'; // ← closes the loop
+import { UserService } from "./user.service"; // ← closes the loop
 ```
 
 Neither developer planned this. `user.service.ts` needed a formatter. `user.utils.ts` needed the service type for a helper added three sprints later. Nobody saw the cycle form — they just saw two reasonable imports.
@@ -56,17 +56,17 @@ Barrel files are the biggest source of accidental cycles in TypeScript projects.
 
 ```typescript
 // features/user/index.ts — re-exports everything in the feature
-export { UserService } from './user.service';
-export { UserRepository } from './user.repository';
-export { UserController } from './user.controller';
-export { formatUser, validateUser } from './user.utils';
+export { UserService } from "./user.service";
+export { UserRepository } from "./user.repository";
+export { UserController } from "./user.controller";
+export { formatUser, validateUser } from "./user.utils";
 ```
 
 Now every file in the `user` feature imports from `../user` (the barrel) for cleaner paths. And any utility the barrel re-exports cannot safely import anything else from the barrel without creating a cycle.
 
 ```typescript
 // user.utils.ts
-import { UserService } from '../user'; // ← imports the barrel
+import { UserService } from "../user"; // ← imports the barrel
 // The barrel re-exports user.utils → user.utils imports the barrel → cycle
 ```
 
@@ -78,10 +78,10 @@ A `types.ts` file that both sides of a feature boundary import looks harmless �
 
 ```typescript
 // types.ts
-import { UserService } from './user.service'; // needed for a return type
+import { UserService } from "./user.service"; // needed for a return type
 
 // user.service.ts
-import { User, UserOptions } from './types'; // cycle
+import { User, UserOptions } from "./types"; // cycle
 ```
 
 TypeScript makes this worse. `import type` declarations are erased at compile time, but the module graph your bundler or Node.js sees is determined at load time. Many cycle detectors skip `import type` edges entirely — reporting 0 cycles on a graph that has real structural problems. The risk: the moment someone adds a value export to that same file, the type-only cycle becomes a value cycle, and that transition is invisible in code review.
@@ -92,10 +92,10 @@ As a codebase grows, features start borrowing from each other directly.
 
 ```typescript
 // orders/order.service.ts
-import { UserProfile } from '../users/user.service'; // orders imports users
+import { UserProfile } from "../users/user.service"; // orders imports users
 
 // users/user.service.ts
-import { OrderHistory } from '../orders/order.service'; // users imports orders → cycle
+import { OrderHistory } from "../orders/order.service"; // users imports orders → cycle
 ```
 
 Neither import looks wrong in isolation. `OrderService` needs the user's profile. `UserService` needs to surface order history. Both make sense individually. Together they create an architectural cycle that neither domain should own.
@@ -110,11 +110,15 @@ Runtimes and bundlers don't solve circular dependencies — they each make a dif
 
 ```javascript
 // a.js
-const { B } = require('./b');
-exports.A = class A { method() { return new B(); } }
+const { B } = require("./b");
+exports.A = class A {
+  method() {
+    return new B();
+  }
+};
 
 // b.js — requires a.js before a.js has finished evaluating
-const { A } = require('./a'); // A is {} — not yet assigned
+const { A } = require("./a"); // A is {} — not yet assigned
 exports.DEFAULT_B = new A(); // TypeError: A is not a constructor
 ```
 
@@ -122,12 +126,16 @@ exports.DEFAULT_B = new A(); // TypeError: A is not a constructor
 
 ```typescript
 // a.ts
-import { B } from './b';
-export class A { method() { return new B(); } }
+import { B } from "./b";
+export class A {
+  method() {
+    return new B();
+  }
+}
 export const DEFAULT_A = new A(); // top-level: runs at module load
 
 // b.ts — evaluated before a.ts finishes
-import { DEFAULT_A } from './a'; // a.ts is still loading
+import { DEFAULT_A } from "./a"; // a.ts is still loading
 export const USES_A = DEFAULT_A; // ReferenceError: Cannot access 'DEFAULT_A' before initialization
 ```
 
@@ -177,10 +185,10 @@ Two reasons cycles hide:
 
 ```typescript
 // Before (causes cycles through the barrel):
-import { UserService } from '../user';
+import { UserService } from "../user";
 
 // After (direct import, no barrel in the path):
-import { UserService } from '../user/user.service';
+import { UserService } from "../user/user.service";
 ```
 
 The most impactful change for most codebases. Barrel files are a developer convenience that bundlers and linters pay the cost for.
@@ -189,8 +197,12 @@ The most impactful change for most codebases. Barrel files are a developer conve
 
 ```typescript
 // domain-types.ts — zero imports from your own code
-export interface User { id: string; email: string; role: UserRole; }
-export type UserRole = 'admin' | 'user';
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+}
+export type UserRole = "admin" | "user";
 
 // types.ts imports from domain-types.ts safely
 // service.ts imports from domain-types.ts safely — no cycle
@@ -205,7 +217,9 @@ Types that need to be shared across a boundary belong in a module with zero impo
 
 // After: orders/ defines an interface it needs
 export interface OrderUserAddress {
-  street: string; city: string; country: string;
+  street: string;
+  city: string;
+  country: string;
 }
 // users/ implements the interface in its own adapter
 // orders/ accepts the interface — no import of the User domain
@@ -233,16 +247,16 @@ npm install --save-dev eslint-plugin-import-next
 
 ```javascript
 // eslint.config.mjs
-import importNext from 'eslint-plugin-import-next';
-import tsParser from '@typescript-eslint/parser';
+import importNext from "eslint-plugin-import-next";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js'],
+    files: ["**/*.ts", "**/*.tsx", "**/*.js"],
     languageOptions: { parser: tsParser },
-    plugins: { 'import-next': importNext },
+    plugins: { "import-next": importNext },
     rules: {
-      'import-next/no-cycle': 'error',
+      "import-next/no-cycle": "error",
     },
   },
 ];
@@ -258,7 +272,7 @@ Madge tells you what you have. ESLint prevents new ones from forming.
 
 For the full data — cycle counts across Payload, Next.js, Medusa, Strapi, and Twenty, with per-project breakdowns of which pattern creates the most cycles — see the [companion piece](https://ofriperetz.dev/articles/payload-508-circular-dependency-cycles).
 
-*Where do circular dependencies hide in your codebase — data layer, domain layer, or somewhere you didn't expect? The `console.log` trick is usually the tell.*
+_Where do circular dependencies hide in your codebase — data layer, domain layer, or somewhere you didn't expect? The `console.log` trick is usually the tell._
 
 ---
 
@@ -269,9 +283,11 @@ _Next: [We Scanned Payload, Next.js, and 3 More OSS Projects for Circular Depend
 📦 [`eslint-plugin-import-next`](https://www.npmjs.com/package/eslint-plugin-import-next) · [Rule docs](https://eslint.interlace.tools/docs/quality/plugin-import-next)
 
 <!-- markdownlint-disable MD034 -->
+
 {% cta https://github.com/ofri-peretz/eslint %}
 ⭐ Star on GitHub
 {% endcta %}
+
 <!-- markdownlint-enable MD034 -->
 
 ---

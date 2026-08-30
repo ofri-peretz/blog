@@ -103,11 +103,11 @@ I'm not going to keep writing "a formal audit is still the real bar, I just have
 
 The same five questions apply to any vendor's benchmark, not just mine: Does the disclosure come before the results or after? Can you run the methodology yourself, or does it ask you to trust a number? Does it show a result that went against the vendor, or only wins? Is the validation framed as "verify this" or "trust my process"? Is there a real channel to report a different result, and any evidence it's been used?
 
-What can improve from here is the evidence *under* this bar — more reproduction reports, more open corrections, more competitors re-verified as they ship. That's a floor that accumulates, not a ceiling I'm still climbing toward.
+What can improve from here is the evidence _under_ this bar — more reproduction reports, more open corrections, more competitors re-verified as they ship. That's a floor that accumulates, not a ceiling I'm still climbing toward.
 
 ---
 
-*Has a vendor's own benchmark ever changed which tool your team shipped — and did you later find out the benchmark was wrong? I'd like to hear that story more than a general opinion on trust.*
+_Has a vendor's own benchmark ever changed which tool your team shipped — and did you later find out the benchmark was wrong? I'd like to hear that story more than a general opinion on trust._
 
 ---
 
@@ -123,4 +123,4 @@ What can improve from here is the evidence *under* this bar — more reproductio
 
 ---
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

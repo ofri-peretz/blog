@@ -57,17 +57,17 @@ Concrete case: a conservative scanner that only fires on high-confidence pattern
 
 **F1 = 2PR / (P + R)** — the harmonic mean of precision and recall. Unlike an arithmetic mean, it punishes imbalance: 100% on one side cannot rescue 2% on the other, which is how both tools in the opening land on 3.9%.
 
-That property is also its blind spot. F1 tells you the two ratios are *balanced or not*; it never tells you *which one collapsed*. The misconception worth deleting is the one the opening demonstrated: **two tools with the same F1 behave the same.** They don't. The value-investing rule applies: price is what you pay, value is what you get. A headline score is the price tag; the three counts are the books. Read the books.
+That property is also its blind spot. F1 tells you the two ratios are _balanced or not_; it never tells you _which one collapsed_. The misconception worth deleting is the one the opening demonstrated: **two tools with the same F1 behave the same.** They don't. The value-investing rule applies: price is what you pay, value is what you get. A headline score is the price tag; the three counts are the books. Read the books.
 
 ## The Worked Numbers {#worked-numbers}
 
 An illustrative benchmark makes the point concrete. Take a corpus of 50 seeded vulnerabilities — SQL injection, SSRF, path traversal — plus safe counterparts, and run three scanners with different temperaments:
 
-| Scanner | TP | FP | FN | Precision | Recall | F1 |
-|---|---|---|---|---|---|---|
-| Aggressive matcher | 50 | 50 | 0 | 50.0% | 100.0% | 66.7% |
-| Balanced | 35 | 9 | 15 | 79.5% | 70.0% | 74.5% |
-| Conservative | 10 | 2 | 40 | 83.3% | 20.0% | 32.3% |
+| Scanner            | TP  | FP  | FN  | Precision | Recall | F1    |
+| ------------------ | --- | --- | --- | --------- | ------ | ----- |
+| Aggressive matcher | 50  | 50  | 0   | 50.0%     | 100.0% | 66.7% |
+| Balanced           | 35  | 9   | 15  | 79.5%     | 70.0%  | 74.5% |
+| Conservative       | 10  | 2   | 40  | 83.3%     | 20.0%  | 32.3% |
 
 Three readings no single column supports:
 
@@ -93,9 +93,9 @@ F1 weights precision and recall equally. That is a choice, not a law — and for
 
 Recomputing the two similar-precision scanners above under F2:
 
-| Scanner | F1 | F2 |
-|---|---|---|
-| Balanced (P 79.5% / R 70.0%) | 74.5% | 71.7% |
+| Scanner                          | F1    | F2    |
+| -------------------------------- | ----- | ----- |
+| Balanced (P 79.5% / R 70.0%)     | 74.5% | 71.7% |
 | Conservative (P 83.3% / R 20.0%) | 32.3% | 23.6% |
 
 The order does not change. The gaps do: Conservative, the precision champion, drops from 32.3 to 23.6 as F2 charges it properly for 20% recall, and Balanced's lead over it stretches from 42 to 48 points. That is the lesson — metric choice moves magnitudes before it moves ranks, so check that a conclusion survives the switch before you trust it.
@@ -113,7 +113,7 @@ Four questions, in order:
 
 For prior art: the closest public relative is the OWASP Benchmark Project, which scores SAST tools on a large Java corpus using the same TP/FP-derived arithmetic. The same discipline transfers to any ecosystem — pick a labeled corpus, report operating points, and publish the raw counts so every ratio stays recoverable.
 
-None of these metrics decides for you. Used together, they make it impossible for a single flattering number to decide *against* you. Next in the Foundations arc: why a precision number earned on a balanced corpus quietly falls apart at production base rates — [The Base Rate Problem](https://ofriperetz.dev/articles/base-rate-problem-explained).
+None of these metrics decides for you. Used together, they make it impossible for a single flattering number to decide _against_ you. Next in the Foundations arc: why a precision number earned on a balanced corpus quietly falls apart at production base rates — [The Base Rate Problem](https://ofriperetz.dev/articles/base-rate-problem-explained).
 
 If this is the reference page you wished vendor tables came with, bookmark it and [follow me on Dev.to](https://dev.to/ofri-peretz) — the rest of the Foundations series is written the same way.
 
@@ -121,30 +121,30 @@ If this is the reference page you wished vendor tables came with, bookmark it an
 
 ## Quick Reference {#quick-reference}
 
-| Metric | Formula | Question it answers | Blind spot |
-|---|---|---|---|
-| Precision | TP / (TP + FP) | When it fires, is it right? | Says nothing about what was missed |
-| Recall | TP / (TP + FN) | Of what's there, how much did it find? | Says nothing about noise |
-| F1 | 2PR / (P + R) | Are the two in balance? | Symmetric — hides *which* side failed |
-| F2 | 5PR / (4P + R) | Balance, valuing recall 2× | Still one number; weights still a choice |
-| Accuracy | (TP+TN) / all | How often was it right overall? | Needs TN — unbounded and near-meaningless for linters |
+| Metric    | Formula        | Question it answers                    | Blind spot                                            |
+| --------- | -------------- | -------------------------------------- | ----------------------------------------------------- |
+| Precision | TP / (TP + FP) | When it fires, is it right?            | Says nothing about what was missed                    |
+| Recall    | TP / (TP + FN) | Of what's there, how much did it find? | Says nothing about noise                              |
+| F1        | 2PR / (P + R)  | Are the two in balance?                | Symmetric — hides _which_ side failed                 |
+| F2        | 5PR / (4P + R) | Balance, valuing recall 2×             | Still one number; weights still a choice              |
+| Accuracy  | (TP+TN) / all  | How often was it right overall?        | Needs TN — unbounded and near-meaningless for linters |
 
 ---
 
 ## References
 
-Sokolova, M., & Lapalme, G. (2009). [A systematic analysis of performance measures for classification tasks](https://doi.org/10.1016/j.ipm.2009.03.002). *Information Processing & Management*, 45(4), 427–437. The standard taxonomy of classification metrics — which measures are invariant to which changes in the confusion matrix, and therefore which are safe to compare across corpora.
+Sokolova, M., & Lapalme, G. (2009). [A systematic analysis of performance measures for classification tasks](https://doi.org/10.1016/j.ipm.2009.03.002). _Information Processing & Management_, 45(4), 427–437. The standard taxonomy of classification metrics — which measures are invariant to which changes in the confusion matrix, and therefore which are safe to compare across corpora.
 
-Van Rijsbergen, C. J. (1979). *[Information Retrieval](https://www.dcs.gla.ac.uk/Keith/Preface.html)* (2nd ed.). Butterworths. The origin of the effectiveness measure that F1 descends from, including the β parameter — the primary source for the fact that F1's equal weighting was always meant to be adjustable.
+Van Rijsbergen, C. J. (1979). _[Information Retrieval](https://www.dcs.gla.ac.uk/Keith/Preface.html)_ (2nd ed.). Butterworths. The origin of the effectiveness measure that F1 descends from, including the β parameter — the primary source for the fact that F1's equal weighting was always meant to be adjustable.
 
-Davis, J., & Goadrich, M. (2006). [The relationship between Precision-Recall and ROC curves](https://doi.org/10.1145/1143844.1143874). *Proceedings of ICML 2006*. Why precision-recall space is the right lens under class imbalance, and the context for when curves (threshold tools) versus points (binary tools) are the honest report.
+Davis, J., & Goadrich, M. (2006). [The relationship between Precision-Recall and ROC curves](https://doi.org/10.1145/1143844.1143874). _Proceedings of ICML 2006_. Why precision-recall space is the right lens under class imbalance, and the context for when curves (threshold tools) versus points (binary tools) are the honest report.
 
 OWASP Benchmark Project. [owasp.org/www-project-benchmark](https://owasp.org/www-project-benchmark/). A public, scored SAST benchmark built on TP/FP-derived metrics over a Java test suite — the closest existing prior art to a hand-labeled, operating-point leaderboard.
 
-Saito, T., & Rehmsmeier, M. (2015). [The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets](https://doi.org/10.1371/journal.pone.0118432). *PLOS ONE*, 10(3), e0118432. The companion piece for why ROC-style reporting flatters tools when real positives are rare — which in security codebases they always are.
+Saito, T., & Rehmsmeier, M. (2015). [The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets](https://doi.org/10.1371/journal.pone.0118432). _PLOS ONE_, 10(3), e0118432. The companion piece for why ROC-style reporting flatters tools when real positives are rare — which in security codebases they always are.
 
 ---
 
-*Foundations series: ← [The Confusion Matrix](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) · [hub](https://ofriperetz.dev/foundations) · [The Base Rate Problem](https://ofriperetz.dev/articles/base-rate-problem-explained) →*
+_Foundations series: ← [The Confusion Matrix](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) · [hub](https://ofriperetz.dev/foundations) · [The Base Rate Problem](https://ofriperetz.dev/articles/base-rate-problem-explained) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). [Source on GitHub](https://github.com/ofri-peretz/eslint-benchmark-suite) · [npm](https://www.npmjs.com/search?q=%40interlace) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). [Source on GitHub](https://github.com/ofri-peretz/eslint-benchmark-suite) · [npm](https://www.npmjs.com/search?q=%40interlace) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

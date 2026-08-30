@@ -213,6 +213,35 @@ describe("stage 5 — landscape framing on everything through the chain", () => 
   });
 });
 
+describe("stage 3 — cover assets stay keyed to the frozen slug", () => {
+  // cover_image and social_image are asset FILENAMES derived from the slug, not
+  // prose. A corpus-wide rename of a package name once rewrote two of them and
+  // 404'd both covers — the words looked like a package reference and were not.
+  // The slug is frozen, so these are frozen with it.
+  it("every cover_image and social_image stem matches its slug", () => {
+    const offenders: string[] = [];
+    for (const a of corpus) {
+      const slug = (a.data.slug as string) ?? a.name.replace(/\.md$/, "");
+      for (const key of ["cover_image", "social_image"]) {
+        const url = a.data[key] as string | undefined;
+        if (!url) continue;
+        const stem = url
+          .split("/")
+          .pop()!
+          .split("?")[0]
+          .replace(/\.(jpg|jpeg|png|webp)$/i, "");
+        if (stem !== slug && stem !== `${slug}-og`) {
+          offenders.push(`${a.name}: ${key} stem "${stem}" != slug "${slug}"`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      `cover asset renamed away from its slug:\n  ${offenders.join("\n  ")}`,
+    ).toEqual([]);
+  });
+});
+
 describe("stage 4 — a scored article points at a spec that exists", () => {
   it("every quality.spec resolves", () => {
     const dangling = corpus

@@ -29,16 +29,16 @@ That is not a knock on the plugin. It is a map of which injections got a name pe
 
 ## The eight, and what actually parses the string {#eight}
 
-| Rule | CWE | The interpreter you forgot |
-|---|---|---|
-| `no-graphql-injection` | CWE-89 | the query resolver |
-| `no-ldap-injection` | CWE-90 | the directory filter |
-| `no-xpath-injection` | CWE-643 | the XML path engine |
-| `no-xxe-injection` | CWE-611 | the XML entity resolver |
-| `no-template-injection` | CWE-94 | the template compiler |
-| `no-directive-injection` | CWE-96 | the server-side include |
-| `no-format-string-injection` | CWE-134 | the format specifier parser |
-| `detect-object-injection` | CWE-915 | the JavaScript engine itself |
+| Rule                         | CWE     | The interpreter you forgot   |
+| ---------------------------- | ------- | ---------------------------- |
+| `no-graphql-injection`       | CWE-89  | the query resolver           |
+| `no-ldap-injection`          | CWE-90  | the directory filter         |
+| `no-xpath-injection`         | CWE-643 | the XML path engine          |
+| `no-xxe-injection`           | CWE-611 | the XML entity resolver      |
+| `no-template-injection`      | CWE-94  | the template compiler        |
+| `no-directive-injection`     | CWE-96  | the server-side include      |
+| `no-format-string-injection` | CWE-134 | the format specifier parser  |
+| `detect-object-injection`    | CWE-915 | the JavaScript engine itself |
 
 Eight CWEs, one shape. The taxonomy already knew: [CWE-943](/articles/cwe-taxonomy-explained) is "improper neutralisation of special elements in data query logic" — the parent class SQL injection is merely the famous child of. [OWASP](/articles/owasp-top-10-explained) collapses the whole family into A03, and PortSwigger's server-side template injection research showed a template engine will hand you RCE as readily as a database hands you rows.
 

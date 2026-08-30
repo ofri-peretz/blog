@@ -24,13 +24,13 @@ author:
 overall_score: 9
 reviews:
   discovery & hook: 9
-  discovery & hook_why: "The title travels standalone; the *opening line* doesn't quite match it. \"Every team I have worked on has had the localStorage argument\" is a strong recognition hook, but your 1,058-view performers open on an uncomfor..."
+  discovery & hook_why: 'The title travels standalone; the *opening line* doesn''t quite match it. "Every team I have worked on has had the localStorage argument" is a strong recognition hook, but your 1,058-view performers open on an uncomfor...'
   technical: 9.5
-  technical_why: "**Tighten the CWE choice for the cookie-without-`HttpOnly` row.** CWE-522 (Insufficiently Protected Credentials → A07:2021) is correct for the article's actual thesis (\"credential sits in a script-readable store\"), so..."
+  technical_why: '**Tighten the CWE choice for the cookie-without-`HttpOnly` row.** CWE-522 (Insufficiently Protected Credentials → A07:2021) is correct for the article''s actual thesis ("credential sits in a script-readable store"), so...'
   quality: 9
   quality_why: "Rename the load-bearing anchor. `{#can-page-js-read-it}` marks the single most-citable idea in the piece, but it's a verb-phrase question. Higher-tier war stories about token theft will want to deep-link it as a noun ..."
   practitioner: 8.7
-  practitioner_why: "The blast-radius framing undersells the in-session case and a senior reader will catch it. \"no exfiltration, no replay next week\" assumes the attacker only rides the current session. With script execution + `credentia..."
+  practitioner_why: 'The blast-radius framing undersells the in-session case and a senior reader will catch it. "no exfiltration, no replay next week" assumes the attacker only rides the current session. With script execution + `credentia...'
   linkability: 8.5
   linkability_why: "**Link the CWE canonical — this is the one concrete gap.** The article cites `CWE-522` prominently and correctly links CVSS and OWASP to their canonicals, but leaves CWE pointing only at MITRE. For internal-web consis..."
   abstraction: 9.5
@@ -38,10 +38,11 @@ reviews:
   checklist: 10
   checklist_why: "Tier scope is clean; nothing required for gating. (Any prose/link-quality notes belong to the other reviewers, not this checklist pass.)"
   challenge: 7.2
-  challenge_why: "The one experiment that unlocks the Gemini XPRIZE window (open through Aug 17, $2M): run this exact read-vs-send trust-boundary test against Gemini-generated auth code — \"when asked to persist a refresh token, which s..."
+  challenge_why: 'The one experiment that unlocks the Gemini XPRIZE window (open through Aug 17, $2M): run this exact read-vs-send trust-boundary test against Gemini-generated auth code — "when asked to persist a refresh token, which s...'
   voice & agenda: 9.5
-  voice & agenda_why: "The blunder-check reflex is the one fingerprint trait only implied, never staged. \"The honest summary: `HttpOnly` converts *permanent theft* into *temporary misuse*. Real and worthwhile. Not immunity.\" is his self-sus..."
+  voice & agenda_why: 'The blunder-check reflex is the one fingerprint trait only implied, never staged. "The honest summary: `HttpOnly` converts *permanent theft* into *temporary misuse*. Real and worthwhile. Not immunity." is his self-sus...'
 ---
+
 Every team I have worked on has had the localStorage argument. Someone says tokens belong
 in cookies. Someone else says cookies mean CSRF. Both cite a blog post. The token stays
 where it was.
@@ -65,14 +66,14 @@ If yes, anything achieving script execution on your page reads it too. Not encry
 you have nowhere to put the key. Not obfuscation — the attacker has your bundle. Not "we
 only write it after login" — the attacker runs after login too.
 
-| Mechanism | Readable by page JS | Under XSS |
-| --- | --- | --- |
-| `localStorage` | yes | gone |
-| `sessionStorage` | yes | gone |
-| IndexedDB | yes | gone |
-| Cache API | yes | gone |
-| Cookie without `HttpOnly` | yes | gone |
-| Cookie with `HttpOnly` | **no** | survives |
+| Mechanism                 | Readable by page JS | Under XSS |
+| ------------------------- | ------------------- | --------- |
+| `localStorage`            | yes                 | gone      |
+| `sessionStorage`          | yes                 | gone      |
+| IndexedDB                 | yes                 | gone      |
+| Cache API                 | yes                 | gone      |
+| Cookie without `HttpOnly` | yes                 | gone      |
+| Cookie with `HttpOnly`    | **no**              | survives  |
 
 Five of those six rows are the same row. The debate spends its energy on a distinction
 that exists only in the last line — and it is not the cookie that creates it, it is the
@@ -90,14 +91,14 @@ one by anyone who built it.
 
 ## The corollary people skip {#the-corollary}
 
-`HttpOnly` protects the token from being *read*. It does not stop it being *used*.
+`HttpOnly` protects the token from being _read_. It does not stop it being _used_.
 
 Script on your origin can still `fetch` with `credentials: "include"`, and the browser
 attaches the cookie. The attacker does not hold your session; they operate it, from your
 page, while it is open. Smaller blast radius — no exfiltration, no replay next week — but
 not nothing.
 
-The honest summary: `HttpOnly` converts *permanent theft* into *temporary misuse*. Real
+The honest summary: `HttpOnly` converts _permanent theft_ into _temporary misuse_. Real
 and worthwhile. Not immunity.
 
 ## So what counts as sensitive {#what-counts}
@@ -107,14 +108,14 @@ had this value, what could they do, and for how long?**
 
 - **Session token** — act as the user until expiry.
 - **Refresh token** — mint new sessions, far longer. Higher risk, and the one most often
-  parked in `localStorage` *because* it needs to persist.
+  parked in `localStorage` _because_ it needs to persist.
 - **Cached API response with personal data** — disclosure, not takeover. The Cache API is
   the mechanism people forget is storage at all.
 - **Feature flag, theme, draft** — nothing. Put it anywhere.
 
 ## And the CSRF half? {#csrf}
 
-Never on the same axis either. CSRF is the browser *attaching* a cookie to a request the
+Never on the same axis either. CSRF is the browser _attaching_ a cookie to a request the
 user did not intend — a property of ambient authority, not storage — and `SameSite`
 addresses it directly.
 
@@ -141,7 +142,7 @@ For severity language, use
 ## Why the argument keeps happening {#why-it-recurs}
 
 All five equivalent rows are reached the same way: script execution on your origin. So
-storage is *downstream* of the XSS question, and a team that has not settled how untrusted
+storage is _downstream_ of the XSS question, and a team that has not settled how untrusted
 data reaches a DOM sink is arguing about where to put the token while leaving the door
 open. [DOM sinks and sources](https://ofriperetz.dev/articles/dom-sink-taxonomy), the
 companion piece in this series, works through why those sources outnumber the sinks.

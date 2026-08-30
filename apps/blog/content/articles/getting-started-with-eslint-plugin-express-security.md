@@ -37,7 +37,7 @@ Every one of those is an **absence**. A diff shows you what changed; it cannot s
 
 `eslint-plugin-express-security` reads that same file and fires on the gaps. Below: what each absence costs, which rule catches it, and the two steps that put all 14 rules on your next push. Setup, from `npm install` to a red pipeline, takes about a minute.
 
-> **The Hardened Stack series** · [`eslint-plugin-node-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security) → **`eslint-plugin-express-security` (you are here)** → [`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) → [`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt). Express is the HTTP layer; `node-security` is the standard-library floor underneath it.
+> **The Hardened Stack series** · [`eslint-plugin-node-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security) → **`eslint-plugin-express-security` (you are here)** → [`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) → [`eslint-plugin-jwt-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security). Express is the HTTP layer; `node-security` is the standard-library floor underneath it.
 
 ---
 
@@ -280,7 +280,7 @@ The "framework hands you the guard, you ship without it" failure shows up at eve
 
 For how this slot compares to everything else competing for it, I benchmarked the field against a hand-labelled [ground-truth corpus](https://ofriperetz.dev/articles/ground-truth-in-security-testing) in [Benchmark: 17 ESLint Security Plugins Compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared).
 
-> **The Hardened Stack** · [`eslint-plugin-node-security` ←](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security) | **`eslint-plugin-express-security` (current)** | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) | [`eslint-plugin-jwt` →](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt). If your Express app also touches the filesystem or `child_process`, read the node-security floor next — it owns the CWE-22 half of Finding 4.
+> **The Hardened Stack** · [`eslint-plugin-node-security` ←](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security) | **`eslint-plugin-express-security` (current)** | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) | [`eslint-plugin-jwt-security` →](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security). If your Express app also touches the filesystem or `child_process`, read the node-security floor next — it owns the CWE-22 half of Finding 4.
 
 ---
 

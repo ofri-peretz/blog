@@ -25,15 +25,15 @@ author:
 overall_score: 8.9
 reviews:
   discovery & hook: 9
-  discovery & hook_why: "**The hook rests on a reframe, not a testable number — and that's the one thing between this and 9.5.** Every top-3 corpus winner carries a stat the reader can run against their own code (\"80% of them,\" \"65-75% had vu..."
+  discovery & hook_why: '**The hook rests on a reframe, not a testable number — and that''s the one thing between this and 9.5.** Every top-3 corpus winner carries a stat the reader can run against their own code ("80% of them," "65-75% had vu...'
   technical: 9.4
-  technical_why: "The RSA line (\"RSA padding left at a default that predates the attack it enables\") is the one spot a Node specialist would push back on. Node's `crypto.publicEncrypt` defaults to `RSA_PKCS1_OAEP_PADDING` (the *safe* o..."
+  technical_why: 'The RSA line ("RSA padding left at a default that predates the attack it enables") is the one spot a Node specialist would push back on. Node''s `crypto.publicEncrypt` defaults to `RSA_PKCS1_OAEP_PADDING` (the *safe* o...'
   quality: 8.8
-  quality_why: "**Give the reader one runnable thing.** This is a genre-2 methodology piece and the genre-2 bar asks for at least one command a reader can actually execute. Right now the article is 100% argument, 0% \"try it.\" A singl..."
+  quality_why: '**Give the reader one runnable thing.** This is a genre-2 methodology piece and the genre-2 bar asks for at least one command a reader can actually execute. Right now the article is 100% argument, 0% "try it." A singl...'
   practitioner: 8.6
-  practitioner_why: "The maturity-clustering claim is the article's actual differentiator over \"just a rule list,\" and it's the least-supported thing in the piece. Everything else here overlaps with the known crypto-misuse literature the ..."
+  practitioner_why: 'The maturity-clustering claim is the article''s actual differentiator over "just a rule list," and it''s the least-supported thing in the piece. Everything else here overlaps with the known crypto-misuse literature the ...'
   linkability: 8.5
-  linkability_why: "**Missing the single most obvious cross-link — the Layer 1 worked example.** Layer 1 literally says \"`Math.random()` where you needed a CSPRNG,\" and you have a whole article on exactly that. Link it:; `` `Math.random(..."
+  linkability_why: '**Missing the single most obvious cross-link — the Layer 1 worked example.** Layer 1 literally says "`Math.random()` where you needed a CSPRNG," and you have a whole article on exactly that. Link it:; `` `Math.random(...'
   abstraction: 9
   abstraction_why: "**Anchor stability on the four layers — the one thing holding this off 9.5+.** The layers are the citable atoms of this taxonomy, and each carries an inline `{#layer-1}`…`{#layer-4}`. But they sit on **bold lead-ins i..."
   checklist: 10
@@ -41,8 +41,9 @@ reviews:
   challenge: 8
   challenge_why: "Add one runnable artifact. This is an ESLint-ecosystem blog by the author of 20+ plugins, and a detection piece with no command is a self-inflicted gap. Even a single `grep -rE \"aes-.*-ecb|createHash\\(.sha1\"` for laye..."
   voice & agenda: 9
-  voice & agenda_why: "The frontmatter `voice & agenda_why` note flags one AI-tell — `\"The code is not merely plausible, it is *correct at the layer a reader checks*\"` (the \"not just X, it's Y\" false-choice tic). **That note is stale.** The..."
+  voice & agenda_why: 'The frontmatter `voice & agenda_why` note flags one AI-tell — `"The code is not merely plausible, it is *correct at the layer a reader checks*"` (the "not just X, it''s Y" false-choice tic). **That note is stale.** The...'
 ---
+
 The code review comment I have written most often, and regretted most often, is
 "use a stronger algorithm."
 
@@ -80,7 +81,7 @@ why crypto review misses it.
 ## Why layers beat a rule list {#why-layers}
 
 A rule list tells you what to grep for. The layer tells you where your team is, and
-therefore what you are *not* going to catch.
+therefore what you are _not_ going to catch.
 
 My working hypothesis — and it is a hypothesis, not something I have measured — is that
 failures cluster by how much crypto attention a team has already had. Never thought about
@@ -88,7 +89,7 @@ it: layer 1. Just audited: layer 2, because the audit said "upgrade the primitiv
 did exactly that. Careful for years: layers 3 and 4.
 
 If that holds, the uncomfortable corollary is that layer 3 and 4 defects live longest
-*because* the code passes every review asking "are we using strong algorithms." The
+_because_ the code passes every review asking "are we using strong algorithms." The
 maturity that fixes the first two layers is the same maturity that stops looking further
 down. That is the measurement I most want from this taxonomy.
 
@@ -115,18 +116,18 @@ The layers map to distinct CWEs, which is the useful part —
 [the taxonomy](https://ofriperetz.dev/articles/cwe-taxonomy-explained) already encodes the
 distinction most reviews collapse:
 
-| Layer | CWE |
-| --- | --- |
-| 1 — primitive | [CWE-327](https://cwe.mitre.org/data/definitions/327.html) risky algorithm; [CWE-338](https://cwe.mitre.org/data/definitions/338.html) weak PRNG |
-| 2 — mode | [CWE-327](https://cwe.mitre.org/data/definitions/327.html) — ECB has no dedicated CWE |
-| 3 — parameters | [CWE-1204](https://cwe.mitre.org/data/definitions/1204.html) weak IV *generation*; [CWE-323](https://cwe.mitre.org/data/definitions/323.html) *reusing* a nonce or IV; [CWE-916](https://cwe.mitre.org/data/definitions/916.html) insufficient computational effort |
-| 4 — usage | [CWE-208](https://cwe.mitre.org/data/definitions/208.html) observable timing discrepancy |
+| Layer          | CWE                                                                                                                                                                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 — primitive  | [CWE-327](https://cwe.mitre.org/data/definitions/327.html) risky algorithm; [CWE-338](https://cwe.mitre.org/data/definitions/338.html) weak PRNG                                                                                                                    |
+| 2 — mode       | [CWE-327](https://cwe.mitre.org/data/definitions/327.html) — ECB has no dedicated CWE                                                                                                                                                                               |
+| 3 — parameters | [CWE-1204](https://cwe.mitre.org/data/definitions/1204.html) weak IV _generation_; [CWE-323](https://cwe.mitre.org/data/definitions/323.html) _reusing_ a nonce or IV; [CWE-916](https://cwe.mitre.org/data/definitions/916.html) insufficient computational effort |
+| 4 — usage      | [CWE-208](https://cwe.mitre.org/data/definitions/208.html) observable timing discrepancy                                                                                                                                                                            |
 
 Filing all four as "weak crypto" is how the layer 3 and 4 instances disappear from your own
 bug data, and then from your priorities.
 
-Prior art worth reading: Egele et al., *An Empirical Study of Cryptographic Misuse in
-Android Applications* (CCS 2013), which found the overwhelming majority of apps using
+Prior art worth reading: Egele et al., _An Empirical Study of Cryptographic Misuse in
+Android Applications_ (CCS 2013), which found the overwhelming majority of apps using
 crypto APIs got at least one layer wrong. A decade old, different platform, and the
 layering has not aged at all.
 [NIST SP 800-175B](https://csrc.nist.gov/pubs/sp/800/175/b/r1/final) is the reference for

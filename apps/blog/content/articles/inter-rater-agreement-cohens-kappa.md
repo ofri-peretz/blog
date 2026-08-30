@@ -27,7 +27,7 @@ author:
 
 Two radiologists read the same 100 screening mammograms, each marking every scan "clear" or "suspicious." They agree on 92 of them. Cohen's kappa scores that agreement at **0.16** — one band above "no better than chance."
 
-Here is the arithmetic that makes both numbers true at once. Suppose each radiologist calls 95 of the 100 scans "clear" — a normal rate in screening, where the disease is rare. Two people labeling at those frequencies *at random* would agree about 90.5% of the time. No shared standard, no second read, no skill: 90.5% agreement, free. The impressive-looking 92% sits one and a half points above what indifference produces.
+Here is the arithmetic that makes both numbers true at once. Suppose each radiologist calls 95 of the 100 scans "clear" — a normal rate in screening, where the disease is rare. Two people labeling at those frequencies _at random_ would agree about 90.5% of the time. No shared standard, no second read, no skill: 90.5% agreement, free. The impressive-looking 92% sits one and a half points above what indifference produces.
 
 So, the misconception this article exists to retire: **"90% agreement means the raters agree."** It doesn't — not until you subtract the agreement that chance hands out for free.
 
@@ -42,7 +42,7 @@ Every measurement pipeline stands on labels. Spam or not spam, malignant or beni
 Two quantities separate the honest check from the naive one:
 
 - **Observed agreement (p_o)** — the fraction of items both raters labeled identically.
-- **Chance agreement (p_e)** — the agreement you would expect if each rater kept their labeling *frequencies* but assigned labels at random.
+- **Chance agreement (p_e)** — the agreement you would expect if each rater kept their labeling _frequencies_ but assigned labels at random.
 
 Class imbalance is the trap. When 95% of items carry the majority label, chance agreement alone is 0.95 × 0.95 + 0.05 × 0.05 = 90.5%. Two raters can post ninety-plus percent raw agreement while their judgment on the minority class — the class you actually care about — is nearly uncorrelated. This is the same mechanism that makes accuracy meaningless for rare-event detection: when one class dominates, doing nothing scores well. The [base rate problem](https://ofriperetz.dev/articles/base-rate-problem-explained) covers that failure for detectors; percent agreement inherits it for raters.
 
@@ -54,14 +54,14 @@ Jacob Cohen's 1960 move was to change the question. Not "how often do they agree
 κ = (p_o − p_e) / (1 − p_e)
 ```
 
-The numerator is the above-chance agreement the raters actually achieved. The denominator is the maximum above-chance agreement available. Kappa is the fraction of the achievable that was achieved: **1.0** means perfect agreement, **0** means exactly chance level, and negative values mean systematic *disagreement* — rarer, and usually a sign the raters are working from different definitions of the label.
+The numerator is the above-chance agreement the raters actually achieved. The denominator is the maximum above-chance agreement available. Kappa is the fraction of the achievable that was achieved: **1.0** means perfect agreement, **0** means exactly chance level, and negative values mean systematic _disagreement_ — rarer, and usually a sign the raters are working from different definitions of the label.
 
 Run the two radiologists through it. Their full contingency table, consistent with 92 matching reads (illustrative arithmetic, not a measured study):
 
-|  | B: clear | B: suspicious |
-|---|---|---|
-| **A: clear** | 91 | 4 |
-| **A: suspicious** | 4 | 1 |
+|                   | B: clear | B: suspicious |
+| ----------------- | -------- | ------------- |
+| **A: clear**      | 91       | 4             |
+| **A: suspicious** | 4        | 1             |
 
 - p_o = (91 + 1) / 100 = **0.92**
 - p_e = (0.95 × 0.95) + (0.05 × 0.05) = **0.905**
@@ -88,7 +88,7 @@ Kappa needs no ground truth at all. It is symmetric: it compares two raters to e
 The decision rule:
 
 - **Fact-shaped label** (a knockout ended the fight, the card was charged twice, the biopsy came back malignant): build a labeled reference set and score precision, recall, and F1 against it.
-- **Judgment-shaped label** ("too aggressive," "suspicious," "severe"): a reference set can never be more than its author's opinion written down. Measure whether *independent* judges agree instead.
+- **Judgment-shaped label** ("too aggressive," "suspicious," "severe"): a reference set can never be more than its author's opinion written down. Measure whether _independent_ judges agree instead.
 
 Two Wall Street analysts both stamp a stock "buy," and it reads like agreement. It mostly isn't. Almost every analyst rates almost everything "buy," so landing on the same word costs them nothing — the base rate hands it over before either one has opened the filings. The rating I'd actually trust is the one where the two could easily have split and didn't: same stock, same quarter, for a reason chance didn't supply. Kappa is that suspicion turned into arithmetic — subtract the agreement the odds give away for free, and report what's left.
 
@@ -104,43 +104,43 @@ Bookmark this for the next time someone quotes "94% agreement" at you — and if
 
 ## Quick Reference {#quick-reference}
 
-| Quantity | Meaning |
-|---|---|
-| p_o | Observed agreement — fraction of items labeled identically |
-| p_e | Chance agreement — expected overlap from the raters' label frequencies alone |
-| κ = (p_o − p_e) / (1 − p_e) | Share of achievable above-chance agreement actually achieved |
-| κ = 1 / 0 / < 0 | Perfect / chance-level / systematic disagreement |
+| Quantity                    | Meaning                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| p_o                         | Observed agreement — fraction of items labeled identically                   |
+| p_e                         | Chance agreement — expected overlap from the raters' label frequencies alone |
+| κ = (p_o − p_e) / (1 − p_e) | Share of achievable above-chance agreement actually achieved                 |
+| κ = 1 / 0 / < 0             | Perfect / chance-level / systematic disagreement                             |
 
-| κ range | Landis & Koch label (convention, not law) |
-|---|---|
-| < 0 | Poor |
-| 0.00–0.20 | Slight |
-| 0.21–0.40 | Fair |
-| 0.41–0.60 | Moderate |
-| 0.61–0.80 | Substantial |
-| 0.81–1.00 | Almost perfect |
+| κ range   | Landis & Koch label (convention, not law) |
+| --------- | ----------------------------------------- |
+| < 0       | Poor                                      |
+| 0.00–0.20 | Slight                                    |
+| 0.21–0.40 | Fair                                      |
+| 0.41–0.60 | Moderate                                  |
+| 0.61–0.80 | Substantial                               |
+| 0.81–1.00 | Almost perfect                            |
 
-| Situation | Right instrument |
-|---|---|
-| Fact-shaped label, ground truth available | Accuracy / precision / recall / F1 |
-| Judgment-shaped label, two raters, nominal classes | Cohen's κ |
-| More than two raters, missing data, ordered scales | Krippendorff's α |
-| Raters may share a bias | κ **plus** an external validity check — agreement alone can't detect it |
+| Situation                                          | Right instrument                                                        |
+| -------------------------------------------------- | ----------------------------------------------------------------------- |
+| Fact-shaped label, ground truth available          | Accuracy / precision / recall / F1                                      |
+| Judgment-shaped label, two raters, nominal classes | Cohen's κ                                                               |
+| More than two raters, missing data, ordered scales | Krippendorff's α                                                        |
+| Raters may share a bias                            | κ **plus** an external validity check — agreement alone can't detect it |
 
 ---
 
 ## References
 
-Cohen, J. (1960). [A coefficient of agreement for nominal scales](https://doi.org/10.1177/001316446002000104). *Educational and Psychological Measurement*, 20(1), 37–46. The original paper: chance-corrected agreement for two raters over nominal categories, motivated by exactly the imbalance problem in the hook.
+Cohen, J. (1960). [A coefficient of agreement for nominal scales](https://doi.org/10.1177/001316446002000104). _Educational and Psychological Measurement_, 20(1), 37–46. The original paper: chance-corrected agreement for two raters over nominal categories, motivated by exactly the imbalance problem in the hook.
 
-Landis, J. R., & Koch, G. G. (1977). [The measurement of observer agreement for categorical data](https://doi.org/10.2307/2529310). *Biometrics*, 33(1), 159–174. Source of the interpretation bands — and of the in-print admission that the divisions are arbitrary.
+Landis, J. R., & Koch, G. G. (1977). [The measurement of observer agreement for categorical data](https://doi.org/10.2307/2529310). _Biometrics_, 33(1), 159–174. Source of the interpretation bands — and of the in-print admission that the divisions are arbitrary.
 
-Spitzer, R. L., & Fleiss, J. L. (1974). [A re-analysis of the reliability of psychiatric diagnosis](https://doi.org/10.1192/bjp.125.4.341). *British Journal of Psychiatry*, 125(587), 341–347. The field-changing application: chance-corrected agreement overturning conclusions that raw agreement supported.
+Spitzer, R. L., & Fleiss, J. L. (1974). [A re-analysis of the reliability of psychiatric diagnosis](https://doi.org/10.1192/bjp.125.4.341). _British Journal of Psychiatry_, 125(587), 341–347. The field-changing application: chance-corrected agreement overturning conclusions that raw agreement supported.
 
-Krippendorff, K. (2004). *[Content Analysis: An Introduction to Its Methodology](https://books.google.com/books/about/Content_Analysis.html?id=q657o3M3C8cC)* (2nd ed.). Sage. Develops α, the generalization of κ to many raters, missing data, and non-nominal scales — the reliability standard in content analysis and dataset annotation.
+Krippendorff, K. (2004). _[Content Analysis: An Introduction to Its Methodology](https://books.google.com/books/about/Content_Analysis.html?id=q657o3M3C8cC)_ (2nd ed.). Sage. Develops α, the generalization of κ to many raters, missing data, and non-nominal scales — the reliability standard in content analysis and dataset annotation.
 
 ---
 
-*Foundations series: ← [Ranking vs measuring](https://ofriperetz.dev/articles/ranking-vs-measuring) · [hub](https://ofriperetz.dev/foundations) · [Valid vs reliable metrics](https://ofriperetz.dev/articles/valid-vs-reliable-metrics) →*
+_Foundations series: ← [Ranking vs measuring](https://ofriperetz.dev/articles/ranking-vs-measuring) · [hub](https://ofriperetz.dev/foundations) · [Valid vs reliable metrics](https://ofriperetz.dev/articles/valid-vs-reliable-metrics) →_
 
-*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_

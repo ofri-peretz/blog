@@ -33,7 +33,7 @@ The rule is [`no-raw-color-literal`](https://github.com/ofri-peretz/eslint/blob/
 
 ```tsx
 // packages/ui/src/effects/shimmer-button.tsx:102
-"rounded-2xl px-4 py-1.5 text-sm font-medium shadow-[inset_0_-8px_10px_#ffffff1f]"
+"rounded-2xl px-4 py-1.5 text-sm font-medium shadow-[inset_0_-8px_10px_#ffffff1f]";
 ```
 
 ```text
@@ -60,7 +60,7 @@ The system didn't drift. It leaked at the seam where other people's code came in
 
 ## The pattern {#pattern}
 
-A design system fails at its boundaries, not its center. The primitives I wrote while thinking about tokens obey them. The components I imported while thinking about *shipping* do not — and they arrive pre-broken, which means no diff ever shows the moment the violation entered.
+A design system fails at its boundaries, not its center. The primitives I wrote while thinking about tokens obey them. The components I imported while thinking about _shipping_ do not — and they arrive pre-broken, which means no diff ever shows the moment the violation entered.
 
 That is why this has to be a lint rule and not a review convention. Review catches what a diff shows. Pasted code shows up as one clean green addition.
 

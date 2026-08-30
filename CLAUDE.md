@@ -28,8 +28,13 @@ fails CI. That is deliberate.
 Once an article has a `devto_id`, these are immutable forever:
 
 ```
-slug · devto_id · devto_url · canonical_url
+slug · devto_id · devto_url · canonical_url · cover_image · social_image
 ```
+
+`cover_image` and `social_image` are in that list because they are asset
+filenames derived from the slug — their stem is always the slug (or
+`<slug>-og`). A corpus-wide rename once rewrote two of them and 404'd both
+covers with no visible symptom in the build.
 
 dev.to permalinks cannot be renamed; changing one 404s every inbound link.
 Retitling means changing `title` and the body only. A slug containing a stale

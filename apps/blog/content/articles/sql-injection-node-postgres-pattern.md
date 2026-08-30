@@ -59,7 +59,7 @@ Only the first one looks dangerous. The other three survive code review because
 `rejectUnauthorized: false`, a `SET search_path` that interpolates a variable.
 Nobody approved a vulnerability; they approved lines that each read as fine —
 which is also why an AI assistant hands you these on request (more on that at the
-end). Each one is structural, and each has a dedicated rule in `eslint-plugin-pg`.
+end). Each one is structural, and each has a dedicated rule in `eslint-plugin-postgresql-security`.
 
 | #   | Failure mode              | What an attacker (or load) controls   | The pg rule                 | CWE     |
 | --- | ------------------------- | ------------------------------------- | --------------------------- | ------- |
@@ -73,7 +73,7 @@ close **three** of them — all inside class 1. The other **three** each need a
 different fix: identifier escaping, a `finally` block, a CA bundle. That gap is
 why this is a threat map and not a "just use `$1`" reminder.
 
-All four rules ship in one plugin — `npm i -D eslint-plugin-pg` now if you want
+All four rules ship in one plugin — `npm i -D eslint-plugin-postgresql-security` now if you want
 to lint along ([config is below](#one-config-turns-on-all-four)); otherwise read
 on for the threat behind each rule.
 
@@ -359,18 +359,18 @@ you didn't write. A CI rule does.
 
 ```bash
 # npm
-npm install --save-dev eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
 # yarn
-yarn add -D eslint-plugin-pg
+yarn add -D eslint-plugin-postgresql-security
 # pnpm
-pnpm add -D eslint-plugin-pg
+pnpm add -D eslint-plugin-postgresql-security
 # bun
-bun add -d eslint-plugin-pg
+bun add -d eslint-plugin-postgresql-security
 ```
 
 ```js
 // eslint.config.mjs — `configs` is a NAMED export (default export is the plugin)
-import { configs } from "eslint-plugin-pg";
+import { configs } from "eslint-plugin-postgresql-security";
 
 export default [
   // scope to where the database code lives
@@ -412,7 +412,7 @@ repository — that's the only number that decides anything.
 
 | Surface              | Support                                                                               |
 | -------------------- | ------------------------------------------------------------------------------------- |
-| **Plugin version**   | `eslint-plugin-pg@1.4.7`, 13 rules (npm latest, checked 2026-07-28)                   |
+| **Plugin version**   | `eslint-plugin-postgresql-security@1.4.7`, 13 rules (npm latest, checked 2026-07-28)  |
 | **Package managers** | npm, yarn, pnpm, bun                                                                  |
 | **Node**             | `>= 18.0.0`                                                                           |
 | **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                        |
@@ -434,16 +434,16 @@ covers the rest of the 13 rules:
 - [search_path Hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the identifier attack most teams have never heard of
 - [The Connection Leak Outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage) — the 3 AM pool-exhaustion post-mortem
 - [Transaction Race Conditions](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — what happens when `BEGIN` runs on the pool instead of a client
-- [Getting Started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — all 13 rules end to end
+- [Getting Started with `eslint-plugin-postgresql-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security) — all 13 rules end to end
 - [Plugin docs](https://eslint.interlace.tools) — full rule reference with CWE/CVSS mappings
 
 ---
 
 ## Links
 
-- 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📦 [npm: eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security)
 - 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools/docs/security/plugin-pg/rules)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-postgresql-security)
 
 My money's on the connection leak — the one that passed every test and still took
 down the API at 3 AM. But I'm curious about the creative ones.
@@ -459,12 +459,12 @@ pager, and three lines every code review had approved. Four is a short enough
 list to close for good, and not one of the four needs a security team to close
 it — each needs a rule that stays awake after the reviewer stops reading.
 
-::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-pg"}
-📦 `npm i -D eslint-plugin-pg` — four rules for the four ways a node-postgres
+::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-postgresql-security"}
+📦 `npm i -D eslint-plugin-postgresql-security` — four rules for the four ways a node-postgres
 data layer fails. Point them at your `db/` folder and see which one is already
 live in your codebase.
 ::
 
 ---
 
-_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+_[eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

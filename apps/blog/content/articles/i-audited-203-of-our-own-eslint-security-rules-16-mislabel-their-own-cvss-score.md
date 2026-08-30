@@ -262,12 +262,12 @@ write:
 ## The config
 
 ```bash
-npm install --save-dev eslint-plugin-node-security eslint-plugin-jwt
+npm install --save-dev eslint-plugin-node-security eslint-plugin-jwt-security
 ```
 
 ```js
 import nodeSecurity from "eslint-plugin-node-security";
-import jwt from "eslint-plugin-jwt";
+import jwt from "eslint-plugin-jwt-security";
 
 export default [nodeSecurity.configs.recommended, jwt.configs.recommended];
 ```
@@ -275,7 +275,7 @@ export default [nodeSecurity.configs.recommended, jwt.configs.recommended];
 Both plugins print the CWE/CVSS/OWASP line on every finding — that's what
 made this audit possible to run against our own output in the first place.
 [Getting started with eslint-plugin-node-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security)
-and [getting started with eslint-plugin-jwt](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)
+and [getting started with eslint-plugin-jwt-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security)
 cover the rest of what each ships.
 
 ---

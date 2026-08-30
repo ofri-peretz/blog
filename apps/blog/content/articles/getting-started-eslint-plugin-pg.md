@@ -1,6 +1,6 @@
 ---
 title: "PostgreSQL Injection in Node.js: 4 Patterns That Pass Code Review, and the 13 Rules That Catch Them"
-description: "SQL injection (CVSS 9.8), search_path schema hijacking (CVSS 7.5), COPY FROM filesystem access (CVSS 9.5), and pool connection leaks (CWE-404) — four node-postgres patterns that survive review every time, and the 13 ESLint rules in eslint-plugin-pg v1.4.6 that turn all four into CI errors. Install, config, and what each finding means."
+description: "SQL injection (CVSS 9.8), search_path schema hijacking (CVSS 7.5), COPY FROM filesystem access (CVSS 9.5), and pool connection leaks (CWE-404) — four node-postgres patterns that survive review every time, and the 13 ESLint rules in eslint-plugin-postgresql-security v1.4.6 that turn all four into CI errors. Install, config, and what each finding means."
 slug: "getting-started-eslint-plugin-pg"
 canonical_url: "https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg"
 tier: "TUTORIAL"
@@ -33,13 +33,13 @@ series: "Postgres Security Protocol"
 ## Install it first (60 seconds)
 
 ```bash
-npm install --save-dev eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
 ```
 
 Flat config (`eslint.config.js`):
 
 ```js
-import { configs } from "eslint-plugin-pg";
+import { configs } from "eslint-plugin-postgresql-security";
 
 export default [
   configs.recommended, // all 13 rules
@@ -205,7 +205,7 @@ return result.rows;
 Three presets ship, and the one you want depends on whether you are adopting or gating:
 
 ```js
-import { configs } from "eslint-plugin-pg";
+import { configs } from "eslint-plugin-postgresql-security";
 
 export default [
   configs.recommended, // all 13 rules — 9 error, 4 warn
@@ -271,7 +271,7 @@ src/users.ts
 
 For where static analysis fits into the broader security workflow across an onboarding sprint, see [The 30-Minute Security Audit: A Static Analysis Protocol for Onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 
-Generic security linters flag `eval` and obvious string-built SQL, but they don't know what a `Pool`, a `client.release()`, or `SET search_path` _is_ — that gap between a general-purpose linter and a driver-aware one is [the whole static-analysis-versus-linting question](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) in miniature. `eslint-plugin-pg` is the dedicated node-postgres layer — injection, the `search_path` resolution attack, the `COPY FROM` filesystem path, and the connection-lifecycle bugs that cause outages — each finding tagged with a CWE and CVSS.
+Generic security linters flag `eval` and obvious string-built SQL, but they don't know what a `Pool`, a `client.release()`, or `SET search_path` _is_ — that gap between a general-purpose linter and a driver-aware one is [the whole static-analysis-versus-linting question](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) in miniature. `eslint-plugin-postgresql-security` is the dedicated node-postgres layer — injection, the `search_path` resolution attack, the `COPY FROM` filesystem path, and the connection-lifecycle bugs that cause outages — each finding tagged with a CWE and CVSS.
 
 This is the install-and-config entry point for the **Postgres Security Protocol** series. Each rule here has a deep-dive companion:
 
@@ -283,18 +283,18 @@ This is the install-and-config entry point for the **Postgres Security Protocol*
 
 ## Links
 
-- 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📦 [npm: eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security)
 - 📖 [Full rule docs (per-rule CWE + examples)](https://eslint.interlace.tools/docs/security/plugin-pg/rules)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-postgresql-security)
 
 Run `configs.recommended` against your oldest `pg` service — the one written before the team had conventions — and one of these 13 will almost certainly fire. That is the good outcome: the patterns were already there, and now they have names, scores, and line numbers. Fix the errors, read the warnings, ship. Then read [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint) for the layer underneath this one — the identifier case and the `IN (...)` trap that survive a naive parameterization pass.
 
 **Have you ever had a SQL injection close call in a `pg` codebase — a query that got as far as staging before someone caught it? What pattern was it?** Drop it in the comments.
 
-::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-pg"}
-📦 `npm install --save-dev eslint-plugin-pg` — 13 rules, one dev dependency.
+::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-postgresql-security"}
+📦 `npm install --save-dev eslint-plugin-postgresql-security` — 13 rules, one dev dependency.
 ::
 
 ---
 
-_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+_[eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

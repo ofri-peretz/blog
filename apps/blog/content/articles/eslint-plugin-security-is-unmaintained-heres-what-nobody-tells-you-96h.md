@@ -68,7 +68,7 @@ app.get("/users/:id", async (req, res) => {
 });
 ```
 
-`eslint-plugin-security` has no rule for SQL injection — it pattern-matches dangerous Node.js APIs (eval, child_process, non-literal require) but SQL is ORM/driver-specific. `eslint-plugin-pg` catches this with [`pg/no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-query) and flags the line with a [`CWE-89`](https://ofriperetz.dev/articles/cwe-taxonomy-explained) annotation.
+`eslint-plugin-security` has no rule for SQL injection — it pattern-matches dangerous Node.js APIs (eval, child_process, non-literal require) but SQL is ORM/driver-specific. `eslint-plugin-postgresql-security` catches this with [`pg/no-unsafe-query`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-query) and flags the line with a [`CWE-89`](https://ofriperetz.dev/articles/cwe-taxonomy-explained) annotation.
 
 The fix:
 
@@ -94,7 +94,7 @@ function verifyToken(token) {
 }
 ```
 
-The author had _added_ that options object on purpose. The reviewer saw an explicit `algorithms` array, read it as the secure-by-default pattern, and approved it. Nobody noticed that `'none'` in that list tells the library to accept an **unsigned** token. An attacker sets the header to `{"alg":"none"}`, drops the signature, and `verify` returns the forged payload as valid. There's no review heuristic for "your explicit allowlist includes the bypass value" — reviewers are trained to _reward_ explicit configuration. `eslint-plugin-security` has no rule here either: no dangerous sink, no `eval`. JWT isn't even one of the fixture's 12 classes — I'm showing it because it's the same shape of gap, live in production auth code. `eslint-plugin-jwt` flags `algorithms` arrays that include `'none'` with `jwt/no-algorithm-none`.
+The author had _added_ that options object on purpose. The reviewer saw an explicit `algorithms` array, read it as the secure-by-default pattern, and approved it. Nobody noticed that `'none'` in that list tells the library to accept an **unsigned** token. An attacker sets the header to `{"alg":"none"}`, drops the signature, and `verify` returns the forged payload as valid. There's no review heuristic for "your explicit allowlist includes the bypass value" — reviewers are trained to _reward_ explicit configuration. `eslint-plugin-security` has no rule here either: no dangerous sink, no `eval`. JWT isn't even one of the fixture's 12 classes — I'm showing it because it's the same shape of gap, live in production auth code. `eslint-plugin-jwt-security` flags `algorithms` arrays that include `'none'` with `jwt/no-algorithm-none`.
 
 ```js
 // Safe
@@ -125,11 +125,11 @@ The delta is arithmetic: 46 − 21 = 25 findings the floor never raised. The per
 
 | Domain gap                            | What the floor has no rule for                                     | The layer that adds it                                                                                                      |
 | ------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| **PostgreSQL / SQL**                  | SQL injection, connection leaks, COPY exploits                     | [`eslint-plugin-pg`](https://eslint.interlace.tools/docs/security/plugin-pg) (13 rules, v1.4.3)                             |
+| **PostgreSQL / SQL**                  | SQL injection, connection leaks, COPY exploits                     | [`eslint-plugin-postgresql-security`](https://eslint.interlace.tools/docs/security/plugin-pg) (13 rules, v1.4.3)            |
 | **Crypto & system**                   | weak hashes, ECB/static-IV, `Math.random()` tokens, SSRF, zip-slip | [`eslint-plugin-node-security`](https://eslint.interlace.tools/docs/security/plugin-node-security) (34 rules, v4.2.0)       |
 | **Serialization & injection breadth** | unsafe `deserialize()`, prototype pollution                        | [`eslint-plugin-secure-coding`](https://eslint.interlace.tools/docs/security/plugin-secure-coding) (27 rules, v3.2.0)       |
 | **Browser / DOM**                     | CSP, CORS, `innerHTML`, JWT-in-storage                             | [`eslint-plugin-browser-security`](https://eslint.interlace.tools/docs/security/plugin-browser-security) (45 rules, v1.2.3) |
-| **JWT / auth** — not in this fixture  | `alg:none`, algorithm confusion, claim validation                  | [`eslint-plugin-jwt`](https://eslint.interlace.tools/docs/security/plugin-jwt) (13 rules)                                   |
+| **JWT / auth** — not in this fixture  | `alg:none`, algorithm confusion, claim validation                  | [`eslint-plugin-jwt-security`](https://eslint.interlace.tools/docs/security/plugin-jwt) (13 rules)                          |
 | **AI / LLM** — not in this fixture    | prompt injection, tool-call agency                                 | [`eslint-plugin-vercel-ai-security`](https://eslint.interlace.tools/docs/security/plugin-vercel-ai-security) (19 rules)     |
 
 There's also a [**precision**](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) difference: on validated-safe code, `eslint-plugin-security` produced 5 [false positives](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) in that benchmark (`detect-object-injection` on allowlist-validated keys, `detect-non-literal-fs-filename` on path-validated reads) — it pattern-matches the sink without seeing the guard.
@@ -176,8 +176,8 @@ Review every result. For each `detect-object-injection` disable: confirm the cod
 ```bash
 npm install --save-dev \
   eslint-plugin-node-security \
-  eslint-plugin-pg \
-  eslint-plugin-jwt \
+  eslint-plugin-postgresql-security \
+  eslint-plugin-jwt-security \
   eslint-plugin-browser-security \
   eslint-plugin-vercel-ai-security
 ```
@@ -188,8 +188,8 @@ npm install --save-dev \
 // eslint.config.mjs
 import security from "eslint-plugin-security";
 import { configs as nodeSecurity } from "eslint-plugin-node-security";
-import { configs as pg } from "eslint-plugin-pg";
-import { configs as jwt } from "eslint-plugin-jwt";
+import { configs as pg } from "eslint-plugin-postgresql-security";
+import { configs as jwt } from "eslint-plugin-jwt-security";
 import { configs as browserSecurity } from "eslint-plugin-browser-security";
 import { configs as vercelAiSecurity } from "eslint-plugin-vercel-ai-security";
 
@@ -266,7 +266,7 @@ The domain layers ship the same contract:
 
 ## Links
 
-- 📦 [eslint-plugin-node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) · [vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security)
+- 📦 [eslint-plugin-node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-postgresql-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt-security) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) · [vercel-ai-security](https://www.npmjs.com/package/eslint-plugin-vercel-ai-security)
 - 📦 [eslint-plugin-security](https://www.npmjs.com/package/eslint-plugin-security) — the generic floor
 - 📖 [Full rule docs](https://eslint.interlace.tools)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint)
