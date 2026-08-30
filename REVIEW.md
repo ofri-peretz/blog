@@ -77,6 +77,22 @@ made outside a Claude session.
 
 ---
 
+## Sizing the review
+
+The review agent has a turn budget, and reading a file costs a turn. A
+corpus-wide change can exhaust it before the agent posts anything — the first
+run of this rubric died at `error_max_turns` on a 102-file PR, having read the
+diff and returned nothing.
+
+Two mitigations, both in `claude-code-review.yml`: the budget is set explicitly
+(`--max-turns 60`, not the default 20), and the prompt instructs the agent to
+triage a large diff — group mechanical or repeated changes, sample a few to
+confirm the pattern, and spend the depth on files carrying logic.
+
+If a review fails on turns again, raise the budget or split the PR. Do not
+respond by narrowing the rubric: a review that skips pass 1 to fit its budget
+is worse than no review, because it reports green.
+
 ## Separation of duties
 
 - The agent that wrote the article is not the agent that reviews it.

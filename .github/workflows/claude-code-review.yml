@@ -58,6 +58,13 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
+          # The action defaults to 20 turns, which is not enough for a
+          # corpus-wide change: the first run against a 102-file PR died with
+          # `error_max_turns` after 21 turns, having read the diff but never
+          # posted its summary -- a review that costs money and returns
+          # nothing. Reading N files costs roughly N turns, so this is sized
+          # for the largest PR this repo realistically sees.
+          claude_args: "--max-turns 60"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
@@ -76,6 +83,11 @@ jobs:
             3. Public-API & docs drift -- exported or interface changes that
                don't update the matching docs, types, or README, and CLAUDE.md
                statements made stale by the change.
+
+            On a large diff, triage before you read: group mechanical or
+            repeated changes (a corpus-wide rename, a formatting sweep) and
+            sample two or three files to confirm the pattern rather than
+            opening every one. Spend the depth on the files that carry logic.
 
             Be precise and low-noise: only post a finding when you can cite the
             specific file:line and explain why it is wrong. Cap nits -- prefer a
