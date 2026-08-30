@@ -141,6 +141,55 @@ describe("the analyzer never leaves the browser", () => {
   });
 });
 
+describe("the dev.to → playground crossing", () => {
+  // In 60 days to 2026-08-30, ZERO readers reached the blog from dev.to.
+  // The playground is the one thing that cannot exist on dev.to, so it is
+  // the only real reason to cross — but only if the dev.to copy says so.
+  it.each(LINT_EMBEDS.map((d) => [d.slug, d] as const))(
+    "%s invites dev.to readers to the playground, keyed to its own slug",
+    (slug, _def) => {
+      const article = readFileSync(path.join(ARTICLES, `${slug}.md`), "utf-8");
+      expect(
+        article,
+        `${slug} has a playground but its dev.to copy never mentions it`,
+      ).toContain(`::playground-cta{slug="${slug}"}`);
+    },
+  );
+
+  it("renders on dev.to and NOT on the blog, where the playground already is", async () => {
+    const { preprocessMarkdown } = await import("../lib/markdown");
+    const sample = [
+      "Before.",
+      "",
+      '::playground-cta{slug="some-article"}',
+      "Try it live.",
+      "::",
+      "",
+      "After.",
+    ].join("\n");
+
+    const onBlog = preprocessMarkdown(sample);
+    expect(onBlog).not.toContain("playground-cta");
+    expect(onBlog).not.toContain("Try it live.");
+    expect(onBlog).toContain("Before.");
+    expect(onBlog).toContain("After.");
+
+    // The dev.to half lives in the publish script, which runs main() at
+    // import time — so this asserts its contract textually rather than
+    // executing a publish as a side effect of the test suite.
+    const publish = read("../scripts/publish-to-devto.mjs");
+    expect(publish).toContain('::playground-cta\\{slug="([^"]+)"\\}');
+    // Must emit an ALREADY-/go/ link: classifyDevtoLink rebuilds an
+    // /articles/<slug> destination as `origin + pathname`, silently dropping
+    // the #playground fragment and landing the reader at the top of the page.
+    expect(publish).toContain("/go/${playgroundSlug}#playground");
+  });
+
+  it("the playground section has the anchor that link targets", () => {
+    expect(COMPONENT).toContain('id="playground"');
+  });
+});
+
 describe("wiring and measurement", () => {
   it("the article page renders the playground, slug-mapped", () => {
     const page = read("app/articles/[slug]/page.tsx");
