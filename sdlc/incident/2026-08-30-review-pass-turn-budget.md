@@ -90,5 +90,35 @@ were invisible locally and both are now locked. That is the chain working, but
 it is also the honest cost of a corpus-wide change: the review pass that would
 have caught them was the thing being fixed.
 
-Re-check: the next `claude-code-review.yml` run on this branch should be a
-`pull_request` run with one job that completes without `error_max_turns`.
+## Third failure — a green check on a review that never ran
+
+Fixing the duplicate key, I moved the explanation _inside_ the `claude_args`
+block. `claude_args` is a **command-line argument string, not YAML**: a `#`
+line in it is not a comment, it is handed to the CLI as arguments.
+
+The result was the worst outcome of the three. The run reported **SUCCESS** in
+about one second, with **zero agent turns** — a green check on a review that
+never happened. The two earlier failures were loud and safe; this one was
+silent and wrong, and it is exactly the failure mode `REVIEW.md` warns about:
+passing not because the code is clean but because the rubric was never applied.
+
+Fixed by moving the explanation above the key. Locked by a second assertion in
+`workflow-yaml-lock.test.ts` that rejects any `#` line inside a `claude_args`
+value, verified to fail when one is reintroduced.
+
+## Class summary
+
+Three self-inflicted failures on one workflow file, in escalating subtlety:
+
+| #   | Defect                            | Symptom                         | Caught by                      |
+| --- | --------------------------------- | ------------------------------- | ------------------------------ |
+| 1   | turn budget too low               | red check, readable log         | the log                        |
+| 2   | duplicate YAML key                | zero-job run, **no log at all** | parsing every workflow locally |
+| 3   | `#` comments inside `claude_args` | **green check, zero turns**     | reading the run's turn count   |
+
+Only the first was visible from the PR page. That is the argument for the lock
+rather than for more care: each of these was invisible to reading, and each is
+now a test that fails in under a second.
+
+Re-check: the next `claude-code-review.yml` run should be a `pull_request` run
+with one job, a non-zero agent turn count, and a posted summary.

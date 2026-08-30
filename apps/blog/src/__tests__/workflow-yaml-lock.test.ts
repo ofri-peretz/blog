@@ -39,6 +39,39 @@ describe("workflow YAML", () => {
     ).toBe(true);
   });
 
+  // claude_args is a command-line argument string, not YAML. A `#` line inside
+  // it is not a comment — it is handed to the CLI as arguments. When that
+  // happened the run reported SUCCESS in about a second with zero agent turns:
+  // a green check on a review that never ran, which is worse than a red one.
+  it.each(files.map((f) => [f] as const))(
+    "%s keeps comments out of claude_args",
+    (file) => {
+      const doc = parse(readFileSync(join(WORKFLOWS, file), "utf-8"));
+      const offenders: string[] = [];
+      for (const [jobName, job] of Object.entries<Record<string, unknown>>(
+        doc?.jobs ?? {},
+      )) {
+        for (const step of (job.steps as Record<string, unknown>[]) ?? []) {
+          const args = (step.with as Record<string, unknown> | undefined)
+            ?.claude_args;
+          if (typeof args !== "string") continue;
+          const commented = args
+            .split("\n")
+            .filter((line) => line.trim().startsWith("#"));
+          if (commented.length) {
+            offenders.push(
+              `${jobName}: ${commented.length} comment line(s) inside claude_args`,
+            );
+          }
+        }
+      }
+      expect(
+        offenders,
+        `${file}: move the explanation above the key —\n  ${offenders.join("\n  ")}`,
+      ).toEqual([]);
+    },
+  );
+
   it.each(files.map((f) => [f] as const))(
     "%s has at least one job with steps",
     (file) => {
