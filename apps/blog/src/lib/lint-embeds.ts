@@ -81,7 +81,7 @@ export function verifySession(token, secret) {
 
 export function handleUpload(req, res) {
   const archive = openArchive(req.file.path);
-  archive.unzip("/srv/plugins");
+  archive.unzip("/srv/plugins"); // entries may contain ../ and escape this
   child_process.exec("npm run build --prefix " + req.body.target);
   return res.json(eval("(" + req.body.manifest + ")"));
 }

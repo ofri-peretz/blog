@@ -74,9 +74,21 @@ describe("the SDLC artifacts exist and are usable", () => {
   it("every plan's ground-truth table cites a source per row", () => {
     for (const file of intents.filter((f) => f.endsWith(".plan.md"))) {
       const body = readFileSync(path.join(SDLC, "intents", file), "utf-8");
+      // Skip the header and its separator STRUCTURALLY (first cell === the
+      // literal header name, or a row made only of dashes) rather than by
+      // searching for "Claim |" anywhere in the line — a data row whose cell
+      // happened to contain that string would have been dropped silently,
+      // which is the same class of bug as the greps this file exists to
+      // replace. (Review: flagged four times; it was right.)
       const rows = body
         .split("\n")
-        .filter((l) => l.startsWith("|") && !l.includes("---") && !l.includes("Claim |"));
+        .filter((l) => l.startsWith("|"))
+        .filter((l) => {
+          const cells = l.split("|").slice(1, -1).map((c) => c.trim());
+          const isSeparator = cells.every((c) => /^:?-{3,}:?$/.test(c));
+          const isHeader = cells[0] === "Claim";
+          return !isSeparator && !isHeader;
+        });
       expect(rows.length, `${file} has an empty ground-truth table`).toBeGreaterThan(0);
       for (const row of rows) {
         // 4 columns => 5 pipes. A row missing its source column is a number
