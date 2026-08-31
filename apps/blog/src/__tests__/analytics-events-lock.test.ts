@@ -27,6 +27,7 @@ const PAGER = read("components/series-nav.tsx");
 const ARTICLE = read("app/articles/[slug]/page.tsx");
 
 const FROZEN_EVENTS = [
+  "newsletter:subscribe",
   "corpus_map:dot_click",
   "series:pager_click",
   "article:playground_cta_click",
