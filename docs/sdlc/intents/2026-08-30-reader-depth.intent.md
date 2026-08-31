@@ -2,10 +2,16 @@
 kind: intent
 slug: 2026-08-30-reader-depth
 opened: 2026-08-30
-status: open
+status: closed
 ---
 
 # Intent: find out why nobody reads a second article
+
+> **Closed 2026-08-30** — answered without building anything. See
+> [the finding](../findings/2026-08-30-reader-depth.md): depth is a traffic
+> problem. At ~127 monthly opportunities, zero clicks is statistically
+> consistent with a mediocre affordance and cannot be told apart from a broken
+> one. Revisit at 800 monthly reader pageviews.
 
 ## What
 
