@@ -2,7 +2,7 @@
 // id-matched request/response, and a per-embed `lint` function shaped
 // exactly for the DS LintPlayground's injected seam.
 //
-// The worker (and the ~400KB gzipped linter+plugins bundle inside it)
+// The worker (and the 362 KB brotli linter+plugins bundle inside it)
 // is created on the FIRST lint call — which only happens after the
 // reader clicks the article's "Try it live" gate — so article pages pay
 // nothing for the playground until someone wants it.
