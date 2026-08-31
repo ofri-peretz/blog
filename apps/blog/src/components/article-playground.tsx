@@ -29,9 +29,13 @@ export function ArticlePlayground({ currentSlug }: { currentSlug: string }) {
 
   return (
     <section
+      id="playground"
       data-slot="article-playground"
       aria-label={def.title}
-      className="mt-12 border-t border-border pt-8"
+      // scroll-mt clears the sticky header when a Dev.to reader arrives on
+      // the #playground deep link — the whole point of the crossing is that
+      // they land ON the thing, not above it.
+      className="mt-12 scroll-mt-24 border-t border-border pt-8"
     >
       <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
         {def.title}
