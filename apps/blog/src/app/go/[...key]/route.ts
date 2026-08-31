@@ -20,8 +20,11 @@ import { getCachedShortLinks } from "@/lib/supabase-data";
 import {
   anonymousVisitorId,
   buildClickEventBody,
+  POSTHOG_INGEST_FALLBACK,
   refererToOrigin,
   resolveGoDestination,
+  resolveIngestHost,
+  SERVER_FALLBACK_ID,
   type ShortLinkClickProps,
 } from "../resolver";
 
@@ -48,8 +51,10 @@ function captureShortLinkClick(
   const apiKey =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ||
     "phc_vNTTtpj4s6nXGJ5pnnXxHey6WBjHJWnytQ4Zv6HeDTT3";
-  const host =
-    process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
+  // NEXT_PUBLIC_POSTHOG_HOST is a BROWSER variable and its correct value is
+  // now the relative `/ingest`, which a server fetch cannot parse. See
+  // resolveIngestHost — using it raw is what killed this event for 20 days.
+  const host = resolveIngestHost(process.env.NEXT_PUBLIC_POSTHOG_HOST);
   const refererOrigin = refererToOrigin(request.headers.get("referer"));
 
   after(async () => {
@@ -75,6 +80,33 @@ function captureShortLinkClick(
     } catch (err) {
       // Analytics must never break the redirect path.
       console.warn("[go] posthog capture failed:", err);
+      // ...but a silent failure is how this event stayed dead for twenty days,
+      // with a correct 302 on every hit and nothing anywhere saying otherwise.
+      // Report the failure as a PRESENT signal, because an absence is exactly
+      // what nobody noticed. Deliberately posted to the hardcoded fallback and
+      // not to `host`: if the configured host is the fault, a report sent
+      // through it dies the same silent death.
+      try {
+        await fetch(`${POSTHOG_INGEST_FALLBACK}/i/v0/e/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(3000),
+          body: JSON.stringify({
+            api_key: apiKey,
+            event: "short_link_capture_failed",
+            distinct_id: SERVER_FALLBACK_ID,
+            properties: {
+              // Error NAME only — never the message, which can carry the URL
+              // and with it whatever was in the query string.
+              error: err instanceof Error ? err.name : "unknown",
+              $process_person_profile: false,
+            },
+          }),
+        });
+      } catch {
+        // The detector itself must never throw. If this fails too, the
+        // pipeline is comprehensively down and the redirect still works.
+      }
     }
   });
 }

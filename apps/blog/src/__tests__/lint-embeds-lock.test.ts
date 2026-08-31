@@ -8,7 +8,7 @@
  * path); the bundle hides behind an explicit gate; and both funnel
  * events are wired. Each promise is pinned to the source that keeps it.
  */
-import { Linter } from "eslint";
+import { type ESLint, Linter } from "eslint";
 import jwtPlugin from "eslint-plugin-jwt";
 import nodeSecurityPlugin from "eslint-plugin-node-security";
 import { existsSync, readFileSync } from "node:fs";
@@ -18,9 +18,9 @@ import { describe, expect, it } from "vitest";
 import { LINT_EMBEDS, type PlaygroundPluginId } from "../lib/lint-embeds";
 
 /** The same map the worker enumerates — kept in lockstep by the tests below. */
-const PLUGINS: Record<PlaygroundPluginId, Linter.Plugin> = {
-  jwt: jwtPlugin as Linter.Plugin,
-  "node-security": nodeSecurityPlugin as Linter.Plugin,
+const PLUGINS: Record<PlaygroundPluginId, ESLint.Plugin> = {
+  jwt: jwtPlugin as ESLint.Plugin,
+  "node-security": nodeSecurityPlugin as ESLint.Plugin,
 };
 
 const ARTICLES = path.resolve(__dirname, "../../content/articles");
@@ -93,7 +93,7 @@ describe("every definition is honest", () => {
       const quoted = def.invite.match(/\b(\d+)\s+rules\b/);
       if (!quoted) return;
       expect(Number(quoted[1])).toBe(
-        Object.keys(PLUGINS[def.pluginId].rules).length,
+        Object.keys(PLUGINS[def.pluginId].rules ?? {}).length,
       );
     },
   );
