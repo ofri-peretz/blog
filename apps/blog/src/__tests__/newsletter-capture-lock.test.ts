@@ -107,4 +107,14 @@ describe("the DS owns the form, the app owns the destination", () => {
     expect(ACTION).toContain("source_slug");
     expect(COMPONENT).toContain('formData.set("source_slug", currentSlug)');
   });
+
+  it("only stores an attribution slug it can verify", () => {
+    // The field arrives from the client; a direct POST can claim anything.
+    // Unverified attribution is worse than none, because it looks like data.
+    expect(ACTION).toContain("getAllArticleSlugs()");
+    expect(ACTION).toMatch(/getAllArticleSlugs\(\)\.includes\(claimed\)/);
+    // Unknown slug degrades to null — the subscription still stands, only its
+    // provenance is unknown.
+    expect(ACTION).toMatch(/\? claimed\s*:\s*null/);
+  });
 });

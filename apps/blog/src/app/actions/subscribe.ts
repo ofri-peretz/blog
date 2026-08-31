@@ -2,6 +2,8 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+import { getAllArticleSlugs } from "@/lib/source";
+
 /**
  * Newsletter capture. Phase one is CAPTURE ONLY — nothing is sent.
  *
@@ -61,11 +63,17 @@ export async function subscribe(
     return { status: "error", message: "Signup is unavailable right now. Try again later." };
   }
 
+  // Attribution is only worth keeping if it is true. The field arrives from
+  // the client, and nothing stops a direct POST to this action carrying an
+  // arbitrary string — which would quietly corrupt the one question this
+  // column exists to answer ("which writing earns subscriptions"). Unknown
+  // slugs are stored as null rather than rejected: the subscription is still
+  // valid, only its provenance is unknown. (Review: CWE-20.)
+  const claimed = String(formData.get("source_slug") ?? "").trim();
+  const source_slug = claimed && getAllArticleSlugs().includes(claimed) ? claimed : null;
+
   const client = createClient(url, key, { auth: { persistSession: false } });
-  const { error } = await client.from("subscribers").insert({
-    email,
-    source_slug: String(formData.get("source_slug") ?? "") || null,
-  });
+  const { error } = await client.from("subscribers").insert({ email, source_slug });
 
   if (error) {
     // 23505 = unique violation: this address is already subscribed. Say the
