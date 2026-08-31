@@ -77,9 +77,13 @@ that is already failing, and never runs when things work.
 
 Steps 1 and 2 are independent of confirming the hypothesis.
 
-1. Absolute-host guard in `src/app/go/[...key]/route.ts`.
-2. Failure event on the `catch` path.
-3. Deploy, then `curl` a `/go/` link and confirm a row appears.
+1. Absolute-host guard, as `resolveIngestHost` in `resolver.ts`. *(done —
+   commit 81b6871; verified failing first, 2 of 5 cases red without it)*
+2. Failure event on the `catch` path, posted to the hardcoded fallback rather
+   than the configured host. *(done — same commit)*
+3. Deploy, then `curl` a `/go/` link and confirm a row appears. *(blocked on
+   the merge — this is the step that actually closes the intent, and a green
+   test is not a substitute for it)*
 4. If it still produces nothing, read the Vercel runtime logs for
    `[go] posthog capture failed` — the remaining candidate is `after()` not
    completing on this route, which needs a different repair.
