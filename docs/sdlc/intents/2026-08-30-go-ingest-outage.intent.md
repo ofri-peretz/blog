@@ -2,10 +2,17 @@
 kind: intent
 slug: 2026-08-30-go-ingest-outage
 opened: 2026-08-30
-status: open
+status: closed
 ---
 
 # Intent: get `/go/` clicks being recorded again, and make a future outage loud
+
+> **Closed 2026-08-31.** Verified in production, not just in tests: three live
+> `/go/` hits produced 5 `short_link_click` rows across **3 distinct ids**, and
+> `short_link_capture_failed` never fired. The distinct-id count is its own
+> result — PR #160's per-visitor id shipped 2026-08-22 into an already-dead
+> pipeline and had never once executed until now. Cause was the relative
+> `NEXT_PUBLIC_POSTHOG_HOST`, exactly as hypothesised.
 
 ## What
 
