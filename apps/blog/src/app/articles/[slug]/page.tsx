@@ -17,6 +17,7 @@ import benchReceipts from "@/data/bench-receipts.json";
 import { ArticleBenchReceipt } from "@/components/article-bench-receipt";
 import loomEmbeds from "@/data/loom-embeds.json";
 import { ArticleWeave } from "@/components/article-weave";
+import { ArticleSubscribe } from "@/components/article-subscribe";
 import { ArticlePlayground } from "@/components/article-playground";
 import type { LoomEmbedSnapshot } from "@/lib/loom-embeds";
 import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
@@ -350,6 +351,7 @@ export default async function ArticlePage(props: PageProps) {
             LINT_EMBEDS names, null otherwise. The linter bundle loads
             behind its own click, never with the page. */}
         <ArticlePlayground currentSlug={slug} />
+        <ArticleSubscribe currentSlug={slug} />
 
         <ArticlePlugins
           currentSlug={slug}
