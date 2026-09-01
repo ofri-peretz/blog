@@ -35,12 +35,27 @@ const ARTIFACT = path.join(APP, "public/lint-worker.js");
  */
 const TOLERANCE = 0.08;
 
+/**
+ * ONE definition, deliberately. Review caught this duplicated across the two
+ * tests below — in the very file whose thesis is that a claim stated in two
+ * places drifts apart. If the label format changes and only one copy is
+ * updated, the shape test and the tolerance test start checking different
+ * things and the gap between them is exactly where a bug lives.
+ *
+ * No /g flag: a shared regex with /g carries lastIndex between .exec() calls
+ * and would return null on every other invocation.
+ */
+const SIZE_LABEL_RE = /\(~?(\d+)\s*KB\)/;
+
 function measuredBrotliBytes(): number {
   if (!existsSync(ARTIFACT)) {
     // Hermetic: no network, no external data. Same script predev/prebuild run.
     execFileSync("node", [path.join(APP, "scripts/build-lint-worker.mjs")], {
       cwd: APP,
-      stdio: "ignore",
+      // stderr INHERITED, not ignored: when the build breaks, execFileSync
+      // throws with nothing but "Command failed" unless the real error is
+      // allowed through. A red test that cannot say why is a tax. (Review.)
+      stdio: ["ignore", "ignore", "inherit"],
     });
   }
   return brotliCompressSync(readFileSync(ARTIFACT), {
@@ -54,7 +69,7 @@ describe("the gate label matches the bundle it describes", () => {
       path.join(APP, "src/components/article-playground.tsx"),
       "utf-8",
     );
-    const quoted = /\(~?(\d+)\s*KB\)/.exec(component);
+    const quoted = SIZE_LABEL_RE.exec(component);
 
     // NOT a skip. If the label stops quoting a size, or quotes it in a shape
     // this pattern cannot read, the claim has escaped verification and that is
@@ -73,7 +88,7 @@ describe("the gate label matches the bundle it describes", () => {
       path.join(APP, "src/components/article-playground.tsx"),
       "utf-8",
     );
-    const quoted = /\(~?(\d+)\s*KB\)/.exec(component);
+    const quoted = SIZE_LABEL_RE.exec(component);
     expect(quoted).not.toBeNull();
 
     const claimedBytes = Number(quoted![1]) * 1024;
