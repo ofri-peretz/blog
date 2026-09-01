@@ -1,9 +1,11 @@
 /**
 
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/skeleton-variants.ts — the variant
 // catalogue skeleton.tsx consumes). Copy-with-provenance until the
 // registry install path replaces it. Local deltas: none.
+// ⟨/vendored⟩
  * @interlace/ui — Skeleton variant catalogue.
  *
  * Single source of truth for the `<Skeleton variant>` discriminated union.

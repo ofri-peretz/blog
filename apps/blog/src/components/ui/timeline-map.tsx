@@ -1,4 +1,5 @@
 'use client';
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/patterns/timeline-map.tsx — interlace#56, the density
 // ink budget from #58, the filter focus-trap fix from #59, the
@@ -7,6 +8,7 @@
 // Copy-with-provenance until the registry install path replaces it —
 // fix bugs upstream first, then re-vendor. Local deltas: the `cn`
 // import path and sibling imports flattened + extensionless.
+// ⟨/vendored⟩
 
 import * as React from 'react';
 

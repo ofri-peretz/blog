@@ -1,10 +1,12 @@
 // Typography — the single text primitive for the whole type scale.
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/typography.tsx — pulled in as a dependency of the
 // vendored newsletter-form). Copy-with-provenance until the registry
 // install path replaces it — fix bugs upstream first, then
 // re-vendor. Local deltas: the `cn` import path and sibling
 // imports flattened extensionless for the flat vendored dir.
+// ⟨/vendored⟩
 // Mirrors MUI <Typography> (variant + polymorphic element), adapted to the
 // Interlace floor: cva over the foundation --text-* tokens (no inline style),
 // the server-safe `as`-prop seam (like Section — NOT useRender, so it stays a
