@@ -28,6 +28,49 @@ jobs:
       - run: npm run test
 
   # ──────────────────────────────────────────────────────────────────────
+  # Real-browser gate: the layout audit (overflow / overlap / tap targets /
+  # contrast across the breakpoint matrix) and the journey audit (the
+  # palette's keyboard contract, the copy receipt) against the PRODUCTION
+  # build served by `next start`. Both scripts existed as manual tools;
+  # the 43px mobile document-scroll (blog#193) lived on production
+  # precisely because nothing ran them per-PR. Runner images ship Chrome;
+  # playwright-core reuses it — nothing is downloaded.
+  #
+  # ROUTES excludes /npm and /scorecard: they are force-dynamic Supabase
+  # pages whose fetchers THROW without credentials (by design — see
+  # responsive-lock), and CI has none.
+  # ──────────────────────────────────────────────────────────────────────
+  browser-audit:
+    runs-on: ubuntu-latest
+    # A hung `next start` or stalled navigation must not block every
+    # subsequent PR (review). 25, not 15: the observed matrix alone runs
+    # ~10 min and the full job ~16-18 — tune down once a p95 exists.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --no-audit --no-fund --include=optional
+      - run: npm run build
+      - name: Serve the production build
+        run: |
+          (cd apps/blog && npx next start -p 3000 &)
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000 >/dev/null && exit 0; sleep 1
+          done
+          echo "server never came up"; exit 1
+      - name: Layout audit (overflow, overlap, tap targets, contrast)
+        run: node apps/blog/scripts/layout-audit.mjs
+        env:
+          BASE: http://localhost:3000
+          ROUTES: /,/articles,/foundations,/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules,/articles/benchmark-17-eslint-security-plugins-compared,/articles/getting-started-eslint-plugin-secure-coding,/articles/vercel-ai-sdk-prompt-injection-vulnerability
+      - name: Journey audit (palette keyboard contract, copy receipt)
+        run: node apps/blog/scripts/journey-audit.mjs
+        env:
+          BASE: http://localhost:3000
+
+  # ──────────────────────────────────────────────────────────────────────
   # Dual linter — eslint and oxlint run as TWO PARALLEL jobs (no `needs`
   # between them, neither blocks the other). Each is scoped to the
   # turbo-affected workspaces via `--affected`, which needs full git history

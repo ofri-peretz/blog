@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 import { MobileNav } from "./mobile-nav";
 import { BrandMark } from "./brand-mark";
+import { CorpusSearch } from "./corpus-search";
 import { cn } from "@/lib/utils";
 
 // /scorecard is the canonical metrics surface (supabase-backed North Star).
@@ -11,6 +12,7 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/articles", label: "Articles" },
   { href: "/npm", label: "npm" },
+  { href: "/loom", label: "Loom" },
   { href: "/scorecard", label: "Scorecard" },
 ];
 
@@ -63,6 +65,9 @@ export function AppHeader({
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          {/* The index is a static build artifact fetched on first
+              intent — see /search-index.json/route.ts for the numbers. */}
+          <CorpusSearch />
           <ThemeToggle />
           <MobileNav links={NAV_LINKS} />
         </div>

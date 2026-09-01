@@ -2,6 +2,14 @@ import numbers from "@/data/interlace-numbers.json";
 
 const SITE_URL = "https://ofriperetz.dev";
 
+// The description carried a hardcoded "35K+ downloads" until 2026-08-26, by
+// which point the real figure was 433,686 — a 12x understatement shipped to
+// search engines on every page. A download count has no business in static
+// metadata: it rots the moment it is written. Reading it live was worse — it
+// put a Supabase round-trip in the request path of EVERY page on the site,
+// because this renders in the root layout, all to decorate a blurb. The claim
+// is simply gone. Downloads are stated where they are measured and refreshed:
+// the homepage impact card, /npm, and /scorecard, all on v_npm_alltime_ecosystem.
 const personSchema = {
   "@context": "https://schema.org",
   "@type": "Person",
@@ -10,7 +18,7 @@ const personSchema = {
   image: `${SITE_URL}/ofri-profile.webp`,
   jobTitle: "Engineering Leader",
   description:
-    "Engineering Leader & Open Source Creator. Building security-focused ESLint plugins with 35K+ downloads.",
+    "Engineering Leader & Open Source Creator. Building security-focused ESLint plugins.",
   worksFor: {
     "@type": "Organization",
     name: "Snappy",

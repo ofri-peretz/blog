@@ -1,0 +1,49 @@
+# Weekly bench-receipts refresh — keeps "The numbers, re-earned <date>"
+# true on the benchmark-series articles. Runs AFTER the eslint repo's
+# Weekly Benchmark lands its result on main (~14:00 UTC Mondays). Same
+# shape as plugin-stats-refresh: a cron, never PR CI, shipping its
+# result as a reviewed PR (protected main takes no direct pushes).
+name: Bench receipts refresh
+
+on:
+  schedule:
+    - cron: "0 15 * * 1" # Mondays 15:00 UTC, after the weekly benchmark
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Sync receipts from the eslint repo's weekly result
+        run: node apps/blog/scripts/sync-bench-receipts.mjs
+      - name: Ship the refresh as a PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet apps/blog/src/data/bench-receipts.json; then
+            echo "receipts unchanged — nothing to ship"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/blog/src/data/bench-receipts.json
+          git commit -m "chore(blog): weekly bench-receipts refresh $(date -u +%F)"
+          git push --force origin HEAD:chore/bench-receipts-refresh
+          # No tee-pipe: it would mask gh failures with tee's exit 0
+          # (CWE-390). Capture, print, and only tolerate the
+          # branch-already-has-a-PR case.
+          if OUT=$(gh pr create --base main --head chore/bench-receipts-refresh \
+            --title "chore(blog): weekly bench-receipts refresh $(date -u +%F)" \
+            --body "Automated weekly sync of the public benchmark's headline numbers for the series receipt cards. Numbers only — review is a sanity glance." 2>&1); then
+            echo "$OUT"
+          else
+            echo "$OUT"
+            echo "$OUT" | grep -q "already exists" || exit 1
+          fi

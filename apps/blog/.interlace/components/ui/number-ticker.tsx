@@ -111,6 +111,11 @@ export function NumberTicker({
 
           const startTime = Date.now() + delay * 1000
           const animFrom = direction === "down" ? value : from
+          // The DOM held the final value until now (honest static render);
+          // snap to the origin only once the count-up really runs.
+          if (ref.current) {
+            ref.current.textContent = formatNumber(animFrom)
+          }
           const to = direction === "down" ? from : value
 
           const animate = () => {
@@ -158,7 +163,9 @@ export function NumberTicker({
       )}
       {...props}
     >
-      {formatNumber(from)}
+      {/* Always the FINAL value: this is what crawlers, reader mode, and
+          JS-off visitors keep. The count-up rewrites it client-side. */}
+      {formatNumber(value)}
     </span>
   )
 }
