@@ -65,18 +65,25 @@ export function verifySession(token, secret) {
     slug: "getting-started-eslint-plugin-node-security",
     title: "Try the plugin before you install it",
     invite:
-      "Three of the 35 rules, live. Edit the code — or paste your own — and see exactly what a finding looks like before it ever reaches your CI.",
+      "Three of the 42 rules, live — path traversal, command injection, and eval, all in one upload handler. Edit the code, or paste your own, and see exactly what a finding looks like before it ever reaches your CI.",
     pluginId: "node-security",
     rules: {
       "node-security/detect-eval-with-expression": "error",
       "node-security/detect-child-process": "error",
       "node-security/no-zip-slip": "error",
     },
-    initialCode: `import { exec } from "child_process";
+    // An Express handler, because detect-child-process is provenance-gated:
+    // it reports a command built from an attacker-reachable root (req, ctx,
+    // event…), not from any dynamic string. A sample with a bare `userInput`
+    // parameter is silent BY DESIGN — which is exactly how the first version
+    // of this embed advertised three rules and could only ever fire one.
+    initialCode: `import child_process from "child_process";
 
-export function runReport(userInput) {
-  exec("generate-report " + userInput);
-  return eval("(" + userInput + ")");
+export function handleUpload(req, res) {
+  const archive = openArchive(req.file.path);
+  archive.unzip("/srv/plugins"); // entries may contain ../ and escape this
+  child_process.exec("npm run build --prefix " + req.body.target);
+  return res.json(eval("(" + req.body.manifest + ")"));
 }
 `,
   },

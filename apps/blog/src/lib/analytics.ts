@@ -138,7 +138,10 @@ export type BlogEvent =
    * The reader EDITED the playground code (first post-mount lint) —
    * the engagement the flagship exists to create. Once per view.
    */
-  | { name: "article:playground_edit"; props: { slug: string } };
+  | { name: "article:playground_edit"; props: { slug: string } }
+  // Newsletter capture. Fires on a SETTLED success, never on submit — a
+  // rejected submission is not a subscriber.
+  | { name: "newsletter:subscribe"; props: { slug: string } };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<

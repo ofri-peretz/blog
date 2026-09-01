@@ -8,11 +8,20 @@
  * path); the bundle hides behind an explicit gate; and both funnel
  * events are wired. Each promise is pinned to the source that keeps it.
  */
+import { type ESLint, Linter } from "eslint";
+import jwtPlugin from "eslint-plugin-jwt";
+import nodeSecurityPlugin from "eslint-plugin-node-security";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { LINT_EMBEDS } from "../lib/lint-embeds";
+import { LINT_EMBEDS, type PlaygroundPluginId } from "../lib/lint-embeds";
+
+/** The same map the worker enumerates — kept in lockstep by the tests below. */
+const PLUGINS: Record<PlaygroundPluginId, ESLint.Plugin> = {
+  jwt: jwtPlugin as ESLint.Plugin,
+  "node-security": nodeSecurityPlugin as ESLint.Plugin,
+};
 
 const ARTICLES = path.resolve(__dirname, "../../content/articles");
 const read = (rel: string): string =>
@@ -46,16 +55,46 @@ describe("every definition is honest", () => {
   );
 
   it.each(LINT_EMBEDS.map((d) => [d.slug, d] as const))(
-    "%s: the sample is vulnerable on purpose — the demo must not open on silence",
+    "%s: EVERY enabled rule fires on the sample — no rule is advertised and silent",
     (_slug, def) => {
-      // Cheap structural tripwires per plugin, not a lint run (that
-      // needs the browser bundle): the sample keeps the exact tokens
-      // its rules exist to catch.
-      const tripwires: Record<string, RegExp> = {
-        jwt: /["']none["']/,
-        "node-security": /\beval\s*\(|exec\s*\(/,
-      };
-      expect(def.initialCode).toMatch(tripwires[def.pluginId]);
+      // A real lint run against the PUBLISHED plugins, not a text
+      // tripwire. The browser bundle is only needed to run this in a
+      // browser; node can run the same Linter over the same packages.
+      //
+      // The weaker textual version of this lock passed for the whole
+      // first release while the node-security embed enabled three rules
+      // and could only ever fire one: detect-child-process is
+      // provenance-gated (it needs an attacker-reachable root like
+      // `req`), and its sample only had a plain `userInput` parameter.
+      // Grep-shaped locks cannot see that. This one fails on it.
+      const findings = new Linter().verify(def.initialCode, {
+        plugins: { [def.pluginId]: PLUGINS[def.pluginId] },
+        languageOptions: { ecmaVersion: 2024, sourceType: "module" },
+        rules: def.rules,
+      });
+
+      const fired = new Set(findings.map((f) => f.ruleId));
+      for (const rule of Object.keys(def.rules)) {
+        expect(
+          fired.has(rule),
+          `${rule} is enabled on this playground but fires nothing on its own sample — ` +
+            `the reader is promised a rule that cannot speak. Fired: ${[...fired].join(", ") || "(nothing)"}`,
+        ).toBe(true);
+      }
+    },
+  );
+
+  it.each(LINT_EMBEDS.map((d) => [d.slug, d] as const))(
+    "%s: a rule count in the copy matches the plugin actually installed",
+    (_slug, def) => {
+      // Rule counts drift every time a plugin ships rules; the copy that
+      // quotes one has to move with it. ("35 rules" outlived two majors
+      // in the shipped invite before this lock existed.)
+      const quoted = def.invite.match(/\b(\d+)\s+rules\b/);
+      if (!quoted) return;
+      expect(Number(quoted[1])).toBe(
+        Object.keys(PLUGINS[def.pluginId].rules ?? {}).length,
+      );
     },
   );
 });
@@ -99,6 +138,55 @@ describe("the analyzer never leaves the browser", () => {
   it("a dead worker rejects pending requests — failure is never a silent clean", () => {
     expect(CLIENT).toContain("worker.onerror");
     expect(CLIENT).toContain("lint worker failed");
+  });
+});
+
+describe("the dev.to → playground crossing", () => {
+  // In 60 days to 2026-08-30, ZERO readers reached the blog from dev.to.
+  // The playground is the one thing that cannot exist on dev.to, so it is
+  // the only real reason to cross — but only if the dev.to copy says so.
+  it.each(LINT_EMBEDS.map((d) => [d.slug, d] as const))(
+    "%s invites dev.to readers to the playground, keyed to its own slug",
+    (slug, _def) => {
+      const article = readFileSync(path.join(ARTICLES, `${slug}.md`), "utf-8");
+      expect(
+        article,
+        `${slug} has a playground but its dev.to copy never mentions it`,
+      ).toContain(`::playground-cta{slug="${slug}"}`);
+    },
+  );
+
+  it("renders on dev.to and NOT on the blog, where the playground already is", async () => {
+    const { preprocessMarkdown } = await import("../lib/markdown");
+    const sample = [
+      "Before.",
+      "",
+      '::playground-cta{slug="some-article"}',
+      "Try it live.",
+      "::",
+      "",
+      "After.",
+    ].join("\n");
+
+    const onBlog = preprocessMarkdown(sample);
+    expect(onBlog).not.toContain("playground-cta");
+    expect(onBlog).not.toContain("Try it live.");
+    expect(onBlog).toContain("Before.");
+    expect(onBlog).toContain("After.");
+
+    // The dev.to half lives in the publish script, which runs main() at
+    // import time — so this asserts its contract textually rather than
+    // executing a publish as a side effect of the test suite.
+    const publish = read("../scripts/publish-to-devto.mjs");
+    expect(publish).toContain('::playground-cta\\{slug="([^"]+)"\\}');
+    // Must emit an ALREADY-/go/ link: classifyDevtoLink rebuilds an
+    // /articles/<slug> destination as `origin + pathname`, silently dropping
+    // the #playground fragment and landing the reader at the top of the page.
+    expect(publish).toContain("/go/${playgroundSlug}#playground");
+  });
+
+  it("the playground section has the anchor that link targets", () => {
+    expect(COMPONENT).toContain('id="playground"');
   });
 });
 

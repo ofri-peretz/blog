@@ -27,6 +27,13 @@ const PAGER = read("components/series-nav.tsx");
 const ARTICLE = read("app/articles/[slug]/page.tsx");
 
 const FROZEN_EVENTS = [
+  // newsletter:subscribe is frozen here, but its FIRING assertion lives in
+  // newsletter-capture-lock.test.ts — the surface owns a settled-success
+  // condition (fire on state "ok", once per mount) that does not fit the
+  // uniform "each surface fires its event" shape below. (Review asked for
+  // this pointer; the next person following the pattern should not have to
+  // grep for it.)
+  "newsletter:subscribe",
   "corpus_map:dot_click",
   "series:pager_click",
   "article:playground_cta_click",

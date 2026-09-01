@@ -144,6 +144,20 @@ try {
   }
 
   // ── 3. Copy is a receipt: click writes the EXACT code text ────────
+  //
+  // Warm /articles/[slug] first. The journeys above only ever hit
+  // /articles, so this is the FIRST request to the dynamic route — the
+  // heaviest in the app — and against a dev server it is compiled on
+  // demand. That cold compile was landing inside the assertion's own 30s
+  // budget and timing the audit out on unrelated PRs (three times in one
+  // day). Warming pays the compile once, OUTSIDE the measurement, so the
+  // assertion still gets a real 30s for the thing it is actually testing.
+  // Deliberately not a bigger timeout on the assertion: that would hide a
+  // genuinely slow page instead of removing a cost that is not the page's.
+  await page
+    .goto(`${BASE}${CODE_ARTICLE}`, { waitUntil: "commit", timeout: 120000 })
+    .catch(() => {});
+
   try {
     await page.goto(`${BASE}${CODE_ARTICLE}`, {
       waitUntil: "load",
