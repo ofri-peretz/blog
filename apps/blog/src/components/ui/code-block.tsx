@@ -1,5 +1,6 @@
 'use client';
 
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/code-block.tsx — copy affordance +
 // onCopied measurement seam, interlace#68; header always-renders
@@ -8,6 +9,7 @@
 // install path replaces it — fix bugs upstream first, then
 // re-vendor. Local deltas: the `cn` import path and
 // `./skeleton.js` → `./skeleton`.
+// ⟨/vendored⟩
 
 /**
  * @interlace/ui — CodeBlock
