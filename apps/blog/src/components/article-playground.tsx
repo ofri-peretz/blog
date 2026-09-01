@@ -12,7 +12,8 @@ import { makeBrowserLint } from "@/lib/lint-client";
  * The live-lint embed: the reader runs OUR published rule on their own
  * code, in their browser, inside the article that argues for it.
  *
- * The analyzer bundle (~400KB gzipped: eslint's linter + the plugins)
+ * The analyzer bundle (362 KB brotli over the wire, measured 2026-08-31:
+ * eslint's linter + the plugins)
  * sits behind an explicit gate — an article page pays nothing for the
  * playground until someone asks for it, and the gate label is honest
  * about the weight. Two funnel events: `article:playground_open` when
@@ -67,7 +68,7 @@ export function ArticlePlayground({ currentSlug }: { currentSlug: string }) {
               setOpen(true);
             }}
           >
-            Try it live — loads the linter in your browser (~400 KB)
+            Try it live — loads the linter in your browser (362 KB)
           </button>
         )}
       </div>
