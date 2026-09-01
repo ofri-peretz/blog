@@ -79,11 +79,13 @@ self.onmessage = (event) => {
 };
 ```
 
-**The build step** is where the interesting work is. Five aliases and a banner:
+**The build step** is where the interesting work is. A handful of aliases and a banner:
 
 ```js
 // scripts/build-lint-worker.mjs
 import { buildSync } from "esbuild";
+
+const shims = "./src/workers/node-shims.ts";
 
 buildSync({
   entryPoints: ["src/workers/lint.worker.ts"],
@@ -102,9 +104,13 @@ buildSync({
   alias: {
     path: "path-browserify",
     "node:path": "path-browserify",
-    fs: "./src/workers/node-shims.ts",
-    os: "./src/workers/node-shims.ts",
-    util: "./src/workers/node-shims.ts",
+    fs: shims, "node:fs": shims,
+    os: shims, "node:os": shims,
+    util: shims, "node:util": shims,
+    // Don't skip this one. If anything in your graph pulls oxc-resolver
+    // (eslint-plugin-import-next does), its native/wasm bindings ride
+    // into the bundle and break the build. Rules never exercise it.
+    "oxc-resolver": shims,
   },
 });
 ```
@@ -112,9 +118,13 @@ buildSync({
 `node-shims.ts` is a no-op `Proxy` — the modules are imported but never exercised by rule logic, so they only need to exist:
 
 ```ts
-const noop: unknown = new Proxy(() => noop, { get: () => noop });
+const noop: unknown = new Proxy(function () {}, {
+  get: () => noop,          // any property access keeps returning the proxy
+  apply: () => undefined,   // any CALL no-ops — not "returns a proxy"
+});
 export default noop;
-export const readFileSync = noop, existsSync = noop /* … */;
+export const readFileSync = noop, existsSync = noop, platform = noop,
+  inspect = noop, EOL = "\n" /* … */;
 ```
 
 **The client seam** is one lazy worker and an id-matched request map. The part worth copying is the failure path:
