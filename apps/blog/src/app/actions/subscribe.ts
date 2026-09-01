@@ -30,6 +30,9 @@ export type SubscribeState = {
 // an @, and a dot-bearing domain.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** RFC 2606 + RFC 6761 reserved names. Nothing here can receive mail. */
+const UNREACHABLE = /@(?:[^\s@]+\.)?(?:example\.(?:com|org|net)|test|invalid|localhost)$/i;
+
 export async function subscribe(
   _prev: SubscribeState,
   formData: FormData,
@@ -45,6 +48,17 @@ export async function subscribe(
   const email = String(formData.get("email") ?? "").trim();
   if (!EMAIL.test(email)) {
     return { status: "error", message: "That doesn't look like an email address." };
+  }
+  // Reserved domains (RFC 2606 / RFC 6761) can never receive mail, so storing
+  // one is storing a guaranteed bounce. Rejecting them is correct on its own
+  // merits — and it is ALSO what makes the browser journey safe to run
+  // anywhere: it submits an @example.com address, so a developer running it
+  // locally against real credentials cannot write to the subscriber table.
+  // That is deliberately NOT a test-mode seam: no flag, no env check, no code
+  // path that production does not take. A local run already wrote one junk
+  // row before this existed.
+  if (UNREACHABLE.test(email)) {
+    return { status: "error", message: "That address can't receive mail." };
   }
   // The consent box is `required` in the markup, but markup is a suggestion
   // to anyone posting the form directly, and consent is the one field whose
