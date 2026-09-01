@@ -108,6 +108,17 @@ describe("the DS owns the form, the app owns the destination", () => {
     expect(COMPONENT).toContain('formData.set("source_slug", currentSlug)');
   });
 
+  it("refuses addresses that can never receive mail", () => {
+    // RFC 2606 / RFC 6761 reserved names. Correct on its own merits — a
+    // guaranteed bounce is not a subscriber — and it is what lets the
+    // browser journey submit @example.com without writing to the real
+    // table from a developer's machine. A local run wrote one junk row
+    // before this existed, which is how the gap was found.
+    expect(ACTION).toContain("UNREACHABLE");
+    expect(ACTION).toMatch(/example\\\.\(\?:com\|org\|net\)/);
+    expect(ACTION).toMatch(/UNREACHABLE\.test\(email\)/);
+  });
+
   it("only stores an attribution slug it can verify", () => {
     // The field arrives from the client; a direct POST can claim anything.
     // Unverified attribution is worse than none, because it looks like data.
