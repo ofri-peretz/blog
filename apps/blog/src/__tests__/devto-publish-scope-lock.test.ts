@@ -38,6 +38,24 @@ describe("publishing one article is possible", () => {
   });
 });
 
+describe("the key is proven, not merely present", () => {
+  it("probes the Dev.to API rather than checking the secret is non-empty", () => {
+    // Non-empty is not valid. A rotated or revoked key looks perfectly
+    // configured right up until the publish 401s — and a dry run never
+    // calls the API at all, so without this the first LIVE dispatch is
+    // the first time anyone learns the key is dead. The eslint repo's
+    // key is 401-rejected today, so this is not hypothetical.
+    expect(WORKFLOW).toContain("/api/articles/me");
+    expect(WORKFLOW).toMatch(/if \[ "\$CODE" != "200" \]/);
+  });
+
+  it("fails the run on a rejected key instead of warning", () => {
+    const probe = WORKFLOW.slice(WORKFLOW.indexOf("/api/articles/me"));
+    expect(probe).toMatch(/::error::[^\n]*rejected it/);
+    expect(probe.slice(0, 600)).toContain("exit 1");
+  });
+});
+
 describe("publishing everything stays deliberate", () => {
   it("is never the default: no push trigger, dispatch only", () => {
     expect(WORKFLOW).toContain("workflow_dispatch:");

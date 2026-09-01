@@ -40,6 +40,22 @@ jobs:
           if [ -z "${DEVTO_API_KEY:-}" ]; then
             echo "::error::DEVTO_API_KEY secret is not set"; exit 1
           fi
+          # Non-empty is not the same as VALID, and the difference is the
+          # whole failure mode: a rotated or revoked key looks perfectly
+          # configured right up until the publish 401s. The eslint repo's
+          # key is 401-rejected today, so this is not hypothetical.
+          #
+          # GET /api/articles/me publishes nothing and costs one request.
+          # It runs on dry runs too — the point is to learn the key is dead
+          # BEFORE a live dispatch depends on it.
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "api-key: ${DEVTO_API_KEY}" \
+            "https://dev.to/api/articles/me?per_page=1")
+          if [ "$CODE" != "200" ]; then
+            echo "::error::DEVTO_API_KEY is set but Dev.to rejected it (HTTP $CODE). Rotate the secret; publishing would fail."
+            exit 1
+          fi
+          echo "::notice::DEVTO_API_KEY accepted by Dev.to (HTTP 200)"
       - name: Publish
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
