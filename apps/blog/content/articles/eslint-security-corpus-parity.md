@@ -62,7 +62,7 @@ Excluding that one rule, it is **51 of 55 — 93%**.
 
 ## The obsolete rule {#noassert}
 
-`detect-buffer-noassert` flags `buf.readUInt8(0, true)`. The `noAssert` argument told Node to skip offset validation, so a read could run past the end of the buffer.
+`detect-buffer-noassert` flags `buf.readUInt8(0, true)`. The `noAssert` argument told Node.js to skip offset validation, so a read could run past the end of the buffer.
 
 It was removed in Node 10. On Node 24:
 
@@ -100,6 +100,10 @@ On their curated samples my precision looks excellent, because every sample is a
 The whole thing is about 40 lines and no AI, no benchmark harness, no service. Any plugin that ships its tests can be measured this way, in both directions, in a few minutes.
 
 Point it at mine: [`eslint-plugin-node-security`](https://www.npmjs.com/package/eslint-plugin-node-security) ships its tests too, and I would rather read your numbers than my own.
+
+```bash
+npm install -D eslint-plugin-node-security
+```
 
 ---
 
