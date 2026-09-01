@@ -1,9 +1,11 @@
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/charts/radial-weave.tsx — the poster form,
 // interlace#77). Copy-with-provenance until the registry install
 // path replaces it — fix bugs upstream first, then re-vendor.
 // Local deltas: the `cn` import path and sibling imports flattened
 // + extensionless.
+// ⟨/vendored⟩
 /**
  * @interlace/ui — RadialWeave
  *
