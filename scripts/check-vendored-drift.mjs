@@ -129,10 +129,11 @@ function normalizeVendored(src, canonical) {
 const drifted = [];
 const failed = [];
 for (const [vendored, canonical] of Object.entries(VENDORED)) {
-  const local = normalizeVendored(
-    readFileSync(path.join("apps/blog/src", vendored), "utf-8"),
-    canonical,
-  );
+  // Read ONCE: normalizeVendored consumes the vendored source, and the
+  // delta check below needs the raw text too. Two reads of the same file in
+  // one iteration is a redundant syscall and a TOCTOU window for no gain.
+  const raw = readFileSync(path.join("apps/blog/src", vendored), "utf-8");
+  const local = normalizeVendored(raw, canonical);
   const res = await fetch(`${RAW}/${canonical}`);
   if (!res.ok) {
     console.error(`FETCH FAILED (${res.status}): ${canonical}`);
@@ -148,7 +149,6 @@ for (const [vendored, canonical] of Object.entries(VENDORED)) {
   // failed typecheck, because it still carried canonical's `../lib/cn.js`
   // instead of the blog's alias. Check the delta is present, not just that
   // reversing it produced a match.
-  const raw = readFileSync(path.join("apps/blog/src", vendored), "utf-8");
   if (remote.includes("from '../lib/cn.js'") && !raw.includes('from "@/lib/utils"')) {
     console.error(`DELTA NOT APPLIED: ${vendored} still imports cn from the canonical path`);
     drifted.push(vendored);
