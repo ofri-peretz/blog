@@ -14,7 +14,8 @@ Intent: [`2026-08-31-behavioural-claims.intent.md`](./2026-08-31-behavioural-cla
 |---|---|---|---|
 | Test files | 47 | `ls src/__tests__` | 2026-08-31 |
 | Total assertions | 976 | grep for `expect(` | 2026-08-31 |
-| Files asserting only on file text | 24 of 47 | read source, never import the module | 2026-08-31 |
+| Files asserting only on file text | 17 of 48 | no import from `../` OR `@/` | 2026-09-01 |
+| ~~First measurement~~ | ~~24 of 47~~ WRONG | missed the `@/` alias entirely | 2026-08-31 |
 | Known bad locks this week | 4 | the incidents in the intent | 2026-08-31 |
 | Already converted | 1, the playground sample | `lint-embeds-lock.test.ts` | 2026-08-30 |
 
