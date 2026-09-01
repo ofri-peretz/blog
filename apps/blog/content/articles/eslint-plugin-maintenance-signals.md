@@ -89,4 +89,6 @@ Then apply the three checks above to anything past a year. Most will be fine. Th
 
 All figures resolved from the npm registry on 2026-08-12 and already drifting — `eslint-plugin-jest` was at 0 days when I measured it. Re-run the one-liner rather than citing mine.
 
+Source at [github.com/ofri-peretz/eslint](https://github.com/ofri-peretz/eslint) · packages at [npmjs.com/~ofriperetz](https://www.npmjs.com/~ofriperetz) · more at [dev.to/ofri-peretz](https://dev.to/ofri-peretz).
+
 _What's the oldest plugin in your lockfile — and did you know it before you looked?_
