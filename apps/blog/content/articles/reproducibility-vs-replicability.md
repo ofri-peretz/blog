@@ -85,7 +85,7 @@ Most real-world numbers satisfy the first three and treat the fourth as an open 
 
 Not everything needs independent replication before it's worth publishing. There's a spectrum, and naming your place on it honestly matters more than claiming a bar you haven't cleared.
 
-**Self-checking** — run twice, same result — is the floor; an unchecked single run is an assertion, not a measurement. **Reproducible with documentation** — anyone following your stated conditions gets your number — is where most careful work honestly sits. **Publicly runnable** means an independent person _can_ run it, which is not the same as _has_. **Independently replicated** — a group with no stake in the outcome ran it and published their own numbers — is the scientific gold standard, and far less common than the word "open" implies. **Peer-reviewed** stacks independent expert scrutiny on top of that.
+**Self-checking** — run twice, same result — is the floor; an unchecked single run is an assertion, not a measurement. **Reproducible with documentation** — anyone following your stated conditions gets your number — is where most careful work honestly sits. **Publicly runnable** means an independent person *can* run it, which is not the same as *has*. **Independently replicated** — a group with no stake in the outcome ran it and published their own numbers — is the scientific gold standard, and far less common than the word "open" implies. **Peer-reviewed** stacks independent expert scrutiny on top of that.
 
 A reproducible number is the price you paid to check your own arithmetic; a replicated one is the value an independent party assigns it — and the two aren't the same figure until someone else does the pricing. The gap is a to-do, not a verdict: the next honest move is someone else's run, not another self-check.
 
@@ -95,20 +95,20 @@ A reproducible number is the price you paid to check your own arithmetic; a repl
 
 ### The Two Properties
 
-| Property     | Who runs it                      | Same data?                 | Produces                                      |
-| ------------ | -------------------------------- | -------------------------- | --------------------------------------------- |
-| Reproducible | Same team                        | Yes (same dataset)         | Same numbers under the same conditions        |
-| Replicable   | Different team                   | Same method, their own run | Same numbers under their conditions           |
-| Neither      | Different team, wrong conditions | No                         | Different numbers — a discrepancy to document |
+| Property | Who runs it | Same data? | Produces |
+|----------|-------------|------------|---------|
+| Reproducible | Same team | Yes (same dataset) | Same numbers under the same conditions |
+| Replicable | Different team | Same method, their own run | Same numbers under their conditions |
+| Neither | Different team, wrong conditions | No | Different numbers — a discrepancy to document |
 
 ### Common Mistakes
 
-| Mistake                                 | What you said                | What you actually showed                                              |
-| --------------------------------------- | ---------------------------- | --------------------------------------------------------------------- |
-| "We independently verified our results" | We ran it twice              | That's reproducibility, not replication                               |
-| "Our method is open"                    | The code and data are public | Public ≠ replicable without pinned versions and documented conditions |
-| "No one has disputed our numbers"       | No one has tried             | Absence of challenge is not replication                               |
-| "We ran it on multiple machines"        | Internal cross-check         | Still the same team — still reproducibility                           |
+| Mistake | What you said | What you actually showed |
+|---------|--------------|---------|
+| "We independently verified our results" | We ran it twice | That's reproducibility, not replication |
+| "Our method is open" | The code and data are public | Public ≠ replicable without pinned versions and documented conditions |
+| "No one has disputed our numbers" | No one has tried | Absence of challenge is not replication |
+| "We ran it on multiple machines" | Internal cross-check | Still the same team — still reproducibility |
 
 ### Named Misconception
 
@@ -124,18 +124,18 @@ This page is built to be a reference — bookmark it, and [follow me on Dev.to](
 
 ## References
 
-1. National Academies of Sciences, Engineering, and Medicine. (2019). _Reproducibility and Replicability in Science_. The National Academies Press. [nap.nationalacademies.org](https://nap.nationalacademies.org/catalog/25303/reproducibility-and-replicability-in-science) — The authoritative report that standardized these definitions. Available free.
+1. National Academies of Sciences, Engineering, and Medicine. (2019). *Reproducibility and Replicability in Science*. The National Academies Press. [nap.nationalacademies.org](https://nap.nationalacademies.org/catalog/25303/reproducibility-and-replicability-in-science) — The authoritative report that standardized these definitions. Available free.
 
-2. Drummond, C. (2009). [Replicability is not reproducibility: nor is it good science](https://www.site.uottawa.ca/~cdrummon/pubs/ICMLws09.pdf). _Proceedings of the Evaluation Methods for Machine Learning Workshop, 26th ICML_. — First cleanly distinguished the two in a computational context, a decade before the NAS report.
+2. Drummond, C. (2009). [Replicability is not reproducibility: nor is it good science](https://www.site.uottawa.ca/~cdrummon/pubs/ICMLws09.pdf). *Proceedings of the Evaluation Methods for Machine Learning Workshop, 26th ICML*. — First cleanly distinguished the two in a computational context, a decade before the NAS report.
 
-3. Open Science Collaboration. (2015). [Estimating the reproducibility of psychological science](https://doi.org/10.1126/science.aac4716). _Science_, 349(6251). — The 100-study replication project behind this article's opening numbers.
+3. Open Science Collaboration. (2015). [Estimating the reproducibility of psychological science](https://doi.org/10.1126/science.aac4716). *Science*, 349(6251). — The 100-study replication project behind this article's opening numbers.
 
-4. Begley, C. G., & Ellis, L. M. (2012). [Raise standards for preclinical cancer research](https://doi.org/10.1038/483531a). _Nature_, 483, 531–533. — The industrial audit that confirmed 6 of 53 landmark studies; a foundational document of the reproducibility crisis.
+4. Begley, C. G., & Ellis, L. M. (2012). [Raise standards for preclinical cancer research](https://doi.org/10.1038/483531a). *Nature*, 483, 531–533. — The industrial audit that confirmed 6 of 53 landmark studies; a foundational document of the reproducibility crisis.
 
-5. Collberg, C., & Proebsting, T. A. (2016). [Repeatability in computer systems research](https://doi.org/10.1145/2812803). _Communications of the ACM_, 59(3), 62–69. — Found that a large fraction of published results couldn't be independently built or run. The gap between "we ran it" and "someone else can run it" appears in every field.
+5. Collberg, C., & Proebsting, T. A. (2016). [Repeatability in computer systems research](https://doi.org/10.1145/2812803). *Communications of the ACM*, 59(3), 62–69. — Found that a large fraction of published results couldn't be independently built or run. The gap between "we ran it" and "someone else can run it" appears in every field.
 
 ---
 
-_Foundations series: ← [Goodhart's Law](https://ofriperetz.dev/articles/goodharts-law-explained) · [hub](https://ofriperetz.dev/foundations) · [Sample size & power](https://ofriperetz.dev/articles/sample-size-and-statistical-power) →_
+*Foundations series: ← [Goodhart's Law](https://ofriperetz.dev/articles/goodharts-law-explained) · [hub](https://ofriperetz.dev/foundations) · [Sample size & power](https://ofriperetz.dev/articles/sample-size-and-statistical-power) →*
 
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · npm: [@interlace](https://www.npmjs.com/~ofriperetz) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*

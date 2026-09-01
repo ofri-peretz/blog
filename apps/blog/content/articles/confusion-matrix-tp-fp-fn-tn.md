@@ -47,10 +47,10 @@ This is the base rate problem in miniature — the gap between how a metric beha
 
 Take two spam filters run over the same 1,000 emails, of which 40 are actually spam. Both are defensible on a headline; they fail in opposite directions:
 
-| Filter                  | TP  | FP  | FN  | Precision | Recall | F1    |
-| ----------------------- | --- | --- | --- | --------- | ------ | ----- |
-| Filter A (aggressive)   | 30  | 30  | 10  | 50.0%     | 75.0%  | 60.0% |
-| Filter B (conservative) | 4   | 1   | 36  | 80.0%     | 10.0%  | 17.8% |
+| Filter | TP | FP | FN | Precision | Recall | F1 |
+|---|---|---|---|---|---|---|
+| Filter A (aggressive) | 30 | 30 | 10 | 50.0% | 75.0% | 60.0% |
+| Filter B (conservative) | 4 | 1 | 36 | 80.0% | 10.0% | 17.8% |
 
 Filter A is the alarm-fatigue machine: for every real spam it catches, one legitimate email gets quarantined (50% precision — a 1:1 catch-to-false-alarm ratio). Worse, that false-positive rate is self-reinforcing — once people learn half of what the filter flags is fine, they start fishing real spam back out along with the mistakes and stop trusting the quarantine folder at all. That's an effective second drop in recall that never shows up in the table. Filter B is the inverse: near-silent, 90% of the spam sails straight into the inbox undetected, and because it almost never touches a legitimate email it reads as well-behaved from the outside — precisely because its failures don't generate alerts. F1 compresses both stories into one number — 60.0% versus 17.8% — but can't tell you which failure mode you're buying. Read precision and recall separately before you trust it.
 
@@ -58,11 +58,11 @@ Filter A is the alarm-fatigue machine: for every real spam it catches, one legit
 
 Statistics has its own name for two of these four cells, and if you trained outside detection tooling you likely met the concept there first. A **false positive is a Type I error** — rejecting a true null hypothesis; here, the test declares "positive" when the null ("this case is clean") was actually true. A **false negative is a Type II error** — failing to reject a false null; the test stays silent when it should have flagged the case.
 
-| Statistics term       | Confusion-matrix cell | Reading it here                        |
-| --------------------- | --------------------- | -------------------------------------- |
-| Type I error, rate α  | False Positive        | Clean case flagged as positive         |
-| Type II error, rate β | False Negative        | Real case passed as clean              |
-| Power, 1 − β          | —                     | ≈ recall: odds of catching a real case |
+| Statistics term | Confusion-matrix cell | Reading it here |
+|---|---|---|
+| Type I error, rate α | False Positive | Clean case flagged as positive |
+| Type II error, rate β | False Negative | Real case passed as clean |
+| Power, 1 − β | — | ≈ recall: odds of catching a real case |
 
 α and β aren't a cosmetic rename — they're the two error rates a significance test is built to control, and confusing "no significant difference" with "no error" is its own common mistake. [Statistical Significance and p-Values](https://ofriperetz.dev/articles/statistical-significance-p-value) covers what α and β actually bound and what a p-value can't tell you about either one.
 
@@ -76,12 +76,12 @@ If this is the reference page you'll reach for the next time someone hands you a
 
 ## Quick Reference {#quick-reference}
 
-| Term                | Definition                        | Example (a medical screen)    | Cost                                       |
-| ------------------- | --------------------------------- | ----------------------------- | ------------------------------------------ |
-| TP (True Positive)  | Positive prediction was correct   | Test flags a real tumor       | None — this is the job                     |
-| FP (False Positive) | Positive prediction was incorrect | Test flags a healthy patient  | Needless follow-up; alarm fatigue at scale |
-| FN (False Negative) | Negative prediction was incorrect | Test misses a real tumor      | The case ships undetected                  |
-| TN (True Negative)  | Negative prediction was correct   | Test clears a healthy patient | None — this is also the job                |
+| Term | Definition | Example (a medical screen) | Cost |
+|------|-----------|-------------------|------|
+| TP (True Positive) | Positive prediction was correct | Test flags a real tumor | None — this is the job |
+| FP (False Positive) | Positive prediction was incorrect | Test flags a healthy patient | Needless follow-up; alarm fatigue at scale |
+| FN (False Negative) | Negative prediction was incorrect | Test misses a real tumor | The case ships undetected |
+| TN (True Negative) | Negative prediction was correct | Test clears a healthy patient | None — this is also the job |
 
 **The three metrics to read instead of accuracy:**
 
@@ -93,13 +93,13 @@ If this is the reference page you'll reach for the next time someone hands you a
 
 ## References
 
-1. Sokolova, M., & Lapalme, G. (2009). [A systematic analysis of performance measures for classification tasks](https://doi.org/10.1016/j.ipm.2009.03.002). _Information Processing & Management_, 45(4), 427–437. First comprehensive treatment of the conditions under which accuracy fails as a classification metric, including the base-rate sensitivity problem.
+1. Sokolova, M., & Lapalme, G. (2009). [A systematic analysis of performance measures for classification tasks](https://doi.org/10.1016/j.ipm.2009.03.002). *Information Processing & Management*, 45(4), 427–437. First comprehensive treatment of the conditions under which accuracy fails as a classification metric, including the base-rate sensitivity problem.
 
-2. Davis, J., & Goadrich, M. (2006). [The relationship between Precision-Recall and ROC curves](https://doi.org/10.1145/1143844.1143874). _Proceedings of the 23rd International Conference on Machine Learning (ICML)_. Foundational work on why precision-recall curves dominate ROC curves for imbalanced class distributions — the theoretical grounding for why recall matters more than accuracy when one class is rare.
+2. Davis, J., & Goadrich, M. (2006). [The relationship between Precision-Recall and ROC curves](https://doi.org/10.1145/1143844.1143874). *Proceedings of the 23rd International Conference on Machine Learning (ICML)*. Foundational work on why precision-recall curves dominate ROC curves for imbalanced class distributions — the theoretical grounding for why recall matters more than accuracy when one class is rare.
 
 3. NIST Software Assurance Reference Dataset (SARD). NIST SAMATE project. [samate.nist.gov/SARD/](https://samate.nist.gov/SARD/). Ground-truth labeled corpus used as the methodological basis for fixture design in structured detector benchmarks.
 
-4. Fawcett, T. (2006). [An introduction to ROC analysis](https://doi.org/10.1016/j.patrec.2005.10.010). _Pattern Recognition Letters_, 27(8), 861–874. Best single-paper reference for the full classification metric landscape, including the relationship between sensitivity (recall), specificity, and the tradeoffs that determine which metrics apply in a given problem domain.
+4. Fawcett, T. (2006). [An introduction to ROC analysis](https://doi.org/10.1016/j.patrec.2005.10.010). *Pattern Recognition Letters*, 27(8), 861–874. Best single-paper reference for the full classification metric landscape, including the relationship between sensitivity (recall), specificity, and the tradeoffs that determine which metrics apply in a given problem domain.
 
 ---
 
@@ -113,6 +113,6 @@ If this is the reference page you'll reach for the next time someone hands you a
 
 ---
 
-_Foundations series: [hub](https://ofriperetz.dev/foundations) · [Precision, Recall, and F1](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) →_
+*Foundations series: [hub](https://ofriperetz.dev/foundations) · [Precision, Recall, and F1](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) →*
 
-_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint-benchmark-suite) · [npm](https://www.npmjs.com/search?q=%40interlace) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)_
+*Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint-benchmark-suite) · [npm](https://www.npmjs.com/search?q=%40interlace) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz) · [ofriperetz.dev](https://ofriperetz.dev)*

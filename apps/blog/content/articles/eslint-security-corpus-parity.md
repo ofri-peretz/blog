@@ -1,4 +1,5 @@
 ---
+devto_id: 4542713
 title: "I Ran My Plugins Against a Competitor's Own Test Suite"
 description: "eslint-plugin-security ships its tests. I ran 84 of its own vulnerable samples through my plugins: 51 caught, and 29 of the 33 misses are one obsolete rule."
 slug: "eslint-security-corpus-parity"
@@ -35,9 +36,7 @@ const captured = [];
 RuleTester.prototype.run = (name, rule, tests) => {
   for (const t of tests.invalid ?? []) captured.push(t.code ?? t);
 };
-for (const f of fs.readdirSync(
-  "node_modules/eslint-plugin-security/test/rules",
-))
+for (const f of fs.readdirSync("node_modules/eslint-plugin-security/test/rules"))
   require(`.../test/rules/${f}`);
 ```
 
@@ -45,10 +44,10 @@ for (const f of fs.readdirSync(
 
 ## The result {#result}
 
-|                                           | flags       |
-| ----------------------------------------- | ----------- |
+| | flags |
+|---|---|
 | eslint-plugin-security (on its own tests) | **71 / 84** |
-| my plugins                                | **51 / 84** |
+| my plugins | **51 / 84** |
 
 They win, and the honest headline is that I cover 61% of their corpus. But the distribution matters more than the total, because **29 of my 33 misses are a single rule**:
 
@@ -70,8 +69,8 @@ It was removed in Node 10. On Node 24:
 
 ```js
 const b = Buffer.alloc(4);
-b.readUInt8(0, true); // extra argument ignored
-b.readUInt8(99); // still throws ERR_OUT_OF_RANGE
+b.readUInt8(0, true);   // extra argument ignored
+b.readUInt8(99);        // still throws ERR_OUT_OF_RANGE
 ```
 
 The parameter has done nothing for about seven years. Their rule still ships in `recommended`, and their suite tests it across 29 variants — every `read*` method — which is why one dead rule dominates the gap.

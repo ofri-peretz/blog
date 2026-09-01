@@ -59,9 +59,9 @@ Somewhere in the 8.x line `utils` picked up its own **non-optional** `typescript
 
 **What ships inside the tarballs.** Measured from the registry at both ends, same instrument, 20 packages:
 
-|            |     Unpacked |
-| ---------- | -----------: |
-| Aug 2      |     5,432 KB |
+| | Unpacked |
+|---|---:|
+| Aug 2 | 5,432 KB |
 | **Aug 23** | **3,037 KB** |
 
 −44.1%. And none of the three cuts caused it: a package's own `unpackedSize` excludes its dependencies, so removing one cannot move this column. That drop is dead bytes: source maps for `.ts` files the tarball never shipped, `AGENTS.md`, JSDoc in emitted `.js`.
@@ -115,7 +115,7 @@ I assumed tree-shaking would help. It cannot: ESLint plugins are CommonJS, and n
 
 The lever is not bundle size. It is **what evaluates at require time**. An optional peer that is never installed costs zero; a 24MB one that is costs you on every lint run.
 
-The devkit's own unpacked size even went _up_, 339KB → 377KB, while what you install collapsed. Optimising the npm-page number would have optimised the wrong one — [any proxy metric](/articles/proxy-metrics).
+The devkit's own unpacked size even went *up*, 339KB → 377KB, while what you install collapsed. Optimising the npm-page number would have optimised the wrong one — [any proxy metric](/articles/proxy-metrics).
 
 One trap: `removeComments` strips your `.d.ts` docs too, silently killing editor hover for every consumer. Emit to a scratch directory and copy back only the `.js`.
 

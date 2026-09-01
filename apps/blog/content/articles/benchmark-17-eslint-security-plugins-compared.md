@@ -464,8 +464,8 @@ The reason Interlace achieves 100% coverage is **specialization**. Instead of on
 | `eslint-plugin-secure-coding`                                                                                         | Core OWASP patterns                            | 23    |
 | `eslint-plugin-node-security`                                                                                         | fs, child_process, vm, weak crypto, randomness | 42    |
 | `eslint-plugin-browser-security`                                                                                      | XSS, CORS, CSP                                 | 45    |
-| `eslint-plugin-postgresql-security`                                                                                   | SQL injection, connection safety               | 13    |
-| `eslint-plugin-jwt-security`                                                                                          | Algorithm confusion, token safety              | 13    |
+| `eslint-plugin-postgresql-security`                                                                                                    | SQL injection, connection safety               | 13    |
+| `eslint-plugin-jwt-security`                                                                                                   | Algorithm confusion, token safety              | 13    |
 | `eslint-plugin-mongodb-security`                                                                                      | NoSQL injection, operator injection            | 16    |
 | `eslint-plugin-vercel-ai-security`                                                                                    | Prompt injection, output validation            | 19    |
 | [`eslint-plugin-lambda-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-lambda-security) | IAM, cold starts, secrets                      | 14    |

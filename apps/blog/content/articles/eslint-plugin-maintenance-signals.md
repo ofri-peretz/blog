@@ -21,17 +21,17 @@ Pick the maintenance signal you can get in one second: **days since the last rel
 
 I pulled it from the npm registry for 18 ESLint plugins on 2026-08-12. The three with the deepest install base are the three that have gone quietest.
 
-| plugin                 | days since release | releases in 12mo |
-| ---------------------- | ------------------ | ---------------- |
-| eslint-plugin-jsx-a11y | **655**            | 0                |
-| eslint-plugin-react    | **495**            | 0                |
-| eslint-plugin-import   | **417**            | 0                |
-| eslint-plugin-promise  | 107                | 1                |
-| eslint-plugin-security | 61                 | 2                |
-| eslint-plugin-sonarjs  | 28                 | 9                |
-| eslint-plugin-unicorn  | 8                  | 17               |
-| eslint-plugin-n        | 3                  | 12               |
-| eslint-plugin-jest     | 0                  | 35               |
+| plugin | days since release | releases in 12mo |
+|---|---|---|
+| eslint-plugin-jsx-a11y | **655** | 0 |
+| eslint-plugin-react | **495** | 0 |
+| eslint-plugin-import | **417** | 0 |
+| eslint-plugin-promise | 107 | 1 |
+| eslint-plugin-security | 61 | 2 |
+| eslint-plugin-sonarjs | 28 | 9 |
+| eslint-plugin-unicorn | 8 | 17 |
+| eslint-plugin-n | 3 | 12 |
+| eslint-plugin-jest | 0 | 35 |
 
 Nine of the eighteen I measured shipped nothing at all in the last twelve months. Nearly two years of silence on the plugin that half the accessibility tooling in React depends on.
 
@@ -41,7 +41,7 @@ Nine of the eighteen I measured shipped nothing at all in the last twelve months
 
 Before drawing the obvious conclusion, the honest caveat: **a plugin that stops releasing may simply be finished.** `jsx-a11y` encodes WAI-ARIA rules. ARIA does not change every quarter. A stable spec produces a stable plugin, and "no releases" is the correct output for a package with nothing left to do.
 
-So days-since-release is a _prompt_, not a verdict. Three signals actually separate finished from abandoned, and all three are free:
+So days-since-release is a *prompt*, not a verdict. Three signals actually separate finished from abandoned, and all three are free:
 
 **1. The npm deprecation flag.** `eslint-plugin-standard` carries one. That is the maintainer telling you directly, and it is machine-readable — no interpretation required.
 

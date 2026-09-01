@@ -358,15 +358,15 @@ await withTransaction(async (client) => {
 
 ## Compatibility
 
-| Surface              | Support                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------- |
-| **Plugin**           | `eslint-plugin-postgresql-security@1.4.6` — rule is `error` in `recommended` and `strict` |
-| **Package managers** | npm, yarn, pnpm, bun                                                                      |
-| **Node**             | `>= 18.0.0`                                                                               |
-| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                            |
-| **`pg` driver**      | peer `^6 \|\| ^7 \|\| ^8`; AST-based, lints regardless of installed version               |
-| **Module system**    | Plugin ships CommonJS; your config can be `eslint.config.js` or `.mjs`                    |
-| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-pg` port, parity-gated in CI     |
+| Surface              | Support                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| **Plugin**           | `eslint-plugin-postgresql-security@1.4.6` — rule is `error` in `recommended` and `strict`              |
+| **Package managers** | npm, yarn, pnpm, bun                                                                  |
+| **Node**             | `>= 18.0.0`                                                                           |
+| **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                        |
+| **`pg` driver**      | peer `^6 \|\| ^7 \|\| ^8`; AST-based, lints regardless of installed version           |
+| **Module system**    | Plugin ships CommonJS; your config can be `eslint.config.js` or `.mjs`                |
+| **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-pg` port, parity-gated in CI |
 
 ---
 

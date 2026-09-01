@@ -506,12 +506,12 @@ Improvement: ~2x reduction
 
 The [install + config block is above](#phase-1-initial-results), at the point where the pain shows up. Here's which plugin caught which class of finding, with the exact rule-firing counts from the cited `2026-02-06.json` run (60 functions), so you can map it to your own stack:
 
-| Plugin                              | Rule that fired (60-fn run)                                                                          | Catches                                                         | CWE              |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------- |
-| `eslint-plugin-secure-coding`       | `no-graphql-injection` (31×), `no-sensitive-data-exposure` (2×)                                      | string-built SQL/queries (top finding), sensitive-info exposure | CWE-89, CWE-200  |
-| `eslint-plugin-postgresql-security` | `no-select-all` (3×), `no-hardcoded-credentials` (2×)                                                | `SELECT *` over-fetch, hardcoded DB password in client config   | CWE-200, CWE-798 |
-| `eslint-plugin-jwt-security`        | `require-algorithm-whitelist` (2×)                                                                   | `jwt.verify` with no `algorithms` whitelist                     | CWE-347          |
-| `eslint-plugin-node-security`       | `detect-non-literal-fs-filename` (22×), `no-arbitrary-file-access` (6×), `detect-child-process` (6×) | path traversal in `fs`, `child_process` command injection       | CWE-22, CWE-78   |
+| Plugin                        | Rule that fired (60-fn run)                                                                          | Catches                                                         | CWE              |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------- |
+| `eslint-plugin-secure-coding` | `no-graphql-injection` (31×), `no-sensitive-data-exposure` (2×)                                      | string-built SQL/queries (top finding), sensitive-info exposure | CWE-89, CWE-200  |
+| `eslint-plugin-postgresql-security`            | `no-select-all` (3×), `no-hardcoded-credentials` (2×)                                                | `SELECT *` over-fetch, hardcoded DB password in client config   | CWE-200, CWE-798 |
+| `eslint-plugin-jwt-security`           | `require-algorithm-whitelist` (2×)                                                                   | `jwt.verify` with no `algorithms` whitelist                     | CWE-347          |
+| `eslint-plugin-node-security` | `detect-non-literal-fs-filename` (22×), `no-arbitrary-file-access` (6×), `detect-child-process` (6×) | path traversal in `fs`, `child_process` command injection       | CWE-22, CWE-78   |
 
 These are the rules that produced the findings discussed in this article. The Opus 4.6 follow-up run (`antigravity-opus-4.6-2026-02-08.json`) tripped a few more rules from the _same four plugins_ — `pg/no-unsafe-query`, `node-security/no-ssrf`, `secure-coding/detect-object-injection`, `jwt/no-sensitive-payload` — which is the point: the four-plugin install is the unit of coverage, not any single rule. Full rule documentation lives at [eslint.interlace.tools](https://eslint.interlace.tools). If you're auditing a codebase rather than wiring CI, the same plugins drive [the 30-minute static-analysis onboarding protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
 

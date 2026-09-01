@@ -200,7 +200,6 @@ This audit is the wide-angle view in the _Inside our linter benchmarks_ series. 
 <!-- markdownlint-disable MD034 -->
 
 **[⭐ Star on GitHub](https://github.com/ofri-peretz/eslint)**
-
 <!-- markdownlint-enable MD034 -->
 
 ---

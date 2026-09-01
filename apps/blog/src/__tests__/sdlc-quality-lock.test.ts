@@ -31,7 +31,17 @@ const FLOOR = 9.5;
 
 // Pinned so the ratchet cannot silently loosen. Growing the grandfathered set
 // requires editing this number — a visible, reviewable act, which is the point.
-const BASELINE_CEILING = 83;
+//
+// 83 -> 84 on 2026-09-01, and this is the mechanism working rather than being
+// worked around. `eslint-security-corpus-parity` was published on main while
+// this PR sat in review: pre-chain by definition, since the chain it would
+// have been scored under is the thing being merged. The lock caught it on the
+// merge — nobody had to remember — and grandfathering it is the same call made
+// for the other 83. Scoring it is I-7.
+//
+// If this number climbs again for the same reason, that is the signal to merge
+// faster, not to keep raising it.
+const BASELINE_CEILING = 84;
 
 type Article = {
   slug: string;

@@ -412,7 +412,7 @@ repository — that's the only number that decides anything.
 
 | Surface              | Support                                                                               |
 | -------------------- | ------------------------------------------------------------------------------------- |
-| **Plugin version**   | `eslint-plugin-postgresql-security@1.4.7`, 13 rules (npm latest, checked 2026-07-28)  |
+| **Plugin version**   | `eslint-plugin-postgresql-security@1.4.7`, 13 rules (npm latest, checked 2026-07-28)                   |
 | **Package managers** | npm, yarn, pnpm, bun                                                                  |
 | **Node**             | `>= 18.0.0`                                                                           |
 | **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                        |
