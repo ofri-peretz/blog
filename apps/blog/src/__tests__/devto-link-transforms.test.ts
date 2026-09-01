@@ -20,6 +20,7 @@ import {
   collectDevtoLinks,
   rewriteUrlForDevto,
   slugForExternal,
+  stripNotationMarkers,
   transformBodyForDevto,
 } from "../../scripts/devto-link-transforms.mjs";
 
@@ -287,6 +288,42 @@ describe("transformBodyForDevto", () => {
     expect(out).toContain(`](${stored(site)})`);
   });
 
+  // Regression: crypto-misuse-taxonomy (devto_id 4286252) published with four
+  // literal `{#layer-N}` tags visible mid-paragraph — the strip was heading-only.
+  it("strips {#anchor} inline, not just on headings", () => {
+    const body = [
+      "## Four layers {#the-four-layers}",
+      "**Layer 1 — the primitive.** {#layer-1} Right kind of thing?",
+      "A [link](/articles/target) after {#layer-2} an anchor.",
+      "### Heading with [a link](/articles/target) {#h-link}",
+      "```js",
+      "const css = '{#not-an-anchor}';",
+      "```",
+    ].join("\n");
+
+    const out = transformBodyForDevto(body, SLUG);
+
+    expect(out).not.toMatch(/\{#(the-four-layers|layer-1|layer-2|h-link)\}/);
+    expect(out).toContain("## Four layers");
+    expect(out).toContain("**Layer 1 — the primitive.** Right kind of thing?");
+    // A heading carrying a link must still get its /go/ URL.
+    expect(out).toContain(
+      `### Heading with [a link](https://ofriperetz.dev/go/target?utm_source=devto&from=${SLUG})`,
+    );
+    // Fenced content is untouched, brace-looking strings included.
+    expect(out).toContain("const css = '{#not-an-anchor}';");
+  });
+
+  // A double-backtick span is how markdown writes inline code that itself
+  // contains a backtick; a single-backtick guard would end the span early and
+  // eat the brace inside.
+  it("preserves {#...} inside multi-backtick code spans", () => {
+    const body = "Prose ``a {#id}`` and ```b {#id2}``` stay, {#gone} goes.";
+    expect(transformBodyForDevto(body, SLUG)).toBe(
+      "Prose ``a {#id}`` and ```b {#id2}``` stay, goes.",
+    );
+  });
+
   it("leaves fenced code blocks byte-identical", () => {
     const body = [
       "Before [link](/articles/target).",
@@ -392,5 +429,103 @@ describe("transformBodyForDevto", () => {
       "```",
     ].join("\n");
     expect(transformBodyForDevto(body, SLUG)).toBe(body);
+  });
+});
+
+describe("shiki notation markers (fenced code)", () => {
+  const fence = [
+    "```ts",
+    "function validate(input: string) {",
+    "  return eval(input); // [!code --]",
+    "  return schema.parse(input); // [!code ++]",
+    "  audit(input); // [!code highlight]",
+    "}",
+    "```",
+  ].join("\n");
+
+  it("strips markers and drops removed lines — dev.to gets the post-diff code", () => {
+    const out = transformBodyForDevto(fence, SLUG);
+    expect(out).not.toContain("[!code");
+    // The removed (vulnerable) line goes entirely; kept lines lose only
+    // the trailing marker comment.
+    expect(out).not.toContain("eval(input)");
+    expect(out).toContain("  return schema.parse(input);");
+    expect(out).toContain("  audit(input);");
+  });
+
+  it("is idempotent and leaves marker-free fences byte-identical", () => {
+    const once = transformBodyForDevto(fence, SLUG);
+    expect(transformBodyForDevto(once, SLUG)).toBe(once);
+
+    const plain = "```ts\nconst a = 1; // not a marker\n```";
+    expect(transformBodyForDevto(plain, SLUG)).toBe(plain);
+  });
+
+  it("handles hash-comment and block-comment marker forms", () => {
+    const bash = "```bash\nnpm install pkg # [!code highlight]\n```";
+    expect(transformBodyForDevto(bash, SLUG)).toBe(
+      "```bash\nnpm install pkg\n```",
+    );
+    const css = "```css\na { color: red; } /* [!code --] */\nb { color: blue; } /* [!code ++] */\n```";
+    expect(transformBodyForDevto(css, SLUG)).toBe(
+      "```css\nb { color: blue; }\n```",
+    );
+  });
+
+  it("prose mentioning [!code ...] outside a fence is untouched", () => {
+    const prose = "Use the `[!code highlight]` marker to mark a line.";
+    expect(transformBodyForDevto(prose, SLUG)).toBe(prose);
+  });
+});
+
+describe("stripNotationMarkers — :N ranges and bare marker lines", () => {
+  it("a trailing [!code --:N] drops that line plus the next N-1", () => {
+    const fence = [
+      "```ts",
+      "keep();",
+      "old1(); // [!code --:3]",
+      "old2();",
+      "old3();",
+      "alsoKeep();",
+      "```",
+    ].join("\n");
+    expect(stripNotationMarkers(fence)).toBe(
+      ["```ts", "keep();", "alsoKeep();", "```"].join("\n"),
+    );
+  });
+
+  it("a bare [!code --:N] line drops itself plus the next N", () => {
+    const fence = [
+      "```ts",
+      "// [!code --:2]",
+      "old1();",
+      "old2();",
+      "keep();",
+      "```",
+    ].join("\n");
+    expect(stripNotationMarkers(fence)).toBe(
+      ["```ts", "keep();", "```"].join("\n"),
+    );
+  });
+
+  it("a line that was only a highlight marker vanishes instead of going blank", () => {
+    const fence = ["```ts", "// [!code highlight:2]", "a();", "b();", "```"].join(
+      "\n",
+    );
+    expect(stripNotationMarkers(fence)).toBe(
+      ["```ts", "a();", "b();", "```"].join("\n"),
+    );
+  });
+
+  it("a range never crosses a fence edge", () => {
+    const body = [
+      "```ts",
+      "old(); // [!code --:9]",
+      "```",
+      "prose after the fence",
+    ].join("\n");
+    expect(stripNotationMarkers(body)).toBe(
+      ["```ts", "```", "prose after the fence"].join("\n"),
+    );
   });
 });

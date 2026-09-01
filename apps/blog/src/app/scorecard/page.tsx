@@ -78,7 +78,8 @@ import { getCachedGitHubStats } from "@/lib/github-live-stats";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Scorecard — Ofri Peretz",
+  // Bare page name — the root layout's title template appends the suffix.
+  title: "Scorecard",
   description:
     "A public, schema-enforced ledger of our mutual contribution to the world — both what we ship and how the world responds. Every number is provenance-traceable to its source.",
   alternates: { canonical: "https://ofriperetz.dev/scorecard" },

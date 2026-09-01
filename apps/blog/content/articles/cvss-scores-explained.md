@@ -8,6 +8,7 @@ description: "A scanner can print CVSS 9.1 and the word LOW on the same line. Wh
 slug: "cvss-scores-explained"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:38:05.153Z"
 tags:
   - "security"
   - "devsecops"

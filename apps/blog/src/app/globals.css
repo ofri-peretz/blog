@@ -43,6 +43,45 @@
   --chart-3: oklch(0.62 0.16 264);
   --chart-4: oklch(0.7 0.18 60);
   --chart-5: oklch(0.62 0.16 320);
+  /* Viz chrome — grid/axis/crosshair for the vendored DS charts
+     (time-series.tsx). var() aliases of theme tokens, so both schemes
+     resolve without a .dark override: grid rides border (deliberately
+     decorative), axis + crosshair ride muted-foreground (4.5:1+ in
+     both modes — above the 3:1 non-text floor). Annotation marks map
+     to the closest blog tokens; the DS's info/warning have no blog
+     equivalent yet. */
+  --viz-grid: var(--border);
+  --viz-axis: var(--muted-foreground);
+  --viz-crosshair: var(--muted-foreground);
+  --viz-annotation-publish: var(--brand-orange);
+  --viz-annotation-release: var(--chart-3);
+  --viz-annotation-action: var(--chart-4);
+  /* Strand pair — the woven brand gesture (interlace BRAND_PHILOSOPHY.md).
+     strand-a is the mark's orange; strand-b is the doctrine's cool
+     counter (steel blue, hue 230) — deliberately NOT the brand green:
+     the crossing reads warm-passing-cool, and the pair is identical on
+     every Interlace surface. Only woven gestures may use strand-b. */
+  --strand-a: var(--brand-orange);
+  --strand-b: oklch(0.55 0.12 230);
+  /* Brand orange as TEXT — the DS ladder's measured AAA pair
+     (interlace-theme.css: #7d350c = 8.80:1 on white; the dark value
+     #fbb99a = 11.79:1 on near-black lives in .dark below). strand-a
+     itself is scoped to woven gestures and only clears 3:1 decorative
+     — the SectionIndex numeral is 14px text and needs this instead. */
+  --brand-orange-text: #7d350c;
+  /* Status pair the vendored CodeBlock's notation contract consumes
+     (diff add/remove washes + gutter markers). Values are the interlace
+     canonical ones (interlace-theme.css): #065f46 is 7.1:1 on white,
+     #991b1b 6.4:1 — AA for the +/- marker text. */
+  --success: #065f46;
+  --success-foreground: #ffffff;
+  --destructive: #991b1b;
+  --destructive-foreground: #ffffff;
+  /* Container width the vendored ui/dialog caps its popup at
+     (`sm:max-w-(--container-prose)`) — the DS foundation.css value.
+     Without it the var() is invalid at computed-value time and the
+     dialog silently loses its desktop width cap. */
+  --container-prose: 65ch;
   /* Decorative-primitive tokens — replace baked-in hex defaults inside
      ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
   --beam-from: var(--brand-orange);
@@ -75,7 +114,15 @@
   --brand-orange: oklch(0.71 0.163 40.8); /* #f4794a */
   --brand-green: oklch(0.589 0.132 159.4); /* #0d9460 */
   --brand-snappy: var(--brand-orange);
-  /* chart-1/2 inherit the brand var()s from :root and re-resolve here. */
+  /* chart-1/2 and strand-a inherit the brand var()s and re-resolve here. */
+  --strand-b: oklch(0.78 0.1 230);
+  --brand-orange-text: #fbb99a; /* 11.79:1 on near-black (AAA) */
+  /* Status pair, dark values from interlace-theme.css: #34d399 is 8.4:1
+     and #fca5a5 8.0:1 on the near-black card surface. */
+  --success: #34d399;
+  --success-foreground: #052e16;
+  --destructive: #fca5a5;
+  --destructive-foreground: #0a0a0a;
   --chart-3: oklch(0.72 0.17 264);
   --chart-4: oklch(0.78 0.18 60);
   --chart-5: oklch(0.7 0.16 320);
@@ -108,11 +155,60 @@
   --color-brand-orange: var(--brand-orange);
   --color-brand-green: var(--brand-green);
   --color-brand-snappy: var(--brand-snappy);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-strand-a: var(--strand-a);
+  --color-strand-b: var(--strand-b);
+  /* DS foundation tokens the vendored code-block + skeleton consume
+     (values from interlace foundation.css — p-md, gap-sm, text-ui-sm,
+     text-code utilities generate from these). */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --text-ui-sm: 0.8125rem;
+  --text-ui-sm--line-height: 1.5;
+  --text-code: 0.875rem;
+  --text-code--line-height: 1.6;
+  /* The draw verb (DS tokens.css `strand-draw`, vendored with the
+     HeroStrand): pathLength=100 normalizes every path onto this one
+     keyframe; 600ms is the doctrine's draw-gesture ceiling. */
+  --animate-strand-draw: strand-draw 600ms ease-out forwards;
+  --color-brand-orange-text: var(--brand-orange-text);
+
+  @keyframes strand-draw {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  /* The draw verb's second mechanism (DS tokens.css `weave-reveal`,
+     vendored with the TimeSeries motion contract, interlace#77): the
+     chart's dash patterns ARE series identity, so the true paths are
+     REVEALED by a clip rect scaling open left→right. From-only
+     keyframe — its resting state is fully revealed, so with no
+     animation at all nothing is ever hidden. */
+  --animate-weave-reveal: weave-reveal 600ms ease-out;
+
+  @keyframes weave-reveal {
+    from {
+      transform: scaleX(0);
+    }
+  }
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-viz-grid: var(--viz-grid);
+  --color-viz-axis: var(--viz-axis);
+  --color-viz-crosshair: var(--viz-crosshair);
+  --color-viz-annotation-publish: var(--viz-annotation-publish);
+  --color-viz-annotation-release: var(--viz-annotation-release);
+  --color-viz-annotation-action: var(--viz-annotation-action);
   --color-beam-from: var(--beam-from);
   --color-beam-to: var(--beam-to);
   --color-meteor-trail: var(--meteor-trail);
@@ -177,10 +273,31 @@ body {
   }
 }
 
+/* SectionIndex numeral: the blog's `--primary` is achromatic, so the
+   vendored primitive's `text-primary` would lose the meaning-point
+   accent. Styled by slot — exactly what data-slot exists for (R6): the
+   vendored source stays byte-identical to canonical. */
+[data-slot="section-index-numeral"] {
+  color: var(--brand-orange-text);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-meteor,
-  .animate-sunny-pulse {
+  .animate-sunny-pulse,
+  /* weave-reveal belongs in THIS list, unlike strand-draw below: its
+     keyframe is from-only, so `animation: none` rests at the fully
+     revealed end state — nothing to clamp, nothing hidden. */
+  .animate-weave-reveal {
     animation: none !important;
+  }
+
+  /* The draw gesture (DS MOTION_PHILOSOPHY's draw-gesture exception)
+     completes instantly instead of vanishing: `animation: none` would
+     hold stroke-dashoffset at 100 — the strand invisible forever —
+     removing information, not motion. 0.01ms + the shorthand's
+     `forwards` fill lands the honest drawn end state. */
+  .animate-strand-draw {
+    animation-duration: 0.01ms !important;
   }
 }
 
@@ -217,9 +334,15 @@ body {
    3.49:1 the audit kept reporting came from.
 
    !important is required: Shiki writes the light theme as inline style, which
-   outranks any class. */
-.dark .shiki,
-.dark .shiki span {
+   outranks any class.
+
+   Scoped to the DS CodeBlock's pre slot, not `.shiki`: article code now
+   renders through the vendored CodeBlock, which drops Shiki's own <pre>
+   (and its inline light background — the figure's bg-card token owns the
+   box in both themes). Only the per-span token colours remain inline, so
+   only spans need the dark flip. A span without a --shiki-dark-* var
+   leaves that declaration invalid-at-computed-value — harmlessly inert. */
+.dark [data-slot="code-block-pre"] span {
   color: var(--shiki-dark) !important;
   background-color: var(--shiki-dark-bg) !important;
   font-style: var(--shiki-dark-font-style) !important;
@@ -239,6 +362,14 @@ body {
      short link measuring 8x24. */
   min-height: 24px;
   min-width: 24px;
+  /* inline-flex stops the link's text from soft-wrapping, so a long
+     standalone link (the 📦 npm-install lines) sized to its full text
+     and scrolled the whole DOCUMENT 43px sideways at 390px — the exact
+     mobile bug class this repo's contract warns about. Cap the box and
+     let the text break; measured back to zero page overflow on a real
+     390px viewport. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 /* github-dark's comment colour is #6A737D, which measures 3.05:1 on the theme's
@@ -250,7 +381,7 @@ body {
    `--shiki-dark:#6A737D` per span, so this lifts exactly the comment token and
    nothing else. The light theme needs no equivalent — its comment measures
    4.82:1 on white and already passes. */
-.dark .shiki span[style*="--shiki-dark:#6A737D"] {
+.dark [data-slot="code-block-pre"] span[style*="--shiki-dark:#6A737D"] {
   color: #8b949e !important;
 }
 
@@ -264,7 +395,7 @@ body {
    Scoped to :root:not(.dark) deliberately. Unscoped, this !important rule also
    outranked the dark-theme activation above it — #bc4c00 on #24292e is 2.91:1,
    so "fixing" light contrast broke dark contrast worse than the original. */
-:root:not(.dark) .shiki span[style*="color:#E36209"],
-:root:not(.dark) .shiki span[style*="color:#e36209"] {
+:root:not(.dark) [data-slot="code-block-pre"] span[style*="color:#E36209"],
+:root:not(.dark) [data-slot="code-block-pre"] span[style*="color:#e36209"] {
   color: #bc4c00 !important;
 }

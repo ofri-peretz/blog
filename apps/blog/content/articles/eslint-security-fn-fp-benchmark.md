@@ -7,6 +7,7 @@ description: "The most-installed security linter on npm flags one safe pattern f
 slug: "eslint-security-fn-fp-benchmark"
 published: true
 date: 2026-02-08
+published_at: "2026-05-25T14:46:57.094Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-security-fn-fp-benchmark.jpg?v=b2"
 tags:
   - "security"

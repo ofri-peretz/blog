@@ -10,6 +10,7 @@ series: "Foundations"
 arc: 3
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:34:23.463Z"
 tags:
   - "security"
   - "devsecops"

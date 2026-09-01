@@ -8,6 +8,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/taint-vs-heuristic-de
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/taint-vs-heuristic-detection.jpg?v=b2"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:41:25.712Z"
 tags:
   - "security"
   - "eslint"

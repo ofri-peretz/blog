@@ -23,7 +23,8 @@
  * Required Vercel env (Production scope on each app):
  *   NEXT_PUBLIC_POSTHOG_KEY  — publishable project key, starts `phc_...`
  *                              Safe to expose client-side by design.
- *   NEXT_PUBLIC_POSTHOG_HOST — defaults to `https://us.i.posthog.com`
+ *   NEXT_PUBLIC_POSTHOG_HOST — optional override; defaults to `/ingest`,
+ *                              the same-origin reverse proxy (see below)
  *
  * If `NEXT_PUBLIC_POSTHOG_KEY` is missing the provider is a no-op — site
  * still renders, no analytics. Same defensive pattern the scorecard
@@ -39,8 +40,20 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const POSTHOG_HOST =
-  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+// Defaults to the same-origin reverse proxy (ANALYTICS_PHILOSOPHY §9): ad
+// blockers match on the `*.i.posthog.com` hostname, so going direct silently
+// loses ~30-40% of visitors. Consuming apps MUST carry the matching
+// `/ingest/*` rewrites in their next.config — an app without them can opt back
+// out by setting NEXT_PUBLIC_POSTHOG_HOST to the absolute PostHog host.
+// Truthy-or, not nullish-coalescing. The Vercel production env defines
+// NEXT_PUBLIC_POSTHOG_HOST as an EMPTY STRING on at least one project, and
+// ?? only falls back on null/undefined — a blank value would sail straight
+// through and set api_host to "", silently breaking ingest on the flagship
+// site. Trim-and-truthy treats "declared but blank" as "not declared".
+const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || "/ingest";
+// Relative api_host means posthog-js can no longer infer where the PostHog UI
+// lives; without this, toolbar/session links point at our own origin and 404.
+const POSTHOG_UI_HOST = "https://us.posthog.com";
 
 export type AppName =
   | "blog"
@@ -59,11 +72,80 @@ export interface PostHogProviderProps {
   children: React.ReactNode;
 }
 
+/**
+ * Browser noise that is not an application error.
+ *
+ * "ResizeObserver loop completed with undelivered notifications" is emitted by
+ * the browser itself when an observer callback dirties layout in the same
+ * frame. It is unactionable and arrives in bursts — one Safari session
+ * produced 27 of them, enough to outrank every real bug in the shared inbox.
+ *
+ * "Script error." is the opaque cross-origin placeholder: no stack, no file,
+ * no message. There is nothing to fix and no way to tell two of them apart.
+ *
+ * Anchored against the first frame rather than substring-matched, so a genuine
+ * error whose message merely mentions ResizeObserver still reports.
+ */
+const NOISY_EXCEPTIONS: RegExp[] = [
+  /^ResizeObserver loop/i,
+  /^Script error\.?$/i,
+];
+
+function isNoisyException(properties?: Record<string, unknown>): boolean {
+  const list = properties?.["$exception_list"];
+  if (!Array.isArray(list) || list.length === 0) return false;
+  const value = (list[0] as { value?: unknown } | undefined)?.value;
+  return (
+    typeof value === "string" && NOISY_EXCEPTIONS.some((re) => re.test(value))
+  );
+}
+
+/**
+ * True when the page is driven by automation — Playwright, Puppeteer, Selenium
+ * and headless Chrome all set `navigator.webdriver`; no real browser does.
+ *
+ * Measured, not assumed: on the Storybook property automated visits were the
+ * largest single source of traffic — 119 of roughly 140 pageviews in one
+ * 12-hour window, always landing on a single path, never navigating, each run
+ * counting as a brand new person because it starts with empty storage.
+ *
+ * PostHog cannot filter these itself. The user agent is a plain Chrome string,
+ * so its bot classifier correctly reports the traffic as Regular.
+ */
+function isAutomatedBrowser(): boolean {
+  try {
+    return navigator.webdriver === true;
+  } catch {
+    return false;
+  }
+}
+
 let initialized = false;
 function ensureInit(app: AppName): void {
   if (initialized || typeof window === "undefined" || !POSTHOG_KEY) return;
+  // CI and scripted browsers are not visitors.
+  if (isAutomatedBrowser()) return;
   posthog.init(POSTHOG_KEY, {
+    // Guarded, and never allowed to throw: dropping noise must not become a
+    // way to drop real events.
+    before_send: (event) => {
+      if (!event) return event;
+      try {
+        if (
+          event.event === "$exception" &&
+          isNoisyException(
+            event.properties as Record<string, unknown> | undefined,
+          )
+        ) {
+          return null;
+        }
+      } catch {
+        /* never block ingest */
+      }
+      return event;
+    },
     api_host: POSTHOG_HOST,
+    ui_host: POSTHOG_UI_HOST,
     person_profiles: "identified_only",
     // Manual `$pageview` capture via PageviewTracker below.
     capture_pageview: false,
@@ -75,6 +157,13 @@ function ensureInit(app: AppName): void {
     // Web vitals — LCP / CLS / INP / FCP / TTFB captured as `$web_vitals`
     // events, powering the performance dashboard without a separate tool.
     capture_performance: true,
+    // Heatmaps + scrollmaps — `$heatmap` events power the toolbar overlay.
+    // On content sites this answers the one question autocapture cannot:
+    // did anyone scroll far enough to reach the CTA?
+    capture_heatmaps: true,
+    // Dead clicks — a click on something that looks interactive and does
+    // nothing. The highest-signal UX defect on a content site.
+    capture_dead_clicks: true,
   });
   // Super-property: attached to every event from this app, persists across
   // page loads in the same browser via localStorage.

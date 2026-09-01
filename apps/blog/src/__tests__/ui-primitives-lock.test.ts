@@ -19,7 +19,7 @@
  * are present but not imported; their fixes are tracked in `INTERLACE_AUDIT.md`
  * under "Tier B baseline-sync queue".
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -44,31 +44,11 @@ describe("Tier B — actively-used baseline primitives stay token-driven", () =>
     expect(src).not.toMatch(/\bbg-gradient-to-\w/);
   });
 
-  it("particles: only one documented hex literal, gated by eslint-disable", () => {
-    const src = readFileSync(path.join(UI, "particles.tsx"), "utf-8");
-    const lines = src.split("\n");
-    const hexLines = lines
-      .map((line, i) => ({ line, n: i + 1 }))
-      .filter(({ line }) => /#[0-9a-fA-F]{3,8}\b/.test(line))
-      // Comment lines and the schema docs at top are fine.
-      .filter(
-        ({ line }) =>
-          !line.trim().startsWith("//") &&
-          !line.trim().startsWith("*") &&
-          !line.trim().startsWith("/*"),
-      );
-    // Exactly one production-code hex literal allowed; pinned to the
-    // documented constant.
-    expect(
-      hexLines,
-      hexLines.map((h) => `${h.n}: ${h.line.trim()}`).join("\n"),
-    ).toHaveLength(1);
-    expect(hexLines[0]?.line).toContain("DEFAULT_PARTICLE_HEX");
-    // The disable comment must accompany it.
-    const disableIdx = lines.findIndex((l) =>
-      l.includes("eslint-disable-next-line no-raw-color-literal"),
-    );
-    expect(disableIdx, "expected eslint-disable comment").toBeGreaterThan(-1);
-    expect(lines[disableIdx + 1] ?? "").toContain("DEFAULT_PARTICLE_HEX");
+  // `particles.tsx` was deleted in the 2026-08-24 dead-code purge — its
+  // last importer (the pre-Nuxt-parity CloudParticles wrapper) is gone,
+  // and the hero-atmospherics lock pins CloudParticles as NOT depending
+  // on it. If a Particles primitive returns, restore its hex lock here.
+  it("particles stays deleted (dead since the CloudParticles rework)", () => {
+    expect(existsSync(path.join(UI, "particles.tsx"))).toBe(false);
   });
 });

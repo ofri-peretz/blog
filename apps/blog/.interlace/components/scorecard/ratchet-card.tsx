@@ -53,6 +53,12 @@ function deltaToneClass(n: number): string {
 
 function trendBadge(trend?: RatchetTrendRow | null): React.ReactNode {
   if (!trend || trend.trend === "unknown") return null;
+  // A −100% cooling chip means the current window reports ZERO — a data
+  // gap, not a fact (same rule as MomentumPanel; −99.5 because the pct
+  // arrives float-formatted). Suppress the chip, keep the card.
+  if (trend.trend === "cooling" && (trend.momentum_pct ?? 0) <= -99.5) {
+    return null;
+  }
   const tone =
     trend.trend === "rising"
       ? "text-emerald-700 dark:text-emerald-400"

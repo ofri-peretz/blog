@@ -8,6 +8,7 @@ description: "A tool with 100% recall and 2% precision and a tool with 2% recall
 slug: "precision-recall-f1-for-static-analysis"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:45:00.088Z"
 tags:
   - "security"
   - "devsecops"

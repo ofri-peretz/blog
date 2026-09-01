@@ -7,6 +7,7 @@ description: "Every benchmark on this site compares my own ESLint plugins to com
 slug: "i-built-what-i-benchmark-heres-how-i-try-not-to-cheat"
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:34:58.250Z"
 tags:
   - "security"
   - "eslint"

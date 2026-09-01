@@ -33,11 +33,13 @@ import type { ShortLinkRow } from "@/app/go/resolver";
 
 import "server-only";
 
-const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
+// Exported for sibling cached fetchers (loom-corpus.ts) so every Supabase
+// read in the app shares one TTL and one invalidation channel.
+export const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
 // Cache-bust tags. revalidateTag('ratchet') from a webhook flips every entry
 // tagged below in a single call.
-const TAG_RATCHET = "ratchet";
+export const TAG_RATCHET = "ratchet";
 
 // Separate tag for the /go/ short-link table: routing rows change on
 // publish (publisher upsert), not on the daily metrics ingest, so they get
@@ -70,7 +72,7 @@ const getClient = cache((): SupabaseClient | null => {
  * Callers decide how to degrade — and they degrade for one request, not twelve
  * hours.
  */
-function requireClient(what: string): SupabaseClient {
+export function requireClient(what: string): SupabaseClient {
   const client = getClient();
   if (!client) {
     throw new Error(
@@ -255,6 +257,12 @@ export interface PluginMeta {
   slug: string;
   category: string | null;
   description: string | null;
+  /**
+   * npm-deprecated. Such a plugin is still in the roster and still counted in
+   * every download total — that is the point of DEPRECATED_INCLUDE in the
+   * ingest — but listings hide it so a rename doesn't appear twice.
+   */
+  deprecated: boolean;
 }
 
 export interface PluginsDailyRaw {
@@ -290,7 +298,7 @@ export const getCachedPluginsDailyRaw = unstable_cache(
 
     const { data: plugins, error: pErr } = await client
       .from("plugins")
-      .select("id, name, slug, category, description");
+      .select("id, name, slug, category, description, deprecated");
     if (pErr || !plugins) {
       throw new Error(`[supabase-data] plugins: ${pErr?.message ?? "no rows"}`);
     }

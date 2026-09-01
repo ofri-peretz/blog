@@ -8,6 +8,7 @@ slug: "circular-dependencies-in-javascript-explained"
 tier: "T1"
 published: true
 date: 2026-05-30
+published_at: "2026-05-30T21:46:36.937Z"
 tags:
   - "javascript"
   - "typescript"

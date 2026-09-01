@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 import { MobileNav } from "./mobile-nav";
+import { BrandMark } from "./brand-mark";
+import { CorpusSearch } from "./corpus-search";
 import { cn } from "@/lib/utils";
 
 // /scorecard is the canonical metrics surface (supabase-backed North Star).
@@ -10,6 +12,7 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/articles", label: "Articles" },
   { href: "/npm", label: "npm" },
+  { href: "/loom", label: "Loom" },
   { href: "/scorecard", label: "Scorecard" },
 ];
 
@@ -51,31 +54,7 @@ export function AppHeader({
               is enabled. Inlining also drops a request for a 28px mark. Geometry is
               identical to render-cover.sh, so the header and all 78 covers share
               one shape. */}
-          <svg
-            viewBox="0 0 100 100"
-            className="size-7 shrink-0"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <g transform="rotate(-30 50 50)">
-              <rect
-                x="8"
-                y="20"
-                width="66"
-                height="28"
-                rx="14"
-                className="fill-brand-orange"
-              />
-              <rect
-                x="26"
-                y="52"
-                width="66"
-                height="28"
-                rx="14"
-                className="fill-brand-green"
-              />
-            </g>
-          </svg>
+          <BrandMark />
           ofri peretz
         </Link>
         <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">
@@ -94,6 +73,9 @@ export function AppHeader({
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          {/* The index is a static build artifact fetched on first
+              intent — see /search-index.json/route.ts for the numbers. */}
+          <CorpusSearch />
           <ThemeToggle />
           <MobileNav links={NAV_LINKS} />
         </div>

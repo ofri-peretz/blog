@@ -201,6 +201,25 @@ function createArticlePayload(article) {
     return `**[${label}](${url})**`;
   });
 
+  // Transform ::playground-cta — the ONLY directive that renders on dev.to
+  // and NOT on the blog (see lib/markdown.ts for the blog half, which strips
+  // it: the real <ArticlePlayground> is already on that page).
+  //
+  // Emits an ALREADY-/go/ link, deliberately. classifyDevtoLink treats a
+  // /go/ path as an idempotent fixed point and passes it through untouched,
+  // whereas a plain /articles/<slug>#playground would match its article
+  // branch — which rebuilds the destination as `origin + pathname` and
+  // SILENTLY DROPS the fragment, landing the reader at the top of the page
+  // instead of on the playground. The /go/<slug> row already exists from
+  // that article's own publish, and a fragment survives a 302 client-side.
+  const playgroundRegex =
+    /::playground-cta\{slug="([^"]+)"\}\n([^\n]+)\n::/g;
+  transformedBody = transformedBody.replace(
+    playgroundRegex,
+    (_match, playgroundSlug, label) =>
+      `**[${label}](${SITE_URL}/go/${playgroundSlug}#playground)**`,
+  );
+
   // Dev.to render only: route EVERY link through /go/ (analytics + repointable),
   // absolutize /articles/ links, strip blog-only heading anchors + jump-nav.
   // collectDevtoLinks records the slug→URL rows for external destinations so we

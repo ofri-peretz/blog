@@ -8,6 +8,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/statistical-significa
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/statistical-significance-p-value.jpg?v=b2"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:41:17.265Z"
 tags:
   - "security"
   - "devsecops"

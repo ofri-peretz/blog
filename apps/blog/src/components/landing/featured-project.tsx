@@ -4,8 +4,12 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
+import { SectionIndex } from "@/components/ui/section-index";
+import numbers from "@/data/interlace-numbers.json";
 
 interface FeaturedProjectProps extends React.HTMLAttributes<HTMLElement> {
+  /** 1-based position in the homepage sequence — the numbered eyebrow. */
+  index: number;
   stars?: number;
   downloads?: number;
   /** Stable selector for E2E tests; consumer provides — no default. */
@@ -13,6 +17,7 @@ interface FeaturedProjectProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 export function FeaturedProject({
+  index,
   stars,
   downloads,
   className,
@@ -30,17 +35,17 @@ export function FeaturedProject({
       {...rest}
     >
       <Container size="content">
-        <p className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+        <SectionIndex value={index} data-testid="featured-project-index" className="mb-3">
           Featured
-        </p>
+        </SectionIndex>
         <div className="relative overflow-hidden rounded-xl border border-border bg-card p-8 shadow-sm sm:p-10">
           <BorderBeam size={250} duration={12} delay={9} />
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Interlace ESLint Ecosystem
           </h2>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            18 specialized plugins. 332+ security rules. 100% OWASP Top 10
-            coverage. Built for the AI/Agentic era — LLM-friendly error messages
+            {numbers.plugins.total} specialized plugins. {numbers.rules.total}{" "}
+            rules. 100% OWASP Top 10 coverage. Built for the AI/Agentic era — LLM-friendly error messages
             mean Claude / Cursor / Copilot can fix vulnerabilities without
             context.
           </p>

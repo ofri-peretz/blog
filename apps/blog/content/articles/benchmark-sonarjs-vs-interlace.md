@@ -6,6 +6,7 @@ description: "A reproducible fixture benchmark: eslint-plugin-sonarjs (269 rules
 slug: "benchmark-sonarjs-vs-interlace"
 published: true
 date: 2026-05-30
+published_at: "2026-02-08T03:31:07.438Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-sonarjs-vs-interlace.jpg?v=b2"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/benchmark-sonarjs-vs-interlace-og.jpg?v=b2"
 tags:

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
+import { SectionIndex } from "@/components/ui/section-index";
 
 export interface DevToArticleEntry {
   slug: string;
@@ -18,6 +19,8 @@ export interface DevToArticleEntry {
 }
 
 interface DevToArticlesProps extends React.HTMLAttributes<HTMLElement> {
+  /** 1-based position in the homepage sequence — the numbered eyebrow. */
+  index: number;
   /** Articles to render — page passes via `getAllArticles().slice(0, 6)`. Required so the
    *  component stays presentational and Storybook-friendly (the `fs` import that
    *  `getAllArticles` uses doesn't bundle for browser-side stories). */
@@ -36,6 +39,7 @@ function formatDate(iso?: string): string {
 }
 
 export function DevToArticles({
+  index,
   articles,
   className,
   "data-testid": testId,
@@ -55,9 +59,9 @@ export function DevToArticles({
       <Container size="content">
         <div className="mb-8 flex items-baseline justify-between">
           <div>
-            <p className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            <SectionIndex value={index} data-testid="devto-articles-index" className="mb-3">
               Writing
-            </p>
+            </SectionIndex>
             <h2 className="text-3xl font-semibold tracking-tight">
               Latest articles
             </h2>

@@ -121,6 +121,21 @@ describe("responsive + data-freshness structural rules", () => {
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
+  it("standalone prose links stay contained — inline-flex kills soft-wrap", () => {
+    // Bug 4 (2026-08-26): the SC 2.5.8 fix put standalone-link on
+    // inline-flex, which stopped its TEXT from wrapping. A long
+    // 📦 npm-install link sized to its full text and scrolled the whole
+    // document 43px sideways at 390px — the exact mobile bug class the
+    // repo contract warns about. The rule must keep the containment pair
+    // alongside the inline-flex that makes it necessary.
+    const css = readFileSync(path.join(SRC, "app", "globals.css"), "utf-8");
+    const block = css.match(/\.prose a\.standalone-link \{[^}]*\}/)?.[0] ?? "";
+    expect(block, "standalone-link rule missing from globals.css").not.toBe("");
+    expect(block).toContain("display: inline-flex");
+    expect(block).toContain("max-width: 100%");
+    expect(block).toContain("overflow-wrap: anywhere");
+  });
+
   /**
    * The other half of the /npm bug. Every fetcher in supabase-data.ts runs
    * inside unstable_cache, and Vercel's Data Cache outlives the deployment —

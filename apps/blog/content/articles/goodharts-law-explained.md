@@ -6,6 +6,7 @@ description: "When a measure becomes a target, it ceases to be a good measure. G
 slug: "goodharts-law-explained"
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:34:55.443Z"
 tier: "T0"
 series: "Foundations"
 arc: 5

@@ -218,6 +218,10 @@ For cases that genuinely need expression evaluation, prefer a sandboxed template
 
 ---
 
+::playground-cta{slug="getting-started-eslint-plugin-node-security"}
+See three of these rules fire on a real upload handler, before you install anything → (in your browser; nothing you paste leaves the page)
+::
+
 ## Get it running (about two minutes)
 
 **1. Install.** Plain dev dependency, no runtime peers:

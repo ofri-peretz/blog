@@ -6,6 +6,7 @@ description: "A lint-performance post-mortem with the result JSON attached: 58.6
 slug: "why-eslint-plugin-import-takes-45-seconds"
 published: true
 date: "2025-12-31"
+published_at: "2025-12-31T05:34:31.177Z"
 tags:
   - "eslint"
   - "javascript"

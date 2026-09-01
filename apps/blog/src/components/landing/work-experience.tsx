@@ -1,7 +1,9 @@
 import { Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SectionIndex } from "@/components/ui/section-index";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
+import numbers from "@/data/interlace-numbers.json";
 
 type BrandTone = "snappy";
 
@@ -31,7 +33,7 @@ const ROLES: Role[] = [
     date: "2025 — Present",
     company: { name: "ofriperetz.dev", url: "https://ofriperetz.dev" },
     highlights: [
-      "16+ npm packages, 200+ security rules",
+      `${numbers.plugins.total} ESLint plugins, ${numbers.rules.total} rules`,
       "Deep dives on JS/TS, testing & platform engineering",
     ],
   },
@@ -69,11 +71,14 @@ const BRAND_TONE_CLASSNAMES: Record<BrandTone, string> = {
 };
 
 interface WorkExperienceProps extends React.HTMLAttributes<HTMLElement> {
+  /** 1-based position in the homepage sequence — the numbered eyebrow. */
+  index: number;
   /** Stable selector for E2E tests; consumer provides — no default. */
   "data-testid"?: string;
 }
 
 export function WorkExperience({
+  index,
   className,
   "data-testid": testId,
   ...rest
@@ -88,9 +93,9 @@ export function WorkExperience({
       {...rest}
     >
       <Container size="content">
-        <p className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+        <SectionIndex value={index} data-testid="work-experience-index" className="mb-3">
           Career
-        </p>
+        </SectionIndex>
         <h2 className="text-3xl font-semibold tracking-tight">
           Work experience
         </h2>

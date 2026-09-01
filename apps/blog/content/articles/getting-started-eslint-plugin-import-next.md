@@ -6,6 +6,7 @@ description: "Install and configure eslint-plugin-import-next v2.3.8 — the dro
 slug: "getting-started-eslint-plugin-import-next"
 published: true
 date: "2026-01-02"
+published_at: "2026-01-02T14:42:42.088Z"
 tags:
   - "eslint"
   - "javascript"
