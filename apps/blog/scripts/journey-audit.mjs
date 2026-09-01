@@ -187,6 +187,69 @@ try {
       err.message,
     );
   }
+
+  // ── 4. The newsletter form actually submits ───────────────────────
+  //
+  // This journey exists because the form shipped to production without
+  // ever having been submitted by a browser. Unit tests covered the
+  // server action directly, and `curl` confirmed the markup — neither
+  // touches the half that can actually break here: hydration and event
+  // wiring. `useActionState` + a server action + a Base UI checkbox
+  // fails in exactly that half, and a form that renders perfectly and
+  // never submits looks identical to a working one in both of those
+  // checks.
+  //
+  // WHAT IT ASSERTS: that the form leaves its idle state. With valid
+  // input a validation error is impossible, so ANY terminal state —
+  // success or the action's error message — proves the whole round trip
+  // ran: React hydrated, the click reached the action, the server
+  // executed it, and the result rendered.
+  //
+  // It deliberately does NOT assert a row was written. This job has no
+  // SUPABASE_URL / SUPABASE_ANON_KEY, so the action takes its
+  // "unavailable" branch and writes NOTHING — which is the point. A CI
+  // run must never add rows to the real subscriber table, and the write
+  // path already has direct coverage. The end-to-end proof (browser →
+  // row) was done once by hand against production and recorded in the
+  // browser-verification intent; this is the repeatable half.
+  try {
+    // domcontentloaded, not load: `load` waits for every subresource and
+    // one hanging request sinks the navigation (that flake cost five CI
+    // runs). The element waits below are the real gate.
+    await page.goto(`${BASE}${CODE_ARTICLE}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+
+    const form = page.locator('[data-slot="article-subscribe"]');
+    await form.waitFor({ state: "attached", timeout: 10000 });
+
+    await form.locator('input[type="email"]').fill("journey@example.com");
+    // Base UI renders the consent control as a hidden native input paired
+    // with a visible control, so .check() on the input can fail as "not
+    // visible". Clicking the LABEL toggles it whichever shape it takes,
+    // and is what a person actually does.
+    await form
+      .locator('label:has([name="consent"])')
+      .click({ timeout: 10000 });
+    await form.locator('button[type="submit"]').click();
+
+    // Either terminal state ends the wait. Racing them means a real
+    // failure surfaces as its own message rather than a bare timeout.
+    const settled = page
+      .locator('[data-testid="article-subscribe-done"], [data-slot="article-subscribe"] [role="alert"]')
+      .first();
+    await settled.waitFor({ state: "visible", timeout: 20000 });
+
+    const text = (await settled.textContent())?.trim() ?? "";
+    if (!text) throw new Error("the form settled into an empty state");
+    pass("newsletter: filling and submitting the form reaches a terminal state");
+  } catch (err) {
+    fail(
+      "newsletter: filling and submitting the form reaches a terminal state",
+      err.message,
+    );
+  }
 } finally {
   await browser.close();
 }
