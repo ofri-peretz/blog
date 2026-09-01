@@ -5,7 +5,12 @@ import { ArticleCard } from "@/components/ui/article-card";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { localCover } from "@/lib/cover";
-import { getAllArticles } from "@/lib/source";
+import { getAllArticles, getSeriesContext } from "@/lib/source";
+import { WovenCorpusMap } from "@/components/woven-corpus-map";
+import type { SeriesIndex } from "@/lib/series-resume";
+import { HeroStrand } from "@/components/ui/hero-strand";
+import type { TimelineMapItem } from "@/components/ui/timeline-map";
+import { extractInternalLinks } from "@/lib/corpus-links";
 
 const PAGE_SIZE = 12;
 
@@ -18,7 +23,9 @@ interface PageProps {
 // page is set via a Cache-Control header on /articles in next.config.ts.
 
 export const metadata: Metadata = {
-  title: "Articles — Ofri Peretz",
+  // Bare page name — the root layout's title template appends "— Ofri
+  // Peretz"; hard-coding it here doubled the suffix in the tab title.
+  title: "Articles",
   description:
     "Engineering writing on JavaScript static analysis, ESLint, security, and AI-native developer tooling.",
   alternates: {
@@ -50,15 +57,64 @@ export default async function ArticlesPage(props: PageProps) {
       ? `/articles?tag=${encodeURIComponent(tag)}&page=${p}`
       : `/articles?page=${p}`;
 
+  // The map shows the WHOLE corpus regardless of tag filter or page — it
+  // is the territory view; the grid below is the filtered, paginated one.
+  // Domain × reading time, not domain × publication date: readers navigate
+  // by topic and time budget — when a piece shipped serves the author.
+  // A bonus of the number axis: no date filter, so literally every
+  // published article lands on the map.
+  // The resume offer's public structure: slug → series plus each
+  // series' ordered parts. One getSeriesContext call per series so the
+  // ordering has exactly one source of truth (buildSeriesContext).
+  const seriesIndex: SeriesIndex = { seriesOf: {}, parts: {} };
+  for (const a of all) {
+    const name = a.frontmatter.series;
+    if (!name) continue;
+    seriesIndex.seriesOf[a.slug] = name;
+    if (!seriesIndex.parts[name]) {
+      const ctx = getSeriesContext(a.slug);
+      seriesIndex.parts[name] = (ctx?.parts ?? []).map((p) => ({
+        slug: p.slug,
+        title: p.title,
+      }));
+    }
+  }
+
+  const knownSlugs = new Set(all.map((a) => a.slug));
+  const maxReactions = Math.max(1, ...all.map((a) => a.frontmatter.reactions ?? 0));
+  const mapItems: TimelineMapItem[] = all.map((a) => ({
+    id: a.slug,
+    href: `/articles/${a.slug}`,
+    label: a.frontmatter.title,
+    category: a.frontmatter.series ?? null,
+    value: a.readingTimeMinutes,
+    // Size = community resonance (dev.to reactions), now that x carries
+    // reading time. The Detail strip restates the minutes; size stays a
+    // secondary cue, never the only carrier.
+    weight: (a.frontmatter.reactions ?? 0) / maxReactions,
+    // The link weave: which other articles this one cites.
+    links: extractInternalLinks(a.body, a.slug, knownSlugs),
+  }));
+
   return (
     <main id="main" data-slot="articles-page">
       <Container size="content" className="py-16">
         <header className="mb-12">
-          <h1 className="text-4xl font-bold tracking-tight">Articles</h1>
-          <p className="mt-3 text-muted-foreground">
-            Engineering writing on static analysis, ESLint, security, and
-            AI-native developer tooling.
-          </p>
+          {/* The page's opening gesture, same vocabulary as the map below:
+              the woven crossing draws behind the title, then the eye lands
+              on the corpus it stands for. Scoped to the title block — the
+              map is its own surface and the ink budget is one gesture per
+              region. */}
+          <div className="relative py-6">
+            <HeroStrand data-testid="articles-hero-strand" counter />
+            <h1 className="relative text-4xl font-bold tracking-tight">
+              Articles
+            </h1>
+            <p className="relative mt-3 text-muted-foreground">
+              Engineering writing on static analysis, ESLint, security, and
+              AI-native developer tooling.
+            </p>
+          </div>
           {tag && (
             <p className="mt-4 text-sm">
               Filtered by tag <span className="font-medium">#{tag}</span> ·{" "}
@@ -70,6 +126,7 @@ export default async function ArticlesPage(props: PageProps) {
               </Link>
             </p>
           )}
+          <WovenCorpusMap items={mapItems} seriesIndex={seriesIndex} />
         </header>
 
         {articles.length === 0 ? (

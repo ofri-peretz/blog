@@ -2,8 +2,35 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getAllArticleSlugs, getArticleBySlug } from "@/lib/source";
-import { MarkdownArticle } from "@/components/markdown-article";
+import {
+  getAllArticles,
+  getAllArticleSlugs,
+  getArticleBySlug,
+  getSeriesContext,
+  isPublished,
+} from "@/lib/source";
+import { computeThreads } from "@/lib/corpus-links";
+import { detectPlugins } from "@/lib/plugin-mentions";
+import pluginStats from "@/data/plugin-stats.json";
+import { ArticlePlugins } from "@/components/article-plugins";
+import benchReceipts from "@/data/bench-receipts.json";
+import { ArticleBenchReceipt } from "@/components/article-bench-receipt";
+import loomEmbeds from "@/data/loom-embeds.json";
+import { ArticleWeave } from "@/components/article-weave";
+import { ArticleSubscribe } from "@/components/article-subscribe";
+import { ArticlePlayground } from "@/components/article-playground";
+import type { LoomEmbedSnapshot } from "@/lib/loom-embeds";
+import { ArticleThreads, type ThreadItem } from "@/components/article-threads";
+import { ReadingStrand } from "@/components/ui/reading-strand";
+import { RecordReading } from "@/components/record-reading";
+import { ReadingDepth } from "@/components/reading-depth";
+import { SeriesBanner, SeriesPager } from "@/components/series-nav";
+import {
+  MarkdownArticle,
+  renderArticleReact,
+} from "@/components/markdown-article";
+import { FloatingToc } from "@/components/floating-toc";
+import { TrackedLink } from "@/components/tracked-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { localCover } from "@/lib/cover";
 import { Container } from "@/components/ui/container";
@@ -26,8 +53,24 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   return {
     title: fm.title,
     description: fm.description,
+    // A queued article is on disk and reachable on purpose: dev.to's
+    // canonical_url points here, so this URL has to resolve the instant the
+    // publisher fires. But reachable is not released — until `published`
+    // flips true, keep it out of the index instead of letting crawlers find
+    // the release queue. Paired with the getAllArticles() filter in sitemap.ts.
+    ...(isPublished(fm) ? {} : { robots: { index: false, follow: false } }),
     alternates: {
       canonical: fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`,
+      // The raw-markdown twin (llms.txt lists these) — advertised from the
+      // HTML head so an agent that landed on the page finds it. Published
+      // only: a draft's .md endpoint 404s by design.
+      ...(isPublished(fm)
+        ? {
+            types: {
+              "text/markdown": `https://ofriperetz.dev/articles/${slug}.md`,
+            },
+          }
+        : {}),
     },
     // Social cards want the 1200x630 OG ratio: prefer social_image (the
     // authored /cdn/blog-cover-image/<slug>-og.jpg), fall back to the
@@ -69,12 +112,62 @@ function formatDate(iso?: string): string {
   });
 }
 
+/** 3200 → "3.2K" — receipts stay scannable at any magnitude. */
+const compact = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/**
+ * The article's receipts — real community numbers from the dev.to sync
+ * (evidence over confidence, applied to our own pages). A zero or
+ * missing value is a DATA GAP, not a fact, and renders nothing — the
+ * same rule the impact metrics block enforces.
+ */
+function articleReceipts(fm: {
+  reactions?: number;
+  comments?: number;
+  views?: number;
+}): { label: string; value: string }[] {
+  return [
+    fm.reactions ? { label: "reactions", value: compact.format(fm.reactions) } : null,
+    fm.comments ? { label: "comments", value: compact.format(fm.comments) } : null,
+    fm.views ? { label: "views", value: compact.format(fm.views) } : null,
+  ].filter((r): r is { label: string; value: string } => r !== null);
+}
+
 export default async function ArticlePage(props: PageProps) {
   const { slug } = await props.params;
   const article = getArticleBySlug(slug);
   if (!article) notFound();
 
   const { frontmatter: fm } = article;
+  const series = getSeriesContext(slug);
+  // The corpus is published-only (getAllArticles filters), so the Threads
+  // section can never surface the release queue. Static pages make the
+  // O(corpus²) whole-graph scan a build-time cost, not a request-time one.
+  const corpus = getAllArticles();
+  const threads = computeThreads(slug, article.body, corpus);
+  const corpusBySlug = new Map(corpus.map((a) => [a.slug, a]));
+  const toThreadItem = (s: string): ThreadItem => {
+    // computeThreads only returns slugs drawn from this corpus; throw
+    // loudly at build time if a refactor ever breaks that contract.
+    const a = corpusBySlug.get(s);
+    if (!a) throw new Error(`thread slug ${s} not in the published corpus`);
+    return {
+      slug: s,
+      title: a.frontmatter.title,
+      series: a.frontmatter.series,
+      minutes: a.readingTimeMinutes,
+    };
+  };
+  // Render once: the pipeline compiles the React tree (code fences become
+  // DS CodeBlock islands with the copy affordance) and collects the h2
+  // TOC in the same pass, so Shiki never runs twice per page.
+  const { node: renderedNode, toc } = await renderArticleReact(
+    article.body,
+    slug,
+  );
   const url = fm.canonical_url ?? `https://ofriperetz.dev/articles/${slug}`;
   const image =
     fm.social_image ??
@@ -117,7 +210,10 @@ export default async function ArticlePage(props: PageProps) {
           aria-label="Breadcrumb"
           className="mb-6 text-sm text-muted-foreground"
         >
-          <Link href="/articles" className="inline-flex min-h-6 min-w-6 items-center justify-center hover:text-foreground">
+          <Link
+            href="/articles"
+            className="inline-flex min-h-6 min-w-6 items-center justify-center hover:text-foreground"
+          >
             ← All articles
           </Link>
         </nav>
@@ -186,6 +282,15 @@ export default async function ArticlePage(props: PageProps) {
               </span>
             )}
             <span>· {article.readingTimeMinutes} min read</span>
+            {articleReceipts(fm).map((r) => (
+              <span key={r.label} data-slot="article-receipt">
+                ·{" "}
+                <span className="font-mono [font-variant-numeric:tabular-nums]">
+                  {r.value}
+                </span>{" "}
+                {r.label}
+              </span>
+            ))}
             {fm.tags.length > 0 && (
               <ul className="flex flex-wrap gap-2">
                 {fm.tags.map((tag) => (
@@ -203,9 +308,59 @@ export default async function ArticlePage(props: PageProps) {
           </div>
         </header>
 
-        <MarkdownArticle body={article.body} />
+        <SeriesBanner series={series} currentSlug={slug} className="mb-8" />
+
+        {/* Jump menu only where it earns its place — short pieces with one
+            or two sections don't need a TOC hovering over them. */}
+        {toc.length >= 3 && <FloatingToc items={toc} />}
+
+        {/* The strand tracks the BODY span only: progress hits 100% when
+            the reading ends, not when the footer scrolls by. */}
+        <ReadingStrand target="article-reading-span" data-testid="reading-strand" />
+        {/* This read becomes a step of the reader's thread on the corpus
+            map (reading-history.ts — localStorage only, never sent). */}
+        <RecordReading slug={slug} />
+        <ReadingDepth slug={slug} />
+        <div id="article-reading-span">
+          <MarkdownArticle body={article.body}>{renderedNode}</MarkdownArticle>
+        </div>
+
+        <SeriesPager series={series} currentSlug={slug} className="mt-12" />
+
+        <ArticleThreads
+          currentSlug={slug}
+          drawsOn={threads.drawsOn.map(toThreadItem)}
+          pulledBy={threads.pulledBy.map(toThreadItem)}
+        />
+
+        {/* Only the series whose pieces make the performance claims —
+            a perf receipt on a detection-metrics article is noise. */}
+        {fm.series === "Inside our linter benchmarks" ? (
+          <ArticleBenchReceipt currentSlug={slug} data={benchReceipts} />
+        ) : null}
+
+        {/* Slug-mapped independently of any series: the embed renders
+            only for articles LOOM_EMBEDS names, and returns null
+            otherwise. */}
+        <ArticleWeave
+          currentSlug={slug}
+          data={loomEmbeds as LoomEmbedSnapshot}
+        />
+
+        {/* Slug-mapped like the weave above: renders only for articles
+            LINT_EMBEDS names, null otherwise. The linter bundle loads
+            behind its own click, never with the page. */}
+        <ArticlePlayground currentSlug={slug} />
+        <ArticleSubscribe currentSlug={slug} />
+
+        <ArticlePlugins
+          currentSlug={slug}
+          plugins={detectPlugins(article.body)}
+          generatedAt={pluginStats.generatedAt}
+        />
 
         <DevToCallout
+          slug={slug}
           devtoUrl={fm.devto_url}
           username={fm.author?.username ?? "ofri-peretz"}
         />
@@ -234,12 +389,19 @@ export default async function ArticlePage(props: PageProps) {
 }
 
 function DevToCallout({
+  slug,
   devtoUrl,
   username,
 }: {
+  slug: string;
   devtoUrl?: string;
   username: string;
 }) {
+  // Funnel decision (2026-08-24): the PRIMARY action after reading routes
+  // to OUR product surface, not to a third-party platform. The old primary
+  // was "Follow on dev.to" — sending the best-converted readers off-site
+  // at the exact moment they were most convinced. dev.to stays as the
+  // secondary follow/discussion link.
   const profileUrl = `https://dev.to/${username}`;
   return (
     <aside
@@ -247,10 +409,11 @@ function DevToCallout({
       className="mt-12 rounded-lg border border-border bg-muted/30 p-6"
     >
       <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-        Enjoyed this?
+        Keep going
       </p>
       <p className="mt-2 text-base text-foreground">
-        I publish on{" "}
+        Everything here ships as runnable lint rules — try them live in the
+        playground, or start with the docs. New pieces land on{" "}
         <a
           href={profileUrl}
           target="_blank"
@@ -258,15 +421,23 @@ function DevToCallout({
           className="font-medium underline underline-offset-2 hover:text-foreground/80"
         >
           dev.to/{username}
-        </a>{" "}
-        — follow for new pieces on ESLint, security, and AI-assisted code.
+        </a>
+        .
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
+        <TrackedLink
+          href="https://eslint.interlace.tools/play"
+          event="article:playground_cta_click"
+          props={{ slug }}
+          className={buttonVariants({ variant: "default", size: "sm" })}
+        >
+          Try the rules in the playground ↗
+        </TrackedLink>
         <a
           href={profileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={buttonVariants({ variant: "default", size: "sm" })}
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           Follow on dev.to ↗
         </a>
@@ -277,7 +448,7 @@ function DevToCallout({
             rel="noopener noreferrer"
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            Read this on dev.to ↗
+            Discuss on dev.to ↗
           </a>
         )}
       </div>

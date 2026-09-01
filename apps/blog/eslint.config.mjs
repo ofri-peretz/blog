@@ -54,6 +54,9 @@ const eslintConfig = defineConfig([
     ".interlace/**",
     // Satori OG image routes are a documented carve-out (no Tailwind support).
     "src/app/og/**",
+    // Static/generated assets — not source. public/lint-worker.js alone is
+    // a 1.7MB minified bundle; linting it OOMs the 4GB heap.
+    "public/**",
     // oxlint JS-plugin shims — CJS tooling, not app source (legit `require`).
     "tools/**",
     // Reproducibility scripts — not app source; may import packages not in this workspace.

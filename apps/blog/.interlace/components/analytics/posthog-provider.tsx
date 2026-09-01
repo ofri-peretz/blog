@@ -100,9 +100,31 @@ function isNoisyException(properties?: Record<string, unknown>): boolean {
   );
 }
 
+/**
+ * True when the page is driven by automation — Playwright, Puppeteer, Selenium
+ * and headless Chrome all set `navigator.webdriver`; no real browser does.
+ *
+ * Measured, not assumed: on the Storybook property automated visits were the
+ * largest single source of traffic — 119 of roughly 140 pageviews in one
+ * 12-hour window, always landing on a single path, never navigating, each run
+ * counting as a brand new person because it starts with empty storage.
+ *
+ * PostHog cannot filter these itself. The user agent is a plain Chrome string,
+ * so its bot classifier correctly reports the traffic as Regular.
+ */
+function isAutomatedBrowser(): boolean {
+  try {
+    return navigator.webdriver === true;
+  } catch {
+    return false;
+  }
+}
+
 let initialized = false;
 function ensureInit(app: AppName): void {
   if (initialized || typeof window === "undefined" || !POSTHOG_KEY) return;
+  // CI and scripted browsers are not visitors.
+  if (isAutomatedBrowser()) return;
   posthog.init(POSTHOG_KEY, {
     // Guarded, and never allowed to throw: dropping noise must not become a
     // way to drop real events.
@@ -135,6 +157,13 @@ function ensureInit(app: AppName): void {
     // Web vitals — LCP / CLS / INP / FCP / TTFB captured as `$web_vitals`
     // events, powering the performance dashboard without a separate tool.
     capture_performance: true,
+    // Heatmaps + scrollmaps — `$heatmap` events power the toolbar overlay.
+    // On content sites this answers the one question autocapture cannot:
+    // did anyone scroll far enough to reach the CTA?
+    capture_heatmaps: true,
+    // Dead clicks — a click on something that looks interactive and does
+    // nothing. The highest-signal UX defect on a content site.
+    capture_dead_clicks: true,
   });
   // Super-property: attached to every event from this app, persists across
   // page loads in the same browser via localStorage.

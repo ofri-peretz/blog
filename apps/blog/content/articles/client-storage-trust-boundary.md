@@ -1,10 +1,12 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/your-token-is-not-safer-in-a-cookie-it-is-safer-from-javascript-5e45"
+devto_id: 4395479
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/client-storage-trust-boundary.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/client-storage-trust-boundary-og.jpg"
 title: "Your Token Is Not Safer in a Cookie. It Is Safer From JavaScript."
 description: "The localStorage-versus-cookies argument is about the wrong axis. One property decides whether an XSS bug reads your session — and it is not the container."
 slug: "client-storage-trust-boundary"
-published: false
+published: true
 date: 2026-08-02
 tags:
   - "webdev"
