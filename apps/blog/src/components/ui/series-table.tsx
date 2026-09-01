@@ -1,9 +1,11 @@
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/charts/series-table.tsx — visualization layer,
 // interlace#42; registry-consumer fixes, interlace#44).
 // Copy-with-provenance until the registry install path replaces
 // it — fix bugs upstream first, then re-vendor. Local deltas: the
 // `cn` import path and sibling imports extensionless.
+// ⟨/vendored⟩
 /**
  * @interlace/ui — SeriesTable
  *

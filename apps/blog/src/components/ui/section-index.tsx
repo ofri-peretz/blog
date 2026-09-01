@@ -1,10 +1,12 @@
 import * as React from 'react';
 
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/section-index.tsx — interlace#66).
 // Copy-with-provenance until the registry install path replaces it —
 // fix bugs upstream first, then re-vendor. Local deltas: the `cn`
 // import path only.
+// ⟨/vendored⟩
 
 import { cn } from "@/lib/utils";
 
