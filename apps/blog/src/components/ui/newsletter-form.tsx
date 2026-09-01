@@ -1,10 +1,12 @@
 /**
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/patterns/newsletter-form.tsx — the canonical email-signup
 // pattern; the blog wires `action` to its own server action). Copy-with-provenance until the registry
 // install path replaces it — fix bugs upstream first, then
 // re-vendor. Local deltas: the `cn` import path and sibling
 // imports flattened extensionless for the flat vendored dir.
+// ⟨/vendored⟩
  * @interlace/ui — NewsletterForm
  *
  * Canonical email-signup pattern: title + (optional) description + email
