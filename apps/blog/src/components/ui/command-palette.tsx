@@ -1,11 +1,13 @@
 'use client';
 
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/command-palette.tsx — Dialog + inline
 // Base UI combobox; keyboard contract asserted upstream). Copy-with-
 // provenance until the registry install path replaces it — fix bugs
 // upstream first, then re-vendor. Local deltas: the `cn` import path
 // and `./dialog.js` → `./dialog`.
+// ⟨/vendored⟩
 
 /**
  * @interlace/ui — CommandPalette

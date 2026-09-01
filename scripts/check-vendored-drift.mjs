@@ -15,16 +15,7 @@
 const RAW =
   "https://raw.githubusercontent.com/ofri-peretz/interlace/main/packages/ui/src";
 
-/**
- * vendored path (under apps/blog/src) → canonical path (under ui/src).
- *
- * NOT tracked: components/ui/typography.tsx. Its canonical file opens with a
- * run of `//` header comments, and normalizeVendored skips every contiguous
- * `//` line after the provenance marker — so reversing the recipe would eat
- * the canonical header and report permanent false drift. Watching it needs a
- * provenance delimiter the stripper can bound, which is a change to the
- * recipe for all 24 files and does not belong in a newsletter PR.
- */
+/** vendored path (under apps/blog/src) → canonical path (under ui/src). */
 const VENDORED = {
   "components/ui/timeline-map.tsx": "patterns/timeline-map.tsx",
   "components/ui/reading-strand.tsx": "primitives/reading-strand.tsx",
@@ -50,6 +41,7 @@ const VENDORED = {
   "components/ui/input.tsx": "primitives/input.tsx",
   "components/ui/stack.tsx": "primitives/stack.tsx",
   "components/ui/newsletter-form.tsx": "patterns/newsletter-form.tsx",
+  "components/ui/typography.tsx": "primitives/typography.tsx",
 };
 
 import { readFileSync } from "node:fs";
@@ -69,19 +61,18 @@ function normalizeVendored(src, canonical) {
   const out = [];
   let inProvenance = false;
   for (const line of lines) {
-    if (line.startsWith("// VENDORED from the Interlace DS")) {
+    // Bounded block. The old recipe ended provenance at the first non-comment
+    // line, which cannot work for a canonical whose own header is `//` lines —
+    // reversing ate the canonical header and reported permanent false drift.
+    // typography.tsx was excluded from this map for exactly that reason.
+    if (line.startsWith("// ⟨vendored⟩")) {
       inProvenance = true;
-      // The provenance block replaces one blank line; swallow the blank
-      // line ABOVE it that the recipe inserted.
       if (out[out.length - 1] === "") out.pop();
       continue;
     }
     if (inProvenance) {
-      if (line.startsWith("//")) continue;
-      // First non-comment line ends the block. The blank that often
-      // follows is CANONICAL's own line 2 — keep it (the recipe's
-      // inserted blank sits ABOVE the block and was popped there).
-      inProvenance = false;
+      if (line.startsWith("// ⟨/vendored⟩")) inProvenance = false;
+      continue;
     }
     out.push(line);
   }
@@ -150,6 +141,18 @@ for (const [vendored, canonical] of Object.entries(VENDORED)) {
   }
   const remote = await res.text();
   if (local.trim() !== remote.trim()) drifted.push(vendored);
+
+  // A local delta that was never APPLIED reverses to a no-op, so the file
+  // matches canonical and reports in sync while being broken. That happened
+  // for real during the marker migration: typography.tsx compared clean and
+  // failed typecheck, because it still carried canonical's `../lib/cn.js`
+  // instead of the blog's alias. Check the delta is present, not just that
+  // reversing it produced a match.
+  const raw = readFileSync(path.join("apps/blog/src", vendored), "utf-8");
+  if (remote.includes("from '../lib/cn.js'") && !raw.includes('from "@/lib/utils"')) {
+    console.error(`DELTA NOT APPLIED: ${vendored} still imports cn from the canonical path`);
+    drifted.push(vendored);
+  }
 }
 
 if (drifted.length > 0) {

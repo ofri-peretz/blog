@@ -1,10 +1,12 @@
 'use client';
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/toggle.tsx — Base UI-backed Toggle +
 // ToggleGroup, interlace#5; pill variant + xs size extracted from
 // TimelineMap.Filter, interlace#76). Copy-with-provenance until
 // the registry install path replaces it — fix bugs upstream
 // first, then re-vendor. Local deltas: the `cn` import path only.
+// ⟨/vendored⟩
 
 /**
  * @interlace/ui — Toggle + ToggleGroup
