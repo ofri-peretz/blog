@@ -205,11 +205,15 @@ try {
   // ran: React hydrated, the click reached the action, the server
   // executed it, and the result rendered.
   //
-  // It deliberately does NOT assert a row was written. This job has no
-  // SUPABASE_URL / SUPABASE_ANON_KEY, so the action takes its
-  // "unavailable" branch and writes NOTHING — which is the point. A CI
-  // run must never add rows to the real subscriber table, and the write
-  // path already has direct coverage. The end-to-end proof (browser →
+  // It deliberately does NOT assert a row was written, and the address is
+  // the reason. @example.com is RFC 2606 reserved, so the action's
+  // UNREACHABLE guard rejects it BEFORE it ever looks at credentials —
+  // which means this is safe everywhere, not just in CI. (Review caught an
+  // earlier version of this comment claiming the "unavailable" branch ran;
+  // that is true only where credentials are absent, and the first working
+  // version of this journey wrote a real row on a developer machine
+  // because of exactly that assumption.) A run must never add rows to the
+  // real subscriber table, and the write path already has direct coverage. The end-to-end proof (browser →
   // row) was done once by hand against production and recorded in the
   // browser-verification intent; this is the repeatable half.
   try {
