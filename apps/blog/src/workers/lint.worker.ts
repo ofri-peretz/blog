@@ -1,6 +1,6 @@
 // The playground's analyzer — OUR published rules, running where the
 // reader is. Nothing here talks to a server: the linter, the parser and
-// the plugins are all in this bundle (the spike: ~400KB gzipped,
+// the plugins are all in this bundle (362 KB brotli over the wire,
 // loaded lazily behind the article's "Try it live" gate), so a million
 // readers lint for free and nothing they type leaves the page.
 

@@ -1,10 +1,12 @@
 'use client';
 
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/dialog.tsx — the gold-standard R1–R26
 // reference). Copy-with-provenance until the registry install path
 // replaces it — fix bugs upstream first, then re-vendor. Local
 // deltas: the `cn` import path only.
+// ⟨/vendored⟩
 
 /**
  * @interlace/ui — Dialog (gold-standard reference for the interlace-component skill)
