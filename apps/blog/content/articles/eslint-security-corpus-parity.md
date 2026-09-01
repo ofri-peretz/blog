@@ -1,4 +1,5 @@
 ---
+devto_id: 4542713
 title: "I Ran My Plugins Against a Competitor's Own Test Suite"
 description: "eslint-plugin-security ships its tests. I ran 84 of its own vulnerable samples through my plugins: 51 caught, and 29 of the 33 misses are one obsolete rule."
 slug: "eslint-security-corpus-parity"
