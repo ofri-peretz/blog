@@ -1,9 +1,11 @@
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/charts/scale.ts — visualization layer,
 // interlace#42; registry-consumer fixes, interlace#44; dial math
 // for the radial form, interlace#77). Copy-with-provenance until
 // the registry install path replaces it — fix bugs upstream first,
 // then re-vendor. Local deltas: none (pure module, no imports).
+// ⟨/vendored⟩
 /**
  * @interlace/ui — chart scales and series math
  *

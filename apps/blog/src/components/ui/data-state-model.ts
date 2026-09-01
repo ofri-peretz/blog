@@ -1,9 +1,11 @@
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/data-state-model.ts — state
 // contract, interlace#5; registry-consumer fixes, interlace#44).
 // Copy-with-provenance until the registry install path replaces
 // it — fix bugs upstream first, then re-vendor. Local deltas:
 // none (pure module, no imports).
+// ⟨/vendored⟩
 /**
  * @interlace/ui — the DataState vocabulary (pure)
  *
