@@ -1,9 +1,11 @@
 'use client';
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/code-editor.tsx — the editable half of
 // the CodeBlock pair, interlace#79). Copy-with-provenance until the
 // registry install path replaces it — fix bugs upstream first, then
 // re-vendor. Local deltas: the `cn` import path only.
+// ⟨/vendored⟩
 
 import * as React from 'react';
 

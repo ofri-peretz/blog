@@ -1,11 +1,13 @@
 /**
 
+// ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/skeleton.tsx — replaces the old shadcn
 // copy; the vendored code-block consumes variant="code-block").
 // Copy-with-provenance until the registry install path replaces it.
 // Local deltas: the `cn` import path and
 // `./skeleton-variants.js` → `./skeleton-variants` (both references).
+// ⟨/vendored⟩
  * @interlace/ui — Skeleton
  *
  * Loading-state placeholder. ONE component, many shapes — the `variant`
