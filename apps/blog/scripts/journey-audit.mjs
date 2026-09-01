@@ -145,22 +145,22 @@ try {
 
   // ── 3. Copy is a receipt: click writes the EXACT code text ────────
   //
-  // Warm /articles/[slug] first. The journeys above only ever hit
-  // /articles, so this is the FIRST request to the dynamic route — the
-  // heaviest in the app — and against a dev server it is compiled on
-  // demand. That cold compile was landing inside the assertion's own 30s
-  // budget and timing the audit out on unrelated PRs (three times in one
-  // day). Warming pays the compile once, OUTSIDE the measurement, so the
-  // assertion still gets a real 30s for the thing it is actually testing.
-  // Deliberately not a bigger timeout on the assertion: that would hide a
-  // genuinely slow page instead of removing a cost that is not the page's.
-  await page
-    .goto(`${BASE}${CODE_ARTICLE}`, { waitUntil: "commit", timeout: 120000 })
-    .catch(() => {});
-
   try {
+    // domcontentloaded, NOT load. `load` waits for every subresource on the
+    // page; a single slow or hanging image/font request means it never fires
+    // and the whole journey times out — which is what happened here four
+    // times, on a PRODUCTION build, so it was never about compilation.
+    //
+    // An earlier fix warmed the route on the theory that cold dev compilation
+    // was eating the budget. That was wrong: this job runs `next start`, the
+    // route is prebuilt, and the failure reproduced with the warm-up in place.
+    // Removed rather than left in as cargo.
+    //
+    // The real gate is the waitFor below: the journey needs the code block
+    // ATTACHED, and that is what it now waits for. `load` was asserting
+    // something stricter than the test's own subject.
     await page.goto(`${BASE}${CODE_ARTICLE}`, {
-      waitUntil: "load",
+      waitUntil: "domcontentloaded",
       timeout: 30000,
     });
     const block = page.locator('[data-slot="code-block"]').first();
@@ -184,6 +184,73 @@ try {
   } catch (err) {
     fail(
       "code block: copy click writes the exact code text to the clipboard",
+      err.message,
+    );
+  }
+
+  // ── 4. The newsletter form actually submits ───────────────────────
+  //
+  // This journey exists because the form shipped to production without
+  // ever having been submitted by a browser. Unit tests covered the
+  // server action directly, and `curl` confirmed the markup — neither
+  // touches the half that can actually break here: hydration and event
+  // wiring. `useActionState` + a server action + a Base UI checkbox
+  // fails in exactly that half, and a form that renders perfectly and
+  // never submits looks identical to a working one in both of those
+  // checks.
+  //
+  // WHAT IT ASSERTS: that the form leaves its idle state. With valid
+  // input a validation error is impossible, so ANY terminal state —
+  // success or the action's error message — proves the whole round trip
+  // ran: React hydrated, the click reached the action, the server
+  // executed it, and the result rendered.
+  //
+  // It deliberately does NOT assert a row was written, and the address is
+  // the reason. @example.com is RFC 2606 reserved, so the action's
+  // UNREACHABLE guard rejects it BEFORE it ever looks at credentials —
+  // which means this is safe everywhere, not just in CI. (Review caught an
+  // earlier version of this comment claiming the "unavailable" branch ran;
+  // that is true only where credentials are absent, and the first working
+  // version of this journey wrote a real row on a developer machine
+  // because of exactly that assumption.) A run must never add rows to the
+  // real subscriber table, and the write path already has direct coverage. The end-to-end proof (browser →
+  // row) was done once by hand against production and recorded in the
+  // browser-verification intent; this is the repeatable half.
+  try {
+    // domcontentloaded, not load: `load` waits for every subresource and
+    // one hanging request sinks the navigation (that flake cost five CI
+    // runs). The element waits below are the real gate.
+    await page.goto(`${BASE}${CODE_ARTICLE}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+
+    const form = page.locator('[data-slot="article-subscribe"]');
+    await form.waitFor({ state: "attached", timeout: 10000 });
+
+    await form.locator('input[type="email"]').fill("journey@example.com");
+    // Base UI renders the consent control as a hidden native input paired
+    // with a visible control, so .check() on the input can fail as "not
+    // visible". Clicking the LABEL toggles it whichever shape it takes,
+    // and is what a person actually does.
+    await form
+      .locator('label:has([name="consent"])')
+      .click({ timeout: 10000 });
+    await form.locator('button[type="submit"]').click();
+
+    // Either terminal state ends the wait. Racing them means a real
+    // failure surfaces as its own message rather than a bare timeout.
+    const settled = page
+      .locator('[data-testid="article-subscribe-done"], [data-slot="article-subscribe"] [role="alert"]')
+      .first();
+    await settled.waitFor({ state: "visible", timeout: 20000 });
+
+    const text = (await settled.textContent())?.trim() ?? "";
+    if (!text) throw new Error("the form settled into an empty state");
+    pass("newsletter: filling and submitting the form reaches a terminal state");
+  } catch (err) {
+    fail(
+      "newsletter: filling and submitting the form reaches a terminal state",
       err.message,
     );
   }
