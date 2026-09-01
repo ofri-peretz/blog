@@ -37,9 +37,22 @@ brotli the output.
 
 ```
 measured = brotliSync(readFileSync("public/lint-worker.js")).length
-quoted   = /\((\d+) KB\)/.exec(gateLabel)
-assert |quoted*1024 - measured| within a stated tolerance
+quoted   = /\(~?(\d+)\s*KB\)/.exec(gateLabel)
+assert quoted !== null          // ← a non-match FAILS; it must never skip
+assert |quoted[1]*1024 - measured| within a stated tolerance
 ```
+
+**The `assert quoted !== null` line is the important one, and review caught its
+absence.** The first draft of this pseudocode used `/\((\d+) KB\)/`, which
+cannot match the live label `(~400 KB)` — the tilde breaks it. `.exec()` returns
+`null`, `null * 1024` is `NaN`, and every comparison against `NaN` is false, so
+the assertion would have passed silently forever.
+
+That is this intent's own failure mode reproduced inside its plan: a check that
+asserts something it never actually measured. So the rule is explicit — **if the
+lock cannot find a number to compare, that is a failure, not a skip.** A lock
+that quietly no-ops when its input changes shape is worse than no lock, because
+it also carries the belief that the thing is covered.
 
 **Tolerance, not equality.** Equality would red the build on every dependency
 bump, which trains people to edit the number without reading it — the opposite

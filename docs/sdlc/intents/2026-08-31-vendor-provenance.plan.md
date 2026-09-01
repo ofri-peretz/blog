@@ -56,7 +56,11 @@ rewrite preserved content exactly.
 
 1. Update the forward recipe (the vendoring script) to emit the markers.
 2. Update `normalizeVendored` to strip between them.
-3. Re-vendor all 24 from DS `main` so every file gets the new block.
+3. Re-vendor all 24 **plus typography** from DS `main`, so all 25 files get the
+   new block. Review caught this: typography is currently excluded from the map,
+   so a re-vendor driven off the map alone would skip it, and it would still
+   carry the old marker-less block when step 5 checked it — reporting drift
+   immediately and for a reason that has nothing to do with the DS.
 4. Add typography to the map; delete the exclusion note.
 5. Run the drift check: expect **in sync** for 25 of 25.
 6. Prove it still detects: edit a vendored file, confirm drift, revert.
