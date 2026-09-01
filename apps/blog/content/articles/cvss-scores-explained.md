@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/cvss-scores-explained.jpg?v=2"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/cvss-scores-explained.jpg?v=2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/cvss-scores-explained-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/cvss-scores-explained.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/cvss-scores-explained-the-number-measures-severity-not-risk-4k6i"
 devto_id: 4182369
 title: "CVSS Scores Explained: The Number Measures Severity, Not Risk"
@@ -8,6 +8,7 @@ description: "A scanner can print CVSS 9.1 and the word LOW on the same line. Wh
 slug: "cvss-scores-explained"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:38:05.153Z"
 tags:
   - "security"
   - "devsecops"

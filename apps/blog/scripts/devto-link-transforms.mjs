@@ -16,12 +16,17 @@
  * Either way collectDevtoLinks(body) returns the {key,destination,kind} rows and
  * the publisher upserts them at publish time; the client NEVER passes a URL.
  *
- * Also strips blog-only heading `{#anchor}` ids and the "**Skip to:**" jump-nav
- * (dev.to renders neither).
+ * Also strips blog-only `{#anchor}` ids — in headings AND inline, since dev.to
+ * prints the token verbatim wherever it sits — and the "**Skip to:**" jump-nav
+ * (dev.to renders neither). Anchors inside inline code spans are preserved.
  *
  * Guarantees:
  *   - Links already pointing at /go/ are never rewritten (idempotent).
- *   - Fenced code blocks are left byte-identical.
+ *   - Fenced code blocks are left byte-identical, with ONE exception:
+ *     Shiki notation markers (`[!code ...]`) are blog-only render
+ *     directives — dev.to would print them verbatim — so they are
+ *     stripped, and `[!code --]` (removed) lines are dropped so dev.to
+ *     shows the post-diff code.
  *   - Non-http destinations (anchors, mailto:) pass through untouched.
  *
  * @author Ofri Peretz
@@ -37,9 +42,88 @@ const FENCE_REGEX = /^\s*(```|~~~)/;
 
 /** A heading line (H1–H6) carrying a blog `{#custom-anchor}` id suffix. */
 const HEADING_ANCHOR_REGEX = /^(#{1,6}\s.*?)\s*\{#[^}]+\}\s*$/;
+// dev.to prints `{#anchor}` verbatim WHEREVER it appears, not only in headings.
+// crypto-misuse-taxonomy shipped with four literal `{#layer-N}` tags mid-paragraph
+// (`**Layer 1 — the primitive.** {#layer-1} Right kind of thing?…`) because the
+// heading-only regex above never saw them. Anchors on any non-fence line go.
+//
+// The leading alternation is load-bearing, not decoration: an INLINE CODE SPAN is
+// matched first and handed back untouched, so a CSS example like `a {#id}` — which
+// is prose about braces, not an anchor — survives. Without it this eats those too.
+//
+// `(`+)…\1` matches a span by its OPENING backtick run and requires the same run
+// to close it, so ``code {#x}`` (the double-backtick form markdown uses when the
+// code itself contains a backtick) is protected too — a single-backtick pattern
+// would end the span at the first ` and strip the anchor inside.
+const INLINE_ANCHOR_REGEX = /(`+)[\s\S]*?\1|[ \t]*\{#[a-zA-Z0-9_-]+\}/g;
 
 /** The blog-only "**Skip to:**" jump-nav line (dead on dev.to — no heading ids). */
 const SKIP_TO_REGEX = /^\s*\*\*Skip to:\*\*/;
+
+// Shiki notation marker at the end of a code line — `// [!code highlight]`,
+// `# [!code ++]`, `/* [!code --] */`, `<!-- [!code focus] -->`. dev.to's
+// highlighter knows nothing about these and would print them verbatim, so
+// the publish path strips them. The optional comment opener/closer around
+// the bracket goes too — a bare trailing `//` is worse than no marker.
+const NOTATION_MARKER_REGEX =
+  /\s*(?:\/\/|#|\/\*|<!--|--|;;?)?\s*\[!code [^\]]+\]\s*(?:\*\/|-->)?\s*$/;
+/** A REMOVED-line marker, capturing the optional `:N` multi-line count. */
+const NOTATION_REMOVE_REGEX = /\[!code --(?::(\d+))?\]/;
+
+/**
+ * Strip Shiki notation markers from every fenced block, mirroring what the
+ * blog's real transformers do to the RENDERED output — so any non-blog
+ * surface (dev.to cross-posts, the /articles/<slug>.md agent twins) shows
+ * plain code with no house syntax:
+ *
+ *   - highlight/focus/etc. markers are erased in place; a line that was
+ *     ONLY a marker vanishes (Shiki deletes emptied marker lines too);
+ *   - `[!code --]` lines are the OLD code a reader is being told to
+ *     delete — they are dropped so the output is the post-diff state,
+ *     matching the blog CodeBlock's copy behavior. The `:N` form drops
+ *     the marker line's whole range (Shiki semantics: a bare marker line
+ *     marks the NEXT N lines; a marker trailing code marks that line
+ *     plus the next N-1).
+ *
+ * A marker's reach never crosses a fence edge. Prose outside fences is
+ * untouched. Idempotent: stripped output contains no markers.
+ */
+export function stripNotationMarkers(body) {
+  let inFence = false;
+  let dropRemaining = 0;
+  const out = [];
+  for (const line of body.split("\n")) {
+    if (FENCE_REGEX.test(line)) {
+      inFence = !inFence;
+      dropRemaining = 0;
+      out.push(line);
+      continue;
+    }
+    if (!inFence) {
+      out.push(line);
+      continue;
+    }
+    if (dropRemaining > 0) {
+      dropRemaining--;
+      continue;
+    }
+    if (NOTATION_MARKER_REGEX.test(line)) {
+      const removed = line.match(NOTATION_REMOVE_REGEX);
+      const rest = line.replace(NOTATION_MARKER_REGEX, "");
+      if (removed) {
+        const n = removed[1] ? Number(removed[1]) : 1;
+        dropRemaining = rest.trim() === "" ? n : n - 1;
+        continue;
+      }
+      // A line that was only its marker disappears rather than leaving
+      // a blank line behind.
+      if (rest.trim() !== "") out.push(rest);
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
 
 /** Check if a hostname is the blog's own domain. */
 function isSiteHost(hostname) {
@@ -220,7 +304,8 @@ export function collectDevtoLinks(body, articleSlug) {
 /**
  * Transform a dev.to body: drop the blog-only heading anchors + jump-nav
  * dev.to can't render, then route every inline link through /go/. Pure and
- * idempotent; fenced code blocks pass through byte-identical.
+ * idempotent; fenced code blocks pass through byte-identical except for
+ * Shiki notation markers (stripped; `[!code --]` lines dropped).
  *
  * dev.to gives rendered headings no `id`, so `## H {#anchor}` would print the
  * `{#anchor}` verbatim and `[x](#anchor)` jump links would have no target. We
@@ -234,7 +319,9 @@ export function transformBodyForDevto(body, articleSlug) {
   let inFence = false;
   const out = [];
 
-  for (const line of body.split("\n")) {
+  // Shiki notation markers are blog-only render directives — dev.to gets
+  // the post-diff, marker-free code (see stripNotationMarkers).
+  for (const line of stripNotationMarkers(body).split("\n")) {
     if (FENCE_REGEX.test(line)) {
       inFence = !inFence;
       out.push(line);
@@ -246,15 +333,17 @@ export function transformBodyForDevto(body, articleSlug) {
     }
     // Drop the blog-only jump-nav — its anchors have no target on dev.to.
     if (SKIP_TO_REGEX.test(line)) continue;
-    // Strip a heading's `{#anchor}` suffix (dev.to would print it literally).
-    const heading = line.match(HEADING_ANCHOR_REGEX);
-    if (heading) {
-      out.push(heading[1]);
-      continue;
-    }
+    // Strip every `{#anchor}` on the line, heading or inline, BEFORE the link
+    // rewrite — so a heading that also carries a link still gets its /go/ URL
+    // (the old heading-only branch returned early and skipped that).
+    const stripped = line
+      .replace(HEADING_ANCHOR_REGEX, "$1")
+      .replace(INLINE_ANCHOR_REGEX, (match) =>
+        match.startsWith("`") ? match : "",
+      );
     // Route every inline link through /go/.
     out.push(
-      line.replace(INLINE_LINK_REGEX, (match, linkUrl, title) => {
+      stripped.replace(INLINE_LINK_REGEX, (match, linkUrl, title) => {
         const rewritten = rewriteUrlForDevto(linkUrl, articleSlug);
         return rewritten === linkUrl ? match : `](${rewritten}${title})`;
       }),

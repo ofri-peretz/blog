@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-crypto
 devto_id: 3143570
 published_at: "2026-01-02T15:15:04Z"
 edited_at: "2026-02-03T04:59:37Z"
-cover_image: "https://ofriperetz.dev/og/cover/getting-started-eslint-plugin-node-security"
-social_image: "https://ofriperetz.dev/og/article/getting-started-eslint-plugin-node-security"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-node-security.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-node-security-og.jpg?v=b2"
 reading_time_minutes: 10
 tags:
   - "security"
@@ -217,6 +217,10 @@ export function renderTemplate(template: string, vars: Record<string, string>) {
 For cases that genuinely need expression evaluation, prefer a sandboxed template engine (`Handlebars`, `Eta`) that never touches `eval`.
 
 ---
+
+::playground-cta{slug="getting-started-eslint-plugin-node-security"}
+See three of these rules fire on a real upload handler, before you install anything → (in your browser; nothing you paste leaves the page)
+::
 
 ## Get it running (about two minutes)
 

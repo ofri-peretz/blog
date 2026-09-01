@@ -1,7 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 import { MobileNav } from "./mobile-nav";
+import { BrandMark } from "./brand-mark";
+import { CorpusSearch } from "./corpus-search";
 import { cn } from "@/lib/utils";
 
 // /scorecard is the canonical metrics surface (supabase-backed North Star).
@@ -11,6 +12,7 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/articles", label: "Articles" },
   { href: "/npm", label: "npm" },
+  { href: "/loom", label: "Loom" },
   { href: "/scorecard", label: "Scorecard" },
 ];
 
@@ -39,14 +41,12 @@ export function AppHeader({
           href="/"
           className="flex items-center gap-2 text-sm font-semibold tracking-tight hover:text-foreground/80"
         >
-          <Image
-            src="/ofri-profile.webp"
-            alt=""
-            width={28}
-            height={28}
-            priority
-            className="size-7 rounded-full border border-border object-cover"
-          />
+          {/* Inline, not next/image: the optimizer pipes every local src through
+              /_next/image, which rejects SVG with a 400 unless dangerouslyAllowSVG
+              is enabled. Inlining also drops a request for a 28px mark. Geometry is
+              identical to render-cover.sh, so the header and all 78 covers share
+              one shape. */}
+          <BrandMark />
           ofri peretz
         </Link>
         <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">
@@ -54,13 +54,20 @@ export function AppHeader({
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              // inline-flex + min-h-6: bare `text-sm` gives a 20px-tall box,
+              // under the 24x24 CSS px minimum in WCAG 2.2 SC 2.5.8 (AA).
+              // The nav row is already items-center, so the extra height is
+              // absorbed and nothing moves.
+              className="inline-flex min-h-6 min-w-6 items-center justify-center text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
             </Link>
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          {/* The index is a static build artifact fetched on first
+              intent — see /search-index.json/route.ts for the numbers. */}
+          <CorpusSearch />
           <ThemeToggle />
           <MobileNav links={NAV_LINKS} />
         </div>

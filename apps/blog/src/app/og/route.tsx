@@ -1,12 +1,13 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
+import numbers from "@/data/interlace-numbers.json";
 
 export const runtime = "edge";
 export const contentType = "image/png";
 export const size = { width: 1200, height: 630 };
 
-const BG = "#0f0f23";
-const ACCENT = "#a78bfa";
+const BG = "#0a0a0a"; // GROUND in render-cover.sh
+const ACCENT = "#f4794a"; // ORANGE in render-cover.sh — was violet-400
 const TEXT = "#f5f5f5";
 const MUTED = "#a3a3a3";
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     params.title ?? "Ofri Peretz — Engineering Leader & Open Source Creator";
   const description =
     params.description ??
-    "Architect of the Interlace ESLint Ecosystem. 332+ security rules across 18 specialized plugins.";
+    `Architect of the Interlace ESLint Ecosystem. ${numbers.rules.total} rules across ${numbers.plugins.total} specialized plugins.`;
   const badge =
     params.pageType === "articles"
       ? "Articles"

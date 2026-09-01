@@ -1,11 +1,12 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/goodharts-law-explained.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/goodharts-law-explained.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/goodharts-law-explained-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/goodharts-law-explained.jpg?v=b2"
 title: "Goodhart's Law in Benchmarking: When the Metric Becomes the Target"
 description: "When a measure becomes a target, it ceases to be a good measure. Goodhart's Law is the failure mode where moving a number and improving the thing the number stood for split into two projects — and the cheaper one wins by default."
 slug: "goodharts-law-explained"
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:34:55.443Z"
 tier: "T0"
 series: "Foundations"
 arc: 5

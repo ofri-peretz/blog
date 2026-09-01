@@ -95,6 +95,14 @@ function formatDate(value: ArticleCardProps["publishedAt"]): string {
     month: "short",
     day: "numeric",
     year: "numeric",
+    // Pinned, and it must stay pinned. This is a client component, so the
+    // string is produced twice: once during SSR (Vercel runs UTC) and again at
+    // hydration (the reader's own zone). Without a fixed zone any article
+    // published near midnight UTC renders a different day on each pass, React
+    // sees the text diverge and throws #418 — which is exactly what /articles
+    // was doing in production. A publication date is a calendar fact, not a
+    // local-time one, so UTC is also the correct reading.
+    timeZone: "UTC",
   });
 }
 
@@ -243,21 +251,32 @@ function CoverImage({
       // next/image serves AVIF/WebP at the tile's real width instead of
       // shipping the full-size cover to a thumbnail. `fill` because the
       // parent is already sized; `priority` still marks above-fold tiles.
+      //
+      // `fetchPriority` is paired with `priority` deliberately: measured on the
+      // article route, `priority` alone emitted a preload but no fetchpriority
+      // attribute, so Chrome still scheduled the request at Low. Only the
+      // prioritised tile gets it — marking every tile high would flatten the
+      // ordering and prioritise nothing.
       <Image
         src={imageUrl}
         alt=""
         fill
         priority={priority}
+        fetchPriority={priority ? "high" : undefined}
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
         className={cn(
-          "object-cover object-center transition-transform duration-500 group-hover:scale-105",
+          // The container is aspect-[1000/420], so nothing should crop. This
+          // stays as a safety net: if a cover ever ships at another ratio,
+          // losing the right edge beats losing the mark and the hero word,
+          // which both sit in the left third.
+          "object-cover object-left transition-transform duration-500 group-hover:scale-105",
           className,
         )}
       />
     );
   }
   return (
-    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-violet-900 via-slate-800 to-fuchsia-900 p-6">
+    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-brand-orange/25 via-neutral-900 to-brand-green/25 p-6">
       <span
         className={cn(
           "line-clamp-3 text-center leading-snug font-semibold text-white/80",
@@ -356,8 +375,12 @@ function StackBody({
 }: BodyProps) {
   return (
     <>
-      {/* Cover (or gradient title fallback) — edge-to-edge top of the card. */}
-      <div className="relative h-44 w-full shrink-0 overflow-hidden">
+      {/* Cover (or gradient title fallback) — edge-to-edge top of the card.
+          aspect-[1000/420], not a fixed h-44: covers are rendered at exactly
+          1000x420 (2.38:1) and h-44 made this box 1.72:1, so `cover` cropped
+          28% off the right — enough to turn a "noisy rules" hero into "noisy
+          ru". Matching the source ratio shows the whole cover instead. */}
+      <div className="relative aspect-[1000/420] w-full shrink-0 overflow-hidden">
         <CoverImage imageUrl={imageUrl} title={title} priority={priority} />
         {sourceLabel ? <SourceChip label={sourceLabel} /> : null}
       </div>

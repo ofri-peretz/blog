@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/abandoned-incumbent-map.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/abandoned-incumbent-map.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/abandoned-incumbent-map-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/abandoned-incumbent-map.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/142076-weekly-downloads-zero-releases-since-2021-is-the-niche-defended-4hko"
 devto_id: 4183799
 title: "142,076 Weekly Downloads. Zero Releases Since 2021. Is the Niche Defended?"
@@ -8,6 +8,7 @@ description: "A Serverless plugin with 142k weekly downloads last shipped a rele
 slug: "abandoned-incumbent-map"
 published: true
 date: 2026-07-19
+published_at: "2026-07-20T04:45:01.282Z"
 tags:
   - "serverless"
   - "aws"

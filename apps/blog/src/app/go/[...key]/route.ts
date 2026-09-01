@@ -14,11 +14,17 @@
 
 import { after } from "next/server";
 
+import { flushTelemetry, logGoRedirect } from "@/instrumentation";
+
 import { getCachedShortLinks } from "@/lib/supabase-data";
 import {
+  anonymousVisitorId,
   buildClickEventBody,
+  POSTHOG_INGEST_FALLBACK,
   refererToOrigin,
   resolveGoDestination,
+  resolveIngestHost,
+  SERVER_FALLBACK_ID,
   type ShortLinkClickProps,
 } from "../resolver";
 
@@ -45,13 +51,24 @@ function captureShortLinkClick(
   const apiKey =
     process.env.NEXT_PUBLIC_POSTHOG_KEY ||
     "phc_vNTTtpj4s6nXGJ5pnnXxHey6WBjHJWnytQ4Zv6HeDTT3";
-  const host =
-    process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
+  // NEXT_PUBLIC_POSTHOG_HOST is a BROWSER variable and its correct value is
+  // now the relative `/ingest`, which a server fetch cannot parse. See
+  // resolveIngestHost — using it raw is what killed this event for 20 days.
+  const host = resolveIngestHost(process.env.NEXT_PUBLIC_POSTHOG_HOST);
   const refererOrigin = refererToOrigin(request.headers.get("referer"));
-  const body = { api_key: apiKey, ...buildClickEventBody(capture, refererOrigin) };
 
   after(async () => {
     try {
+      // Hashing is async (Web Crypto), so it happens here rather than on the
+      // redirect path — the 302 is never delayed by telemetry.
+      const distinctId = await anonymousVisitorId(
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+        request.headers.get("user-agent"),
+      );
+      const body = {
+        api_key: apiKey,
+        ...buildClickEventBody(capture, refererOrigin, undefined, distinctId),
+      };
       await fetch(`${host}/i/v0/e/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,8 +80,44 @@ function captureShortLinkClick(
     } catch (err) {
       // Analytics must never break the redirect path.
       console.warn("[go] posthog capture failed:", err);
+      // ...but a silent failure is how this event stayed dead for twenty days,
+      // with a correct 302 on every hit and nothing anywhere saying otherwise.
+      // Report the failure as a PRESENT signal, because an absence is exactly
+      // what nobody noticed. Deliberately posted to the hardcoded fallback and
+      // not to `host`: if the configured host is the fault, a report sent
+      // through it dies the same silent death.
+      try {
+        await fetch(`${POSTHOG_INGEST_FALLBACK}/i/v0/e/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(3000),
+          body: JSON.stringify({
+            api_key: apiKey,
+            event: "short_link_capture_failed",
+            distinct_id: SERVER_FALLBACK_ID,
+            properties: {
+              // Error NAME only — never the message, which can carry the URL
+              // and with it whatever was in the query string.
+              error: err instanceof Error ? err.name : "unknown",
+              $process_person_profile: false,
+            },
+          }),
+        });
+      } catch {
+        // The detector itself must never throw. If this fails too, the
+        // pipeline is comprehensively down and the redirect still works.
+      }
     }
   });
+}
+
+/** Host only — the full destination can carry campaign params we don't need in a log dimension. */
+function hostOf(location: string): string {
+  try {
+    return new URL(location).host;
+  } catch {
+    return "(relative)";
+  }
 }
 
 export async function GET(
@@ -76,7 +129,22 @@ export async function GET(
 
   // Whole-table cached read (tag 'short-links'); a closure turns it into
   // the sync lookup the pure resolver expects.
-  const rows = await getCachedShortLinks();
+  //
+  // Degrading to "no overrides" is the right behaviour — every /go/<slug> still
+  // 302s to its derived default, never a 500. The catch lives HERE rather than
+  // in the fetcher because returning [] from inside unstable_cache caches the
+  // failure for twelve hours and across redeploys, silently disabling every
+  // override. Failing per-request means the next visitor gets the real table.
+  let rows: Awaited<ReturnType<typeof getCachedShortLinks>> = [];
+  let shortLinksAvailable = true;
+  const lookupStart = Date.now();
+  try {
+    rows = await getCachedShortLinks();
+  } catch (err) {
+    shortLinksAvailable = false;
+    console.error("[go] short_links unavailable, using derived defaults:", err);
+  }
+  const lookupMs = Date.now() - lookupStart;
   const resolution = resolveGoDestination({
     keyParts: keyParts ?? [],
     utmSource: url.searchParams.get("utm_source"),
@@ -86,6 +154,23 @@ export async function GET(
   });
 
   captureShortLinkClick(request, resolution.capture);
+
+  // One wide log record per redirect (see logGoRedirect). Kept to a single
+  // call so this wrapper stays dumb, per the note at the top of the file.
+  // Same normalisation as classifyKey in resolver.ts — empty segments filtered
+  // before joining. Without the filter a trailing-slash URL yields "slug/" here
+  // but "slug" in the lookup, which would make overrideHit a false negative.
+  const loggedKey = (keyParts ?? []).filter((s) => s.length > 0).join("/");
+  logGoRedirect({
+    key: loggedKey,
+    status: resolution.status,
+    destinationHost: hostOf(resolution.location),
+    overrideHit: rows.some((r) => r.key === loggedKey),
+    shortLinksAvailable,
+    refererOrigin: refererToOrigin(request.headers.get("referer")),
+    lookupMs,
+  });
+  after(flushTelemetry);
 
   return new Response(null, {
     status: resolution.status,

@@ -1,0 +1,17 @@
+<!--
+  The Interlace mark — favicon master. LOCKED geometry, do not redraw by hand.
+
+  This is the SMALL variant from the brand spec (bars thickened 20→24 and
+  shortened 58→52 against the primary mark), because every consumer of this file
+  renders it at 16–32px, where the primary mark's thinner bars merge into one
+  dash. Orange always leads upper-left, green always follows lower-right, and the
+  −30° never changes; those three are the whole character of the mark.
+
+  Edit here and run devtools/scripts/sync-favicon.sh — never edit a copy.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512" role="img" aria-label="Interlace">
+  <g transform="rotate(-30 50 50)">
+    <rect x="15" y="24" width="52" height="24" rx="12" fill="#f4794a"/>
+    <rect x="33" y="52" width="52" height="24" rx="12" fill="#0d9460"/>
+  </g>
+</svg>

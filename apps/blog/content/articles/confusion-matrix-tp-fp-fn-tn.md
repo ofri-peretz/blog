@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/confusion-matrix-tp-fp-fn-tn.jpg?v=2"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/confusion-matrix-tp-fp-fn-tn.jpg?v=2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/confusion-matrix-tp-fp-fn-tn-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/confusion-matrix-tp-fp-fn-tn.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/the-confusion-matrix-what-tp-fp-fn-and-tn-actually-mean-1h32"
 devto_id: 4182366
 title: "The Confusion Matrix: What TP, FP, FN, and TN Actually Mean"
@@ -8,6 +8,7 @@ description: "A cancer screen can be 90% accurate and still wave through two-thi
 slug: "confusion-matrix-tp-fp-fn-tn"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:36:49.093Z"
 tags:
   - "security"
   - "devsecops"

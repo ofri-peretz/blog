@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
+import { SectionIndex } from "@/components/ui/section-index";
 
 export interface DevToArticleEntry {
   slug: string;
@@ -18,6 +19,8 @@ export interface DevToArticleEntry {
 }
 
 interface DevToArticlesProps extends React.HTMLAttributes<HTMLElement> {
+  /** 1-based position in the homepage sequence — the numbered eyebrow. */
+  index: number;
   /** Articles to render — page passes via `getAllArticles().slice(0, 6)`. Required so the
    *  component stays presentational and Storybook-friendly (the `fs` import that
    *  `getAllArticles` uses doesn't bundle for browser-side stories). */
@@ -36,6 +39,7 @@ function formatDate(iso?: string): string {
 }
 
 export function DevToArticles({
+  index,
   articles,
   className,
   "data-testid": testId,
@@ -55,16 +59,16 @@ export function DevToArticles({
       <Container size="content">
         <div className="mb-8 flex items-baseline justify-between">
           <div>
-            <p className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            <SectionIndex value={index} data-testid="devto-articles-index" className="mb-3">
               Writing
-            </p>
+            </SectionIndex>
             <h2 className="text-3xl font-semibold tracking-tight">
               Latest articles
             </h2>
           </div>
           <Link
             href="/articles"
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-6 min-w-6 items-center justify-center text-sm text-muted-foreground hover:text-foreground"
           >
             View all →
           </Link>
@@ -90,10 +94,13 @@ export function DevToArticles({
                 >
                   {cover ? (
                     // next/image: dev.to media hosts are allowlisted in
-                    // next.config remotePatterns. 16:9 keeps CLS=0.
+                    // next.config remotePatterns. A fixed ratio keeps CLS=0 —
+                    // but it has to be the COVER's ratio, not 16:9. Covers are
+                    // 1000x420 (2.38:1); aspect-video is 1.78:1, so `cover`
+                    // was hiding 25% of every one of them on the home page.
                     <div
                       data-slot="article-card-cover"
-                      className="relative aspect-video w-full overflow-hidden bg-muted"
+                      className="relative aspect-[1000/420] w-full overflow-hidden bg-muted"
                     >
                       <Image
                         src={cover}
@@ -107,7 +114,7 @@ export function DevToArticles({
                     <div
                       aria-hidden
                       data-slot="article-card-cover-fallback"
-                      className="flex aspect-video w-full items-center justify-center bg-linear-to-br from-muted via-muted/70 to-muted/40 px-6 text-center"
+                      className="flex aspect-[1000/420] w-full items-center justify-center bg-linear-to-br from-muted via-muted/70 to-muted/40 px-6 text-center"
                     >
                       <span className="line-clamp-3 text-sm font-medium text-muted-foreground">
                         {article.frontmatter.title}

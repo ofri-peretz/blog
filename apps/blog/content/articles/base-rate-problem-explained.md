@@ -1,7 +1,7 @@
 ---
 devto_url: "https://dev.to/ofri-peretz/the-base-rate-problem-why-95-precision-means-nothing-without-context-29ik"
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/base-rate-problem-explained.jpg?v=2"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/base-rate-problem-explained.jpg?v=2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/base-rate-problem-explained-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/base-rate-problem-explained.jpg?v=b2"
 title: "The Base Rate Problem: Why 95% Precision Means Nothing Without Context"
 description: "A test that scores 95% precision on a balanced sample can be right under 2% of the time when the thing it hunts is rare. That's not a bug in the arithmetic — it's the base rate problem, and it's why benchmark conditions rarely predict field behavior."
 slug: "base-rate-problem-explained"
@@ -10,6 +10,7 @@ series: "Foundations"
 arc: 3
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:34:23.463Z"
 tags:
   - "security"
   - "devsecops"

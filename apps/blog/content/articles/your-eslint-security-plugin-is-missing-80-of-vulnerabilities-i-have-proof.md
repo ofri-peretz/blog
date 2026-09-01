@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/your-eslint-security-plugin-is-missing-80
 devto_id: 3117602
 published_at: "2025-12-20T16:25:32Z"
 edited_at: "2026-01-11T10:22:06Z"
-cover_image: "https://ofriperetz.dev/og/cover/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
-social_image: "https://ofriperetz.dev/og/article/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/your-eslint-security-plugin-is-missing-80-of-vulnerabilities-i-have-proof-og.jpg?v=b2"
 reading_time_minutes: 7
 tags:
   - "security"

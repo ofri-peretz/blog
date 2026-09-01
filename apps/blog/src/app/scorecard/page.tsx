@@ -78,7 +78,8 @@ import { getCachedGitHubStats } from "@/lib/github-live-stats";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Scorecard — Ofri Peretz",
+  // Bare page name — the root layout's title template appends the suffix.
+  title: "Scorecard",
   description:
     "A public, schema-enforced ledger of our mutual contribution to the world — both what we ship and how the world responds. Every number is provenance-traceable to its source.",
   alternates: { canonical: "https://ofriperetz.dev/scorecard" },
@@ -343,7 +344,7 @@ export default function ScorecardPage() {
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <li>
             <a
-              className="underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex min-h-6 min-w-6 items-center justify-center underline-offset-4 hover:text-foreground hover:underline"
               href="https://www.npmjs.com/~ofriperetz"
               target="_blank"
               rel="noopener noreferrer"
@@ -353,7 +354,7 @@ export default function ScorecardPage() {
           </li>
           <li>
             <a
-              className="underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex min-h-6 min-w-6 items-center justify-center underline-offset-4 hover:text-foreground hover:underline"
               href="https://github.com/ofri-peretz"
               target="_blank"
               rel="noopener noreferrer"
@@ -363,7 +364,7 @@ export default function ScorecardPage() {
           </li>
           <li>
             <a
-              className="underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex min-h-6 min-w-6 items-center justify-center underline-offset-4 hover:text-foreground hover:underline"
               href="https://codecov.io/gh/ofri-peretz/eslint"
               target="_blank"
               rel="noopener noreferrer"
@@ -373,7 +374,7 @@ export default function ScorecardPage() {
           </li>
           <li>
             <a
-              className="underline-offset-4 hover:text-foreground hover:underline"
+              className="inline-flex min-h-6 min-w-6 items-center justify-center underline-offset-4 hover:text-foreground hover:underline"
               href="https://dev.to/ofri-peretz"
               target="_blank"
               rel="noopener noreferrer"

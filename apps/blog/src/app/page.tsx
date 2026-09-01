@@ -4,32 +4,31 @@ import { HeroBackdrop } from "@/components/home/hero-backdrop";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
-import { About } from "@/components/landing/about";
-import { Skills } from "@/components/landing/skills";
+import { Agenda } from "@/components/landing/agenda";
 import { FeaturedProject } from "@/components/landing/featured-project";
-import { Faq } from "@/components/landing/faq";
-import { Philosophy } from "@/components/landing/philosophy";
 import { WorkExperience } from "@/components/landing/work-experience";
 import { DevToArticles } from "@/components/landing/devto-articles";
 import { ImpactMetricsBlock } from "@/components/landing/impact-metrics-block";
 import { FloatingToc } from "@/components/floating-toc";
 import { getAllArticles } from "@/lib/source";
+import numbers from "@/data/interlace-numbers.json";
 
+// Brand decision (2026-08-24): the page sells a leader with an agenda —
+// ideas, shipped products, impact — not a developer's skill inventory.
+// Stack and FAQ are gone; About + Philosophy merged into Agenda; Writing
+// moved above Experience because the ideas ARE the product here.
 const TOC_ITEMS = [
   { id: "impact", label: "Impact" },
-  { id: "about", label: "About" },
+  { id: "agenda", label: "Agenda" },
   { id: "featured", label: "Featured" },
-  { id: "experience", label: "Experience" },
-  { id: "philosophy", label: "Philosophy" },
   { id: "writing", label: "Writing" },
-  { id: "stack", label: "Stack" },
-  { id: "faq", label: "FAQ" },
+  { id: "experience", label: "Experience" },
 ];
 
 export const metadata: Metadata = {
   title: "Ofri Peretz — Engineering Leader & Open Source Creator",
   description:
-    "Building Products That Matter • Engineering Leadership • Open-Source Contributor. Creator of the Interlace ESLint Ecosystem.",
+    "Engineering leader building the trust layer for machine-written software. Creator of the Interlace ESLint Ecosystem.",
 };
 
 interface HomepageStats {
@@ -64,8 +63,14 @@ async function fetchStats(): Promise<HomepageStats | null> {
         : process.env.VERCEL_URL
           ? `https://${process.env.VERCEL_URL}`
           : `http://localhost:${process.env.PORT || 3001}`;
+    // tags:['ratchet'] is what makes the flush reach THIS page. The route
+    // below is tag-flushed already, but the homepage is statically prerendered
+    // and its HTML holds the rendered numbers — a time-only `revalidate` left
+    // that HTML on its own ISR clock, so POST /api/revalidate-tag refreshed the
+    // API while the page kept serving the previous run's figures (422,330 npm
+    // next to same-day dev.to views, 2026-08-26). Same tag the ingest flushes.
     const res = await fetch(`${base}/api/homepage-stats`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 60, tags: ["ratchet"] },
     });
     if (!res.ok) {
       console.error(`[homepage] stats → ${res.status}`);
@@ -99,15 +104,16 @@ export default async function HomePage() {
             Ofri Peretz
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-            Building Products That Matter. Architect of the{" "}
+            Most production code will soon be written by machines — I build
+            the trust layer for it. Architect of the{" "}
             <Link
               href="https://eslint.interlace.tools"
-              className="text-foreground underline-offset-4 hover:underline"
+              className="text-foreground underline underline-offset-4"
             >
               Interlace ESLint Ecosystem
             </Link>{" "}
-            — 332+ security rules across 18 specialized plugins, designed for
-            the AI/Agentic era.
+            — {numbers.rules.total} rules across {numbers.plugins.total}{" "}
+            specialized plugins, built for the AI/agentic era.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -127,18 +133,16 @@ export default async function HomePage() {
       </Section>
 
       <FloatingToc items={TOC_ITEMS} />
-      {stats && <ImpactMetricsBlock id="impact" stats={stats} />}
-      <About id="about" />
+      {stats && <ImpactMetricsBlock id="impact" index={1} stats={stats} />}
+      <Agenda id="agenda" index={2} />
       <FeaturedProject
         id="featured"
+        index={3}
         stars={stats?.github.totalStars}
         downloads={stats?.npm.totalDownloads}
       />
-      <WorkExperience id="experience" />
-      <Philosophy id="philosophy" />
-      <DevToArticles id="writing" articles={getAllArticles().slice(0, 6)} />
-      <Skills id="stack" />
-      <Faq id="faq" />
+      <DevToArticles id="writing" index={4} articles={getAllArticles().slice(0, 6)} />
+      <WorkExperience id="experience" index={5} />
     </main>
   );
 }

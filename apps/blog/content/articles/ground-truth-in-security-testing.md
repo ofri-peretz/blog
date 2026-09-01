@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/ground-truth-in-security-testing.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/ground-truth-in-security-testing.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/ground-truth-in-security-testing-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/ground-truth-in-security-testing.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/ground-truth-in-security-testing-who-decides-whats-vulnerable-3oek"
 devto_id: 4182373
 title: "Ground Truth in Security Testing: Who Decides What's Vulnerable?"
@@ -8,6 +8,7 @@ description: "To benchmark a security linter or SAST tool, you need labeled exam
 slug: "ground-truth-in-security-testing"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:40:10.308Z"
 tags:
   - "security"
   - "devsecops"

@@ -23,12 +23,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyGuards,
   buildCapture,
+  SERVER_FALLBACK_ID,
+  type ShortLinkClickProps,
+  anonymousVisitorId,
   buildClickEventBody,
   classifyKey,
   deriveDefault,
   pickDestination,
   refererToOrigin,
+  POSTHOG_INGEST_FALLBACK,
   resolveGoDestination,
+  resolveIngestHost,
   type ShortLinkRow,
 } from "../app/go/resolver";
 
@@ -579,7 +584,11 @@ describe("GET /go/[...key] (route wrapper)", () => {
     const sent = JSON.parse((opts as RequestInit).body as string);
     expect(sent.api_key).toBe("phc_test");
     expect(sent.event).toBe("short_link_click");
-    expect(sent.distinct_id).toBe("server-go");
+    // Per-visitor anonymous hash, not the old constant. Asserting the shape
+    // rather than a literal keeps the test honest about what it guarantees:
+    // an opaque, non-reversible id — not one fixed value for every click.
+    expect(sent.distinct_id).toMatch(/^[0-9a-f]{32}$/);
+    expect(sent.distinct_id).not.toBe("server-go");
     expect(sent.properties).toMatchObject({
       key: "my-slug",
       kind: "article",
@@ -648,5 +657,112 @@ describe("GET /go/[...key] (route wrapper)", () => {
     });
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toBe(`${BLOG}/`);
+  });
+});
+
+describe("anonymousVisitorId", () => {
+  it("is stable for the same visitor on the same day", async () => {
+    const a = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    const b = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    expect(a).toBe(b);
+  });
+
+  it("rotates across days, so it cannot follow anyone", async () => {
+    const day1 = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    const day2 = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-23");
+    expect(day1).not.toBe(day2);
+  });
+
+  it("separates different visitors", async () => {
+    const one = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    const two = await anonymousVisitorId("198.51.100.4", "Mozilla/5.0", "2026-08-22");
+    expect(one).not.toBe(two);
+  });
+
+  it("never leaks the inputs", async () => {
+    const id = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0 (secret-agent)", "2026-08-22");
+    expect(id).not.toContain("203.0.113.7");
+    expect(id).not.toContain("secret-agent");
+    expect(id).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("still produces an id when the request has neither IP nor user agent", async () => {
+    const id = await anonymousVisitorId(null, null, "2026-08-22");
+    expect(id).toMatch(/^[0-9a-f]{32}$/);
+  });
+});
+
+describe("buildClickEventBody — distinct_id", () => {
+  const props: ShortLinkClickProps = {
+    key: "npm/eslint-plugin-secure-coding",
+    kind: "npm",
+    from: null,
+    utm_source: null,
+    destination: "https://www.npmjs.com/package/eslint-plugin-secure-coding",
+  };
+
+  it("uses the anonymous id when one is supplied", () => {
+    const body = buildClickEventBody(props, null, undefined, "a".repeat(32));
+    expect(body.distinct_id).toBe("a".repeat(32));
+  });
+
+  it("keeps person profiles off regardless of the id", () => {
+    const body = buildClickEventBody(props, null, undefined, "b".repeat(32));
+    expect(body.properties.$process_person_profile).toBe(false);
+  });
+
+  it("falls back to the synthetic id when no anonymous id is given", () => {
+    expect(buildClickEventBody(props, null).distinct_id).toBe(SERVER_FALLBACK_ID);
+  });
+});
+
+describe("resolveIngestHost — the guard that ended the 20-day outage", () => {
+  // short_link_click recorded nothing from 2026-08-10 onward while /go/ kept
+  // returning correct 302s. A hand-rolled POST with the same key and payload
+  // landed fine, which put the fault inside the function: the route read
+  // NEXT_PUBLIC_POSTHOG_HOST raw, and that variable's correct value for the
+  // BROWSER is the relative "/ingest" after same-origin ingest shipped on
+  // 2026-08-09 — the exact day the events stopped.
+  it("rejects the relative value that caused the outage", () => {
+    expect(resolveIngestHost("/ingest")).toBe(POSTHOG_INGEST_FALLBACK);
+  });
+
+  it("treats unset, empty, and whitespace as unset", () => {
+    expect(resolveIngestHost(undefined)).toBe(POSTHOG_INGEST_FALLBACK);
+    expect(resolveIngestHost(null)).toBe(POSTHOG_INGEST_FALLBACK);
+    expect(resolveIngestHost("")).toBe(POSTHOG_INGEST_FALLBACK);
+    expect(resolveIngestHost("   ")).toBe(POSTHOG_INGEST_FALLBACK);
+  });
+
+  it("passes an absolute origin through, either scheme", () => {
+    expect(resolveIngestHost("https://eu.i.posthog.com")).toBe(
+      "https://eu.i.posthog.com",
+    );
+    /* eslint-disable browser-security/detect-mixed-content --
+     * Our own rule, and a true positive in browser code: an http:// asset on
+     * an https:// page IS mixed content. This is a SERVER-side ingest origin
+     * — no page, no browser, no mixed-content context — and http://localhost
+     * is the legitimate shape for a self-hosted PostHog in local dev, which
+     * is precisely the branch being asserted. Narrowing the guard to https
+     * would break that case to satisfy a rule that does not apply here. */
+    expect(resolveIngestHost("http://localhost:8000")).toBe(
+      "http://localhost:8000",
+    );
+    /* eslint-enable browser-security/detect-mixed-content */
+  });
+
+  it("strips a trailing slash, which would post to //i/v0/e/", () => {
+    expect(resolveIngestHost("https://eu.i.posthog.com/")).toBe(
+      "https://eu.i.posthog.com",
+    );
+    expect(resolveIngestHost("https://eu.i.posthog.com///")).toBe(
+      "https://eu.i.posthog.com",
+    );
+  });
+
+  it("refuses a protocol-relative host — Node cannot fetch it either", () => {
+    expect(resolveIngestHost("//eu.i.posthog.com")).toBe(
+      POSTHOG_INGEST_FALLBACK,
+    );
   });
 });

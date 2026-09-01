@@ -193,3 +193,23 @@ jobs:
           echo "::error::Promote did not take. Promote manually in the Vercel"
           echo "::error::dashboard (Project -> Deployments), then re-run."
           exit 1
+
+      # Layout + contrast on the REAL deployed site. This runs after promote,
+      # not before, because preview *.vercel.app URLs sit behind the SSO
+      # redirect these checks cannot get past (see the Deploy step above) —
+      # the apex is the first URL that is actually auditable.
+      #
+      # It therefore detects a regression rather than blocking it. That is
+      # still the right trade: the alternative is auditing nothing. The cheap
+      # half of the strategy — token contrast and the structural rules — DOES
+      # gate every PR, in `npm test`.
+      #
+      # Drives the runner's preinstalled Chrome over CDP with node's built-in
+      # WebSocket (node 24 via .nvmrc). No Playwright, nothing to install.
+      - name: Audit layout + contrast (14 widths x 6 routes x 2 themes)
+        timeout-minutes: 5
+        env:
+          BASE: https://ofriperetz.dev
+          CHROME: /usr/bin/google-chrome
+        working-directory: apps/blog
+        run: node scripts/layout-audit.mjs

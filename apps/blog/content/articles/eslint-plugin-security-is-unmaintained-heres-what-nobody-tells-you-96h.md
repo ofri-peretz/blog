@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/eslint-plugin-security-is-unmaintained-he
 devto_id: 3237157
 published_at: "2026-02-06T06:40:05Z"
 edited_at: "2026-02-06T06:54:40Z"
-cover_image: "https://ofriperetz.dev/og/cover/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h"
-social_image: "https://ofriperetz.dev/og/article/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-security-is-unmaintained-heres-what-nobody-tells-you-96h-og.jpg?v=b2"
 reading_time_minutes: 9
 tags:
   - "security"

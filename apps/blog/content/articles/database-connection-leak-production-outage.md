@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/the-connection-leak-that-took-down-our-pr
 devto_id: 3138991
 published_at: "2025-12-31T21:35:53Z"
 edited_at: "2026-01-11T10:21:49Z"
-cover_image: "https://ofriperetz.dev/og/cover/database-connection-leak-production-outage"
-social_image: "https://ofriperetz.dev/og/article/database-connection-leak-production-outage"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/database-connection-leak-production-outage.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/database-connection-leak-production-outage-og.jpg?v=b2"
 reading_time_minutes: 9
 tags:
   - "node"

@@ -7,9 +7,15 @@
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* 0.556 measured 4.35:1 on --muted, under the 4.5 AA floor for body text
+     (WCAG 1.4.3). It passed on --background (4.74) which is why it survived —
+     secondary text is routinely placed on bg-muted, so both surfaces count. */
+  --muted-foreground: oklch(0.54 0 0);
+  /* --border stays low-contrast: it draws decorative dividers and card edges,
+     which 1.4.11 does not cover. --input is different — it is the boundary
+     that identifies a form control, so it needs 3:1 (was 1.26:1). */
   --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --input: oklch(0.64 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --accent: oklch(0.97 0 0);
@@ -17,24 +23,75 @@
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --radius: 0.625rem;
-  /* Brand accents — every literal must be a token (COLOR_PHILOSOPHY). */
-  --brand-snappy: oklch(0.59 0.21 280);
-  /* Chart palette — replaces ad-hoc oklch() literals in charts/*.tsx. */
-  --chart-1: oklch(0.62 0.16 264);
-  --chart-2: oklch(0.7 0.18 60);
-  --chart-3: oklch(0.6 0.18 145);
-  --chart-4: oklch(0.62 0.16 320);
-  --chart-5: oklch(0.55 0.18 30);
+  /* Brand accents — every literal must be a token (COLOR_PHILOSOPHY).
+     Orange + green are the Interlace mark, shared with all 78 article covers.
+     These light-mode values are the cover hexes darkened to clear AA-text on
+     white: #f4794a measures 2.73:1 there, so it is a dark-mode-only colour.
+     Same hue family, so the two themes read as one brand. */
+  --brand-orange: oklch(0.547 0.146 44.7); /* #b34e16 — 5.23:1 on white */
+  --brand-green: oklch(0.522 0.114 160); /* #0d7d52 — 5.16:1 on white */
+  /* Was indigo (hue 280), inherited from the pre-Next.js site. Aliased rather
+     than removed so existing consumers repoint without an edit. */
+  --brand-snappy: var(--brand-orange);
+  /* Chart palette — replaces ad-hoc oklch() literals in charts/*.tsx.
+     Leads with the brand pair, so the first two series on any chart are the
+     same orange and green as the header mark; 3-5 exist only to stay
+     distinguishable from those two and from each other. The var()s
+     re-resolve per theme, so chart-1/2 need no .dark override. */
+  --chart-1: var(--brand-orange);
+  --chart-2: var(--brand-green);
+  --chart-3: oklch(0.62 0.16 264);
+  --chart-4: oklch(0.7 0.18 60);
+  --chart-5: oklch(0.62 0.16 320);
+  /* Viz chrome — grid/axis/crosshair for the vendored DS charts
+     (time-series.tsx). var() aliases of theme tokens, so both schemes
+     resolve without a .dark override: grid rides border (deliberately
+     decorative), axis + crosshair ride muted-foreground (4.5:1+ in
+     both modes — above the 3:1 non-text floor). Annotation marks map
+     to the closest blog tokens; the DS's info/warning have no blog
+     equivalent yet. */
+  --viz-grid: var(--border);
+  --viz-axis: var(--muted-foreground);
+  --viz-crosshair: var(--muted-foreground);
+  --viz-annotation-publish: var(--brand-orange);
+  --viz-annotation-release: var(--chart-3);
+  --viz-annotation-action: var(--chart-4);
+  /* Strand pair — the woven brand gesture (interlace BRAND_PHILOSOPHY.md).
+     strand-a is the mark's orange; strand-b is the doctrine's cool
+     counter (steel blue, hue 230) — deliberately NOT the brand green:
+     the crossing reads warm-passing-cool, and the pair is identical on
+     every Interlace surface. Only woven gestures may use strand-b. */
+  --strand-a: var(--brand-orange);
+  --strand-b: oklch(0.55 0.12 230);
+  /* Brand orange as TEXT — the DS ladder's measured AAA pair
+     (interlace-theme.css: #7d350c = 8.80:1 on white; the dark value
+     #fbb99a = 11.79:1 on near-black lives in .dark below). strand-a
+     itself is scoped to woven gestures and only clears 3:1 decorative
+     — the SectionIndex numeral is 14px text and needs this instead. */
+  --brand-orange-text: #7d350c;
+  /* Status pair the vendored CodeBlock's notation contract consumes
+     (diff add/remove washes + gutter markers). Values are the interlace
+     canonical ones (interlace-theme.css): #065f46 is 7.1:1 on white,
+     #991b1b 6.4:1 — AA for the +/- marker text. */
+  --success: #065f46;
+  --success-foreground: #ffffff;
+  --destructive: #991b1b;
+  --destructive-foreground: #ffffff;
+  /* Container width the vendored ui/dialog caps its popup at
+     (`sm:max-w-(--container-prose)`) — the DS foundation.css value.
+     Without it the var() is invalid at computed-value time and the
+     dialog silently loses its desktop width cap. */
+  --container-prose: 65ch;
   /* Decorative-primitive tokens — replace baked-in hex defaults inside
      ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
-  --beam-from: oklch(0.75 0.18 65);
-  --beam-to: oklch(0.55 0.25 295);
+  --beam-from: var(--brand-orange);
+  --beam-to: var(--brand-green);
   /* Meteor trail palette — Nuxt blog-old port. Hex source `#e9d5ff`
      (purple-lavender at ~89% lightness) → oklch(0.89 0.07 308). Fade
      stop is 50% alpha, glow rim is ~31% alpha. */
-  --meteor-trail: oklch(0.89 0.07 308);
-  --meteor-trail-fade: oklch(0.89 0.07 308 / 0.5);
-  --meteor-glow: oklch(0.89 0.07 308 / 0.31);
+  --meteor-trail: oklch(0.89 0.07 45);
+  --meteor-trail-fade: oklch(0.89 0.07 45 / 0.5);
+  --meteor-glow: oklch(0.89 0.07 45 / 0.31);
   --particles-default: oklch(0.985 0 0);
 }
 
@@ -44,30 +101,41 @@
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
+  --input: oklch(0.5 0 0); /* 3.30:1 on --background (was 1.31:1) */
   --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
-  /* AA-safe lift for the indigo brand on a near-black surface. */
-  --brand-snappy: oklch(0.72 0.18 280);
-  --chart-1: oklch(0.72 0.17 264);
-  --chart-2: oklch(0.78 0.18 60);
-  --chart-3: oklch(0.7 0.18 145);
-  --chart-4: oklch(0.7 0.16 320);
-  --chart-5: oklch(0.65 0.18 30);
+  /* On a near-black surface the cover hexes are used verbatim: #f4794a is
+     7.24:1 and #0d9460 is 5.11:1, so a header mark and an article cover on
+     the same dark page are the identical colour. */
+  --brand-orange: oklch(0.71 0.163 40.8); /* #f4794a */
+  --brand-green: oklch(0.589 0.132 159.4); /* #0d9460 */
+  --brand-snappy: var(--brand-orange);
+  /* chart-1/2 and strand-a inherit the brand var()s and re-resolve here. */
+  --strand-b: oklch(0.78 0.1 230);
+  --brand-orange-text: #fbb99a; /* 11.79:1 on near-black (AAA) */
+  /* Status pair, dark values from interlace-theme.css: #34d399 is 8.4:1
+     and #fca5a5 8.0:1 on the near-black card surface. */
+  --success: #34d399;
+  --success-foreground: #052e16;
+  --destructive: #fca5a5;
+  --destructive-foreground: #0a0a0a;
+  --chart-3: oklch(0.72 0.17 264);
+  --chart-4: oklch(0.78 0.18 60);
+  --chart-5: oklch(0.7 0.16 320);
   /* Decorative-primitive tokens — dark-mode tuning. The meteor trail
      reads as the same purple-lavender at ~89% lightness in both themes
      (the Nuxt source did not tint differently per theme); only the glow
      is lifted slightly in dark mode to keep the head visible against
      the cosmic gradient. */
   --beam-from: oklch(0.8 0.18 65);
-  --beam-to: oklch(0.62 0.22 295);
-  --meteor-trail: oklch(0.89 0.07 308);
-  --meteor-trail-fade: oklch(0.89 0.07 308 / 0.5);
-  --meteor-glow: oklch(0.89 0.07 308 / 0.4);
+  --beam-to: var(--brand-green);
+  --meteor-trail: oklch(0.89 0.07 45);
+  --meteor-trail-fade: oklch(0.89 0.07 45 / 0.5);
+  --meteor-glow: oklch(0.89 0.07 45 / 0.4);
   --particles-default: oklch(0.985 0 0);
 }
 
@@ -84,12 +152,63 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-green: var(--brand-green);
   --color-brand-snappy: var(--brand-snappy);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-strand-a: var(--strand-a);
+  --color-strand-b: var(--strand-b);
+  /* DS foundation tokens the vendored code-block + skeleton consume
+     (values from interlace foundation.css — p-md, gap-sm, text-ui-sm,
+     text-code utilities generate from these). */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --text-ui-sm: 0.8125rem;
+  --text-ui-sm--line-height: 1.5;
+  --text-code: 0.875rem;
+  --text-code--line-height: 1.6;
+  /* The draw verb (DS tokens.css `strand-draw`, vendored with the
+     HeroStrand): pathLength=100 normalizes every path onto this one
+     keyframe; 600ms is the doctrine's draw-gesture ceiling. */
+  --animate-strand-draw: strand-draw 600ms ease-out forwards;
+  --color-brand-orange-text: var(--brand-orange-text);
+
+  @keyframes strand-draw {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  /* The draw verb's second mechanism (DS tokens.css `weave-reveal`,
+     vendored with the TimeSeries motion contract, interlace#77): the
+     chart's dash patterns ARE series identity, so the true paths are
+     REVEALED by a clip rect scaling open left→right. From-only
+     keyframe — its resting state is fully revealed, so with no
+     animation at all nothing is ever hidden. */
+  --animate-weave-reveal: weave-reveal 600ms ease-out;
+
+  @keyframes weave-reveal {
+    from {
+      transform: scaleX(0);
+    }
+  }
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-viz-grid: var(--viz-grid);
+  --color-viz-axis: var(--viz-axis);
+  --color-viz-crosshair: var(--viz-crosshair);
+  --color-viz-annotation-publish: var(--viz-annotation-publish);
+  --color-viz-annotation-release: var(--viz-annotation-release);
+  --color-viz-annotation-action: var(--viz-annotation-action);
   --color-beam-from: var(--beam-from);
   --color-beam-to: var(--beam-to);
   --color-meteor-trail: var(--meteor-trail);
@@ -154,13 +273,129 @@ body {
   }
 }
 
+/* SectionIndex numeral: the blog's `--primary` is achromatic, so the
+   vendored primitive's `text-primary` would lose the meaning-point
+   accent. Styled by slot — exactly what data-slot exists for (R6): the
+   vendored source stays byte-identical to canonical. */
+[data-slot="section-index-numeral"] {
+  color: var(--brand-orange-text);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-meteor,
-  .animate-sunny-pulse {
+  .animate-sunny-pulse,
+  /* weave-reveal belongs in THIS list, unlike strand-draw below: its
+     keyframe is from-only, so `animation: none` rests at the fully
+     revealed end state — nothing to clamp, nothing hidden. */
+  .animate-weave-reveal {
     animation: none !important;
+  }
+
+  /* The draw gesture (DS MOTION_PHILOSOPHY's draw-gesture exception)
+     completes instantly instead of vanishing: `animation: none` would
+     hold stroke-dashoffset at 100 — the strand invisible forever —
+     removing information, not motion. 0.01ms + the shorthand's
+     `forwards` fill lands the honest drawn end state. */
+  .animate-strand-draw {
+    animation-duration: 0.01ms !important;
   }
 }
 
 .bg-gradient-radial {
   background-image: radial-gradient(var(--tw-gradient-stops));
+}
+
+
+/* Prose tables must not drag the page sideways. 72 of 78 articles carry one,
+   and a wide table overflowed the document by 53px at 320px — the whole page
+   scrolled horizontally.
+
+   The scroll lives on a WRAPPER (added by rehypeScrollableTables), not on the
+   table. Putting `display:block` on the table itself also works visually, and
+   even keeps the column grid, but WebKit then drops the implicit role="table"
+   from the accessibility tree — VoiceOver loses header associations and table
+   navigation. That is a WCAG 1.3.1 regression traded for a layout fix. */
+.prose-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Shiki dual-theme activation.
+   rehypeShiki is configured with { light: github-light, dark: github-dark },
+   which emits the LIGHT theme as real declarations and the dark one only as
+   custom properties:
+
+     background-color:#fff; color:#24292e;
+     --shiki-dark-bg:#24292e; --shiki-dark:#e1e4e8
+
+   Custom properties do nothing on their own. Without the rule below, every one
+   of the 62 articles with a code block rendered a WHITE code block on a dark
+   page — and its light-theme token colours against white, which is where the
+   3.49:1 the audit kept reporting came from.
+
+   !important is required: Shiki writes the light theme as inline style, which
+   outranks any class.
+
+   Scoped to the DS CodeBlock's pre slot, not `.shiki`: article code now
+   renders through the vendored CodeBlock, which drops Shiki's own <pre>
+   (and its inline light background — the figure's bg-card token owns the
+   box in both themes). Only the per-span token colours remain inline, so
+   only spans need the dark flip. A span without a --shiki-dark-* var
+   leaves that declaration invalid-at-computed-value — harmlessly inert. */
+.dark [data-slot="code-block-pre"] span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+/* Links that are the whole content of a prose table cell are standalone
+   targets, not links inside a sentence, so the WCAG 2.2 SC 2.5.8 inline
+   exception does not cover them. They rendered 18px tall; 24px is the AA
+   minimum. inline-flex keeps them on the cell's text baseline. */
+.prose a.standalone-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 24x24, not 24 tall: SC 2.5.8 sizes BOTH axes, and min-height alone left a
+     short link measuring 8x24. */
+  min-height: 24px;
+  min-width: 24px;
+  /* inline-flex stops the link's text from soft-wrapping, so a long
+     standalone link (the 📦 npm-install lines) sized to its full text
+     and scrolled the whole DOCUMENT 43px sideways at 390px — the exact
+     mobile bug class this repo's contract warns about. Cap the box and
+     let the text break; measured back to zero page overflow on a real
+     390px viewport. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* github-dark's comment colour is #6A737D, which measures 3.05:1 on the theme's
+   own #24292e background — below the 4.5 AA floor for 14px text, and the last
+   contrast failure on the site. #8b949e is 4.77:1 and is GitHub's own
+   dark-mode comment colour, so the theme still reads as itself.
+
+   Targeting the inline custom property is deliberate: Shiki writes
+   `--shiki-dark:#6A737D` per span, so this lifts exactly the comment token and
+   nothing else. The light theme needs no equivalent — its comment measures
+   4.82:1 on white and already passes. */
+.dark [data-slot="code-block-pre"] span[style*="--shiki-dark:#6A737D"] {
+  color: #8b949e !important;
+}
+
+/* github-light's #e36209 (constants, some variables) measures 3.49:1 on white
+   — below the 4.5 AA floor for 14px code text. #bc4c00 is 5.03:1 and stays in
+   the same burnt-orange family GitHub uses for this token class.
+
+   The light theme is written as a real `color` declaration rather than a
+   custom property, so the selector matches that.
+
+   Scoped to :root:not(.dark) deliberately. Unscoped, this !important rule also
+   outranked the dark-theme activation above it — #bc4c00 on #24292e is 2.91:1,
+   so "fixing" light contrast broke dark contrast worse than the original. */
+:root:not(.dark) [data-slot="code-block-pre"] span[style*="color:#E36209"],
+:root:not(.dark) [data-slot="code-block-pre"] span[style*="color:#e36209"] {
+  color: #bc4c00 !important;
 }

@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/composite-benchmark-anatomy.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/25-of-my-benchmark-verdict-is-an-opinion-heres-the-anatomy-294d"
 devto_id: 4183788
 title: "25% of My Benchmark Verdict Is an Opinion. Here's the Anatomy."
@@ -8,6 +8,7 @@ description: "My serverless benchmark prints 0.88 vs 0.3025 — real measurement
 slug: "composite-benchmark-anatomy"
 published: true
 date: 2026-07-19
+published_at: "2026-07-20T04:43:35.363Z"
 tags:
   - "serverless"
   - "devops"

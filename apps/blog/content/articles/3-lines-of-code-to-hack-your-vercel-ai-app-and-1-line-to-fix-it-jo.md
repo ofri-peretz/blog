@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/3-lines-of-code-to-hack-your-vercel-ai-ap
 devto_id: 3137481
 published_at: "2025-12-31T05:51:08Z"
 edited_at: "2026-02-05T05:33:05Z"
-cover_image: "https://ofriperetz.dev/og/cover/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo"
-social_image: "https://ofriperetz.dev/og/article/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/3-lines-of-code-to-hack-your-vercel-ai-app-and-1-line-to-fix-it-jo-og.jpg?v=b2"
 reading_time_minutes: 8
 tags:
   - "ai"

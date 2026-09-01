@@ -1,11 +1,12 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-4-security-domains-dead-heat.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-4-security-domains-dead-heat.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-4-security-domains-dead-heat-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/claude-vs-gemini-4-security-domains-dead-heat.jpg?v=b2"
 title: "Claude vs Gemini Across 4 Security Domains: A Dead Heat — and the Hardening 63% of AI Code Skips"
 description: "Same prompts, both CLIs, scored by the ESLint security plugins I wrote. Gemini tied Claude on JWT and MongoDB, won the NestJS round, and never shipped a high-severity injection bug. The real finding: both frontier models miss the exact same hardening — the negative space static analysis was built for."
 slug: "claude-vs-gemini-4-security-domains-dead-heat"
 published: true
 date: "2026-05-31"
+published_at: "2026-05-31T03:39:06.766Z"
 tags:
   - "ai"
   - "security"

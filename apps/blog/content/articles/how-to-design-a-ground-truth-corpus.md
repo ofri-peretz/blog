@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/how-to-design-a-ground-truth-corpus.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/fixtures-first-rules-second-how-to-design-a-ground-truth-corpus-1g05"
 devto_id: 4183784
 title: "Fixtures First, Rules Second: How to Design a Ground-Truth Corpus"
@@ -8,6 +8,7 @@ description: "Building the 40-fixture corpus behind the Interlace security bench
 slug: "how-to-design-a-ground-truth-corpus"
 published: true
 date: 2026-07-19
+published_at: "2026-07-20T04:43:02.552Z"
 tags:
   - "security"
   - "devsecops"

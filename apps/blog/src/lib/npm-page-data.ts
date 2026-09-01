@@ -11,20 +11,26 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cache } from "react";
-import { getCachedPluginsDailyRaw } from "@/lib/supabase-data";
+import {
+  getCachedNpmAlltimeTotal,
+  getCachedPluginsDailyRaw,
+} from "@/lib/supabase-data";
 
 const TWELVE_HOURS_SECONDS = 12 * 60 * 60;
 
-// Plugins we no longer actively promote. Hardcoded for v1 — a `deprecated`
-// column on the `plugins` table would be the right long-term fix.
-const DEPRECATED = new Set<string>([
-  "eslint-plugin-crypto",
-  // Internal preset — never surface publicly
-  "@interlace/eslint-config",
-  // Serverless ecosystem — not part of the ESLint package page
+// Deprecation is no longer a list here — it's `plugins.deprecated`, set by the
+// ingest from npm itself. What stays is page scope: packages that aren't ESLint
+// plugins and so don't belong on the ESLint package page, whatever their
+// deprecation status. The two questions are independent, which is why the old
+// combined DEPRECATED set went stale every time a package was renamed.
+const OFF_PAGE = new Set<string>([
   "@interlace/serverless-iam-roles-per-function",
   "@interlace/serverless-api-gateway-caching",
   "@interlace/serverless-devkit",
+  // Internal preset, never surfaced publicly. Its row is currently deleted
+  // rather than filtered (agents#122), so nothing reaches this line today —
+  // listed anyway so restoring the row can't quietly put it back on the page.
+  "@interlace/eslint-config",
 ]);
 
 const getClient = cache((): SupabaseClient | null => {
@@ -59,8 +65,12 @@ const getCachedLifetimePerPackage = unstable_cache(
     const out: Record<string, number> = {};
     if (plugins.length === 0) return out;
 
+    // Throws rather than returning {} for the same reason as
+    // getCachedPluginsDailyRaw: a cached failure outlives the deployment.
     const client = getClient();
-    if (!client) return out;
+    if (!client) {
+      throw new Error("[npm-page-data] Supabase env missing");
+    }
 
     const idToName = new Map(plugins.map((p) => [p.pluginId, p.name]));
     const { data, error } = await client
@@ -68,8 +78,7 @@ const getCachedLifetimePerPackage = unstable_cache(
       .select("plugin_id, alltime_total")
       .in("plugin_id", plugins.map((p) => p.pluginId));
     if (error) {
-      console.error("[npm-page-data] npm_alltime_downloads:", error.message);
-      return out;
+      throw new Error(`[npm-page-data] npm_alltime_downloads: ${error.message}`);
     }
 
     for (const row of data ?? []) {
@@ -84,6 +93,18 @@ const getCachedLifetimePerPackage = unstable_cache(
 
 // Composed: per-package data ready to render.
 export async function getNpmPagePackages(): Promise<NpmPagePackage[]> {
+  try {
+    return await loadNpmPagePackages();
+  } catch (err) {
+    // Degrade for THIS request only. The rejected promise above was never
+    // cached, so the next request retries against a healthy Supabase instead
+    // of serving a cached failure for the next twelve hours.
+    console.error("[npm-page-data]", err);
+    return [];
+  }
+}
+
+async function loadNpmPagePackages(): Promise<NpmPagePackage[]> {
   const { plugins, daily: dailyEntries } = await getCachedPluginsDailyRaw();
   const daily = new Map(dailyEntries);
   if (plugins.length === 0) return [];
@@ -93,7 +114,7 @@ export async function getNpmPagePackages(): Promise<NpmPagePackage[]> {
   );
 
   const packages: NpmPagePackage[] = plugins
-    .filter((p) => !DEPRECATED.has(p.name))
+    .filter((p) => !p.deprecated && !OFF_PAGE.has(p.name))
     .map((p) => {
       const dailyData = daily.get(p.id) ?? [];
       const downloads30d = dailyData.reduce((s, d) => s + d.downloads, 0);
@@ -113,4 +134,26 @@ export async function getNpmPagePackages(): Promise<NpmPagePackage[]> {
     .sort((a, b) => b.downloadsLifetime - a.downloadsLifetime);
 
   return packages;
+}
+
+// Site-wide lifetime downloads — the SAME v_npm_alltime_ecosystem read that
+// /api/homepage-stats uses (getCachedNpmAlltimeTotal). /npm used to headline
+// its own sum over the visible packages instead, so the homepage said 422,330
+// while /npm said 405,707: the same words over two different scopes. That is
+// the 155k-vs-192k bug from PR #51 growing back on the other page, so the
+// headline now comes from the one source and the per-card "All time" values
+// stay scoped to the packages actually listed.
+//
+// `fallback` is the subset sum: on a Supabase blip we show a slightly low
+// number rather than 500-ing the page. Not cached here — getCachedNpmAlltimeTotal
+// already owns the 12h/tag:'ratchet' cache, and a rejected promise is not cached.
+export async function getNpmPageLifetimeTotal(
+  fallback: number,
+): Promise<number> {
+  try {
+    return await getCachedNpmAlltimeTotal();
+  } catch (err) {
+    console.error("[npm-page-data] ecosystem lifetime", err);
+    return fallback;
+  }
 }

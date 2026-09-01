@@ -1,0 +1,16 @@
+{
+  "$comment": [
+    "Findings that are known, understood and consciously accepted \u2014 NOT a place",
+    "to silence inconvenient results. A gate that is permanently red gets",
+    "ignored, and then it protects nothing; a gate with an unexplained allowlist",
+    "is the same failure wearing a hat. Every entry states why, and what would",
+    "make it removable.",
+    "",
+    "Anything NOT matched here still fails the build. The audit also reports",
+    "entries that no longer match anything, so the list shrinks as things are",
+    "fixed instead of quietly rotting.",
+    "Every entry MUST declare a ctx (the nearest structural ancestor of the finding). Without one an entry silences a whole route, which is how the first version of this file accidentally hid nearly every tap finding on /articles/.",
+    "EMPTY IS THE GOAL. Both original entries were removed once fixed rather than tolerated: the Shiki contrast entry turned out to be a missing stylesheet, not a theme choice, and the table-cell tap targets were simply undersized. If this list grows again, each entry must justify itself and say what would remove it."
+  ],
+  "accepted": []
+}

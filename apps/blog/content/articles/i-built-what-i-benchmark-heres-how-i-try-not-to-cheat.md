@@ -1,12 +1,13 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat-3k3n"
 title: "I Built What I Benchmark. Here's How I Try Not to Cheat."
 description: "Every benchmark on this site compares my own ESLint plugins to competitors — a real conflict of interest, not a disclaimer I can write my way out of. Here's the actual, checkable process I use instead of asking you to trust my verdict."
 slug: "i-built-what-i-benchmark-heres-how-i-try-not-to-cheat"
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:34:58.250Z"
 tags:
   - "security"
   - "eslint"

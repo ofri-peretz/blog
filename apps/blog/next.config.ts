@@ -1,9 +1,54 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import { withPostHogConfig } from "@posthog/nextjs-config";
 
 const monorepoRoot = path.join(__dirname, "..", "..");
 
+/**
+ * The PostHog PROJECT key, with a committed fallback.
+ *
+ * On 2026-08-02 this site stopped sending client-side analytics entirely — no
+ * $pageview, $autocapture, $pageleave, $web_vitals or visitor_classified for
+ * nine days. Nothing alerted, because server-side `/go/` tracking kept firing
+ * and the property never looked dead.
+ *
+ * The cause was asymmetry, not a code change. `NEXT_PUBLIC_*` is inlined at
+ * BUILD time, so when the key is absent from the build environment the client
+ * provider hits its `!POSTHOG_KEY` branch and never initialises — silently, by
+ * design, because that branch also serves local dev. Meanwhile the `/go/` route
+ * reads env at RUNTIME *and already carried this exact fallback literal*, so it
+ * carried on posting events. One key, two resolution paths, one of them with a
+ * safety net.
+ *
+ * Committing it is not a leak and not a new exposure: a `phc_` project key is
+ * write-only, designed to ship inside the browser bundle of every page, and the
+ * identical literal has been committed in `src/app/go/[...key]/route.ts` all
+ * along. It is NOT the `phx_` personal API key from footprint/.env — that one
+ * can READ the project and must never reach a client bundle.
+ *
+ * Setting NEXT_PUBLIC_POSTHOG_KEY in Vercel still overrides this, which is the
+ * right place for it and what makes rotation work. The fallback exists so a
+ * missing env var costs nothing instead of nine days.
+ */
+const POSTHOG_PROJECT_KEY =
+  process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() ||
+  "phc_vNTTtpj4s6nXGJ5pnnXxHey6WBjHJWnytQ4Zv6HeDTT3";
+
+if (!process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim()) {
+  // Loud at build time. The whole failure was that nothing ever said this.
+  console.warn(
+    "[blog] NEXT_PUBLIC_POSTHOG_KEY is not set in this build environment — " +
+      "falling back to the committed project key. Set it in Vercel so rotation works.",
+  );
+}
+
 const nextConfig: NextConfig = {
+  // Inlined into the client bundle, so the provider's key check passes even
+  // when the build environment forgot to supply one.
+  env: {
+    NEXT_PUBLIC_POSTHOG_KEY: POSTHOG_PROJECT_KEY,
+  },
+
   turbopack: {
     root: monorepoRoot,
   },
@@ -12,28 +57,78 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
 
+  // Same-origin PostHog ingest (ANALYTICS_PHILOSOPHY §9). Ad blockers match on
+  // the `*.i.posthog.com` hostname, not on payload shape, so proxying through
+  // our own origin is what recovers the ~30-40% of visitors they were dropping.
+  // `skipTrailingSlashRedirect` is required: Next would otherwise 308
+  // `/ingest/e/` -> `/ingest/e`, and posthog-js does not follow the redirect.
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return {
+      // `/articles/<slug>.md` — the raw-markdown twin every llms.txt entry
+      // links (served by app/md/[slug]/route.ts). beforeFiles is required:
+      // the `articles/[slug]` PAGE segment happily matches "foo.md" as a
+      // slug, so an afterFiles rewrite would never fire.
+      beforeFiles: [
+        {
+          source: "/articles/:slug.md",
+          destination: "/md/:slug",
+        },
+      ],
+      afterFiles: [
+        // Static assets (the recorder/surveys bundles) come from a different
+        // upstream host than the event API — order matters, this must precede
+        // the catch-all below or `:path*` swallows it.
+        {
+          source: "/ingest/static/:path*",
+          destination: "https://us-assets.i.posthog.com/static/:path*",
+        },
+        {
+          source: "/ingest/:path*",
+          destination: "https://us.i.posthog.com/:path*",
+        },
+      ],
+    };
+  },
+
   // Security headers. All free — they ride on responses Vercel already sends.
   // HSTS is set by Vercel; these are the ones that were missing.
   //
-  // CSP ships as Report-Only on purpose: Next injects inline scripts for
-  // hydration, so an enforcing policy needs nonces and would break the site if
-  // any origin is missed. Report-Only surfaces violations in the console
-  // without blocking. Promote to `Content-Security-Policy` once the reports
-  // come back clean for a few days.
+  // CSP is ENFORCED (2026-08-25). The previous Report-Only policy paired
+  // 'strict-dynamic' with "the per-request nonce Next emits" — but Next only
+  // emits nonces under middleware + dynamic rendering, and this site is
+  // SSG-first on purpose (per-request nonces cannot be baked into static
+  // HTML; a build-constant nonce is discoverable and therefore theater).
+  // Under 'strict-dynamic' with no nonce anywhere, browsers ignore 'self',
+  // so every legitimate chunk was reported as a violation: the policy was
+  // aspirational and could never graduate. An enforceable policy that
+  // matches the architecture beats an unenforceable strict one.
   //
-  // No 'unsafe-eval' and no 'unsafe-inline' on script-src — our own
-  // eslint-plugin-browser-security rightly flags both (CWE-79 / CWE-95): a
-  // policy carrying them buys almost no XSS protection. Next's inline
-  // hydration scripts are covered by 'strict-dynamic' + the per-request nonce
-  // Next emits; browsers that don't grok strict-dynamic fall back to the
-  // host allowlist. style-src keeps 'unsafe-inline' because Tailwind and
-  // next/font inject style attributes with no nonce hook — that is a
-  // materially smaller risk than script injection, and it is the reason this
-  // stays Report-Only until the reports are clean.
+  // The tax: script-src carries 'unsafe-inline' because App Router embeds
+  // per-page flight payloads as inline scripts with no SSG nonce hook —
+  // our own eslint-plugin-browser-security rightly notes this weakens
+  // script-injection protection specifically. The compensating controls
+  // are the rest of the ENFORCED policy: connect-src pins exfiltration to
+  // 'self'+PostHog, object-src none, base-uri self, frame-ancestors none,
+  // form-action self, img/font allowlists. Revisit script-src if Next
+  // ever supports hashes/nonces for static flight payloads.
   async headers() {
+    // Dev-only: webpack's dev runtime evaluates modules with eval-style
+    // devtool, so the enforced policy silently kills hydration on EVERY
+    // `next dev` page — the site renders but nothing is interactive
+    // (found live: a scroll-driven component frozen at its SSR state,
+    // console showing EvalError). Production chunks never use eval, so
+    // the shipped policy is unchanged.
+    // The rule is right for shipped policies; this literal only exists
+    // behind the development guard, and the homepage CSP lock asserts it
+    // can never appear inside the policy array itself.
+    const devEval =
+      // eslint-disable-next-line browser-security/no-unsafe-eval-csp
+      process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'strict-dynamic' https://us-assets.i.posthog.com",
+      // eslint-disable-next-line browser-security/no-unsafe-inline-csp
+      `script-src 'self' 'unsafe-inline'${devEval} https://us-assets.i.posthog.com`,
       // Tailwind and next/font emit inline style attributes with no nonce hook,
       // so this cannot be removed without dropping both. Scoped to styles, never
       // scripts: no script execution is permitted by this directive. Revisit if
@@ -48,6 +143,9 @@ const nextConfig: NextConfig = {
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
+      // Meaningful again now that the policy is enforced (Report-Only
+      // ignored it and Chrome logged a console error for it on every page
+      // — the reason #174 removed it; this branch is that graduation).
       "upgrade-insecure-requests",
     ].join("; ");
 
@@ -76,7 +174,7 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
-          { key: "Content-Security-Policy-Report-Only", value: csp },
+          { key: "Content-Security-Policy", value: csp },
         ],
       },
     ];
@@ -84,6 +182,22 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31_536_000,
+    // Covers now reach <Image> as paths (see src/lib/cover.ts), and they carry
+    // a `?v=` cache-buster. Next 16 rejects a LOCAL image with a query string
+    // unless localPatterns says otherwise — the build fails outright with
+    // "using a query string which is not configured in images.localPatterns".
+    //
+    // `search` is omitted deliberately, and that is the whole point of this
+    // entry: Next's matcher only compares `search` when the pattern defines it
+    // (matchLocalPattern short-circuits on `pattern.search !== undefined`), so
+    // leaving it out is the only way to accept an arbitrary `?v=`. Pinning
+    // `search: "?v=b2"` would work today and break silently the next time a
+    // cover is re-rendered and versioned.
+    //
+    // `/**` keeps the previous behaviour for every other local image: with no
+    // localPatterns at all Next allows them unconditionally, so anything
+    // narrower here would start rejecting the avatar and icons.
+    localPatterns: [{ pathname: "/**" }],
     // Article covers come from three places: self-hosted under /cdn (relative,
     // needs no entry), Dev.to's CDN proxy, and Dev.to's S3 bucket for covers
     // uploaded through their editor. Without these, <Image> throws on ~25 posts.
@@ -115,6 +229,23 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Retired Satori OG routes (a drifted second implementation of the
+      // brand — no mark, hand-drawn card). The authored covers under
+      // /cdn/blog-cover-image/ are canonical: <slug>.jpg is the 1000x420
+      // dev.to ratio (/og/cover's job), <slug>-og.jpg the 1200x630 social
+      // ratio (/og/article's job). Every published slug has both files, so
+      // external caches and social scrapers holding old URLs land on the
+      // real cover instead of a 404.
+      {
+        source: "/og/cover/:slug",
+        destination: "/cdn/blog-cover-image/:slug.jpg",
+        permanent: true,
+      },
+      {
+        source: "/og/article/:slug",
+        destination: "/cdn/blog-cover-image/:slug-og.jpg",
+        permanent: true,
+      },
       // Legacy Nuxt route — the Projects section now lives on the homepage.
       // Preserve the URL for inbound links and bookmarks.
       { source: "/projects", destination: "/#projects", permanent: true },
@@ -217,4 +348,26 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Source maps for PostHog Error Tracking — generated, uploaded, then deleted.
+ *
+ * `deleteAfterUpload` is the load-bearing option, not a default we inherit:
+ * the .map files are produced inside the build, handed to PostHog, and removed
+ * from the output before anything is served. Symbolication lives in PostHog,
+ * behind auth; the deployment ships the same minified bundle it always did.
+ *
+ * Inert unless both env vars are set, so local builds and forks stay
+ * byte-identical to today and no build can fail for want of a token.
+ */
+function withSourcemapUpload(config: NextConfig): NextConfig {
+  const personalApiKey = process.env.POSTHOG_PERSONAL_API_KEY?.trim();
+  const projectId = process.env.POSTHOG_PROJECT_ID?.trim();
+  if (!personalApiKey || !projectId) return config;
+  return withPostHogConfig(config, {
+    personalApiKey,
+    projectId,
+    sourcemaps: { enabled: true, deleteAfterUpload: true },
+  });
+}
+
+export default withSourcemapUpload(nextConfig);

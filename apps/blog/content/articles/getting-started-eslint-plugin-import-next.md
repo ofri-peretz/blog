@@ -1,11 +1,12 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-import-next.png"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-with-eslint-plugin-import-next.png"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-import-next-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/getting-started-eslint-plugin-import-next.jpg?v=b2"
 title: "no-cycle Is Commented Out in Your ESLint Config. Here Is the Two-Minute Swap That Turns It Back On."
 description: "Install and configure eslint-plugin-import-next v2.3.8 — the drop-in replacement for eslint-plugin-import. Flat-config setup, the real terminal output, TypeScript path aliases with no resolver package, the zero-diff migration that keeps every import/* rule name working, all 12 presets, and the version-stamped benchmark (54.8x on no-cycle at 5,000 files, measured 2026-01-02) plus the command to re-run it yourself."
 slug: "getting-started-eslint-plugin-import-next"
 published: true
 date: "2026-01-02"
+published_at: "2026-01-02T14:42:42.088Z"
 tags:
   - "eslint"
   - "javascript"

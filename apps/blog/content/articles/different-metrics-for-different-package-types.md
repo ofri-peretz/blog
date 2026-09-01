@@ -1,12 +1,13 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for-different-package-types.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for-different-package-types.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for-different-package-types-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for-different-package-types.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/i-maintain-23-benchmark-suites-across-my-own-packages-only-1-of-the-serverless-ones-has-real-54fp"
 title: "I Maintain 23 Benchmark Suites Across My Own Packages. Only 1 of the Serverless Ones Has Real Numbers Yet."
 description: "eslint-plugin-jwt gets scored on precision and recall against a labeled vulnerability corpus. My serverless caching plugin doesn't — and 3 of its 4 benchmark suites aren't built yet. Here's why that gap is honest, not an inconsistency."
 slug: "different-metrics-for-different-package-types"
 published: true
 date: 2026-07-17
+published_at: "2026-07-18T23:34:39.658Z"
 tags:
   - "security"
   - "devsecops"

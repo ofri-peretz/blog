@@ -4,8 +4,11 @@ devto_id: 4182379
 title: "Reproducibility vs Replicability: Why Benchmark Numbers Need Both"
 description: "A result is reproducible when the same team runs it twice and gets the same number. It is replicable when an independent team runs it and gets the same number. Most published results clear the first bar; far fewer clear the second — and that gap is where trustworthy numbers quietly break."
 slug: "reproducibility-vs-replicability"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/reproducibility-vs-replicability-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/reproducibility-vs-replicability.jpg?v=b2"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:40:53.546Z"
 tags:
   - "security"
   - "devsecops"

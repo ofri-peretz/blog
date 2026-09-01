@@ -1,11 +1,12 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/math-random-api-keys.jpg"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/math-random-api-keys.jpg"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/math-random-api-keys-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/math-random-api-keys.jpg?v=b2"
 title: "Math.random() Is Not Secure. I Found It Generating API Keys in a 44K-Star Repo."
 description: "Math.random() is a PRNG, not a CSPRNG — its outputs are predictable once an attacker recovers the internal state. I found this pattern in a 44K-star open-source codebase generating integration API keys. Here is the attack class, the ESLint rule that catches it, and the one-line fix."
 slug: "math-random-api-keys"
 published: true
 date: "2026-05-30"
+published_at: "2026-05-30T05:05:10.699Z"
 tags:
   - "security"
   - "javascript"

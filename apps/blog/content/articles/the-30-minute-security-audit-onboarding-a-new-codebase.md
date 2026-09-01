@@ -8,8 +8,8 @@ devto_url: "https://dev.to/ofri-peretz/the-30-minute-security-audit-onboarding-a
 devto_id: 3137550
 published_at: "2025-12-31T06:31:46Z"
 edited_at: "2026-02-05T05:33:15Z"
-cover_image: "https://ofriperetz.dev/og/cover/the-30-minute-security-audit-onboarding-a-new-codebase"
-social_image: "https://ofriperetz.dev/og/article/the-30-minute-security-audit-onboarding-a-new-codebase"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-30-minute-security-audit-onboarding-a-new-codebase.jpg?v=b2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/the-30-minute-security-audit-onboarding-a-new-codebase-og.jpg?v=b2"
 reading_time_minutes: 8
 tags:
   - "security"

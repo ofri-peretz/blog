@@ -1,6 +1,6 @@
 ---
-social_image: "https://ofriperetz.dev/cdn/blog-cover-image/cwe-taxonomy-explained.jpg?v=2"
-cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/cwe-taxonomy-explained.jpg?v=2"
+social_image: "https://ofriperetz.dev/cdn/blog-cover-image/cwe-taxonomy-explained-og.jpg?v=b2"
+cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/cwe-taxonomy-explained.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/the-cwe-taxonomy-explained-a-name-is-not-a-verdict-bpl"
 devto_id: 4182372
 title: "The CWE Taxonomy, Explained: A Name Is Not a Verdict"
@@ -8,6 +8,7 @@ description: "CWE-89 means SQL injection. That's a name, not a verdict. What the
 slug: "cwe-taxonomy-explained"
 published: true
 date: 2026-07-17
+published_at: "2026-07-19T23:39:21.275Z"
 tags:
   - "security"
   - "devsecops"
