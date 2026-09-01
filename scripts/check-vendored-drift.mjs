@@ -126,7 +126,9 @@ function normalizeVendored(src, canonical) {
 
 // A fetch failure must not hide drift in the REMAINING files (review):
 // accumulate both, keep comparing, and report everything at the end.
-const drifted = [];
+// A Set: a file can fail BOTH checks below (content drift and an unapplied
+// delta), and listing the same path twice reads like two problems. (Review.)
+const drifted = new Set();
 const failed = [];
 for (const [vendored, canonical] of Object.entries(VENDORED)) {
   // Read ONCE: normalizeVendored consumes the vendored source, and the
@@ -141,7 +143,7 @@ for (const [vendored, canonical] of Object.entries(VENDORED)) {
     continue;
   }
   const remote = await res.text();
-  if (local.trim() !== remote.trim()) drifted.push(vendored);
+  if (local.trim() !== remote.trim()) drifted.add(vendored);
 
   // A local delta that was never APPLIED reverses to a no-op, so the file
   // matches canonical and reports in sync while being broken. That happened
@@ -151,12 +153,12 @@ for (const [vendored, canonical] of Object.entries(VENDORED)) {
   // reversing it produced a match.
   if (remote.includes("from '../lib/cn.js'") && !raw.includes('from "@/lib/utils"')) {
     console.error(`DELTA NOT APPLIED: ${vendored} still imports cn from the canonical path`);
-    drifted.push(vendored);
+    drifted.add(vendored);
   }
 }
 
-if (drifted.length > 0) {
-  console.log(drifted.join("\n"));
+if (drifted.size > 0) {
+  console.log([...drifted].join("\n"));
   process.exit(1); // drift outranks fetch trouble — it is actionable now
 }
 if (failed.length > 0) process.exit(2);
