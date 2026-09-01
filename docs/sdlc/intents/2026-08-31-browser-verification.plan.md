@@ -80,9 +80,12 @@ two half-maintained e2e setups.
   problem** — which still leaves the newsletter form unproven until step 3
   runs. Do not stop at step 1 feeling reassured; the point is the proof, not
   the diagnosis.
-- The journey audit runs against a dev server with on-demand compilation, which
-  already caused three timeout failures today. The route-warming fix applies
-  here too — warm before measuring.
+- The journey audit shares a job with a flaky navigation. That job runs
+  `next start` (a production build), and its `code block` journey has timed out
+  five times on `page.goto(..., { waitUntil: "load" })` — `load` waits for every
+  subresource, so one hanging request sinks it. Fixed separately in PR #224 by
+  waiting for `domcontentloaded` and letting the element wait be the real gate.
+  A new journey should use the same pattern rather than `load`.
 - A test-mode seam in the subscribe action is a new code path that production
   does not exercise. If it is added, it must be impossible to enable in a real
   deployment.

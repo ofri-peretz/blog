@@ -48,9 +48,31 @@ page can serve correct HTML and be inert.
 
 ## How we will know it worked
 
-- **Binary:** a real browser fills the newsletter form, submits it, and a row
-  appears in the table — the exact flow that has never been run.
-- **Binary:** the same loop is repeatable locally on demand, not only in CI.
+Two different proofs, because they are not the same claim — review caught the
+intent and the plan disagreeing here, and the distinction is the whole point of
+this week:
+
+- **One-time, end-to-end:** a real browser fills the form, submits it, and a
+  **row appears in the table**. This proves the write path *through the UI*.
+- **Repeatable, in CI:** the journey asserts the **rendered success state**.
+  This proves the page responded, and it is deliberately weaker — the write
+  could fail and this would still pass. It is paired with the direct coverage
+  the action already has, and it does not write to the production table.
+
+Stating only the second would be the exact failure this week keeps producing: a
+check that reports healthy about something it never verified.
+
+**RESOLVED 2026-08-31.** The one-time proof is done, against production: a real
+Chrome filled the live form, submitted it, rendered "Thanks — you're on the
+list.", and the row landed with consent and the correct source article. Probe
+row deleted. **The form works** — the intent's hard branch (a form that
+hydrates nowhere would be a production bug outranking everything) does not
+apply.
+
+One correction that came with it: the pane reported `hydrated: false` *and the
+submit still worked*, because React hydrates asynchronously and the snapshot
+was taken too early. The earlier "it never hydrates" conclusion was partly a
+measurement-timing error of mine, not purely a broken pane.
 
 ## Not doing
 
