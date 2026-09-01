@@ -88,6 +88,31 @@ describe("the copy receipt", () => {
     expect(track).toHaveBeenCalledExactlyOnceWith("article:code_copy_click", {
       slug: "pool-article",
       language: "ts",
+      // A regular snippet is not a conversion — the dimension is null.
+      package: null,
+    });
+  });
+
+  it("an install-command copy carries the package — THE configure-intent signal", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+
+    const { container, findByText } = render(
+      <ArticleCodeBlock slug="getting-started">
+        <code className="language-bash">
+          {"npm install --save-dev eslint-plugin-node-security"}
+        </code>
+      </ArticleCodeBlock>,
+    );
+    await act(async () => {
+      fireEvent.click(container.querySelector('[data-slot="code-block-copy"]')!);
+    });
+
+    await findByText("Copied!");
+    expect(track).toHaveBeenCalledExactlyOnceWith("article:code_copy_click", {
+      slug: "getting-started",
+      language: "bash",
+      package: "eslint-plugin-node-security",
     });
   });
 
@@ -106,10 +131,11 @@ describe("the copy receipt", () => {
 
   it("ArticleCodeBlock fires article:code_copy_click from the onCopied seam", () => {
     const SRC = read("components/article-code-block.tsx");
-    expect(SRC).toContain("onCopied={()");
-    expect(SRC).toContain(
-      'track("article:code_copy_click", { slug, language: language ?? null })',
-    );
+    // The seam hands over the copied TEXT — that is what makes the
+    // install dimension possible without touching the DS component.
+    expect(SRC).toContain("onCopied={(text)");
+    expect(SRC).toContain('track("article:code_copy_click"');
+    expect(SRC).toContain("package: installedPackage(text)");
   });
 });
 

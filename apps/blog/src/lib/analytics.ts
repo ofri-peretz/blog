@@ -67,7 +67,26 @@ export type BlogEvent =
    */
   | {
       name: "article:code_copy_click";
-      props: { slug: string; language: string | null };
+      props: {
+        slug: string;
+        language: string | null;
+        /**
+         * Our package named by an install-shaped copy (install-detect),
+         * or null for a regular snippet. THE Discover→Configure
+         * conversion dimension: `npm install eslint-plugin-x` copied is
+         * the strongest configure-intent signal an article can produce.
+         */
+        package: string | null;
+      };
+    }
+  /**
+   * How far readers actually get — `half` at 50% of the body, `full`
+   * at the end. Once per milestone per view (reading-depth.tsx); the
+   * read-completion half of the reading funnel.
+   */
+  | {
+      name: "article:read_depth";
+      props: { slug: string; milestone: "half" | "full" };
     }
   /** Do weekly-re-earned numbers pull readers into the full public run? */
   | { name: "article:bench_receipt_click"; props: { slug: string } }
@@ -108,7 +127,21 @@ export type BlogEvent =
    * the instrument. This is the discovery signal the guided-walk wave
    * is gated on.
    */
-  | { name: "loom:embed_open"; props: { slug: string; series: string } };
+  | { name: "loom:embed_open"; props: { slug: string; series: string } }
+  /**
+   * The playground gate was clicked — a reader chose to load the
+   * in-browser linter. Cost-aware by design: the bundle is behind this
+   * click, so open-rate is also the honest denominator for edits.
+   */
+  | { name: "article:playground_open"; props: { slug: string } }
+  /**
+   * The reader EDITED the playground code (first post-mount lint) —
+   * the engagement the flagship exists to create. Once per view.
+   */
+  | { name: "article:playground_edit"; props: { slug: string } }
+  // Newsletter capture. Fires on a SETTLED success, never on submit — a
+  // rejected submission is not a subscriber.
+  | { name: "newsletter:subscribe"; props: { slug: string } };
 
 /** Props type for one event name — keeps name/props correlated at call sites. */
 export type EventProps<N extends BlogEvent["name"]> = Extract<

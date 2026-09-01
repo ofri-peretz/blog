@@ -31,7 +31,9 @@ import {
   deriveDefault,
   pickDestination,
   refererToOrigin,
+  POSTHOG_INGEST_FALLBACK,
   resolveGoDestination,
+  resolveIngestHost,
   type ShortLinkRow,
 } from "../app/go/resolver";
 
@@ -711,5 +713,56 @@ describe("buildClickEventBody — distinct_id", () => {
 
   it("falls back to the synthetic id when no anonymous id is given", () => {
     expect(buildClickEventBody(props, null).distinct_id).toBe(SERVER_FALLBACK_ID);
+  });
+});
+
+describe("resolveIngestHost — the guard that ended the 20-day outage", () => {
+  // short_link_click recorded nothing from 2026-08-10 onward while /go/ kept
+  // returning correct 302s. A hand-rolled POST with the same key and payload
+  // landed fine, which put the fault inside the function: the route read
+  // NEXT_PUBLIC_POSTHOG_HOST raw, and that variable's correct value for the
+  // BROWSER is the relative "/ingest" after same-origin ingest shipped on
+  // 2026-08-09 — the exact day the events stopped.
+  it("rejects the relative value that caused the outage", () => {
+    expect(resolveIngestHost("/ingest")).toBe(POSTHOG_INGEST_FALLBACK);
+  });
+
+  it("treats unset, empty, and whitespace as unset", () => {
+    expect(resolveIngestHost(undefined)).toBe(POSTHOG_INGEST_FALLBACK);
+    expect(resolveIngestHost(null)).toBe(POSTHOG_INGEST_FALLBACK);
+    expect(resolveIngestHost("")).toBe(POSTHOG_INGEST_FALLBACK);
+    expect(resolveIngestHost("   ")).toBe(POSTHOG_INGEST_FALLBACK);
+  });
+
+  it("passes an absolute origin through, either scheme", () => {
+    expect(resolveIngestHost("https://eu.i.posthog.com")).toBe(
+      "https://eu.i.posthog.com",
+    );
+    /* eslint-disable browser-security/detect-mixed-content --
+     * Our own rule, and a true positive in browser code: an http:// asset on
+     * an https:// page IS mixed content. This is a SERVER-side ingest origin
+     * — no page, no browser, no mixed-content context — and http://localhost
+     * is the legitimate shape for a self-hosted PostHog in local dev, which
+     * is precisely the branch being asserted. Narrowing the guard to https
+     * would break that case to satisfy a rule that does not apply here. */
+    expect(resolveIngestHost("http://localhost:8000")).toBe(
+      "http://localhost:8000",
+    );
+    /* eslint-enable browser-security/detect-mixed-content */
+  });
+
+  it("strips a trailing slash, which would post to //i/v0/e/", () => {
+    expect(resolveIngestHost("https://eu.i.posthog.com/")).toBe(
+      "https://eu.i.posthog.com",
+    );
+    expect(resolveIngestHost("https://eu.i.posthog.com///")).toBe(
+      "https://eu.i.posthog.com",
+    );
+  });
+
+  it("refuses a protocol-relative host — Node cannot fetch it either", () => {
+    expect(resolveIngestHost("//eu.i.posthog.com")).toBe(
+      POSTHOG_INGEST_FALLBACK,
+    );
   });
 });

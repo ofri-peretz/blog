@@ -15,7 +15,16 @@
 const RAW =
   "https://raw.githubusercontent.com/ofri-peretz/interlace/main/packages/ui/src";
 
-/** vendored path (under apps/blog/src) → canonical path (under ui/src). */
+/**
+ * vendored path (under apps/blog/src) → canonical path (under ui/src).
+ *
+ * NOT tracked: components/ui/typography.tsx. Its canonical file opens with a
+ * run of `//` header comments, and normalizeVendored skips every contiguous
+ * `//` line after the provenance marker — so reversing the recipe would eat
+ * the canonical header and report permanent false drift. Watching it needs a
+ * provenance delimiter the stripper can bound, which is a change to the
+ * recipe for all 24 files and does not belong in a newsletter PR.
+ */
 const VENDORED = {
   "components/ui/timeline-map.tsx": "patterns/timeline-map.tsx",
   "components/ui/reading-strand.tsx": "primitives/reading-strand.tsx",
@@ -24,6 +33,8 @@ const VENDORED = {
   "components/ui/dialog.tsx": "primitives/dialog.tsx",
   "components/ui/command-palette.tsx": "primitives/command-palette.tsx",
   "components/ui/code-block.tsx": "primitives/code-block.tsx",
+  "components/ui/code-editor.tsx": "primitives/code-editor.tsx",
+  "components/ui/lint-playground.tsx": "patterns/lint-playground.tsx",
   "components/ui/skeleton.tsx": "primitives/skeleton.tsx",
   "components/ui/skeleton-variants.ts": "primitives/skeleton-variants.ts",
   "components/ui/time-series.tsx": "charts/time-series.tsx",
@@ -33,6 +44,12 @@ const VENDORED = {
   "components/ui/data-state.tsx": "primitives/data-state.tsx",
   "components/ui/data-state-model.ts": "primitives/data-state-model.ts",
   "components/ui/toggle.tsx": "primitives/toggle.tsx",
+  "components/ui/button.tsx": "primitives/button.tsx",
+  "components/ui/checkbox.tsx": "primitives/checkbox.tsx",
+  "components/ui/form.tsx": "primitives/form.tsx",
+  "components/ui/input.tsx": "primitives/input.tsx",
+  "components/ui/stack.tsx": "primitives/stack.tsx",
+  "components/ui/newsletter-form.tsx": "patterns/newsletter-form.tsx",
 };
 
 import { readFileSync } from "node:fs";
@@ -92,12 +109,24 @@ function normalizeVendored(src, canonical) {
       .replaceAll("} from './time-series';", "} from '../charts/time-series.js';");
   }
   if (canonical.startsWith("patterns/")) {
-    return joined.replaceAll(
-      "} from './toggle';",
-      "} from '../primitives/toggle.js';",
-    );
+    // newsletter-form reaches into primitives for its whole composition;
+    // the flat vendored dir collapsed those to './x', so put them back.
+    return joined
+      .replaceAll("} from './button';", "} from '../primitives/button.js';")
+      .replaceAll("} from './checkbox';", "} from '../primitives/checkbox.js';")
+      .replaceAll("} from './form';", "} from '../primitives/form.js';")
+      .replaceAll("} from './input';", "} from '../primitives/input.js';")
+      .replaceAll("} from './stack';", "} from '../primitives/stack.js';")
+      .replaceAll("} from './typography';", "} from '../primitives/typography.js';")
+      .replaceAll("} from './skeleton';", "} from '../primitives/skeleton.js';")
+      .replaceAll("} from './toggle';", "} from '../primitives/toggle.js';")
+      .replaceAll(
+        "} from './code-editor';",
+        "} from '../primitives/code-editor.js';",
+      );
   }
   return joined
+    .replaceAll("} from './button-variants';", "} from './button-variants.js';")
     .replaceAll("} from './dialog';", "} from './dialog.js';")
     .replaceAll("} from './skeleton';", "} from './skeleton.js';")
     .replaceAll("} from './skeleton-variants';", "} from './skeleton-variants.js';")

@@ -27,6 +27,13 @@ const PAGER = read("components/series-nav.tsx");
 const ARTICLE = read("app/articles/[slug]/page.tsx");
 
 const FROZEN_EVENTS = [
+  // newsletter:subscribe is frozen here, but its FIRING assertion lives in
+  // newsletter-capture-lock.test.ts — the surface owns a settled-success
+  // condition (fire on state "ok", once per mount) that does not fit the
+  // uniform "each surface fires its event" shape below. (Review asked for
+  // this pointer; the next person following the pattern should not have to
+  // grep for it.)
+  "newsletter:subscribe",
   "corpus_map:dot_click",
   "series:pager_click",
   "article:playground_cta_click",
@@ -36,6 +43,7 @@ const FROZEN_EVENTS = [
   "quick_open:palette_view",
   "quick_open:result_click",
   "article:code_copy_click",
+  "article:read_depth",
   "article:bench_receipt_click",
   "series:resume_click",
   "loom:weave_change",
@@ -43,6 +51,8 @@ const FROZEN_EVENTS = [
   "loom:permalink_copy",
   "loom:export",
   "loom:embed_open",
+  "article:playground_open",
+  "article:playground_edit",
 ] as const;
 
 describe("typed event names are frozen", () => {
@@ -128,6 +138,22 @@ describe("each surface fires its event", () => {
     expect(LOOM).toMatch(
       /await navigator\.clipboard\.writeText[\s\S]{0,200}track\("loom:permalink_copy"/,
     );
+  });
+
+  it("read depth fires once per milestone from a passive, self-removing listener", () => {
+    const DEPTH = read("components/reading-depth.tsx");
+    expect(DEPTH).toContain('track("article:read_depth"');
+    // Once per milestone — the fired set is the guard.
+    expect(DEPTH).toMatch(/fired\.has\(milestone\)/);
+    // Passive + rAF-throttled: reading measurement must never cost
+    // scroll performance.
+    expect(DEPTH).toContain("{ passive: true }");
+    expect(DEPTH).toContain("requestAnimationFrame");
+    // Both milestones exist, and the page renders the component.
+    expect(DEPTH).toContain('mark("half")');
+    expect(DEPTH).toContain('mark("full")');
+    const PAGE = read("app/articles/[slug]/page.tsx");
+    expect(PAGE).toContain("<ReadingDepth slug={slug} />");
   });
 
   it("loom export fires only after the download was actually handed over", () => {

@@ -358,3 +358,30 @@ export function buildClickEventBody(
     timestamp,
   };
 }
+
+/**
+ * The ingest origin the SERVER posts events to.
+ *
+ * `NEXT_PUBLIC_POSTHOG_HOST` is a *browser* variable. Since PR #141 shipped
+ * same-origin ingest, its correct value for the client is the relative path
+ * `/ingest` — which a server route cannot use: `fetch("/ingest/i/v0/e/")`
+ * throws `Failed to parse URL`, the catch writes a console.warn, and the
+ * redirect still returns 302. That is exactly how `short_link_click` went
+ * dark on 2026-08-09 and stayed dark for twenty days without a single
+ * visible symptom.
+ *
+ * So the server requires an ABSOLUTE origin and treats anything else as
+ * unset. Absolutising to our own deployment instead was rejected: it would
+ * make every redirect call back through the same deployment for no benefit
+ * (the proxy exists to dodge ad blockers, and none run server-side).
+ */
+export const POSTHOG_INGEST_FALLBACK = "https://us.i.posthog.com";
+
+export function resolveIngestHost(configured?: string | null): string {
+  const value = configured?.trim();
+  if (!value) return POSTHOG_INGEST_FALLBACK;
+  // Only an absolute http(s) origin is usable from a server runtime.
+  if (!/^https?:\/\//i.test(value)) return POSTHOG_INGEST_FALLBACK;
+  // Trailing slash would produce `//i/v0/e/`, which PostHog 404s.
+  return value.replace(/\/+$/, "");
+}
