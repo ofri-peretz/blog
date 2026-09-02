@@ -66,10 +66,18 @@ them in would let a content change land unread.
 1. Add the auto-merge step to **all three** refresh workflows, scoped to the
    PR each one just opened: `plugin-stats-refresh.yml`,
    `loom-embeds-refresh.yml`, and `bench-receipts-refresh.yml`. The first
-   draft said "both" and named two — which would have left
-   `bench-receipts-refresh` on the same 0% delivery rate this whole intent
-   exists to fix, and it opens PRs by the identical `gh pr create` path.
-   (Review.)
+   draft said "both" and named two.
+
+   Be precise about WHY bench-receipts is in scope, because an earlier
+   revision of this line got it wrong and the ground truth above contradicts
+   it: bench-receipts does **not** reach `gh pr create` today — it ran on
+   2026-08-31 and opened nothing — so auto-merge will not fire for it now.
+   It is included for forward-compatibility: once that upstream failure is
+   diagnosed it reaches the same step, and wiring it here is cheaper than a
+   separate PR later. Anyone implementing step 1 should expect no behaviour
+   change from the bench-receipts edit. (Review, eight cycles — the
+   contradiction was mine, introduced when the bench-receipts finding was
+   added to the ground truth without updating this rationale.)
 2. Merge the two PRs already open (#214, #215) by hand — they are the backlog,
    not the test.
 3. Handle the **already-open** case, which step 1 alone does not. All three
