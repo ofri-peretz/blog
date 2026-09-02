@@ -232,8 +232,8 @@ to conflict, and together they cover both axes:
 import sonarjs from "eslint-plugin-sonarjs";
 import { configs as secureCoding } from "eslint-plugin-secure-coding";
 import { configs as nodeSecurity } from "eslint-plugin-node-security";
-import { configs as pg } from "eslint-plugin-pg";
-import { configs as jwt } from "eslint-plugin-jwt";
+import { configs as pg } from "eslint-plugin-postgresql-security";
+import { configs as jwt } from "eslint-plugin-jwt-security";
 import { configs as mongodbSecurity } from "eslint-plugin-mongodb-security";
 import { configs as browserSecurity } from "eslint-plugin-browser-security";
 
@@ -250,7 +250,7 @@ export default [
 
 ```bash
 npm i -D eslint-plugin-sonarjs eslint-plugin-secure-coding \
-  eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt \
+  eslint-plugin-node-security eslint-plugin-postgresql-security eslint-plugin-jwt-security \
   eslint-plugin-mongodb-security eslint-plugin-browser-security
 ```
 
@@ -271,14 +271,14 @@ which carries a `plugins.sonarjs` and a `plugins.interlace` block side by side.
 The versions pinned for each run:
 `eslint-plugin-sonarjs@3.0.6` (269 rules) for the SonarJS run;
 `eslint-plugin-secure-coding@3.0.2`, `eslint-plugin-node-security@4.2.0`,
-`eslint-plugin-pg@1.4.3`, `eslint-plugin-jwt@2.2.3`,
+`eslint-plugin-postgresql-security@1.4.3`, `eslint-plugin-jwt-security@2.2.3`,
 `eslint-plugin-mongodb-security@8.2.3`, `eslint-plugin-browser-security@1.2.3`
 for the Interlace run.
 
 ```bash
 npm i -D eslint-plugin-sonarjs@3.0.6 eslint-plugin-secure-coding@3.0.2 \
-  eslint-plugin-node-security@4.2.0 eslint-plugin-pg@1.4.3 \
-  eslint-plugin-jwt@2.2.3 eslint-plugin-mongodb-security@8.2.3 \
+  eslint-plugin-node-security@4.2.0 eslint-plugin-postgresql-security@1.4.3 \
+  eslint-plugin-jwt-security@2.2.3 eslint-plugin-mongodb-security@8.2.3 \
   eslint-plugin-browser-security@1.2.3
 npx eslint --config eslint.config.sonarjs.mjs test-files/vulnerable.js --format json
 npx eslint --config eslint.config.interlace.mjs test-files/vulnerable.js --format json
@@ -339,7 +339,7 @@ Next in the series: [I Benchmarked 17 ESLint Security Plugins. Only One Found Ev
 
 ## Links
 
-- 📦 [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
+- 📦 [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-postgresql-security) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
 - 📦 [eslint-plugin-sonarjs](https://www.npmjs.com/package/eslint-plugin-sonarjs) — the quality half
 - 📖 [Full rule docs](https://eslint.interlace.tools)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint)

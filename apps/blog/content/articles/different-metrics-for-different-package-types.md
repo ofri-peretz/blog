@@ -3,7 +3,7 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/different-metrics-for-different-package-types.jpg?v=b2"
 devto_url: "https://dev.to/ofri-peretz/i-maintain-23-benchmark-suites-across-my-own-packages-only-1-of-the-serverless-ones-has-real-54fp"
 title: "I Maintain 23 Benchmark Suites Across My Own Packages. Only 1 of the Serverless Ones Has Real Numbers Yet."
-description: "eslint-plugin-jwt gets scored on precision and recall against a labeled vulnerability corpus. My serverless caching plugin doesn't — and 3 of its 4 benchmark suites aren't built yet. Here's why that gap is honest, not an inconsistency."
+description: "eslint-plugin-jwt-security gets scored on precision and recall against a labeled vulnerability corpus. My serverless caching plugin doesn't — and 3 of its 4 benchmark suites aren't built yet. Here's why that gap is honest, not an inconsistency."
 slug: "different-metrics-for-different-package-types"
 published: true
 date: 2026-07-17
@@ -27,7 +27,7 @@ Five days earlier, an audit of my own ESLint plugins found 140 files still calli
 
 A version-compatibility fixture caught mine before a user did. A blended "code quality score" never would have. A passing quality score and a runtime crash on `npm install` are two different failures, and no single number covers both — that's the argument this article makes, section by section.
 
-Here's the less flattering half of the same honesty: `eslint-plugin-jwt` gets scored on [precision, recall, and F1](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) against a labeled vulnerability corpus, with real numbers behind every claim. My serverless plugins run four benchmark suites; only one, `api-gateway-caching`, has real numbers behind it — the other three are still empty skeletons. Until an hour before this paragraph was finished, the draft claimed that one working suite was itself only 4-of-7 finished. It wasn't — the run had completed weeks earlier and the article hadn't caught up. Catching your own stale number inside an article about not publishing stale numbers is either a credibility problem or exactly what credibility is made of. I'm betting on the second one.
+Here's the less flattering half of the same honesty: `eslint-plugin-jwt-security` gets scored on [precision, recall, and F1](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) against a labeled vulnerability corpus, with real numbers behind every claim. My serverless plugins run four benchmark suites; only one, `api-gateway-caching`, has real numbers behind it — the other three are still empty skeletons. Until an hour before this paragraph was finished, the draft claimed that one working suite was itself only 4-of-7 finished. It wasn't — the run had completed weeks earlier and the article hadn't caught up. Catching your own stale number inside an article about not publishing stale numbers is either a credibility problem or exactly what credibility is made of. I'm betting on the second one.
 
 If your README claims "supports version X, Y, Z," run the test suite against each version in a matrix — don't read the changelog and assume. `--no-eslintrc` is an ESLint 8 flag; ESLint 9+ throws a fatal `Unknown option: '--no-eslintrc'` — the flag you want is `--no-config-lookup`. `eslint-plugin-security` has a 35.5% F1 score and still crashes on ESLint 9 flat config. No precision or recall number reports that. Only running it does.
 

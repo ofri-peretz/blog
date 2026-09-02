@@ -221,17 +221,17 @@ node-postgres docs. I wrote it after finding the same four lines a second time
 and accepting that I was not going to remember on my own.
 
 ```bash
-npm install --save-dev eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
 ```
 
 ```js
 // eslint.config.mjs — `configs` is a NAMED export (default export is the plugin)
-import { configs } from "eslint-plugin-pg";
+import { configs } from "eslint-plugin-postgresql-security";
 
 export default [configs.recommended];
 ```
 
-`no-transaction-on-pool` is on as an error in `recommended` (eslint-plugin-pg
+`no-transaction-on-pool` is on as an error in `recommended` (eslint-plugin-postgresql-security
 v1.4.6). One `npx eslint .` later:
 
 ```text
@@ -290,7 +290,7 @@ malfunctioning — it's reproducing the modal pattern, and on data-layer code th
 modal pattern is wrong far more often than it's right.
 
 That literal is exactly the form the rule keys on. Land generated code in a repo
-with `eslint-plugin-pg` wired up and the bug surfaces as a red squiggle instead
+with `eslint-plugin-postgresql-security` wired up and the bug surfaces as a red squiggle instead
 of a reconciliation report — with a `Fix:` line that tells the model what to do
 next.
 
@@ -360,7 +360,7 @@ await withTransaction(async (client) => {
 
 | Surface              | Support                                                                               |
 | -------------------- | ------------------------------------------------------------------------------------- |
-| **Plugin**           | `eslint-plugin-pg@1.4.6` — rule is `error` in `recommended` and `strict`              |
+| **Plugin**           | `eslint-plugin-postgresql-security@1.4.6` — rule is `error` in `recommended` and `strict`              |
 | **Package managers** | npm, yarn, pnpm, bun                                                                  |
 | **Node**             | `>= 18.0.0`                                                                           |
 | **ESLint**           | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`, flat config                                        |
@@ -370,9 +370,9 @@ await withTransaction(async (client) => {
 
 ---
 
-## How `no-transaction-on-pool` fits into the `eslint-plugin-pg` threat model
+## How `no-transaction-on-pool` fits into the `eslint-plugin-postgresql-security` threat model
 
-`no-transaction-on-pool` is the atomicity member of `eslint-plugin-pg`. The rest
+`no-transaction-on-pool` is the atomicity member of `eslint-plugin-postgresql-security`. The rest
 of the data-layer threat model:
 
 - [The 4 ways a node-postgres data layer fails](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) — injection, identifier hijacking, exhaustion, transport
@@ -380,7 +380,7 @@ of the data-layer threat model:
 - [search_path Hijacking: the PostgreSQL attack that turns `SELECT * FROM users` into the attacker's table](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — identifier-resolution hijacking, the same threat model from a different angle
 - [PostgreSQL's COPY FROM can read /etc/passwd into your database](https://ofriperetz.dev/articles/postgresql-copy-from-exploit-filesystem-access) — the filesystem-access member of the same plugin
 - [N+1 insert loops and API performance](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance) — the throughput failure pattern that pairs with this race condition fix
-- [All 13 rules of `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg)
+- [All 13 rules of `eslint-plugin-postgresql-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security)
 
 ---
 
@@ -404,17 +404,17 @@ line.
 
 ## Links
 
-- 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📦 [npm: eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security)
 - 📖 [Rule docs: no-transaction-on-pool](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-transaction-on-pool)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-postgresql-security)
 - 🔗 [Database connection leak — production outage](https://ofriperetz.dev/articles/database-connection-leak-production-outage)
 - 🔗 [N+1 insert loop — API performance](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance)
 - 🔗 [We ranked 5 AI models by security — the leaderboard is wrong](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong)
 - 🔗 [All Interlace ESLint rules](https://eslint.interlace.tools)
 - 𝕏 [@ofriperetzdev](https://x.com/ofriperetzdev)
 
-::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-pg"}
-📦 `npm install --save-dev eslint-plugin-pg` — 13 rules for the `pg` driver, including the one that flags `pool.query("BEGIN")` before it reaches a balance sheet.
+::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-postgresql-security"}
+📦 `npm install --save-dev eslint-plugin-postgresql-security` — 13 rules for the `pg` driver, including the one that flags `pool.query("BEGIN")` before it reaches a balance sheet.
 ::
 
 ---

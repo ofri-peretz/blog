@@ -276,7 +276,7 @@ eslint-plugin-sonarjs:     ██████████░░░░░░░�
 
 The "Interlace Ecosystem" row in the leaderboard is the combined output of 10 ESLint plugins running together against the same fixture suite — 201 rules in total:
 
-`eslint-plugin-secure-coding` · `eslint-plugin-node-security` · `eslint-plugin-browser-security` · `eslint-plugin-pg` · `eslint-plugin-jwt` · `eslint-plugin-mongodb-security` · `eslint-plugin-vercel-ai-security` · `eslint-plugin-lambda-security` · `eslint-plugin-express-security` · `eslint-plugin-nestjs-security`
+`eslint-plugin-secure-coding` · `eslint-plugin-node-security` · `eslint-plugin-browser-security` · `eslint-plugin-postgresql-security` · `eslint-plugin-jwt-security` · `eslint-plugin-mongodb-security` · `eslint-plugin-vercel-ai-security` · `eslint-plugin-lambda-security` · `eslint-plugin-express-security` · `eslint-plugin-nestjs-security`
 
 Per-plugin rule counts and focus areas are in [Specialization vs. one-size-fits-all](#specialization-vs-one-size-fits-all) below.
 
@@ -464,8 +464,8 @@ The reason Interlace achieves 100% coverage is **specialization**. Instead of on
 | `eslint-plugin-secure-coding`                                                                                         | Core OWASP patterns                            | 23    |
 | `eslint-plugin-node-security`                                                                                         | fs, child_process, vm, weak crypto, randomness | 42    |
 | `eslint-plugin-browser-security`                                                                                      | XSS, CORS, CSP                                 | 45    |
-| `eslint-plugin-pg`                                                                                                    | SQL injection, connection safety               | 13    |
-| `eslint-plugin-jwt`                                                                                                   | Algorithm confusion, token safety              | 13    |
+| `eslint-plugin-postgresql-security`                                                                                                    | SQL injection, connection safety               | 13    |
+| `eslint-plugin-jwt-security`                                                                                                   | Algorithm confusion, token safety              | 13    |
 | `eslint-plugin-mongodb-security`                                                                                      | NoSQL injection, operator injection            | 16    |
 | `eslint-plugin-vercel-ai-security`                                                                                    | Prompt injection, output validation            | 19    |
 | [`eslint-plugin-lambda-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-lambda-security) | IAM, cold starts, secrets                      | 14    |
@@ -531,8 +531,8 @@ npm install -D \
   eslint-plugin-secure-coding \
   "eslint-plugin-node-security@^4.2.0" \
   eslint-plugin-browser-security \
-  eslint-plugin-pg \
-  eslint-plugin-jwt \
+  eslint-plugin-postgresql-security \
+  eslint-plugin-jwt-security \
   eslint-plugin-mongodb-security \
   eslint-plugin-vercel-ai-security \
   eslint-plugin-lambda-security \
@@ -545,8 +545,8 @@ npm install -D \
 import secureCoding from "eslint-plugin-secure-coding";
 import nodeSecurity from "eslint-plugin-node-security";
 import browserSecurity from "eslint-plugin-browser-security";
-import pg from "eslint-plugin-pg";
-import jwt from "eslint-plugin-jwt";
+import pg from "eslint-plugin-postgresql-security";
+import jwt from "eslint-plugin-jwt-security";
 import mongodbSecurity from "eslint-plugin-mongodb-security";
 import vercelAiSecurity from "eslint-plugin-vercel-ai-security";
 import lambdaSecurity from "eslint-plugin-lambda-security";

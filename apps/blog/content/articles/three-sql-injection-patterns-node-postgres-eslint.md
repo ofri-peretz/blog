@@ -64,7 +64,7 @@ A pg-specific rule knows three things a generic tool doesn't:
 
 Note the boundary, because it's the whole trick: the rule follows a tainted string across assignments _inside_ a function, but it never chases `req.query.userId` back up into the route handler that created it. ESLint is intraprocedural — and here that doesn't matter. Code review misses these lines precisely because judging them requires the cross-function data-flow nobody holds in their head; the rule sidesteps all of it by distrusting the _shape_ of the first argument to `.query()` — any `+`, any `${...}` — no matter where the operands came from. "Parameterize when the value is tainted" needs the whole call graph. "Parameterize, period" needs only the one line.
 
-This is why the rule's spec classifies Patterns 1 and 2 correctly. Its [behavioral test suite](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-pg/src/rules/no-unsafe-query/index.spec.ts) holds 8 valid cases that stay silent (parameterized `$1` + values array, `pg-format`, safe-init variables) and 7 invalid cases that fire (direct concatenation, template literals, and cross-line taint — including `+=` augmented assignment).
+This is why the rule's spec classifies Patterns 1 and 2 correctly. Its [behavioral test suite](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-postgresql-security/src/rules/no-unsafe-query/index.spec.ts) holds 8 valid cases that stay silent (parameterized `$1` + values array, `pg-format`, safe-init variables) and 7 invalid cases that fire (direct concatenation, template literals, and cross-line taint — including `+=` augmented assignment).
 
 Pattern 3 is a different story. More on that below.
 
@@ -188,12 +188,12 @@ The uncomfortable part for review: AI-generated SQL looks _more_ trustworthy tha
 **Run it on your assistant's output before you run it on your colleague's.** Same rule, same install, no model-specific tuning:
 
 ```bash
-npm install eslint-plugin-pg --save-dev
+npm install eslint-plugin-postgresql-security --save-dev
 ```
 
 ```javascript
 // eslint.config.mjs
-import pg from "eslint-plugin-pg";
+import pg from "eslint-plugin-postgresql-security";
 
 export default [
   {
@@ -239,23 +239,23 @@ _Which SQL injection pattern have you found most in the wild — and was it ever
 
 **→ Related (the AI angle):** [We Ranked 5 AI Models by Security — the database domain, in detail](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) · [Same NestJS prompt: Claude got 6 security errors, Gemini got 2](https://ofriperetz.dev/articles/claude-vs-gemini-nestjs-security-same-prompt-different-errors) · [Aggregate benchmarks lie — 700 AI functions by security domain](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain)
 
-**→ Related (the pg layer):** [Your node-postgres Data Layer Fails 4 Ways in Production](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) · [node-postgres will happily build a CVSS 9.8 SQL injection for you — 13 ESLint rules say no](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) · [30 minutes of ESLint found 26 critical bugs in an inherited codebase](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase)
+**→ Related (the pg layer):** [Your node-postgres Data Layer Fails 4 Ways in Production](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) · [node-postgres will happily build a CVSS 9.8 SQL injection for you — 13 ESLint rules say no](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security) · [30 minutes of ESLint found 26 critical bugs in an inherited codebase](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase)
 
 ---
 
-### Get `eslint-plugin-pg`
+### Get `eslint-plugin-postgresql-security`
 
-[![npm version](https://img.shields.io/npm/v/eslint-plugin-pg.svg?label=eslint-plugin-pg)](https://www.npmjs.com/package/eslint-plugin-pg) [![npm downloads](https://img.shields.io/npm/dm/eslint-plugin-pg.svg)](https://www.npmjs.com/package/eslint-plugin-pg)
+[![npm version](https://img.shields.io/npm/v/eslint-plugin-postgresql-security.svg?label=eslint-plugin-postgresql-security)](https://www.npmjs.com/package/eslint-plugin-postgresql-security) [![npm downloads](https://img.shields.io/npm/dm/eslint-plugin-postgresql-security.svg)](https://www.npmjs.com/package/eslint-plugin-postgresql-security)
 
 Drop the three-pattern guard into any pg project in under two minutes:
 
 ```bash
-npm install eslint-plugin-pg --save-dev
+npm install eslint-plugin-postgresql-security --save-dev
 ```
 
 ```javascript
 // eslint.config.mjs — minimal: just the SQL-injection rule
-import pg from "eslint-plugin-pg";
+import pg from "eslint-plugin-postgresql-security";
 
 export default [{ plugins: { pg }, rules: { "pg/no-unsafe-query": "error" } }];
 
@@ -264,10 +264,10 @@ export default [{ plugins: { pg }, rules: { "pg/no-unsafe-query": "error" } }];
 // rules: { ...pg.configs.recommended.rules }
 ```
 
-**[📦 npm](https://www.npmjs.com/package/eslint-plugin-pg)** · **[📖 Rule docs](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-query)** · **[⭐ Star on GitHub](https://github.com/ofri-peretz/eslint)** · **[Follow the series on Dev.to](https://dev.to/ofri-peretz)**
+**[📦 npm](https://www.npmjs.com/package/eslint-plugin-postgresql-security)** · **[📖 Rule docs](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-query)** · **[⭐ Star on GitHub](https://github.com/ofri-peretz/eslint)** · **[Follow the series on Dev.to](https://dev.to/ofri-peretz)**
 
 If `pg/no-unsafe-query` catches a line in your codebase — human-written or AI-generated — I want to hear which of the three patterns it was. Drop it in the comments.
 
 ---
 
-_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+_[eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
