@@ -14,15 +14,25 @@ Intent: [`2026-09-02-refresh-delivery.intent.md`](./2026-09-02-refresh-delivery.
 |---|---|---|---|
 | plugin-stats workflow added | 2026-08-25 | git log on the workflow file | 2026-09-02 |
 | loom-embeds workflow added | 2026-08-26 | same | 2026-09-02 |
-| Schedules | Mondays 09:30 and 15:30 UTC | the cron lines | 2026-09-02 |
+| bench-receipts workflow added | 2026-08-25 | same (PR #191) | 2026-09-02 |
+| Schedules | Mondays 09:30, 15:00, and 15:30 UTC | the cron lines | 2026-09-02 |
 | Last run | 2026-08-31, completed success | gh run list | 2026-09-02 |
 | Bot PRs ever opened | 2 | gh pr list --author app/github-actions | 2026-09-02 |
-| Bot PRs ever merged | 0 | same | 2026-09-02 |
+| Bot PRs ever merged | 0 before today | same | 2026-09-02 |
+| bench-receipts PRs ever opened | 0 | `gh pr list --author app/github-actions` | 2026-09-02 |
+| bench-receipts last run | 2026-08-31, success, no PR | `gh run list` | 2026-09-02 |
 | plugin-stats.json last changed on main | 2026-08-25, when it was added | git log on the data file | 2026-09-02 |
 | Size of the pending change | 20 added / 20 removed lines | PR #214 files | 2026-09-02 |
 
 The last two rows together are the intent: there is a real, computed update
 sitting in a branch, and the file it would replace has never moved.
+
+The third workflow is worse, not better. `bench-receipts-refresh` ran on
+2026-08-31 and **succeeded without opening a PR at all** — so it is not in the
+two-PR backlog because it never reached the stage that produces one. Whether
+that is "no drift to report" or a silent failure is not established here, and
+the auto-merge fix does nothing for it either way. Recording it as a known
+unknown rather than folding it into the same diagnosis. (Review.)
 
 ## Approach
 
