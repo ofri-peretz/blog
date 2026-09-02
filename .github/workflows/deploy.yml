@@ -206,8 +206,31 @@ jobs:
       #
       # Drives the runner's preinstalled Chrome over CDP with node's built-in
       # WebSocket (node 24 via .nvmrc). No Playwright, nothing to install.
-      - name: Audit layout + contrast (14 widths x 6 routes x 2 themes)
-        timeout-minutes: 5
+      # 12, not 5, and the step name no longer lies: the matrix is 16 viewports
+      # x 9 routes x 2 themes = 288 combinations, not "6 routes".
+      #
+      # (16, not 14: VIEWPORTS is 4 narrow + 4 breakpoints x 2 + 2 wide + the
+      # 2 zoom entries #127 added. An earlier revision of this comment said 14
+      # and 252 while citing "286/288" three lines down — the second number was
+      # right and the first was arithmetic done from memory. Review caught it.)
+      #
+      # MEASURED before changing: 218s against a local production build, and
+      # the 2026-09-02 run reached 286/288 and was killed 5ms after printing
+      # its summary — so production, over the network, sits right at the old
+      # 300s ceiling. The budget was already marginal; #127 added 36
+      # combinations (two 200%-text viewports x 9 routes x 2 themes) and
+      # pushed it over, which failed the deploy for three consecutive commits.
+      #
+      # Raising a timeout is usually the wrong fix, so the cause is recorded
+      # rather than waved at: the script navigates afresh for EVERY
+      # combination and then waits a fixed 600ms for webfonts — ~150s of the
+      # 218s is that sleep. Navigating once per (route, theme) and resizing
+      # between viewports would cut it by more than half. That is a change to
+      # the measurement itself and wants its own PR with a before/after
+      # comparison proving identical findings; it does not belong in a fix
+      # whose job is to unblock production.
+      - name: Audit layout + contrast (16 viewports x 9 routes x 2 themes)
+        timeout-minutes: 12
         env:
           BASE: https://ofriperetz.dev
           CHROME: /usr/bin/google-chrome

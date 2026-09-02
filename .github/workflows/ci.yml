@@ -60,11 +60,33 @@ jobs:
             curl -sf http://localhost:3000 >/dev/null && exit 0; sleep 1
           done
           echo "server never came up"; exit 1
+      # NO `ROUTES` override. It used to pin seven routes while the script's
+      # own default covers nine — the two extras being `/npm` and
+      # `/scorecard`. deploy.yml runs the SAME script with no override, so the
+      # PR gate was enforcing a strictly smaller matrix than the deploy gate,
+      # and the first place anyone learned about a /scorecard regression was a
+      # failed production deploy. That is exactly what happened on 2026-09-02:
+      # CI green, deploy red on `/scorecard @320 @200% text`.
+      #
+      # A gate that checks less than the gate after it is not a gate, it is a
+      # delay. Let the script own the route list so both read the same one.
+      #
+      # But the two gates are NOT equivalent, and an earlier version of this
+      # comment implied they were. CI has no Supabase or GitHub credentials, so
+      # `/scorecard` THROWS here and the audit measures its error boundary;
+      # deploy.yml runs against production, where the real page renders. Same
+      # route, different markup.
+      #
+      # That is worth having rather than skipping: the very first run of this
+      # widened matrix found a 4.05:1 contrast failure on the error page, which
+      # nothing had ever audited. It does mean /scorecard's real layout is
+      # proven only by the deploy gate — so a reflow regression in the live
+      # page still surfaces after merge, and closing that needs seeded data in
+      # CI, not a longer route list.
       - name: Layout audit (overflow, overlap, tap targets, contrast)
         run: node apps/blog/scripts/layout-audit.mjs
         env:
           BASE: http://localhost:3000
-          ROUTES: /,/articles,/foundations,/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules,/articles/benchmark-17-eslint-security-plugins-compared,/articles/getting-started-eslint-plugin-secure-coding,/articles/vercel-ai-sdk-prompt-injection-vulnerability
       - name: Journey audit (palette keyboard contract, copy receipt)
         run: node apps/blog/scripts/journey-audit.mjs
         env:
