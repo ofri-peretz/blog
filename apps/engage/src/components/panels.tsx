@@ -423,6 +423,7 @@ export function Plugins({
   }, [findings]);
 
   return (
+    <>
     <div className={`${card} max-h-[460px] overflow-auto`}>
       <table className="w-full text-[13.5px]">
         <thead>
@@ -445,12 +446,17 @@ export function Plugins({
           ))}
         </tbody>
       </table>
-      <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] text-[var(--color-ink-3)]">
-        Our own plugins over our own scripts. A rule with a very high hit count on
-        trusted local code is an FP candidate, not a finding —{" "}
-        <code>detect-object-injection</code> is the classic example.
-      </p>
     </div>
+    {/* OUTSIDE the max-h/overflow wrapper above. Inside it, this note
+        scrolled away the moment the table passed 460px — and a note that
+        explains how to read the data is worth least when there is the most
+        data to read. (Review, third pass.) */}
+    <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] text-[var(--color-ink-3)]">
+      Our own plugins over our own scripts. A rule with a very high hit count on
+      trusted local code is an FP candidate, not a finding —{" "}
+      <code>detect-object-injection</code> is the classic example.
+    </p>
+    </>
   );
 }
 
@@ -1017,7 +1023,17 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
 export function Promotion({
   prs,
 }: {
-  prs: { title: string; url: string; repo: string; state: string; updated: string }[];
+  // `updated` is OPTIONAL, and saying so is the actual fix. It was typed as
+  // a required string while the render used `p.updated?.slice()` — the type
+  // asserted something the code did not believe, so every reader had to
+  // guess which was right. The sort below crashed on the answer.
+  prs: {
+    title: string;
+    url: string;
+    repo: string;
+    state: string;
+    updated?: string;
+  }[];
 }) {
   const tone: Record<string, string> = {
     merged: "text-[var(--color-good)] border-[var(--color-good)]",
@@ -1047,7 +1063,16 @@ export function Promotion({
       // someone. Merged is history, closed is a decision already made.
       .sort((a, b) => {
         const rank = (x: string) => (x === "open" ? 0 : x === "merged" ? 1 : 2);
-        return rank(a.state) - rank(b.state) || b.updated.localeCompare(a.updated);
+        // `updated` is TYPED as string but rendered with `p.updated?.slice()`
+        // below — that optional chain is evidence it can be absent in real
+        // data, and localeCompare on undefined throws and takes the whole
+        // Promotion panel down. Coerce rather than trust the type: a missing
+        // timestamp sorts last, which is the honest place for "we don't know
+        // when this changed". (Review flagged this three times.)
+        return (
+          rank(a.state) - rank(b.state) ||
+          (b.updated ?? "").localeCompare(a.updated ?? "")
+        );
       });
   }, [prs, state, q]);
 
