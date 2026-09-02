@@ -91,7 +91,7 @@ export function handleUpload(req, res) {
     slug: "the-30-minute-security-audit-onboarding-a-new-codebase",
     title: "Run the audit on your own code — right here",
     invite:
-      "Three of the 42 rules the article installs, on a handler like the ones they find. Edit it, or paste a route from the codebase you just inherited.",
+      "Three of the 42 node-security rules, on a handler like the ones they find. Edit it, or paste a route from the codebase you just inherited.",
     pluginId: "node-security",
     rules: {
       "node-security/no-weak-hash-algorithm": "error",
