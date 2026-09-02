@@ -421,3 +421,46 @@ body {
 :where([id]) {
   scroll-margin-top: 5.5rem;
 }
+
+/* WCAG 1.4.4 (text at 200%) + 1.4.10 (reflow at 320px). At that combination a
+   single unbreakable token is wider than the viewport, and because nothing
+   clips it the whole DOCUMENT scrolls sideways — the browser audit measured
+   236px on an article page. It was by far the largest class of failure in the
+   audit: 18 inline `code`, 8 heading anchors, 2 `strong`.
+
+   Two different properties on purpose:
+
+   - Prose text gets `break-word`, which breaks a word ONLY when it would
+     otherwise overflow and leaves ordinary wrapping untouched. Headings need
+     it as much as paragraphs: "Compatibility" at 200% of an h2 is genuinely
+     wider than 320px.
+   - Inline code gets `anywhere`, which additionally reduces the element's
+     min-content contribution. That difference is the point — `break-word`
+     alone leaves a flex/grid ancestor sized to the unbroken token, so the
+     overflow just moves up a level instead of going away.
+
+   `:not(pre) > ...` keeps code BLOCKS out of it. They live in an
+   `overflow-x: auto` container, the audit correctly skips them, and breaking
+   lines mid-token inside a code block would corrupt the thing a reader is
+   trying to copy. */
+/* Deliberately NOT scoped to .prose. The first version of this rule was, and
+   the audit still reported five pages scrolling sideways with no offending
+   element in reach — because the offenders were the PAGE headings: the article
+   `<h1>`, the foundations title, a section `<h2>`. None of those live in
+   `.prose`. At 320px with text at 200% a `text-4xl` heading is ~72px per line
+   of type, and a single long word in it is wider than the viewport.
+
+   `@layer base` + `:where()` so a Tailwind utility can still override it.
+   Specificity alone was NOT enough: an unlayered rule beats every rule in a
+   cascade layer no matter how specific, so the first version of this silently
+   defeated an `[overflow-wrap:anywhere]` class on the foundations list — the
+   computed value read `break-word` with the utility right there in the DOM. */
+@layer base {
+  :where(h1, h2, h3, h4, h5, h6, p, li, dd, dt, blockquote, figcaption, a) {
+    overflow-wrap: break-word;
+  }
+}
+
+.prose :not(pre) > :is(code, kbd, samp, strong) {
+  overflow-wrap: anywhere;
+}

@@ -170,6 +170,42 @@ describe("responsive + data-freshness structural rules", () => {
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
+  /**
+   * A grid that declares only RESPONSIVE column counts has no base track, so
+   * the single implicit column falls back to `auto` — which is max-content and
+   * cannot shrink below its contents. At 320px with text at 200% (WCAG 1.4.4)
+   * the article grid sized its track to 502px inside a 256px container and
+   * pushed the document 214px sideways.
+   *
+   * `grid-cols-1` emits repeat(1, minmax(0, 1fr)), which can shrink. This is a
+   * cause a static rule CAN name, unlike overflow itself.
+   */
+  it("every responsive grid declares a base column count", () => {
+    const offenders: string[] = [];
+    for (const file of walk(SRC, ".tsx")) {
+      readFileSync(file, "utf-8")
+        .split("\n")
+        .forEach((line, i) => {
+          for (const m of line.matchAll(/className="([^"]*\bgrid\b[^"]*)"/g)) {
+            const toks = m[1].split(/\s+/);
+            const responsive = toks.some((t) =>
+              /^(sm|md|lg|xl|2xl):grid-cols-/.test(t),
+            );
+            const hasBase = toks.some(
+              (t) => t.startsWith("grid-cols-") && !t.includes(":"),
+            );
+            if (responsive && !hasBase) {
+              offenders.push(
+                `${rel(file)}:${i + 1} grid has only responsive columns — add ` +
+                  `grid-cols-1 so the base track is minmax(0,1fr) and can shrink.`,
+              );
+            }
+          }
+        });
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
   // DELIBERATELY NOT TESTED HERE: horizontal overflow.
   //
   // The obvious static rule — flag `whitespace-nowrap` without an escape hatch

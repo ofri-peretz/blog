@@ -191,11 +191,18 @@ export default function FoundationsPage() {
               >
                 {idx + 1}
               </span>
-              <div className="flex flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-2">
+              {/* min-w-0: a flex child defaults to min-width:auto and so
+                  refuses to go narrower than its longest word. */}
+              <div className="flex min-w-0 flex-col gap-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  {/* `overflow-wrap: anywhere`, not the global `break-word`:
+                      only `anywhere` reduces the element's min-content width,
+                      and min-content is what sizes a flex item. "Reproducibility"
+                      alone is wider than 320px at text 200%, so break-word
+                      permitted a break the layout never asked for. */}
                   <Link
                     href={`/articles/${chapter.slug}`}
-                    className="font-medium underline-offset-4 hover:underline"
+                    className="font-medium underline-offset-4 [overflow-wrap:anywhere] hover:underline"
                   >
                     {chapter.title}
                   </Link>

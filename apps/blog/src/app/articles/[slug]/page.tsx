@@ -424,7 +424,13 @@ function DevToCallout({
         </a>
         .
       </p>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      {/* `buttonVariants` ships `whitespace-nowrap` and a fixed height, which
+          is right for a button and wrong for a button-shaped LINK whose label
+          is a sentence. At 320px with text at 200% "Try the rules in the
+          playground ↗" measured 236px past the viewport and scrolled the whole
+          document — the single largest overflow the audit found. Allow the
+          label to wrap and let the box grow to fit it. */}
+      <div className="mt-4 flex flex-wrap items-center gap-3 [&>a]:h-auto [&>a]:max-w-full [&>a]:py-2 [&>a]:whitespace-normal">
         <TrackedLink
           href="https://eslint.interlace.tools/play"
           event="article:playground_cta_click"
