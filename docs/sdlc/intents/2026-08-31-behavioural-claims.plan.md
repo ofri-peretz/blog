@@ -14,15 +14,25 @@ Intent: [`2026-08-31-behavioural-claims.intent.md`](./2026-08-31-behavioural-cla
 |---|---|---|---|
 | Test files | 47 | `ls src/__tests__` | 2026-08-31 |
 | Total assertions | 976 | grep for `expect(` | 2026-08-31 |
-| Files asserting only on file text | 24 of 47 | read source, never import the module | 2026-08-31 |
+| Files asserting only on file text | 17 of 48 | no import from `../` OR `@/` | 2026-09-01 |
+| ~~First measurement~~ | ~~24 of 47~~ WRONG | missed the `@/` alias entirely | 2026-08-31 |
 | Known bad locks this week | 4 | the incidents in the intent | 2026-08-31 |
 | Already converted | 1, the playground sample | `lint-embeds-lock.test.ts` | 2026-08-30 |
 
-**24 of 47 is not 24 bad tests, and the number must not be quoted that way.**
-A first pass at measuring this returned a larger, scarier figure from a sloppier
-regex; publishing that would have been the same sin the audit is about. Most of
-those 24 are structural locks doing exactly the right thing with exactly the
-right evidence. The 24 is the *search space*, not the finding.
+**17 of 48 is not 17 bad tests, and the number must not be quoted that way.**
+Most are structural locks doing exactly the right thing with exactly the right
+evidence. The 17 is the *search space*, not the finding.
+
+The count was **24 of 47** until 2026-09-01, and it was wrong: the heuristic
+matched `from "../"` while this codebase imports through the `@/` alias, so
+every file using it was counted as never executing the code it tests. Two of
+the three files audited first were misclassified that way and turned out sound.
+
+That is twice now that this intent's own paperwork has carried a check which
+did not verify what it claimed — the pseudocode regex above, and this count.
+The plan predicted it in as many words ("a heuristic would produce a confident
+wrong list") and it happened anyway, which is the strongest argument in the
+file for reading the remaining 14 by hand rather than measuring them.
 
 ## Approach
 
