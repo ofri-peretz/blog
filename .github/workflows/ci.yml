@@ -57,11 +57,20 @@ jobs:
             curl -sf http://localhost:3000 >/dev/null && exit 0; sleep 1
           done
           echo "server never came up"; exit 1
+      # NO `ROUTES` override. It used to pin seven routes while the script's
+      # own default covers nine — the two extras being `/npm` and
+      # `/scorecard`. deploy.yml runs the SAME script with no override, so the
+      # PR gate was enforcing a strictly smaller matrix than the deploy gate,
+      # and the first place anyone learned about a /scorecard regression was a
+      # failed production deploy. That is exactly what happened on 2026-09-02:
+      # CI green, deploy red on `/scorecard @320 @200% text`.
+      #
+      # A gate that checks less than the gate after it is not a gate, it is a
+      # delay. Let the script own the route list so both read the same one.
       - name: Layout audit (overflow, overlap, tap targets, contrast)
         run: node apps/blog/scripts/layout-audit.mjs
         env:
           BASE: http://localhost:3000
-          ROUTES: /,/articles,/foundations,/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules,/articles/benchmark-17-eslint-security-plugins-compared,/articles/getting-started-eslint-plugin-secure-coding,/articles/vercel-ai-sdk-prompt-injection-vulnerability
       - name: Journey audit (palette keyboard contract, copy receipt)
         run: node apps/blog/scripts/journey-audit.mjs
         env:

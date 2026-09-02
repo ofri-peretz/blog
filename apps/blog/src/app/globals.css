@@ -464,3 +464,67 @@ body {
 .prose :not(pre) > :is(code, kbd, samp, strong) {
   overflow-wrap: anywhere;
 }
+
+/* Loading placeholders must not be wider than what they stand in for.
+   WCAG 1.4.4, and the /scorecard case that failed the DEPLOY gate after CI
+   went green.
+
+   Every Tailwind width utility is in rem, and rem scales with the root
+   font-size, so at text 200% a `w-64` skeleton is 512px on a 320px viewport.
+   /scorecard's hero skeleton scrolled the document 240px sideways.
+
+   This lives in CSS rather than in the component because there are TWO
+   Skeleton implementations: `components/ui/skeleton.tsx` (vendored from the
+   DS, fixed at its base class) and `.interlace/components/ui/skeleton.tsx`,
+   which is one of 109 AUTO-GENERATED files carrying "DO NOT EDIT DIRECTLY —
+   local edits will be overwritten on next sync". A `data-slot` rule covers
+   both, survives regeneration, and is owned by the app that needs it.
+
+   `@layer base` so a caller that genuinely needs to exceed its container can
+   still say so with a utility. */
+@layer base {
+  [data-slot="skeleton"] {
+    max-width: 100%;
+  }
+}
+
+/* A grid with no BASE column count gets one implicit `auto` track, and an auto
+   track sizes to its content — so it cannot shrink, and at 320px with text at
+   200% it pushes the whole document sideways. `responsive-lock` enforces an
+   explicit `grid-cols-1` in source for exactly this reason.
+
+   That lock walks `src/`. It does not walk `.interlace/`, which holds 109
+   AUTO-GENERATED components, and three grids in there (`sm:grid-cols-3`,
+   `sm:grid-cols-2 lg:grid-cols-3` twice) were the bulk of /scorecard's 203px
+   overflow — the failure that broke the production deploy while CI was green.
+   They cannot be edited: local edits are overwritten on the next sync.
+
+   So the invariant moves into CSS, where it covers generated and hand-written
+   grids alike. `@layer base` means any real `grid-cols-*` utility still wins —
+   at 320px `sm:grid-cols-3` is not applied, so this supplies the missing base
+   track; from 640px up the utility takes over. Verified against the repo: no
+   `grid-flow-col` or `auto-cols-*` anywhere, so nothing depends on implicit
+   column flow. */
+@layer base {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The scorecard's ratchet cards lay out three flex rows — title + trend badge,
+   value + unit, delta + percentage + "/ 30d" — none of which wrap. At 320px
+   with text at 200% the column is 224px and none of the three fit, so the
+   card pushed the document sideways.
+
+   `> *` rather than `> div`: the header is a `<header>`, and targeting only
+   divs left 24px behind (measured). `flex-wrap` is inert on a non-flex child,
+   so the broader selector costs nothing.
+
+   In CSS because `.interlace/components/scorecard/ratchet-card.tsx` is
+   generated — see the grid note above. Verified 0px overflow at both 320 and
+   1280 with text at 200%. */
+@layer base {
+  [data-slot="ratchet-card"] > * {
+    flex-wrap: wrap;
+  }
+}
