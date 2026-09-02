@@ -72,6 +72,47 @@ One deserves converting: **read-depth**. Once-per-milestone and self-removal are
 real behaviours, they are exactly the kind that break silently, and a rendered
 test can assert them.
 
+## The rule that actually predicts rot (revised twice)
+
+After five files, a filter that works — and two that did not.
+
+**Rejected: "text-based files are suspect."** That was the search space, and it
+was wrong twice over. Two of the first three files audited execute the code
+they test and were misclassified by a heuristic that missed the `@/` alias.
+
+**Rejected: "negative greps are where the rot is."** Tempting after two hits,
+but `homepage-lock` holds 21 negative assertions and they are almost all
+sound: `not.toMatch(/<Skills\b/)` claims the homepage does not import a
+section, and source text is exactly the right evidence for that.
+
+**The filter that holds:**
+
+> A negative assertion is sound when the claim is itself TEXTUAL — a component
+> is not imported, a class string is not open-coded, a raw hex is not present.
+> It is unsound when it encodes ONE SPELLING OF A LOGIC ERROR, because logic
+> has unlimited spellings and the pattern only knows one.
+
+`not.toMatch(/<Skills\b/)` — the thing asserted *is* the text. Sound.
+
+`not.toMatch(/totalStars:\s*github\??\.totalStars\s*\?\?\s*0/)` — the thing
+asserted is *a fallback behaviour*, wearing one costume out of many. Unsound,
+and it was guarding a bug that had already shipped.
+
+Also worth separating: a negative assertion against **rendered output**
+(`expect(html).not.toContain(...)`) is behavioural evidence and belongs in the
+sound column regardless.
+
+## Running tally, 5 of 17
+
+| File | Verdict |
+|---|---|
+| `rss-and-draft-exposure-lock` | sound — runs the feed over 11 real drafts |
+| `series-nav-lock` | sound — calls buildSeriesContext on the live corpus |
+| `npm-lifetime-total-lock` | sound, and stronger than I credited; complemented |
+| `homepage-lock` (21 negatives) | sound — structural absence, structural evidence |
+| `analytics-events-lock` | narrowed — 14 assertions said *fires* |
+| `homepage-stats-lock` | **converted** — a logic-spelling grep over a shipped bug |
+
 ## The decision this licenses
 
 1. Rename the wiring assertions from *fires* to *is wired as*. Cheap, and it

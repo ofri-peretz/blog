@@ -21,7 +21,7 @@
  * function and assert what comes back, so they hold regardless of how the
  * source is spelled. (behavioural-claims finding)
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const getCachedNpmAlltimeTotal = vi.fn();
 
@@ -35,7 +35,16 @@ const SHARED = 29_000_000; // what the ecosystem read returns
 
 beforeEach(() => {
   getCachedNpmAlltimeTotal.mockReset();
+  // The rejected case logs; silence it so a passing run stays readable.
   vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+// Restore, matching the convention in your-thread-lock and go-resolver.
+// Without it each test stacks another wrapper on console.error — contained
+// by Vitest's file isolation, but a spy that is never released is one more
+// thing quietly not doing what it looks like it does. (Review.)
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("getNpmPageLifetimeTotal", () => {
