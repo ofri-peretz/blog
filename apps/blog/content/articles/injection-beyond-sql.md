@@ -40,7 +40,7 @@ Be precise about what that parent covers, because the honest version is narrower
 
 Everything else in the table is *commonly mapped* there rather than formally filed under it. GraphQL has no dedicated CWE at all; neither do the [NoSQL operator injections](/articles/getting-started-eslint-plugin-mongodb-security). And XXE, format string and prototype pollution are not siblings in any sense — they are separate defects that happen to share a blind spot, not a parent.
 
-Eight interpreters plus SQL, and two distinct shapes between them. SQL got the name people recognise. The parser inside your LDAP filter did not, and that is the entire reason it goes unaudited.
+Eight interpreters plus SQL, and two distinct shapes between them — data-query injection (the CWE-943 family) and code/context injection (everything else in the table). SQL got the name people recognise. The parser inside your LDAP filter did not, and that is the entire reason it goes unaudited.
 
 ## Three that fail in ways SQL does not {#three}
 
