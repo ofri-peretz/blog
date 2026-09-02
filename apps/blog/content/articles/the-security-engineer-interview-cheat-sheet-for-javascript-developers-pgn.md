@@ -75,7 +75,7 @@ db.query("SELECT * FROM users WHERE id = $1", [userId]); // ✅
 
 I've watched this exact diff get waved through: a candidate explains parameterized queries perfectly in the loop, then a week later asks an assistant to "add a search filter" on the same table, gets a template literal back, and merges it because the diff looked small and the surrounding code already used string templates for logging. Green CI, no lint gate, nobody looked twice.
 
-**ESLint automation:** `pg/no-unsafe-query` flags all three shapes of this bug — string concatenation, template literals, and `.format()` patterns — regardless of who typed it. There's a whole breakdown in [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint), and the plugin itself is covered in [node-postgres Will Happily Build a CVSS 9.8 SQL Injection For You](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg).
+**ESLint automation:** `pg/no-unsafe-query` flags all three shapes of this bug — string concatenation, template literals, and `.format()` patterns — regardless of who typed it. There's a whole breakdown in [Three SQL Injection Patterns in node-postgres](https://ofriperetz.dev/articles/three-sql-injection-patterns-node-postgres-eslint), and the plugin itself is covered in [node-postgres Will Happily Build a CVSS 9.8 SQL Injection For You](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security).
 
 ### 2. XSS (and its three types)
 
@@ -169,7 +169,7 @@ The `algorithm: none` bypass is a one-line change to the JWT header that most ve
 
 Fixing `algorithm: none` doesn't close the adjacent bug that surprises engineers who think they're done: the **HS256/RS256 confusion attack**. If your verifier accepts either algorithm and you sign with RS256 (asymmetric — public key is, well, public), an attacker can forge a token by signing it with HS256 _using your public key as the HMAC secret_. The verifier checks the signature with the same public key, sees a valid HMAC, and trusts a token you never issued. The fix is the same allowlist discipline as `algorithm: none` — pin one algorithm per verifier — but it's a different bug, and "I fixed the none bypass" is not the same sentence as "I fixed the algorithm confusion."
 
-**ESLint automation:** four rules, four distinct failure modes — `jwt/no-algorithm-none` for the bypass, `jwt/no-algorithm-confusion` and `jwt/require-algorithm-whitelist` for the HS256/RS256 forgery, and `browser-security/no-jwt-in-storage` for the storage mistake. One detail worth knowing: `jwt/no-sensitive-payload` — the rule that flags exactly what Opus 4.6 did 7/7 — ships as a `warn`, not an `error`, which is why the `--max-warnings 0` line further down isn't optional. Full rule set: [jsonwebtoken Will Verify a Token Signed With algorithm: none](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt).
+**ESLint automation:** four rules, four distinct failure modes — `jwt/no-algorithm-none` for the bypass, `jwt/no-algorithm-confusion` and `jwt/require-algorithm-whitelist` for the HS256/RS256 forgery, and `browser-security/no-jwt-in-storage` for the storage mistake. One detail worth knowing: `jwt/no-sensitive-payload` — the rule that flags exactly what Opus 4.6 did 7/7 — ships as a `warn`, not an `error`, which is why the `--max-warnings 0` line further down isn't optional. Full rule set: [jsonwebtoken Will Verify a Token Signed With algorithm: none](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security).
 
 ---
 
@@ -351,7 +351,7 @@ layers your stack uses and the bad version gets flagged (run with
 ```bash
 # npm (yarn/pnpm/bun: same packages, that manager's -D/--dev flag)
 npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security \
-  eslint-plugin-jwt eslint-plugin-pg eslint-plugin-browser-security eslint-plugin-express-security
+  eslint-plugin-jwt-security eslint-plugin-postgresql-security eslint-plugin-browser-security eslint-plugin-express-security
 ```
 
 ```js
@@ -360,8 +360,8 @@ npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security \
 // so all six layers wire the same way — no per-plugin special-casing.
 import { configs as secureCoding } from "eslint-plugin-secure-coding";
 import { configs as nodeSecurity } from "eslint-plugin-node-security";
-import { configs as jwt } from "eslint-plugin-jwt";
-import { configs as pg } from "eslint-plugin-pg";
+import { configs as jwt } from "eslint-plugin-jwt-security";
+import { configs as pg } from "eslint-plugin-postgresql-security";
 import { configs as browserSecurity } from "eslint-plugin-browser-security";
 import { configs as expressSecurity } from "eslint-plugin-express-security";
 
@@ -410,7 +410,7 @@ honestly can't reach), see
 
 ## Links
 
-- 📦 [eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) · [express-security](https://www.npmjs.com/package/eslint-plugin-express-security)
+- 📦 [eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt-security) · [pg](https://www.npmjs.com/package/eslint-plugin-postgresql-security) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security) · [express-security](https://www.npmjs.com/package/eslint-plugin-express-security)
 - 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools)
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint) — every rule above, with its fixtures and its failures
 

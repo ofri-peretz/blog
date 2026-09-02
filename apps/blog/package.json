@@ -83,6 +83,7 @@
     "eslint-plugin-browser-security": "^1.2.3",
     "eslint-plugin-conventions": "^4.1.0",
     "eslint-plugin-import-next": "^2.3.6",
+    "eslint-plugin-jwt": "2.2.14",
     "eslint-plugin-maintainability": "^3.0.3",
     "eslint-plugin-modernization": "^2.0.4",
     "eslint-plugin-modularity": "^2.0.4",
@@ -95,12 +96,12 @@
     "jsdom": "29.1.1",
     "oxc-resolver": "11.24.2",
     "oxlint": "^1.2.0",
+    "path-browserify": "1.0.1",
     "playwright-core": "^1.62.1",
     "tailwindcss": "^4.1.18",
     "tsx": "4.23.12",
     "typescript": "^5",
     "vitest": "4.1.4",
-    "eslint-plugin-jwt": "2.2.14",
-    "path-browserify": "1.0.1"
+    "yaml": "2.9.0"
   }
 }
