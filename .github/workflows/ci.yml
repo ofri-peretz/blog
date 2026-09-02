@@ -17,10 +17,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      # No npm cache / npm ci: the lockfile is intentionally uncommitted
-      # (exact versions pinned via .npmrc) to avoid cross-platform native-binding
-      # breaks (@tailwindcss/oxide). Install fresh on linux.
-      - run: npm install --no-audit --no-fund --include=optional
+          cache: npm
+      # npm ci, not npm install: the lockfile is committed, so CI must install
+      # exactly what it pins. npm install would silently resolve around a stale
+      # lockfile and test a dependency set that never ships. --include=optional
+      # keeps the platform-specific native bindings (@tailwindcss/oxide,
+      # lightningcss, sharp) — every arch is in the lockfile, linux included.
+      - run: npm ci --no-audit --no-fund --include=optional
       - run: npm run build
       - run: npm run test
 
@@ -91,7 +94,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - run: npm install --no-audit --no-fund --include=optional
+          cache: npm
+      - run: npm ci --no-audit --no-fund --include=optional
       - run: npx turbo run lint:eslint --affected
         env:
           # turbo --affected intermittently fails to resolve the base ref
@@ -109,7 +113,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - run: npm install --no-audit --no-fund --include=optional
+          cache: npm
+      - run: npm ci --no-audit --no-fund --include=optional
       - run: npx turbo run lint:oxlint --affected
         env:
           # turbo --affected intermittently fails to resolve the base ref

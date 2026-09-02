@@ -1,45 +1,52 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* Interlace tokens. Theme-paired because the flagship orange that glows on
-   #0a0a0a measures 2.73:1 on white — nearly two points under the 4.5:1 floor —
-   so the dark pair must never render on a light surface. */
-@theme {
-  --color-ground: #fbfaf8;
-  --color-panel: #ffffff;
-  --color-line: #e6e2dd;
-  --color-ink: #1a1815;
-  --color-ink-2: #57524b;
-  --color-ink-3: #8b847a;
-  --color-accent: #a84c17;
-  --color-good: #0a6b47;
-  --color-warn: #8a6d1f;
-}
+/*
+ * The Interlace design-system baseline.
+ *
+ * These six stylesheets were installed by `npx shadcn add …/r/theme.json` into
+ * `src/styles/interlace/`. The registry item ships the LEAF stylesheets only —
+ * it does NOT ship `@interlace/ui/styles/index.css`, the barrel that declares
+ * the cascade-layer order and imports them in sequence. So the layer
+ * declaration and the six imports below are hand-reconstructed here, and the
+ * order is load-bearing: `[data-theme='harbor']` and `.dark` have identical
+ * specificity, so harbor.css must come AFTER interlace-theme.css for
+ * `[data-theme='harbor'].dark` to sit on top of a coherent stack.
+ *
+ * Reading left to right = ascending priority.
+ */
+@layer interlace.primitives, interlace.foundation, interlace.preflight,
+       interlace.bridge, interlace.brand, interlace.semantics;
 
-@media (prefers-color-scheme: dark) {
-  @theme {
-    --color-ground: #0a0a0a;
-    --color-panel: #131211;
-    --color-line: #262320;
-    --color-ink: #ededec;
-    --color-ink-2: #a9a29a;
-    --color-ink-3: #6f6862;
-    --color-accent: #f4794a;
-    --color-good: #0d9460;
-    --color-warn: #c9a227;
-  }
-}
+@import "../styles/interlace/tokens.css";
+@import "../styles/interlace/foundation.css";
+@import "../styles/interlace/preflight.css";
+@import "../styles/interlace/theme.css";
+@import "../styles/interlace/interlace-theme.css";
+@import "../styles/interlace/themes/harbor.css";
 
-body {
-  background: var(--color-ground);
-  color: var(--color-ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
+/*
+ * Nothing else. The app's own `.skeleton` class and its `interlace-pulse`
+ * keyframe are gone — every loading state now reserves a real
+ * `<Skeleton variant>`, which brings `role="status"` / `aria-busy` /
+ * `aria-live` with it, and the DS owns the pulse timing in `tokens.css`.
+ */
 
-/* One pulse, not many — per LOADING_PHILOSOPHY: skeletons breathe together so
-   the page reads as one loading surface rather than a field of twitching boxes. */
-@keyframes interlace-pulse { 50% { opacity: .45 } }
-.skeleton {
-  animation: interlace-pulse 2s cubic-bezier(.4,0,.6,1) infinite;
-  background: color-mix(in srgb, var(--color-ink) 11%, transparent);
-  border-radius: 6px;
-}
+/*
+ * The pre-DS palette (`--color-ink-3`, `--color-panel`, …) is deliberately NOT
+ * re-declared here, not even as aliases onto DS tokens.
+ *
+ * /terminal and /conquest were written against that vocabulary before the DS
+ * landed and carried 102 references to it. An alias layer would have fixed them
+ * in one reviewable block and cannot drift, since it holds no colour values —
+ * but it would leave two live vocabularies in the app, and the next person
+ * editing those pages would copy the one no DS component uses. The references
+ * were ported instead; `smoke.mjs` asserts the forked names stay gone.
+ *
+ * Worth knowing if you resurrect an old page: ten of those names are simply
+ * undefined here and fail loudly (text falls back to inherited colour, borders
+ * vanish), but `--color-accent` is NOT one of them. Tailwind v4 emits a
+ * `--color-*` alias for every `@theme` colour, so the DS already defines it —
+ * as a muted surface tint, not the brand orange the terminal meant by it. That
+ * one renders wrong instead of broken, and nothing reports it.
+ */

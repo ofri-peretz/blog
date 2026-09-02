@@ -28,6 +28,11 @@ import {
   Refresh,
   type Thread,
 } from "@/components/panels";
+import { Callout } from "@/components/ui/callout";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Meter } from "@/components/ui/meter";
+import { StatStrip } from "@/components/ui/stat-strip";
+import { DataTable } from "@/components/ui/patterns/data-table";
 
 interface Article {
   id: number;
@@ -68,9 +73,9 @@ interface Insights {
 }
 
 const LEVEL: Record<string, string> = {
-  green: "text-[var(--color-good)] border-[var(--color-good)]",
-  amber: "text-[var(--color-warn)] border-[var(--color-warn)]",
-  red: "text-[var(--color-accent)] border-[var(--color-accent)]",
+  green: "text-[var(--success)] border-[var(--success)]",
+  amber: "text-[var(--warning)] border-[var(--warning)]",
+  red: "text-[var(--primary)] border-[var(--primary)]",
 };
 
 export default function Page() {
@@ -88,6 +93,7 @@ export default function Page() {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [threads, setThreads] = useState<Thread[] | null>(null);
+  const [alerts, setAlerts] = useState<any>(null);
   const [sources, setSources] = useState<any>(null);
   const [people, setPeople] = useState<any>(null);
   const [board, setBoard] = useState<any>(null);
@@ -202,6 +208,12 @@ export default function Page() {
     load();
     pull("insights", "/api/insights", (v: any) => setInsights(v)).catch(() => setInsights({ metrics: {}, metricsError: "unreachable", authors: [] }));
     pull("network", "/api/network", (v: any) => setGraph(v)).catch(() => setGraph(null));
+    // On failure this sets `error`, never an empty alert list. A monitoring
+    // panel that renders "all clear" when it could not evaluate is the exact
+    // failure it exists to catch.
+    pull("alerts", "/api/alerts", (v: any) => setAlerts(v)).catch(() =>
+      setAlerts({ alerts: [], evaluated: 0, error: "unreachable" }),
+    );
     refreshThreads(false).catch(() => setThreads([]));
     pull("sources", "/api/sources", (v: any) => setSources(v)).catch(() => setSources({}));
     pull("audience", "/api/audience", (v: any) => setAudience(v)).catch(() =>
@@ -250,7 +262,26 @@ export default function Page() {
         } catch {
           /* clipboard needs a gesture + permission; the tab still opens */
         }
-        window.open(t.articleUrl, "_blank", "noopener");
+        /*
+         * Open the COMMENT, not the article.
+         *
+         * `articleUrl` alone drops you at the top of the post and you scroll
+         * hunting for the thread you are answering — on a piece with 15
+         * comments, or one from February, that is most of the time the reply
+         * takes. `#comment-<id_code>` is the anchor Dev.to renders on every
+         * comment, so the browser lands on the exact thread with its reply box
+         * already in view.
+         *
+         * Verified: `<articleUrl>#comment-<id>` returns 200. The other two
+         * plausible shapes do not — `/<commenter>/comment/<id>` is a 404
+         * because the permalink lives in the ARTICLE AUTHOR's namespace, and
+         * `<articleUrl>/comments/<id>` is a 404 outright.
+         */
+        window.open(
+          t.commentId ? `${t.articleUrl}#comment-${t.commentId}` : t.articleUrl,
+          "_blank",
+          "noopener",
+        );
         // A reply IS a comment to Forem: it spends the same
         // `comment_antispam_creation` 5-minute budget as a queue comment. Not
         // recording it here left the one server-enforced gauge reading green
@@ -374,27 +405,27 @@ export default function Page() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 px-5 py-10 pb-24">
       <header className="flex flex-col gap-1">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)]">
+        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
           Interlace · control room
         </span>
         <div className="flex flex-wrap items-baseline gap-4">
           <h1 className="text-[28px] font-semibold tracking-tight">Engage</h1>
-          <Link href="/queue" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          <Link href="/queue" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             queue
           </Link>
-          <Link href="/journeys" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          <Link href="/journeys" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             journeys
           </Link>
-          <Link href="/calendar" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          <Link href="/calendar" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             calendar
           </Link>
-          <Link href="/raw" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          <Link href="/raw" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             raw data →
           </Link>
-          <Link href="/releases" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          <Link href="/releases" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             releases →
           </Link>
-          <Link href="/rules" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+          <Link href="/rules" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             rules →
           </Link>
         </div>
@@ -403,67 +434,131 @@ export default function Page() {
       {/* Pace meter. Deliberately not a cap — it reports, and only the one
           server-enforced limit can disable the button. */}
       <section>
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-4">
-          {state
-            ? gs.map((g) => (
-                <div
-                  key={g.label}
-                  className="bg-[var(--color-panel)] p-4"
-                  title={g.hint}
-                >
-                  <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-                    {g.label}
-                    {g.hard ? " ·  enforced" : ""}
-                  </div>
-                  <div
-                    className={`mt-1 text-2xl font-semibold tabular-nums ${LEVEL[g.level].split(" ")[0]}`}
-                  >
-                    {g.value}
-                  </div>
-                </div>
-              ))
-            : Array.from({ length: 4 }).map((_, n) => (
-                <div key={n} className="bg-[var(--color-panel)] p-4">
-                  <div className="skeleton h-3 w-24" />
-                  <div className="skeleton mt-2 h-7 w-12" />
-                </div>
-              ))}
-        </div>
+        {/*
+          `<StatStrip>` reserves the strip's real geometry while loading — the
+          hand-rolled version drew four `.skeleton` boxes that were silent to a
+          screen reader, and a `null` gauge printed nothing at all rather than
+          saying it was unmeasured.
+        */}
+        <StatStrip
+          cols={4}
+          loading={!state}
+          announce={{ noun: "pace gauges" }}
+          items={gs.map((g) => ({
+            key: g.label,
+            label: `${g.label}${g.hard ? " ·  enforced" : ""}`,
+            value: g.value ?? null,
+            // `StatItem` has no tone: `value` is `number | string | null` and
+            // nothing carries severity. The green/amber/red level therefore
+            // moves into `note`, where it is a WORD as well as a colour — which
+            // is strictly better than the colour-only cell it replaces, but it
+            // is a workaround, not an API.
+            note: (
+              <>
+                <span className={LEVEL[g.level].split(" ")[0]}>{g.level}</span>
+                {" · "}
+                {g.hint}
+              </>
+            ),
+          }))}
+        />
         {actErr && (
-          <p className="mt-3 rounded-lg border border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)] p-3 text-sm">
-            <b>Not recorded</b> — {actErr}
-          </p>
+          <Callout tone="danger" title="Not recorded" className="mt-3">
+            {actErr}
+          </Callout>
         )}
         {hardBlock && (
-          <p className="mt-3 rounded-lg border border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)] p-3 text-sm">
-            <b>{hardBlock.label}</b> — {hardBlock.hint} Waiting is the only fix;
-            Dev.to rejects the write, not us.
-          </p>
+          <Callout tone="warn" title={hardBlock.label} className="mt-3">
+            {hardBlock.hint} Waiting is the only fix; Dev.to rejects the write,
+            not us.
+          </Callout>
         )}
       </section>
+
+      {/* ── Stalled feeds ────────────────────────────────────────────────────
+          Placed above "Up next" deliberately. A feed that stopped nine days ago
+          outranks today's queue, and the reason this panel exists is that the
+          blog's client-side analytics died on 2026-08-02 and was found by hand
+          on the 11th — server-side /go/ events kept arriving, so nothing ever
+          looked broken. */}
+      <Collapse
+        id="s0"
+        head={
+          <>
+            <span>
+              Stalled feeds{" "}
+              {alerts?.firing ? `· ${alerts.firing}` : ""}
+              {alerts?.high ? ` · ${alerts.high} high` : ""}
+            </span>
+            <Refresh
+              onClick={() => pull("alerts", "/api/alerts", (v: any) => setAlerts(v), true)}
+              at={at.alerts ?? null}
+              busy={!!busy.alerts}
+            />
+          </>
+        }
+      >
+        {!alerts ? (
+          <Skel rows={2} />
+        ) : alerts.error ? (
+          <Callout tone="warn">
+            Could not evaluate alerts ({alerts.error}). This is an error, not an
+            all-clear.
+          </Callout>
+        ) : alerts.alerts?.length ? (
+          <ul className="flex flex-col gap-2">
+            {alerts.alerts.map((a: any) => (
+              <li
+                key={a.id}
+                className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`font-mono text-[10px] uppercase tracking-[0.08em] ${
+                      a.severity === "high"
+                        ? "text-[var(--destructive)]"
+                        : "text-[var(--warning)]"
+                    }`}
+                  >
+                    {a.severity} · {a.kind}
+                  </span>
+                  <code className="font-mono text-[11px] text-[var(--muted-foreground)]">
+                    {a.id}
+                  </code>
+                </div>
+                <p className="mt-1 text-[13px]">{a.message}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-[var(--muted-foreground)]">
+            Nothing stalled — {alerts.evaluated} series evaluated. The count is
+            here because &ldquo;no alerts&rdquo; and &ldquo;no series had enough
+            data to judge&rdquo; are different answers.
+          </p>
+        )}
+      </Collapse>
 
       <Collapse id="s1" head={<>
           Up next
         </>}>
 
         {!state ? (
-          <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-6">
-            <div className="skeleton h-3 w-28" />
-            <div className="skeleton mt-3 h-6 w-3/4" />
-            <div className="skeleton mt-4 h-32 w-full" />
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
+            <Skeleton variant="article-card" label="Loading the next comment" />
           </div>
         ) : item ? (
           <article
             onMouseDown={() => setFocus("queue")}
             onFocusCapture={() => setFocus("queue")}
-            className={`rounded-xl border bg-[var(--color-panel)] p-6 ${focus === "queue" ? "border-[var(--color-accent)]" : "border-[var(--color-line)]"}`}
+            className={`rounded-xl border bg-[var(--card)] p-6 ${focus === "queue" ? "border-[var(--primary)]" : "border-[var(--border)]"}`}
           >
             {item.kind === "reaction" && (
-              <div className="mb-3 inline-block rounded-md border border-[var(--color-warn)] px-2.5 py-1 font-mono text-[13px] text-[var(--color-warn)]">
+              <div className="mb-3 inline-block rounded-md border border-[var(--warning)] px-2.5 py-1 font-mono text-[13px] text-[var(--warning)]">
                 React: {(item.category ?? "").replace(/_/g, " ").toUpperCase()}
               </div>
             )}
-            <div className="font-mono text-[12px] text-[var(--color-accent)]">
+            <div className="font-mono text-[12px] text-[var(--primary)]">
               @{item.article.author}
             </div>
             <h3 className="mt-1.5 text-[19px] font-semibold leading-snug">
@@ -473,14 +568,14 @@ export default function Page() {
               {item.article.tags.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full border border-[var(--color-line)] px-2 py-0.5 font-mono text-[10px] text-[var(--color-ink-2)]"
+                  className="rounded-full border border-[var(--border)] px-2 py-0.5 font-mono text-[10px] text-[var(--muted-foreground)]"
                 >
                   #{t}
                 </span>
               ))}
             </div>
             {item.tldr && (
-              <p className="mt-3 border-l-2 border-[var(--color-line)] pl-3 text-sm text-[var(--color-ink-2)]">
+              <p className="mt-3 border-l-2 border-[var(--border)] pl-3 text-sm text-[var(--muted-foreground)]">
                 {item.tldr}
               </p>
             )}
@@ -488,36 +583,36 @@ export default function Page() {
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                className="mt-4 min-h-40 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-ground)] p-3 text-[14.5px] leading-relaxed"
+                className="mt-4 min-h-40 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 text-[14.5px] leading-relaxed"
               />
             )}
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
               <button
                 onClick={() => act("done")}
-                className="rounded-lg bg-[var(--color-accent)] px-4 py-2.5 text-sm font-semibold text-white"
+                className="rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)]"
               >
                 {item.kind === "comment" ? "Copy & open →" : "Open →"}
               </button>
               <button
                 onClick={() => act("skip")}
-                className="rounded-lg border border-[var(--color-line)] px-4 py-2.5 text-sm text-[var(--color-ink-2)]"
+                className="rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)]"
               >
                 Skip
               </button>
-              <span className="ml-auto font-mono text-[12px] text-[var(--color-ink-3)]">
+              <span className="ml-auto font-mono text-[12px] text-[var(--muted-foreground)]">
                 {i + 1} of {items.length}
               </span>
             </div>
-            <p className="mt-2.5 text-[12.5px] text-[var(--color-ink-3)]">
+            <p className="mt-2.5 text-[12.5px] text-[var(--muted-foreground)]">
               {focus === "queue"
                 ? "Enter next · s skip · r refresh"
                 : "Keys are on Replies — click this card to take them back."}
             </p>
           </article>
         ) : (
-          <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-8 text-center">
-            <b className="block text-[var(--color-good)]">Stream drained</b>
-            <p className="mt-1 text-sm text-[var(--color-ink-2)]">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-8 text-center">
+            <b className="block text-[var(--success)]">Stream drained</b>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
               {items.length === 0
                 ? "No open items on disk. Generate more with engage-daily."
                 : "You cleared every open item — including earlier days."}
@@ -530,8 +625,12 @@ export default function Page() {
       <Collapse id="s2" head={<><span>
           Reach
         </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v), true)} at={at.insights ?? null} busy={!!busy.insights} /></>}>
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-5">
-          {(
+        <StatStrip
+          cols={5}
+          loading={!insights}
+          state={{ error: insights?.metricsError }}
+          announce={{ noun: "platform metrics" }}
+          items={(
             [
               ["Followers", "followers"],
               ["Articles", "articles"],
@@ -539,27 +638,18 @@ export default function Page() {
               ["Comments", "comments"],
               ["Views", "views"],
             ] as const
-          ).map(([label, k]) => (
-            <div key={k} className="bg-[var(--color-panel)] p-4">
-              <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-                {label}
-              </div>
-              {insights ? (
-                <div className="mt-1 text-2xl font-semibold tabular-nums">
-                  {insights.metrics[k]?.toLocaleString() ?? "—"}
-                </div>
-              ) : (
-                <div className="skeleton mt-2 h-7 w-14" />
-              )}
-            </div>
-          ))}
-        </div>
+          ).map(([label, k]) => ({
+            key: k,
+            label,
+            value: insights?.metrics[k] ?? null,
+          }))}
+        />
         {insights?.metricsError && (
-          <p className="text-[12.5px] text-[var(--color-warn)]">
-            Platform metrics unavailable ({insights.metricsError}). Showing dashes
-            rather than a stale cached number — a wrong figure here would be worse
-            than none.
-          </p>
+          <Callout tone="warn" title="Platform metrics unavailable" className="mt-3">
+            {insights.metricsError}. Showing an explicit unmeasured badge rather
+            than a stale cached number — a wrong figure here would be worse than
+            none.
+          </Callout>
         )}
       </Collapse>
 
@@ -570,10 +660,9 @@ export default function Page() {
         {graph ? (
           <NetworkGraph graph={graph} onOpenPerson={openPerson} />
         ) : (
-          <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-            <div className="skeleton h-3 w-56" />
-            <div className="skeleton mt-3 h-[420px] w-full" />
-            <p className="mt-3 text-[12px] text-[var(--color-ink-3)]">
+          <div className="flex flex-col gap-3">
+            <Skeleton variant="chart" label="Crawling public comment threads" />
+            <p className="text-[12px] text-[var(--muted-foreground)]">
               Crawling public comment threads — this takes ~15s.
             </p>
           </div>
@@ -601,94 +690,106 @@ export default function Page() {
       <Collapse id="s5" head={<><span>
           Author partnerships
         </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v), true)} at={at.insights ?? null} busy={!!busy.insights} /></>}>
-        <div className="overflow-x-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
-          {insights ? (
-            <table className="w-full text-[13.5px]">
-              <thead>
-                <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-                  <th className="p-3 font-medium">Author</th>
-                  <th className="p-3 font-medium" title="Replies they wrote back to us / how many we have answered">
-                    Talked back
-                  </th>
-                  <th className="p-3 font-medium">Drafted</th>
-                  <th className="p-3 font-medium">Sent</th>
-                  <th className="p-3 font-medium">Conversion</th>
-                  <th className="p-3 font-medium">Topics</th>
-                  <th className="p-3 font-medium">Last</th>
-                </tr>
-              </thead>
-              <tbody>
-                {insights.authors.slice(0, 20).map((a) => (
-                  <tr key={a.author} className="border-b border-[var(--color-line)] last:border-0">
-                    <td className="p-3">
-                      <a
-                        href={`https://dev.to/${a.author}`}
-                        target="_blank"
-                        rel="noopener"
-                        className="text-[var(--color-accent)]"
-                      >
-                        @{a.author}
-                      </a>
-                    </td>
-                    <td className="whitespace-nowrap p-3 tabular-nums">
-                      {a.repliedToUs ? (
-                        <span
-                          className={
-                            a.weAnswered < a.repliedToUs
-                              ? "text-[var(--color-warn)]"
-                              : "text-[var(--color-good)]"
-                          }
-                          title={
-                            a.weAnswered < a.repliedToUs
-                              ? `${a.repliedToUs - a.weAnswered} reply(ies) still unanswered`
-                              : "every reply answered"
-                          }
-                        >
-                          {a.weAnswered}/{a.repliedToUs}
-                        </span>
-                      ) : (
-                        <span className="text-[var(--color-ink-3)]">—</span>
-                      )}
-                    </td>
-                    <td className="p-3 tabular-nums">{a.drafted}</td>
-                    <td className="p-3 tabular-nums">{a.sent}</td>
-                    <td className="whitespace-nowrap p-3 tabular-nums">
-                      <span className="mr-2 inline-block h-1.5 w-[70px] overflow-hidden rounded bg-[var(--color-line)] align-middle">
-                        <span
-                          className="block h-full bg-[var(--color-good)]"
-                          style={{ width: `${a.conversion}%` }}
-                        />
-                      </span>
-                      {a.conversion}%
-                    </td>
-                    <td className="p-3">
-                      <span className="flex flex-wrap gap-1">
-                        {a.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-ink-2)]"
-                          >
-                            #{t}
-                          </span>
-                        ))}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono text-[12px] text-[var(--color-ink-3)]">
-                      {a.last}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-4">
-              {Array.from({ length: 6 }).map((_, n) => (
-                <div key={n} className="skeleton mb-2 h-8 w-full" />
-              ))}
-            </div>
-          )}
-        </div>
-        <p className="text-[12.5px] text-[var(--color-ink-3)]">
+        {/*
+          The conversion bar was a `<span>`-in-`<span>` with an inline width —
+          no role, no value, invisible to anything that is not an eye. `<Meter>`
+          is `role="meter"` with a real `aria-valuenow`, and a null conversion
+          hatches instead of drawing an empty bar that reads as zero.
+        */}
+        <DataTable
+          caption="Author partnerships, ranked by who talked back"
+          captionHidden
+          loading={!insights}
+          rows={insights?.authors.slice(0, 20) ?? []}
+          rowKey={(a) => a.author}
+          empty="No author partnerships recorded yet."
+          columns={[
+            {
+              id: "author",
+              header: "Author",
+              cell: (a) => (
+                <a
+                  href={`https://dev.to/${a.author}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="text-[var(--primary)]"
+                >
+                  @{a.author}
+                </a>
+              ),
+            },
+            {
+              id: "talkedBack",
+              header: "Talked back",
+              align: "end",
+              className: "whitespace-nowrap",
+              cell: (a) =>
+                a.repliedToUs ? (
+                  <span
+                    className={
+                      a.weAnswered < a.repliedToUs
+                        ? "text-[var(--warning)]"
+                        : "text-[var(--success)]"
+                    }
+                    title={
+                      a.weAnswered < a.repliedToUs
+                        ? `${a.repliedToUs - a.weAnswered} reply(ies) still unanswered`
+                        : "every reply answered"
+                    }
+                  >
+                    {a.weAnswered}/{a.repliedToUs}
+                  </span>
+                ) : (
+                  <span className="text-[var(--muted-foreground)]">—</span>
+                ),
+            },
+            { id: "drafted", header: "Drafted", align: "end", cell: (a) => a.drafted },
+            { id: "sent", header: "Sent", align: "end", cell: (a) => a.sent },
+            {
+              id: "conversion",
+              header: "Conversion",
+              className: "min-w-[160px]",
+              cell: (a) => (
+                <Meter
+                  size="sm"
+                  // `label` is required and always painted — it carries no
+                  // `data-slot`, so there is no CSS hook to hide it and no
+                  // `labelHidden` prop. In a table the column header already
+                  // names the measure, so the label is repeated noise; wrapping
+                  // it in `sr-only` is the only way to suppress it.
+                  label={<span className="sr-only">{a.author} conversion</span>}
+                  value={a.conversion ?? null}
+                  max={100}
+                  unit="%"
+                  tone="positive"
+                />
+              ),
+            },
+            {
+              id: "tags",
+              header: "Topics",
+              cell: (a) => (
+                <span className="flex flex-wrap gap-1">
+                  {a.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted-foreground)]"
+                    >
+                      #{t}
+                    </span>
+                  ))}
+                </span>
+              ),
+            },
+            {
+              id: "last",
+              header: "Last",
+              className: "font-mono text-[12px] text-[var(--muted-foreground)]",
+              cell: (a) => a.last,
+            },
+          ]}
+        />
+        <p className="text-[12.5px] text-[var(--muted-foreground)]">
           Ranked by who <b>talked back</b> first, then by volume — a reply is the
           only signal here we did not manufacture. Amber means they answered us
           and we have not answered them. A tall <b>Drafted</b> with 0% conversion
@@ -705,11 +806,7 @@ export default function Page() {
           Replies waiting{" "}
           {threads && threads.length - ri > 0 ? `· ${threads.length - ri}` : ""}
         </span><Refresh onClick={() => refreshThreads()} at={at.threads ?? null} busy={!!busy.threads} /></>}>
-        {threadHint && (
-          <p className="rounded-lg border border-[var(--color-warn)] p-3 text-[13px] text-[var(--color-warn)]">
-            {threadHint}
-          </p>
-        )}
+        {threadHint && <Callout tone="warn">{threadHint}</Callout>}
         {threads ? (
           <Threads
             threads={threads}
@@ -722,6 +819,13 @@ export default function Page() {
             onRetry={refreshThreads}
             focused={focus === "replies"}
             onFocus={() => setFocus("replies")}
+            onJump={(n) => {
+              setRi(n);
+              // Load that thread's draft, or clear the box — carrying the
+              // previous thread's text into a different conversation is how you
+              // post the wrong reply.
+              setReply(threads[n]?.draft ?? "");
+            }}
           />
         ) : (
           <Skel rows={3} />
@@ -734,7 +838,7 @@ export default function Page() {
         </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} busy={!!busy.sources} /></>}>
         {sources ? (
           sources.impact?.error ? (
-            <p className="text-[13px] text-[var(--color-warn)]">
+            <p className="text-[13px] text-[var(--warning)]">
               {sources.impact.error}
             </p>
           ) : (

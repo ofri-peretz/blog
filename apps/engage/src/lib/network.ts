@@ -46,6 +46,8 @@ export interface Graph {
   /** Connected groups above a size floor — candidate communities to join. */
   clusters: { members: string[]; density: number }[];
   sampledArticles: number;
+  /** The ids actually crawled, so the sample itself is auditable. */
+  sampledIds?: number[];
   fetchedAt: string;
 }
 
@@ -72,6 +74,12 @@ export async function buildGraph(
 ): Promise<Graph> {
   const edges = new Map<string, Edge>();
   let sampled = 0;
+  // The ids, not just the count. `sampledArticles: 132` cannot be reproduced,
+  // audited, or diffed against a later run — you cannot tell a graph that
+  // sampled the wrong 132 articles from one that sampled the right ones. The
+  // `via` evidence on each edge is only checkable against the sample it came
+  // from.
+  const sampledIds: number[] = [];
 
   for (const [id, owner] of articles) {
     let comments: DevComment[];
@@ -82,6 +90,7 @@ export async function buildGraph(
     }
     if (!Array.isArray(comments)) continue;
     sampled++;
+    sampledIds.push(id);
     for (const c of flatten(comments)) {
       const from = c.user?.username;
       if (!from || from === owner) continue; // self-comments are not a tie
@@ -119,6 +128,7 @@ export async function buildGraph(
     edges: [...edges.values()],
     clusters: clusters([...nodeMap.values()], [...edges.values()]),
     sampledArticles: sampled,
+    sampledIds,
     fetchedAt: new Date().toISOString(),
   };
 }
@@ -182,26 +192,223 @@ async function defaultFetch(url: string) {
  */
 export async function expandTwoHop(
   seed: Graph,
-  opts: { topAuthors?: number; perAuthor?: number } = {},
+  opts: { topAuthors?: number; perAuthor?: number; ourArticles?: number } = {},
   fetchJson: (url: string) => Promise<any> = defaultFetch,
 ): Promise<[number, string][]> {
-  const { topAuthors = 25, perAuthor = 3 } = opts;
-  const targets = seed.nodes
-    .filter((n) => !n.us)
-    .sort((a, b) => b.degree - a.degree)
-    .slice(0, topAuthors);
+  const { topAuthors = 25, perAuthor = 3, ourArticles = 200 } = opts;
+
+  /*
+   * OUR OWN ARTICLES ARE ALWAYS SAMPLED, and are not subject to the top-N
+   * ranking.
+   *
+   * This used to read `.filter((n) => !n.us)`, which looks like a sensible
+   * "don't waste budget on ourselves" and is the one exclusion that breaks the
+   * thing this hop exists for. Every edge points at the OWNER of the article it
+   * was observed on, so never sampling our articles means no edge can ever
+   * point at us: our `in` is structurally 0, our `mutual` structurally empty,
+   * for any corpus, forever.
+   *
+   * Measured against the dev.to API on 2026-08-11: the graph had 0 edges to us
+   * and in=0, while 19 distinct authors had left 37 comments on our articles —
+   * and 11 of those 19 were ALREADY nodes in the graph, just never connected to
+   * us. The "ranked by who talked back" panel was ranking on a column that
+   * could only ever be zero.
+   *
+   * A larger budget than `perAuthor` because this is the whole inbound signal
+   * rather than one sample among 25.
+   */
+  const targets: { id: string; take: number }[] = [
+    { id: ME, take: ourArticles },
+    ...seed.nodes
+      .filter((n) => !n.us)
+      .sort((a, b) => b.degree - a.degree)
+      .slice(0, topAuthors)
+      .map((n) => ({ id: n.id, take: perAuthor })),
+  ];
 
   const extra: [number, string][] = [];
-  for (const n of targets) {
+  const seen = new Set<number>();
+  for (const t of targets) {
     try {
       const arts = await fetchJson(
-        `https://dev.to/api/articles?username=${encodeURIComponent(n.id)}&per_page=${perAuthor}`,
+        `https://dev.to/api/articles?username=${encodeURIComponent(t.id)}&per_page=${t.take}`,
       );
       if (!Array.isArray(arts)) continue;
-      for (const a of arts) if (a?.id) extra.push([a.id, n.id]);
+      for (const a of arts) {
+        if (!a?.id || seen.has(a.id)) continue;
+        /*
+         * For OUR articles, skip the ones with no comments.
+         *
+         * The list endpoint already returns `comments_count`, so an article
+         * with zero comments is a guaranteed-empty crawl request. Skipping
+         * them buys full history for FEWER requests than the 40-most-recent
+         * window cost: measured, a 40-article window saw 26 of the 37 comments
+         * on our articles, missing everything older — including a thread from
+         * February. Filtering by count covers all of them and still only pays
+         * for the ~14 articles that have anything on them.
+         *
+         * Not applied to other authors: `perAuthor` is a deliberate sampling
+         * budget there, not an attempt at completeness.
+         */
+        if (t.id === ME && typeof a.comments_count === "number" && a.comments_count === 0)
+          continue;
+        seen.add(a.id);
+        extra.push([a.id, t.id]);
+      }
     } catch {
       continue; // one unreachable author must not void the expansion
     }
   }
   return extra;
+}
+
+/**
+ * Drop authors whose dev.to profile no longer exists.
+ *
+ * Suspended and deleted accounts keep their comments on the articles, so they
+ * keep earning edges in every crawl — they look like real, if quiet,
+ * participants forever. Swept 2026-08-11: 7 of 663 nodes were gone, and the
+ * handles say what they were — `sam_tech_e3c30d03221da839`,
+ * `melissa_gate_b817873be472`, `willy_james_45b9223ca9d6b`: dev.to's
+ * auto-generated signup pattern, i.e. purged spam.
+ *
+ * THE API CANNOT ANSWER THIS. `/api/users/by_username` returns a normal 200
+ * for a suspended account — full payload, real name, real join date, no flag.
+ * Only the profile PAGE 404s. So this is one HEAD per node, which is why it is
+ * a separate pass over a finished graph rather than something the crawl does
+ * inline: it runs once per 12h refresh alongside a crawl that already costs
+ * ~130 requests.
+ *
+ * A failed check is NEVER a deletion. Only a definite 404 removes anyone; a
+ * 429, a 5xx or a network error keeps the node, because the alternative is a
+ * rate limit quietly deleting half the network.
+ */
+export async function pruneMissingAuthors(
+  graph: Graph,
+  concurrency = 4,
+): Promise<{ graph: Graph; removed: string[]; checked: number }> {
+  const ids = graph.nodes.map((n) => n.id);
+  const gone = new Set<string>();
+
+  const check = async (u: string): Promise<void> => {
+    for (let n = 0; n < 3; n++) {
+      try {
+        const r = await fetch(`https://dev.to/${encodeURIComponent(u)}`, {
+          method: "HEAD",
+          redirect: "follow",
+          cache: "no-store",
+        });
+        if (r.status === 404) {
+          gone.add(u);
+          return;
+        }
+        if (r.status === 429 || r.status >= 500) {
+          await new Promise((x) => setTimeout(x, Math.min(1000 * 2 ** n, 8000)));
+          continue;
+        }
+        return;
+      } catch {
+        await new Promise((x) => setTimeout(x, 600 * (n + 1)));
+      }
+    }
+  };
+
+  const queue = [...ids];
+  await Promise.all(
+    Array.from({ length: concurrency }, async () => {
+      while (queue.length) {
+        await check(queue.shift()!);
+        await new Promise((x) => setTimeout(x, 120));
+      }
+    }),
+  );
+
+  if (!gone.size) return { graph, removed: [], checked: ids.length };
+
+  // Edges must go with the nodes, or the renderer draws lines to nothing and
+  // every degree that referenced them stays inflated.
+  const edges = graph.edges.filter((e) => !gone.has(e.from) && !gone.has(e.to));
+  const nodes = graph.nodes
+    .filter((n) => !gone.has(n.id))
+    .map((n) => ({ ...n, mutual: n.mutual.filter((m) => !gone.has(m)) }));
+
+  // Degree is a property of the surviving edge set, so it is recomputed rather
+  // than carried over — a stale degree is how a pruned graph still ranks a
+  // deleted account.
+  for (const n of nodes) {
+    const partners = new Set<string>();
+    for (const e of edges) {
+      if (e.from === n.id) partners.add(e.to);
+      if (e.to === n.id) partners.add(e.from);
+    }
+    n.degree = partners.size;
+  }
+  nodes.sort((a, b) => b.degree - a.degree);
+
+  return {
+    graph: { ...graph, nodes, edges },
+    removed: [...gone],
+    checked: ids.length,
+  };
+}
+
+/**
+ * Seed from the PLATFORM, not only from our own history.
+ *
+ * The graph was seeded exclusively from articles we had already engaged with,
+ * then expanded from the authors that surfaced. That is a closed loop: it can
+ * only ever redraw the neighbourhood we are already in, and it cannot discover
+ * anyone we have never touched. Measured 2026-08-12 over 12 feed pages / 469
+ * distinct authors, coverage was 68% of the top 25 by engagement but only 20%
+ * of the top 250 — and the single largest author on the platform in the sample,
+ * @jess at ~22.7k engagement, was absent entirely.
+ *
+ * So this pass asks dev.to who is actually leading, across several windows so
+ * the answer is not one day's front page: `top=7` catches the current moment,
+ * `top=365` the durable names, and the default feed the rising ones.
+ *
+ * Engagement weights comments 3x reactions deliberately. A reaction is one
+ * click; a comment is a conversation with a reply surface — the thing this
+ * whole graph is built out of, and the only one we can actually join.
+ */
+export async function platformSeeds(
+  opts: { authors?: number; perAuthor?: number } = {},
+  fetchJson: (url: string) => Promise<any> = defaultFetch,
+): Promise<{ seeds: [number, string][]; discovered: string[] }> {
+  const { authors = 40, perAuthor = 2 } = opts;
+
+  const scored = new Map<string, { score: number; ids: number[] }>();
+  const feeds = [
+    "https://dev.to/api/articles?top=7&per_page=100",
+    "https://dev.to/api/articles?top=30&per_page=100",
+    "https://dev.to/api/articles?top=365&per_page=100",
+    "https://dev.to/api/articles?per_page=100",
+  ];
+  for (const url of feeds) {
+    let arts: any[];
+    try {
+      arts = await fetchJson(url);
+    } catch {
+      continue; // one dead feed must not void discovery
+    }
+    if (!Array.isArray(arts)) continue;
+    for (const a of arts) {
+      const u = a?.user?.username;
+      if (!u || u === ME || !a.id) continue;
+      const e = scored.get(u) ?? { score: 0, ids: [] };
+      e.score += (a.public_reactions_count ?? 0) + (a.comments_count ?? 0) * 3;
+      // Only articles with comments are worth crawling — a post with none
+      // yields no edges, and the comment count is already in hand.
+      if (a.comments_count > 0 && e.ids.length < perAuthor) e.ids.push(a.id);
+      scored.set(u, e);
+    }
+  }
+
+  const top = [...scored.entries()]
+    .sort((a, b) => b[1].score - a[1].score)
+    .slice(0, authors);
+
+  const seeds: [number, string][] = [];
+  for (const [u, e] of top) for (const id of e.ids) seeds.push([id, u]);
+  return { seeds, discovered: top.map(([u]) => u) };
 }
