@@ -87,4 +87,32 @@ export function handleUpload(req, res) {
 }
 `,
   },
+  {
+    slug: "the-30-minute-security-audit-onboarding-a-new-codebase",
+    title: "Run the audit on your own code — right here",
+    invite:
+      "Three of the 42 node-security rules, on a handler like the ones they find. Edit it, or paste a route from the codebase you just inherited.",
+    pluginId: "node-security",
+    rules: {
+      "node-security/no-weak-hash-algorithm": "error",
+      "node-security/detect-non-literal-fs-filename": "error",
+      "node-security/detect-child-process": "error",
+    },
+    // One plausible Express handler, not three snippets in a trench coat.
+    // detect-child-process is provenance-gated: it needs the command to
+    // resolve back to an attacker-reachable root, so `req` has to actually
+    // flow into it. That gate is what made the first node-security demo
+    // advertise three rules and fire one.
+    initialCode: `import crypto from "crypto";
+import fs from "fs";
+import { exec } from "child_process";
+
+export function exportUserReport(req, res) {
+  const token = crypto.createHash("md5").update(req.body.email).digest("hex");
+  const report = fs.readFileSync("./reports/" + req.query.file, "utf-8");
+  exec("zip -r /tmp/" + token + ".zip " + req.query.file);
+  return res.send(report);
+}
+`,
+  },
 ];
