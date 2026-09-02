@@ -423,7 +423,8 @@ export function Plugins({
   }, [findings]);
 
   return (
-    <div className={`${card} overflow-x-auto`}>
+    <>
+    <div className={`${card} max-h-[460px] overflow-auto`}>
       <table className="w-full text-[13.5px]">
         <thead>
           <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
@@ -433,7 +434,7 @@ export function Plugins({
           </tr>
         </thead>
         <tbody>
-          {byRule.slice(0, 15).map((r) => (
+          {byRule.map((r) => (
             <tr
               key={r.rule}
               className="border-b border-[var(--color-line)] last:border-0"
@@ -445,12 +446,17 @@ export function Plugins({
           ))}
         </tbody>
       </table>
-      <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] text-[var(--color-ink-3)]">
-        Our own plugins over our own scripts. A rule with a very high hit count on
-        trusted local code is an FP candidate, not a finding —{" "}
-        <code>detect-object-injection</code> is the classic example.
-      </p>
     </div>
+    {/* OUTSIDE the max-h/overflow wrapper above. Inside it, this note
+        scrolled away the moment the table passed 460px — and a note that
+        explains how to read the data is worth least when there is the most
+        data to read. (Review, third pass.) */}
+    <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] text-[var(--color-ink-3)]">
+      Our own plugins over our own scripts. A rule with a very high hit count on
+      trusted local code is an FP candidate, not a finding —{" "}
+      <code>detect-object-injection</code> is the classic example.
+    </p>
+    </>
   );
 }
 
@@ -1017,34 +1023,119 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
 export function Promotion({
   prs,
 }: {
-  prs: { title: string; url: string; repo: string; state: string; updated: string }[];
+  // `updated` is OPTIONAL, and saying so is the actual fix. It was typed as
+  // a required string while the render used `p.updated?.slice()` — the type
+  // asserted something the code did not believe, so every reader had to
+  // guess which was right. The sort below crashed on the answer.
+  prs: {
+    title: string;
+    url: string;
+    repo: string;
+    state: string;
+    updated?: string;
+  }[];
 }) {
   const tone: Record<string, string> = {
     merged: "text-[var(--color-good)] border-[var(--color-good)]",
     open: "text-[var(--color-warn)] border-[var(--color-warn)]",
     closed: "text-[var(--color-ink-3)] border-[var(--color-line)]",
   };
+  const [state, setState] = useState<string>("all");
+  const [q, setQ] = useState("");
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: prs.length };
+    for (const p of prs) c[p.state] = (c[p.state] ?? 0) + 1;
+    return c;
+  }, [prs]);
+
+  const rows = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return prs
+      .filter((p) => state === "all" || p.state === state)
+      .filter(
+        (p) =>
+          !needle ||
+          p.repo.toLowerCase().includes(needle) ||
+          p.title.toLowerCase().includes(needle),
+      )
+      // Open first: those are the ones still winning or still waiting on
+      // someone. Merged is history, closed is a decision already made.
+      .sort((a, b) => {
+        const rank = (x: string) => (x === "open" ? 0 : x === "merged" ? 1 : 2);
+        // `updated` is TYPED as string but rendered with `p.updated?.slice()`
+        // below — that optional chain is evidence it can be absent in real
+        // data, and localeCompare on undefined throws and takes the whole
+        // Promotion panel down. Coerce rather than trust the type: a missing
+        // timestamp sorts last, which is the honest place for "we don't know
+        // when this changed". (Review flagged this three times.)
+        return (
+          rank(a.state) - rank(b.state) ||
+          (b.updated ?? "").localeCompare(a.updated ?? "")
+        );
+      });
+  }, [prs, state, q]);
+
   return (
-    <div className={`${card} divide-y divide-[var(--color-line)]`}>
-      {prs.slice(0, 12).map((p) => (
-        <a
-          key={p.url}
-          href={p.url}
-          target="_blank"
-          rel="noopener"
-          className="flex flex-wrap items-center gap-3 p-3 hover:bg-[color-mix(in_srgb,var(--color-ink)_4%,transparent)]"
-        >
-          <span
-            className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase ${tone[p.state] ?? tone.closed}`}
+    <div className={card}>
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--color-line)] px-3 py-2 font-mono text-[11px]">
+        {["all", "open", "merged", "closed"].map((s) =>
+          counts[s] ? (
+            <button
+              key={s}
+              onClick={() => setState(s)}
+              className={`border px-2 py-0.5 ${
+                state === s
+                  ? "border-[var(--color-accent)] text-[var(--color-accent)]"
+                  : "border-[var(--color-line)] text-[var(--color-ink-2)]"
+              }`}
+            >
+              {s} {counts[s]}
+            </button>
+          ) : null,
+        )}
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="filter repo or title…"
+          className="ml-auto min-w-[150px] flex-1 rounded border border-[var(--color-line)] bg-[var(--color-ground)] px-2 py-0.5 font-mono text-[11px]"
+        />
+        <span className="text-[var(--color-ink-3)]">{rows.length} shown</span>
+      </div>
+
+      {/* Scrolls rather than truncating. The previous version rendered
+          `prs.slice(0, 12)` while the section header counted all 23 — eleven
+          promotion PRs were simply invisible, and nothing on screen said so.
+          A capped list that does not admit its cap is a lie about coverage. */}
+      <div className="max-h-[420px] divide-y divide-[var(--color-line)] overflow-y-auto">
+        {rows.map((p) => (
+          <a
+            key={p.url}
+            href={p.url}
+            target="_blank"
+            rel="noopener"
+            className="flex flex-wrap items-center gap-3 p-3 hover:bg-[color-mix(in_srgb,var(--color-ink)_4%,transparent)]"
           >
-            {p.state}
-          </span>
-          <span className="font-mono text-[12px] text-[var(--color-ink-3)]">
-            {p.repo}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[13.5px]">{p.title}</span>
-        </a>
-      ))}
+            <span
+              className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase ${tone[p.state] ?? tone.closed}`}
+            >
+              {p.state}
+            </span>
+            <span className="font-mono text-[12px] text-[var(--color-ink-3)]">
+              {p.repo}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[13.5px]">{p.title}</span>
+            <span className="font-mono text-[10.5px] text-[var(--color-ink-3)]">
+              {p.updated?.slice(0, 10)}
+            </span>
+          </a>
+        ))}
+        {rows.length === 0 && (
+          <p className="p-3 text-[13px] text-[var(--color-ink-3)]">
+            Nothing matches that filter.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -1309,8 +1400,10 @@ export function Board({ prs }: { prs: any[] }) {
       <div className="border-y border-[var(--color-line)] px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
         Waiting on maintainers · {theirs.length}
       </div>
-      <div className="divide-y divide-[var(--color-line)]">
-        {theirs.slice(0, 10).map((p) => <Row key={p.url} p={p} act={false} />)}
+      {/* Scrolls instead of slicing. The header counts every PR, so a capped
+          list made the two disagree with nothing on screen to explain it. */}
+      <div className="max-h-[360px] divide-y divide-[var(--color-line)] overflow-y-auto">
+        {theirs.map((p) => <Row key={p.url} p={p} act={false} />)}
       </div>
     </div>
   );
@@ -1476,8 +1569,8 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
                   authority this one spends
                 </span>
               </p>
-              <ul className="mt-1 flex flex-col gap-0.5 border-l-2 border-[var(--color-accent)] pl-2">
-                {outLinks.slice(0, 8).map((l: string) => (
+              <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto border-l-2 border-[var(--color-accent)] pl-2">
+                {outLinks.map((l: string) => (
                   <li key={l}>
                     <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--color-ink-2)] hover:text-[var(--color-accent)]">
                       <span className="text-[var(--color-accent)]">↗</span> {l}
@@ -1492,8 +1585,8 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
                 </span>
               </p>
               {inLinks.length ? (
-                <ul className="mt-1 flex flex-col gap-0.5 border-l-2 border-[var(--color-good)] pl-2">
-                  {inLinks.slice(0, 8).map((l: string) => (
+                <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto border-l-2 border-[var(--color-good)] pl-2">
+                  {inLinks.map((l: string) => (
                     <li key={l}>
                       <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--color-ink-2)] hover:text-[var(--color-good)]">
                         <span className="text-[var(--color-good)]">↙</span> {l}
