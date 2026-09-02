@@ -162,10 +162,22 @@ mechanisms is how one of them rots.
 
 - **A vacuous green.** The single likeliest failure, and it has precedent here
   twice. Mitigated by step 1's required red, and only by that.
-- **Noise from unreachable components.** 36 of 97 are not referenced from
-  `src/`; failing on those trains people to ignore the lock. Scope to reachable
-  and revisit if the reachability scan proves too loose — it matches on
-  basename, which will over-count before it under-counts.
+- **Reachability is now measured the other way round, and so is its risk.**
+  80 of the 97 are not reachable; failing on those trains people to ignore the
+  lock, which is why the gate is scoped. But note the method changed: the
+  discredited basename scan over-counted, while the import-graph walk that
+  replaced it can **under**-count — it follows static `from "…"` specifiers
+  only. Three files under `src/` use dynamic `import()`, and `.interlace/`
+  has one `index.ts` barrel; neither is followed today. Under-counting is the
+  worse failure here, because a component that renders but is not in the
+  scoped set is exactly the gap this intent exists to close. If step 1's
+  scoped pass is red on fewer than 4, suspect the walk before suspecting the
+  grids.
+
+  (The phrase "matches on basename" survived in this bullet from the draft the
+  ground truth corrects above. Review caught the leftover — the same defect the
+  intent's success criterion had: a claim updated in one place and not the
+  other.)
 - **The upstream repo is not here.** `apps/interlace-docs-baseline/` was not in
   the local agents checkout on 2026-09-02, so step 3 may block. That is why the
   allowlist fallback is written down rather than improvised later.
