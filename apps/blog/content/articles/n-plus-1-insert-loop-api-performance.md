@@ -167,29 +167,29 @@ async function importUsers(users) {
 
 ## The Rule: [`pg/no-batch-insert-loop`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-batch-insert-loop)
 
-The [`pg/no-batch-insert-loop`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-batch-insert-loop) rule from `eslint-plugin-pg` flags this shape statically — no profiler, no load test, no waiting for the data to show up. One command and it's watching every loop in the repo:
+The [`pg/no-batch-insert-loop`](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-batch-insert-loop) rule from `eslint-plugin-postgresql-security` flags this shape statically — no profiler, no load test, no waiting for the data to show up. One command and it's watching every loop in the repo:
 
 ```bash
-npm install --save-dev eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
 ```
 
 ### Recommended config — all 13 rules
 
 ```javascript
 // eslint.config.js — `configs` is a NAMED export; the default export is the plugin object.
-import { configs } from "eslint-plugin-pg";
+import { configs } from "eslint-plugin-postgresql-security";
 
 export default [configs.recommended];
 ```
 
 > **If your project has no `"type": "module"`,** that `import` throws a `SyntaxError`. Rename the file to `eslint.config.mjs` — it works in any project, and the plugin itself ships CommonJS, so nothing else has to change.
 
-One thing `recommended` does **not** do: fail your build on this rule. In `eslint-plugin-pg` v1.4.6 the preset puts `no-batch-insert-loop` in its quality bucket at `"warn"`, next to `no-select-all` and `prefer-pool-query`. A warning doesn't gate CI, and a rule that doesn't gate CI is one your team learns to scroll past. To make the loop stop a merge, promote it — `configs.strict` (every rule as `"error"`), or just this one:
+One thing `recommended` does **not** do: fail your build on this rule. In `eslint-plugin-postgresql-security` v1.4.6 the preset puts `no-batch-insert-loop` in its quality bucket at `"warn"`, next to `no-select-all` and `prefer-pool-query`. A warning doesn't gate CI, and a rule that doesn't gate CI is one your team learns to scroll past. To make the loop stop a merge, promote it — `configs.strict` (every rule as `"error"`), or just this one:
 
 ### Just this rule, as a CI gate
 
 ```javascript
-import pgPlugin from "eslint-plugin-pg"; // default export = the plugin object
+import pgPlugin from "eslint-plugin-postgresql-security"; // default export = the plugin object
 
 export default [
   {
@@ -269,10 +269,10 @@ await pool.query("DELETE FROM users WHERE id = ANY($1)", [userIds]);
 
 ```bash
 # npm / yarn / pnpm / bun
-npm install --save-dev eslint-plugin-pg
-yarn add -D eslint-plugin-pg
-pnpm add -D eslint-plugin-pg
-bun add -d eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
+yarn add -D eslint-plugin-postgresql-security
+pnpm add -D eslint-plugin-postgresql-security
+bun add -d eslint-plugin-postgresql-security
 ```
 
 ## What It Does — and Doesn't — See
@@ -281,7 +281,7 @@ bun add -d eslint-plugin-pg
 
 Which means it also fires on the loop that genuinely runs twice. That's a [false positive](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn) by any honest accounting, and it's the [precision](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis) cost of catching the shape before the row count exists to prove it. I take that trade here for one reason: the fix is a bulk write, and a bulk write is the better code at two rows as well.
 
-(It's one of 13 rules in `eslint-plugin-pg` v1.4.6; the [pg getting-started guide](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) covers the rest — SQL injection, `search_path` hijacking, connection leaks.)
+(It's one of 13 rules in `eslint-plugin-postgresql-security` v1.4.6; the [pg getting-started guide](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security) covers the rest — SQL injection, `search_path` hijacking, connection leaks.)
 
 ## Where This Fits
 
@@ -289,15 +289,15 @@ The N+1 insert loop belongs to a family: code that passes review because it's _c
 
 - **Read next →** [`BEGIN` on a pool: the transaction race condition](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — same pool, inverse failure: one transaction scattered across three connections
 - [A missing `client.release()` that exhausted the pool at 3 AM](https://ofriperetz.dev/articles/database-connection-leak-production-outage) — the availability sibling of this rule
-- [Getting started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — all 13 rules, one install
+- [Getting started with `eslint-plugin-postgresql-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security) — all 13 rules, one install
 
 None of this needs a rewrite of your data layer. One dev dependency and one line promoted to `"error"`, and the next loop like this one dies in a pull request instead of on a pager.
 
 ---
 
-- 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📦 [npm: eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security)
 - 📖 [Rule docs: pg/no-batch-insert-loop](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-batch-insert-loop)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-postgresql-security)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
 ⭐ Star on GitHub if a loop has ever turned your bulk import into a timeout.

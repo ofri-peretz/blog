@@ -131,7 +131,7 @@ Which is the whole point of static analysis: it asks the questions your prompt d
 
 ```javascript
 // eslint.config.mjs
-import jwt from "eslint-plugin-jwt";
+import jwt from "eslint-plugin-jwt-security";
 import mongodbSecurity from "eslint-plugin-mongodb-security";
 import nestjsSecurity from "eslint-plugin-nestjs-security";
 import secureCoding from "eslint-plugin-secure-coding";
@@ -149,7 +149,7 @@ export default [
 ```
 
 ```bash
-npm install --save-dev eslint-plugin-jwt eslint-plugin-mongodb-security \
+npm install --save-dev eslint-plugin-jwt-security eslint-plugin-mongodb-security \
   eslint-plugin-nestjs-security eslint-plugin-secure-coding
 npx eslint src/
 ```
@@ -167,7 +167,7 @@ _← [Same NestJS Prompt. Claude Got 6 Security Errors. Gemini Got 2.](https://d
 
 ---
 
-📦 [`eslint-plugin-jwt`](https://www.npmjs.com/package/eslint-plugin-jwt) · [`eslint-plugin-mongodb-security`](https://www.npmjs.com/package/eslint-plugin-mongodb-security) · [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security) · [`eslint-plugin-secure-coding`](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [Rule docs](https://eslint.interlace.tools)
+📦 [`eslint-plugin-jwt-security`](https://www.npmjs.com/package/eslint-plugin-jwt-security) · [`eslint-plugin-mongodb-security`](https://www.npmjs.com/package/eslint-plugin-mongodb-security) · [`eslint-plugin-nestjs-security`](https://www.npmjs.com/package/eslint-plugin-nestjs-security) · [`eslint-plugin-secure-coding`](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [Rule docs](https://eslint.interlace.tools)
 
 {% cta <https://github.com/ofri-peretz/eslint> %}
 ⭐ Star on GitHub

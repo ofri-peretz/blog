@@ -19,7 +19,12 @@
     "format": "prettier --check \"**/*.{md,mdx,ts,tsx,js,mjs,json,yml,yaml}\"",
     "format:write": "prettier --write \"**/*.{md,mdx,ts,tsx,js,mjs,json,yml,yaml}\"",
     "publish:devto": "node apps/blog/scripts/publish-to-devto.mjs",
-    "publish:devto:dry": "node apps/blog/scripts/publish-to-devto.mjs --dry-run"
+    "publish:devto:dry": "node apps/blog/scripts/publish-to-devto.mjs --dry-run",
+    "sdlc:verify": "node scripts/sdlc/detect-stale-claims.mjs",
+    "sdlc:links": "node scripts/sdlc/check-links.mjs",
+    "sdlc:reception": "node scripts/sdlc/reception-band.mjs",
+    "sdlc:detect": "node scripts/sdlc/detect.mjs",
+    "sdlc:new": "node scripts/sdlc/new.mjs"
   },
   "devDependencies": {
     "prettier": "^3.5.3",

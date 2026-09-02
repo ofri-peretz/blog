@@ -393,7 +393,7 @@ _Part of **The Hardened Stack** — one ESLint plugin per layer of the Node.js a
 ·
 [node-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security)
 ·
-[jwt](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)._
+[jwt](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security)._
 
 ---
 

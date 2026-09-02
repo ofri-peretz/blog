@@ -264,15 +264,15 @@ If you only take one action from this article, make it this: put the gate in CI 
 
 ```bash
 npm i -D eslint-plugin-secure-coding@^3.3.0 eslint-plugin-node-security@^4.3.0 \
-  eslint-plugin-pg@^1.4.4 eslint-plugin-jwt@^2.2.4
+  eslint-plugin-postgresql-security@^1.4.4 eslint-plugin-jwt-security@^2.2.4
 ```
 
 ```js
 // eslint.config.js (flat config)
 import secureCoding from "eslint-plugin-secure-coding";
 import nodeSecurity from "eslint-plugin-node-security";
-import pg from "eslint-plugin-pg";
-import jwt from "eslint-plugin-jwt";
+import pg from "eslint-plugin-postgresql-security";
+import jwt from "eslint-plugin-jwt-security";
 
 export default [
   secureCoding.configs.recommended, // secure-coding/detect-object-injection, secure-coding/no-hardcoded-credentials
