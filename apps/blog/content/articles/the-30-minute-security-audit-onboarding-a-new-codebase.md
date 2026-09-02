@@ -65,6 +65,10 @@ command for command.
 > [12 seconds of ESLint, 47 violations across 6 vulnerability classes](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 > — see the framework-specific walkthrough.
 
+::playground-cta{slug="the-30-minute-security-audit-onboarding-a-new-codebase"}
+See three of these rules run before you install anything → (in your browser; nothing you paste leaves the page)
+::
+
 ## Step 1 — install the layers (2 min)
 
 Three plugins cover the highest-yield server-side risks: injection, secrets, and
