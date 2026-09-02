@@ -37,7 +37,7 @@ They pass type-checking. They pass unit tests, because the test feeds trusted in
 
 Below is the case file for each: what it looks like, why review waved it through, the exact finding the linter prints, and the fix. Total cost to make all four fail your CI: one install and three lines of config, about two minutes, in the setup section right after. Every terminal block is real output — `eslint-plugin-node-security` v4.4.2 on ESLint 9.39.5, captured 2026-07-28. Don't take my word for it; run it and compare.
 
-> **The Hardened Stack series** · **`eslint-plugin-node-security` (you are here)** → [`eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) → [`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) → [`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt). This is the stdlib floor every other layer stands on. New here? Start with [The 30-Minute Security Audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase), the protocol these plugins plug into.
+> **The Hardened Stack series** · **`eslint-plugin-node-security` (you are here)** → [`eslint-plugin-express-security`](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) → [`eslint-plugin-nestjs-security`](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) → [`eslint-plugin-jwt-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security). This is the stdlib floor every other layer stands on. New here? Start with [The 30-Minute Security Audit](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase), the protocol these plugins plug into.
 
 ---
 
@@ -379,7 +379,7 @@ Generic security linters flag a few of these (`eval`, obvious `child_process`), 
 
 `eslint-plugin-node-security` is the dedicated Node.js-stdlib layer — crypto, injection, filesystem, SSRF, supply chain, secrets — and the consolidation home for the retired crypto plugin. It doesn't compete with the framework plugins; it sits under them.
 
-> **The Hardened Stack** · **`eslint-plugin-node-security` (current)** | [`eslint-plugin-express-security` →](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) | [`eslint-plugin-jwt` →](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt). Writing code with an assistant? See how often it ships these exact bugs in [I Let Claude Write 80 Functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
+> **The Hardened Stack** · **`eslint-plugin-node-security` (current)** | [`eslint-plugin-express-security` →](https://ofriperetz.dev/articles/getting-started-with-eslint-plugin-express-security) | [`eslint-plugin-nestjs-security` →](https://ofriperetz.dev/articles/nestjs-guards-pipes-throttlers-6-eslint-rules) | [`eslint-plugin-jwt-security` →](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security). Writing code with an assistant? See how often it ships these exact bugs in [I Let Claude Write 80 Functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities).
 
 ---
 

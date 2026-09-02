@@ -119,13 +119,13 @@ Run across one file containing 12 vulnerability classes, the four linter configu
 
 Oxlint's native ruleset caught a single security issue (`no-eval`) — because **Oxlint is an engine, not a security ruleset.** You pick it for speed, not coverage. The generic incumbent caught the well-known 21 across 5 vulnerability classes. The domain plugins, run together, caught 46 across 20 rules — covering all 12 classes including SQL injection (`pg/no-unsafe-query`), unsafe deserialization, ReDoS, weak hashing, insecure randomness, unsafe `innerHTML`, insecure comparisons, and more that a generic ruleset has no rule for.
 
-Worth naming the asymmetry directly: this compares 4 domain-specific plugins against 1 generic plugin, so of course the combined set covers more ground — 4 focused tools should beat 1 generalist tool. The number that actually matters for a fair comparison is per-domain: does `eslint-plugin-pg`'s 13 SQL-focused rules alone beat what `eslint-plugin-security`'s single generic pattern-matching rule catches on the same SQL-injection surface? On this fixture, yes — `pg/no-unsafe-query` catches the interpolation pattern plus parameterization edge cases the generic rule doesn't model, because it's built against the `pg` client API instead of a generic string-concatenation heuristic. But that per-domain comparison is the one to run yourself before trusting the aggregate 46-vs-21 headline.
+Worth naming the asymmetry directly: this compares 4 domain-specific plugins against 1 generic plugin, so of course the combined set covers more ground — 4 focused tools should beat 1 generalist tool. The number that actually matters for a fair comparison is per-domain: does `eslint-plugin-postgresql-security`'s 13 SQL-focused rules alone beat what `eslint-plugin-security`'s single generic pattern-matching rule catches on the same SQL-injection surface? On this fixture, yes — `pg/no-unsafe-query` catches the interpolation pattern plus parameterization edge cases the generic rule doesn't model, because it's built against the `pg` client API instead of a generic string-concatenation heuristic. But that per-domain comparison is the one to run yourself before trusting the aggregate 46-vs-21 headline.
 
-If you want to close the gap before reading further, the four plugins benchmarked here install as a drop-in alongside whatever you run today. If you only add one, start with whichever domain matches your stack's biggest blast radius — for most Node backends that's `eslint-plugin-node-security` (crypto, randomness, deserialization) or `eslint-plugin-pg` if you're running raw SQL:
+If you want to close the gap before reading further, the four plugins benchmarked here install as a drop-in alongside whatever you run today. If you only add one, start with whichever domain matches your stack's biggest blast radius — for most Node backends that's `eslint-plugin-node-security` (crypto, randomness, deserialization) or `eslint-plugin-postgresql-security` if you're running raw SQL:
 
 ```bash
 npm i -D eslint-plugin-secure-coding eslint-plugin-node-security \
-  eslint-plugin-pg eslint-plugin-browser-security
+  eslint-plugin-postgresql-security eslint-plugin-browser-security
 ```
 
 The flat-config block that wires all four (`recommended` presets) is in the [Methodology](#methodology--reproduce-it) section below — copy it, point ESLint at your `src/`, and you have the 46-finding configuration in about a minute.
@@ -177,7 +177,7 @@ The Interlace side combines the four plugins in one flat config:
 // eslint.config.mjs
 import secureCoding from "eslint-plugin-secure-coding";
 import nodeSecurity from "eslint-plugin-node-security";
-import pg from "eslint-plugin-pg";
+import pg from "eslint-plugin-postgresql-security";
 import browserSecurity from "eslint-plugin-browser-security";
 
 export default [
@@ -202,7 +202,7 @@ export default [
 ```bash
 # install the engines + the plugins
 npm i -D eslint@9 oxlint eslint-plugin-secure-coding eslint-plugin-node-security \
-  eslint-plugin-pg eslint-plugin-browser-security eslint-plugin-security
+  eslint-plugin-postgresql-security eslint-plugin-browser-security eslint-plugin-security
 
 # 1) Interlace @ ESLint — the eslint.config.mjs above
 npx eslint test-files/vulnerable.js --format json
@@ -231,7 +231,7 @@ Config 4 (**Interlace @ Oxlint**) is the only step that needs the repo rather th
 
 ```bash
 # the four plugins benchmarked here
-npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-browser-security
+npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-postgresql-security eslint-plugin-browser-security
 # yarn add -D … · pnpm add -D … · bun add -d …
 ```
 
@@ -239,7 +239,7 @@ npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security e
 
 ## Links
 
-- 📦 [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
+- 📦 [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-postgresql-security) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
 - 📖 [Full rule docs (per-rule CWE)](https://eslint.interlace.tools)
 - 💻 [Source + benchmark on GitHub](https://github.com/ofri-peretz/eslint)
 

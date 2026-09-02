@@ -44,15 +44,15 @@ In [Part 1](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-7
 > **Get the Guardian Layer running in 60 seconds:**
 >
 > ```bash
-> npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt
+> npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-postgresql-security eslint-plugin-jwt-security
 > ```
 >
 > ```javascript
 > // eslint.config.js
 > import secure from "eslint-plugin-secure-coding";
 > import nodeSecurity from "eslint-plugin-node-security";
-> import pg from "eslint-plugin-pg";
-> import jwt from "eslint-plugin-jwt";
+> import pg from "eslint-plugin-postgresql-security";
+> import jwt from "eslint-plugin-jwt-security";
 >
 > export default [
 >   secure.configs.recommended,
@@ -367,7 +367,7 @@ This is why the timeline reads `1 → 1 → 0` rather than `1 → 0`: the count 
 1. **A rule firing is a _signal_, not a proof of exploitability.** `no-zip-slip` keys on the `..`-substring heuristic; in this Gen-1 code there's no archive extraction, so the finding flags a _weak, incomplete_ control (a blocklist that string-matches `..`) rather than a definitely-exploitable hole. I'm counting "a new rule category fired" as a Hydra event, not "a new RCE shipped." The reason that's still the point: the human reviewer can't distinguish "weak new control" from "real new hole" any better than the linter can — both see only that the diff added something that _looks_ defensive. The Hydra Rate measures **how often the fix quietly changes the security category under review**, which is exactly the thing diff-review is blind to.
 2. **Not all head-swaps are equal in severity.** Trading a command-injection (critical, RCE) for a weak `..` path check (low) is, on a severity-weighted view, arguably a _net risk reduction_ — and my equal-weight Hydra Rate scores it as "got worse." That's the most attackable choice in the methodology, so I'll name it plainly: the metric counts _category churn_, not [CVSS](https://ofriperetz.dev/articles/cvss-scores-explained) deltas. The workflow finding survives the objection anyway, because the failure mode isn't "the code got more dangerous" — it's "the diff silently swapped one security property for another and review couldn't see it." Severity-weighting the Hydra Rate is the obvious refinement and it's on the list for the next run.
 
-That whole loop — generate, scan, feed the _specific_ rule back, re-scan — is the entire Guardian Layer, and the four plugins behind it install in one line (`npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt`); the [copy-paste config is at the end](#eslint-configuration-used). I walk through what this looks like catching real Claude-generated bugs in a single pass in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
+That whole loop — generate, scan, feed the _specific_ rule back, re-scan — is the entire Guardian Layer, and the four plugins behind it install in one line (`npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-postgresql-security eslint-plugin-jwt-security`); the [copy-paste config is at the end](#eslint-configuration-used). I walk through what this looks like catching real Claude-generated bugs in a single pass in [Claude Wrote a NestJS Service. ESLint Found 6 Security Holes.](https://ofriperetz.dev/articles/claude-wrote-nestjs-service-eslint-found-6-security-holes)
 
 ### Case Study 2: Auth Verification — The Prompt-Only Nightmare (Group B)
 
@@ -506,7 +506,7 @@ Results saved to `results/ai-security/hydra-*.json` with:
 
 2. **Don't rely on security prompts alone.** Telling the AI "write secure code" reduces simple vulnerabilities but doesn't prevent the Hydra effect — and can actually increase complexity-driven attack surface.
 
-3. **Add ESLint security rules to your CI pipeline** — `npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt`, then [the config](#eslint-configuration-used), and fail CI on a non-zero ESLint exit code. That deterministic gate catches vulnerabilities whether they're original or Hydra-introduced. For the bigger picture, [Mapping Your Codebase to OWASP Top 10 with 247 ESLint Rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) walks the rule-to-CWE map, and the [docs](https://eslint.interlace.tools) list every rule with a fix example.
+3. **Add ESLint security rules to your CI pipeline** — `npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-postgresql-security eslint-plugin-jwt-security`, then [the config](#eslint-configuration-used), and fail CI on a non-zero ESLint exit code. That deterministic gate catches vulnerabilities whether they're original or Hydra-introduced. For the bigger picture, [Mapping Your Codebase to OWASP Top 10 with 247 ESLint Rules](https://ofriperetz.dev/articles/mapping-your-codebase-to-owasp-top-10-with-247-eslint-rules) walks the rule-to-CWE map, and the [docs](https://eslint.interlace.tools) list every rule with a fix example.
 
 4. **Use the Guardian Layer pattern:** Feed ESLint violations back to the model **once**, verify the fix with ESLint again. If violations persist after 1-2 rounds, escalate to human review — don't keep looping.
 
@@ -525,14 +525,14 @@ Results saved to `results/ai-security/hydra-*.json` with:
 The four plugins that produced every finding in this benchmark — `secure-coding`, `node-security`, `pg`, `jwt` — wired via their recommended configs:
 
 ```bash
-npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-pg eslint-plugin-jwt
+npm install -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-postgresql-security eslint-plugin-jwt-security
 ```
 
 ```javascript
 import secure from "eslint-plugin-secure-coding";
 import nodeSecurity from "eslint-plugin-node-security";
-import pg from "eslint-plugin-pg";
-import jwt from "eslint-plugin-jwt";
+import pg from "eslint-plugin-postgresql-security";
+import jwt from "eslint-plugin-jwt-security";
 
 export default [
   secure.configs.recommended,

@@ -244,18 +244,18 @@ is the plugin object):
 
 ```bash
 # core + the specialized layers you actually run — pick your manager
-npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt eslint-plugin-pg
-yarn add -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt eslint-plugin-pg
-pnpm add -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt eslint-plugin-pg
-bun add -d eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt eslint-plugin-pg
+npm install --save-dev eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt-security eslint-plugin-postgresql-security
+yarn add -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt-security eslint-plugin-postgresql-security
+pnpm add -D eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt-security eslint-plugin-postgresql-security
+bun add -d eslint-plugin-secure-coding eslint-plugin-node-security eslint-plugin-jwt-security eslint-plugin-postgresql-security
 ```
 
 ```js
 // eslint.config.js — flat config
 import { configs as secureCoding } from "eslint-plugin-secure-coding";
 import { configs as nodeSecurity } from "eslint-plugin-node-security";
-import { configs as jwt } from "eslint-plugin-jwt";
-import { configs as pg } from "eslint-plugin-pg";
+import { configs as jwt } from "eslint-plugin-jwt-security";
+import { configs as pg } from "eslint-plugin-postgresql-security";
 
 export default [
   secureCoding.recommended, // A01/A03/A04/A08/A09 — general source patterns
@@ -324,8 +324,8 @@ it, and the code that survived review:
 
 - [The 30-minute security audit: a static analysis protocol for onboarding](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase) — how to run this map as a structured audit from day one
 - [Benchmark: 17 ESLint security plugins compared](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) — how the Interlace plugins compare to every alternative
-- [`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) — the `alg:none` bypass (A07) and 12 more auth rules
-- [`eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — SQL injection (A03), connection leaks, the N+1 insert loop
+- [`eslint-plugin-jwt-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security) — the `alg:none` bypass (A07) and 12 more auth rules
+- [`eslint-plugin-postgresql-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security) — SQL injection (A03), connection leaks, the N+1 insert loop
 - [`search_path` hijacking](https://ofriperetz.dev/articles/searchpath-hijacking-postgresql-attack) — the A05 attack (CWE-426) most teams have never heard of
 - [I let Claude write 80 functions](https://ofriperetz.dev/articles/i-let-claude-write-60-functions-65-75-had-security-vulnerabilities) — what these rules catch when the author is a model, not a person (65–75% had a vuln)
 - [We ranked 5 AI models by security](https://ofriperetz.dev/articles/we-ranked-5-ai-models-by-security-the-leaderboard-is-wrong) — 700 functions, every model leaking 49–73%, all graded by these same OWASP-tagged rules
@@ -335,7 +335,7 @@ it, and the code that survived review:
 
 ## Links
 
-- 📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) (core) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt) · [pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📦 [npm: eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) (core) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt-security) · [pg](https://www.npmjs.com/package/eslint-plugin-postgresql-security)
 - 📖 [Full rule docs (per-rule CWE + OWASP)](https://eslint.interlace.tools)
 - 🔐 [OWASP Top 10 (2021)](https://owasp.org/www-project-top-ten/)
 - 💻 [Source on GitHub — the full Interlace plugin ecosystem](https://github.com/ofri-peretz/eslint)

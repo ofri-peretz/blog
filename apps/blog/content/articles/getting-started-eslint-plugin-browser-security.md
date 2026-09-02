@@ -430,7 +430,7 @@ the suspicion that deserves.
 
 The token in that `localStorage` call also has to come from somewhere. This
 plugin catches the client mishandling it; on the issuing side,
-[`eslint-plugin-jwt`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)
+[`eslint-plugin-jwt-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security)
 catches the server that signs it wrong — most infamously the
 [`alg: none` forgery](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g),
 where a one-character header change mints an admin token. Run both and the JWT's
@@ -479,6 +479,6 @@ client-side layer.
 
 **The Hardened Stack series** — guarding one request end to end:
 
-← _Issuing side:_ [eslint-plugin-jwt — the server that signs the token](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt)
+← _Issuing side:_ [eslint-plugin-jwt-security — the server that signs the token](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security)
 · **You are here:** the browser that stores it ·
 _Next:_ [What 12 seconds of ESLint found in an inherited NestJS codebase](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities) →

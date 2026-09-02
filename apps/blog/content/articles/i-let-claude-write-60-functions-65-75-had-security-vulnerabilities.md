@@ -147,16 +147,16 @@ And it isn't a Claude problem. When I re-ran the same methodology across **5 mod
 If two-in-three of your AI-generated functions ship a vulnerability regardless of which model you pay for, the lever isn't model choice — it's a check that runs on every diff. Every single finding in this benchmark — across all four models, both the 60-function run and the Opus 4.6 follow-up — came from these four plugins; the whole config is copy-paste:
 
 ```bash
-npm install -D eslint-plugin-secure-coding eslint-plugin-pg \
-               eslint-plugin-node-security eslint-plugin-jwt
+npm install -D eslint-plugin-secure-coding eslint-plugin-postgresql-security \
+               eslint-plugin-node-security eslint-plugin-jwt-security
 ```
 
 ```javascript
 // eslint.config.js
 import secureCoding from "eslint-plugin-secure-coding";
-import pg from "eslint-plugin-pg";
+import pg from "eslint-plugin-postgresql-security";
 import nodeSecurity from "eslint-plugin-node-security";
-import jwt from "eslint-plugin-jwt";
+import jwt from "eslint-plugin-jwt-security";
 
 export default [
   secureCoding.configs.recommended,
@@ -166,7 +166,7 @@ export default [
 ];
 ```
 
-Each plugin's npm page has full rule docs and getting-started steps: [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt).
+Each plugin's npm page has full rule docs and getting-started steps: [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [pg](https://www.npmjs.com/package/eslint-plugin-postgresql-security) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [jwt](https://www.npmjs.com/package/eslint-plugin-jwt-security).
 
 The rest of this article is what happens when you feed that linter's output _back_ to the model that wrote the bug.
 
@@ -509,8 +509,8 @@ The [install + config block is above](#phase-1-initial-results), at the point wh
 | Plugin                        | Rule that fired (60-fn run)                                                                          | Catches                                                         | CWE              |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------- |
 | `eslint-plugin-secure-coding` | `no-graphql-injection` (31×), `no-sensitive-data-exposure` (2×)                                      | string-built SQL/queries (top finding), sensitive-info exposure | CWE-89, CWE-200  |
-| `eslint-plugin-pg`            | `no-select-all` (3×), `no-hardcoded-credentials` (2×)                                                | `SELECT *` over-fetch, hardcoded DB password in client config   | CWE-200, CWE-798 |
-| `eslint-plugin-jwt`           | `require-algorithm-whitelist` (2×)                                                                   | `jwt.verify` with no `algorithms` whitelist                     | CWE-347          |
+| `eslint-plugin-postgresql-security`            | `no-select-all` (3×), `no-hardcoded-credentials` (2×)                                                | `SELECT *` over-fetch, hardcoded DB password in client config   | CWE-200, CWE-798 |
+| `eslint-plugin-jwt-security`           | `require-algorithm-whitelist` (2×)                                                                   | `jwt.verify` with no `algorithms` whitelist                     | CWE-347          |
 | `eslint-plugin-node-security` | `detect-non-literal-fs-filename` (22×), `no-arbitrary-file-access` (6×), `detect-child-process` (6×) | path traversal in `fs`, `child_process` command injection       | CWE-22, CWE-78   |
 
 These are the rules that produced the findings discussed in this article. The Opus 4.6 follow-up run (`antigravity-opus-4.6-2026-02-08.json`) tripped a few more rules from the _same four plugins_ — `pg/no-unsafe-query`, `node-security/no-ssrf`, `secure-coding/detect-object-injection`, `jwt/no-sensitive-payload` — which is the point: the four-plugin install is the unit of coverage, not any single rule. Full rule documentation lives at [eslint.interlace.tools](https://eslint.interlace.tools). If you're auditing a codebase rather than wiring CI, the same plugins drive [the 30-minute static-analysis onboarding protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase).
