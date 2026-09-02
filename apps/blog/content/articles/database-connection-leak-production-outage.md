@@ -28,7 +28,7 @@ series: "Postgres Security Protocol"
 ---
 
 > **Postgres Security Protocol** — a series on the bugs that pass review and melt
-> in production. **← Prev:** [Getting started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) · **You are here:** the connection leak · **Next →** [Transaction race conditions: `BEGIN` on the pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool)
+> in production. **← Prev:** [Getting started with `eslint-plugin-postgresql-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security) · **You are here:** the connection leak · **Next →** [Transaction race conditions: `BEGIN` on the pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool)
 
 At 3:02 AM, PagerDuty fired. API response time had climbed to 18 seconds. Then the 500s started — every endpoint, every user. The database was healthy: CPU at 12%, memory nominal, disk fine. But every query returned the same error:
 
@@ -96,7 +96,7 @@ afford it.
 Before you pair this with a [security audit protocol](https://ofriperetz.dev/articles/the-30-minute-security-audit-onboarding-a-new-codebase), make sure [static analysis](https://ofriperetz.dev/articles/static-analysis-vs-sast-vs-linting) has already closed this class of bug. One line, before any of this pages you:
 
 ```bash
-npm install --save-dev eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
 ```
 
 The fix and the config that enforces it, in order.
@@ -210,7 +210,7 @@ installed (above), wire the recommended config:
 ```js
 // eslint.config.js — requires ESM. For CommonJS projects, save as
 // eslint.config.mjs or add "type": "module" to package.json first.
-import { configs } from "eslint-plugin-pg";
+import { configs } from "eslint-plugin-postgresql-security";
 
 export default [configs.recommended];
 ```
@@ -281,7 +281,7 @@ exactly the surface where a forgotten `release()` hides. The more "production-
 shaped" the generated code looks, the more likely it is to check a client out of
 the pool, and the more places that checkout has to leak.
 
-If you haven't yet benchmarked your own ESLint security plugin stack against competitors, the [17-plugin comparison](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) gives you a framework to do it honestly — including where `eslint-plugin-pg` ranks on database-specific rules.
+If you haven't yet benchmarked your own ESLint security plugin stack against competitors, the [17-plugin comparison](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared) gives you a framework to do it honestly — including where `eslint-plugin-postgresql-security` ranks on database-specific rules.
 
 Don't take my word for any of it — here's the whole loop as four commands you
 can run right now against Gemini, the model with the 96% database rate. This is
@@ -334,7 +334,7 @@ feedback channel that lets the assistant repair its own leak.
 
 ## The connection-lifecycle family
 
-`no-missing-client-release` is one of a small set in `eslint-plugin-pg` that
+`no-missing-client-release` is one of a small set in `eslint-plugin-postgresql-security` that
 guard the borrow→use→return lifecycle:
 
 | Rule                                                                                                                  | CWE _in the finding_ | Catches                                                           |
@@ -370,32 +370,32 @@ sees in the terminal.
 
 ```bash
 # npm / yarn / pnpm / bun
-npm install --save-dev eslint-plugin-pg
-yarn add -D eslint-plugin-pg
-pnpm add -D eslint-plugin-pg
-bun add -d eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
+yarn add -D eslint-plugin-postgresql-security
+pnpm add -D eslint-plugin-postgresql-security
+bun add -d eslint-plugin-postgresql-security
 ```
 
 ---
 
 ## Where this fits
 
-`no-missing-client-release` is the availability member of `eslint-plugin-pg` —
+`no-missing-client-release` is the availability member of `eslint-plugin-postgresql-security` —
 the same plugin that catches SQL injection and the N+1 insert loop. It's part of
 the **Postgres Security Protocol** series; its closest sibling is the other way
 a borrowed connection bites you in production:
 
 - [Transaction race conditions: `BEGIN` on the pool](https://ofriperetz.dev/articles/transaction-race-conditions-begin-on-pool) — the same checkout lifecycle, the inverse failure: a transaction split across pooled connections
 - [The SQL-injection pattern in node-postgres](https://ofriperetz.dev/articles/sql-injection-node-postgres-pattern) — the confidentiality member of the same plugin, when the string you concatenated is the attack
-- [Getting started with `eslint-plugin-pg`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) — all 13 rules
+- [Getting started with `eslint-plugin-postgresql-security`](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security) — all 13 rules
 
 ---
 
 ## Links
 
-- 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📦 [npm: eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security)
 - 📖 [Rule docs: no-missing-client-release](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-missing-client-release)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-postgresql-security)
 
 Have you ever traced a production incident to a resource leak that passed all your code reviews — and what was the reviewer's reaction when you showed them the root cause?
 

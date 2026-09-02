@@ -77,6 +77,11 @@ jobs:
                don't update the matching docs, types, or README, and CLAUDE.md
                statements made stale by the change.
 
+            On a large diff, triage before you read: group mechanical or
+            repeated changes (a corpus-wide rename, a formatting sweep) and
+            sample two or three files to confirm the pattern rather than
+            opening every one. Spend the depth on the files that carry logic.
+
             Be precise and low-noise: only post a finding when you can cite the
             specific file:line and explain why it is wrong. Cap nits -- prefer a
             single summary line over many inline style comments. If you find no
@@ -84,7 +89,17 @@ jobs:
 
             Post specific issues as inline comments; use one top-level comment
             for the summary.
+          # NOTE: claude_args is a command-line argument string, not YAML.
+          # A `#` line inside it is NOT a comment -- it is passed to the CLI as
+          # arguments, and the run then reports success having done nothing.
+          # Keep explanation here, above the key, never inside the block.
+          #
+          # --max-turns: 20 was not enough for a corpus-wide change. The first
+          # run against a 102-file PR died with `error_max_turns` after 21
+          # turns, having read the diff but never posted its summary. Reading a
+          # file costs about a turn, so 60 is sized for the largest PR this
+          # repo realistically sees.
           claude_args: |
             --model claude-sonnet-4-6
-            --max-turns 20
+            --max-turns 60
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"

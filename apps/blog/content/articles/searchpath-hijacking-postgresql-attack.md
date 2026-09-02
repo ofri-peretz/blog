@@ -46,7 +46,7 @@ generating the exact vulnerable line at scale.
 The numbers: **2 lines of config** enable the attack, **3 lines** fix it. In a multi-tenant app, every tenant sharing a compromised connection pool is exposed — which in most SaaS architectures means **all tenants** per session.
 
 And it's no longer just humans shipping it. When I benchmarked five AI models on
-the same PostgreSQL data-access prompts, the `eslint-plugin-pg` ruleset flagged
+the same PostgreSQL data-access prompts, the `eslint-plugin-postgresql-security` ruleset flagged
 **39%–96% of their generated functions** —
 [the worst offenders were the models that wrote the most "senior-looking" code](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
 A connection-hook `SET search_path` is precisely the kind of boring, trusted-feeling
@@ -167,7 +167,7 @@ If you want to grep your own code for this before reading the fixes, it's one
 install — the [rule and config are below](#the-rule-no-unsafe-search-path-cwe-426):
 
 ```bash
-npm install --save-dev eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
 ```
 
 ## Why you can't just parameterize it
@@ -294,12 +294,12 @@ src/tenants.ts
 ```
 
 ```bash
-npm install --save-dev eslint-plugin-pg
+npm install --save-dev eslint-plugin-postgresql-security
 ```
 
 ```js
 // `configs` is a NAMED export; the default export is the plugin object.
-import { configs } from "eslint-plugin-pg";
+import { configs } from "eslint-plugin-postgresql-security";
 export default [configs.recommended];
 ```
 
@@ -430,7 +430,7 @@ waves it through:
 This is the broader pattern I keep finding: AI doesn't invent novel
 vulnerabilities, it **reproduces the common ones at scale** because its training
 data is full of the insecure-but-popular form. It's not a hunch — I measured it.
-When I ran `eslint-plugin-pg` over PostgreSQL data-access functions written by
+When I ran `eslint-plugin-postgresql-security` over PostgreSQL data-access functions written by
 five different models, the per-model vulnerability rate on the **Database
 Operations** domain ranged from **39% (Haiku 4.5) to 96% (Gemini 2.5 Pro)** —
 and counterintuitively, the model that wrote the most production-shaped code
@@ -484,8 +484,8 @@ Static analysis guards the source; pair it with the server:
 | **Module system**    | CommonJS — `eslint.config.js` or `.mjs`                                               |
 | **Oxlint**           | Loads under Oxlint's JS-plugin runner via the `interlace-pg` port, parity-gated in CI |
 
-`no-unsafe-search-path` is one of 13 rules in `eslint-plugin-pg`; the
-[pg getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg)
+`no-unsafe-search-path` is one of 13 rules in `eslint-plugin-postgresql-security`; the
+[pg getting-started](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security)
 covers the rest. Two of them dig into failure modes worth their own read:
 the [connection leak that took down a production API](https://ofriperetz.dev/articles/database-connection-leak-production-outage)
 and the [N+1 insert loop](https://ofriperetz.dev/articles/n-plus-1-insert-loop-api-performance)
@@ -498,9 +498,9 @@ Related attacks in this series:
 
 ---
 
-- 📦 [npm: eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg)
+- 📦 [npm: eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security)
 - 📖 [Rule docs: no-unsafe-search-path](https://eslint.interlace.tools/docs/security/plugin-pg/rules/no-unsafe-search-path)
-- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-pg)
+- 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-postgresql-security)
 - 🔍 [Full plugin docs](https://eslint.interlace.tools)
 
 **Now go check.** Grep your codebase for `SET search_path` — or just run the
@@ -517,13 +517,13 @@ trusted source" line talked out of catching it?**
 
 ---
 
-_[eslint-plugin-pg](https://www.npmjs.com/package/eslint-plugin-pg) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+_[eslint-plugin-postgresql-security](https://www.npmjs.com/package/eslint-plugin-postgresql-security) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
 
 ---
 
 I'm **Ofri Peretz**, a security engineering leader and the author of the
 Interlace ESLint ecosystem — domain-specific static analysis for security,
-reliability, and performance on the Node.js stack. `eslint-plugin-pg` is its
+reliability, and performance on the Node.js stack. `eslint-plugin-postgresql-security` is its
 node-postgres layer.
 
 [ofriperetz.dev](https://ofriperetz.dev) · [LinkedIn](https://linkedin.com/in/ofri-peretz) · [GitHub](https://github.com/ofri-peretz)

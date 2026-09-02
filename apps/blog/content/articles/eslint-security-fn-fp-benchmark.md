@@ -388,7 +388,7 @@ The Interlace ecosystem detected every vulnerability with zero false positives a
 
 **OWASP label note:** CWE-798 (hardcoded credentials) maps to OWASP 2021 **A07 Identification and Authentication Failures**; CWE-95 (eval injection) maps to **A03 Injection**. Both samples carry CVSS 9.8 — CRITICAL under [CVSS v3.1's severity bands](https://ofriperetz.dev/articles/cvss-scores-explained) — assuming full-access credentials; a scoped read-only key scores lower. The eval line is the one an earlier draft mislabeled HIGH; that correction is told in full in [the note on this benchmark](#a-note-on-this-benchmark).
 
-The reason for 100% coverage is **specialization**. Instead of one monolithic plugin, the ecosystem uses purpose-built plugins for each domain: SQL (`eslint-plugin-pg`), JWT (`eslint-plugin-jwt`), browser XSS (`eslint-plugin-browser-security`), and weak crypto / randomness (`eslint-plugin-node-security`). Full documentation at [eslint.interlace.tools](https://eslint.interlace.tools).
+The reason for 100% coverage is **specialization**. Instead of one monolithic plugin, the ecosystem uses purpose-built plugins for each domain: SQL (`eslint-plugin-postgresql-security`), JWT (`eslint-plugin-jwt-security`), browser XSS (`eslint-plugin-browser-security`), and weak crypto / randomness (`eslint-plugin-node-security`). Full documentation at [eslint.interlace.tools](https://eslint.interlace.tools).
 
 > **Editorial update:** weak-crypto and randomness rules were consolidated into `eslint-plugin-node-security` on 2026-05-10. The FN/FP numbers above are unaffected — that's a packaging change, not a detection change — but if you're installing today, use `eslint-plugin-node-security` directly; the previously separate `eslint-plugin-crypto` package is deprecated.
 
@@ -552,14 +552,14 @@ SonarJS and security-node are variations on the same story: more rules doesn't m
 npm uninstall eslint-plugin-security
 npm install -D eslint-plugin-secure-coding eslint-plugin-node-security \
   eslint-plugin-browser-security \
-  eslint-plugin-pg eslint-plugin-jwt eslint-plugin-mongodb-security
+  eslint-plugin-postgresql-security eslint-plugin-jwt-security eslint-plugin-mongodb-security
 ```
 
 > Note (2026-05-10): weak-crypto and randomness rules were consolidated into `eslint-plugin-node-security`. The previously separate `eslint-plugin-crypto` package is deprecated.
 
 Two packages in that install list go beyond what this specific 40-pattern benchmark tested: `eslint-plugin-secure-coding` covers general secure-coding hygiene rules outside the 14 CWE categories here, and `eslint-plugin-mongodb-security` covers NoSQL-specific patterns (query-operator injection, `$where` abuse) broader than the two NoSQL cases in this suite. Both are real, published Interlace packages — install them if your stack touches MongoDB or you want the wider hygiene net; skip them if you only need 1:1 coverage for what this benchmark measured.
 
-> Per-plugin setup: [secure-coding](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding) · [node-security](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-crypto-4a8g) · [browser-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-browser-security) · [pg](https://ofriperetz.dev/articles/getting-started-eslint-plugin-pg) · [jwt](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt) · [mongodb-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-mongodb-security)
+> Per-plugin setup: [secure-coding](https://ofriperetz.dev/articles/getting-started-eslint-plugin-secure-coding) · [node-security](https://dev.to/ofri-peretz/getting-started-with-eslint-plugin-crypto-4a8g) · [browser-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-browser-security) · [pg](https://ofriperetz.dev/articles/getting-started-eslint-plugin-postgresql-security) · [jwt](https://ofriperetz.dev/articles/getting-started-eslint-plugin-jwt-security) · [mongodb-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-mongodb-security)
 
 Full flat-config + migration steps are in the [17-plugin benchmark's migration block](https://ofriperetz.dev/articles/benchmark-17-eslint-security-plugins-compared#migrate-in-60-seconds).
 

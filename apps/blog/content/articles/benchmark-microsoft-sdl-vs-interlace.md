@@ -307,14 +307,14 @@ Keep SDL for your frontend. Add the domain plugins for everything Node:
 
 ```bash
 npm i -D eslint eslint-plugin-secure-coding eslint-plugin-node-security \
-  eslint-plugin-pg eslint-plugin-browser-security
+  eslint-plugin-postgresql-security eslint-plugin-browser-security
 ```
 
 ```js
 // eslint.config.mjs — backend + browser-surface coverage
 import { configs as secureCoding } from "eslint-plugin-secure-coding";
 import { configs as nodeSecurity } from "eslint-plugin-node-security";
-import { configs as pg } from "eslint-plugin-pg";
+import { configs as pg } from "eslint-plugin-postgresql-security";
 import { configs as browserSecurity } from "eslint-plugin-browser-security";
 
 export default [
@@ -351,7 +351,7 @@ the domain plugins. They're different layers of the same app:
 import sdl from "@microsoft/eslint-plugin-sdl";
 import { configs as secureCoding } from "eslint-plugin-secure-coding";
 import { configs as nodeSecurity } from "eslint-plugin-node-security";
-import { configs as pg } from "eslint-plugin-pg";
+import { configs as pg } from "eslint-plugin-postgresql-security";
 
 export default [
   // frontend bundle — SDL where Angular/Electron/DOM code lives.
@@ -386,7 +386,7 @@ surface the Interlace rules target — SDL would score very differently on an
 Angular/Electron fixture, which is its home turf. Versions (measured 2026-05-31):
 `eslint@9.39`, `@microsoft/eslint-plugin-sdl@1.1.0` (17 rules),
 `eslint-plugin-secure-coding@3.2.0`, `eslint-plugin-node-security@4.2.0`,
-`eslint-plugin-pg@1.4.3` (the Interlace plugin — not the `pg` node-postgres
+`eslint-plugin-postgresql-security@1.4.3` (the Interlace plugin — not the `pg` node-postgres
 driver, which is at 8.x), `eslint-plugin-browser-security@1.2.3`. Findings counted
 by `ruleId` over `--format json` output.
 
@@ -405,7 +405,7 @@ The whole run [reproduces](https://ofriperetz.dev/articles/reproducibility-vs-re
 
 ```bash
 npm i -D eslint@9 @microsoft/eslint-plugin-sdl eslint-plugin-secure-coding \
-  eslint-plugin-node-security eslint-plugin-pg eslint-plugin-browser-security
+  eslint-plugin-node-security eslint-plugin-postgresql-security eslint-plugin-browser-security
 ```
 
 ```js
@@ -436,7 +436,7 @@ export default [
 // eslint.config.interlace.mjs — the four domain plugins at recommended
 import { configs as secureCoding } from "eslint-plugin-secure-coding";
 import { configs as nodeSecurity } from "eslint-plugin-node-security";
-import { configs as pg } from "eslint-plugin-pg";
+import { configs as pg } from "eslint-plugin-postgresql-security";
 import { configs as browserSecurity } from "eslint-plugin-browser-security";
 export default [
   { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
@@ -514,7 +514,7 @@ Two short references carry the measurement vocabulary this benchmark leans on: [
 
 ## Links
 
-- [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-pg) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
+- [secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) · [node-security](https://www.npmjs.com/package/eslint-plugin-node-security) · [pg](https://www.npmjs.com/package/eslint-plugin-postgresql-security) · [browser-security](https://www.npmjs.com/package/eslint-plugin-browser-security)
 - [@microsoft/eslint-plugin-sdl](https://www.npmjs.com/package/@microsoft/eslint-plugin-sdl) — the frontend layer
 - [Full rule docs](https://eslint.interlace.tools)
 - [Source on GitHub](https://github.com/ofri-peretz/eslint)
