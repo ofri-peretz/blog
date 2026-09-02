@@ -46,7 +46,10 @@ also does not merge.
   refresh would be strictly worse than stale data.
 - Branch protection on `main` stays. The fix is not a direct push.
 - No new notification channel before establishing that the mechanism works —
-  the `watcher-liveness` intent closed today on exactly that reasoning.
+  the `watcher-liveness` intent argues exactly that. (It is still `status:
+  open`; an earlier draft here said it "closed today", which the file on this
+  branch contradicts. The reasoning holds either way — the closure claim was
+  the only wrong part. Review.)
 
 ## How we will know it worked
 

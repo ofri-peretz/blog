@@ -42,8 +42,10 @@ change than the problem justifies.
 
 Rejected: a notification so someone remembers to merge. That is the reminder
 this already is, and the evidence says reminders do not land — two PRs, zero
-merges, eight days. `watcher-liveness` closed today on the principle that a
-signal for a condition nobody acts on is not worth building.
+merges, eight days. `watcher-liveness` reasons the same way: a signal for a
+condition nobody acts on is not worth building. (That intent is still `open`,
+so this borrows its argument, not its closure. An earlier draft of this line
+said "closed today", which was not true of the file on this branch. Review.)
 
 Rejected: widening auto-merge to all PRs. Ten human PRs are also open, some
 since July, and they are a separate problem with a separate answer. Mixing
@@ -51,20 +53,32 @@ them in would let a content change land unread.
 
 ## Sequence
 
-1. Add the auto-merge step to both refresh workflows, scoped to the PR each
-   one just opened.
+1. Add the auto-merge step to **all three** refresh workflows, scoped to the
+   PR each one just opened: `plugin-stats-refresh.yml`,
+   `loom-embeds-refresh.yml`, and `bench-receipts-refresh.yml`. The first
+   draft said "both" and named two — which would have left
+   `bench-receipts-refresh` on the same 0% delivery rate this whole intent
+   exists to fix, and it opens PRs by the identical `gh pr create` path.
+   (Review.)
 2. Merge the two PRs already open (#214, #215) by hand — they are the backlog,
    not the test.
-3. Wait for Monday 2026-09-07 and check whether the data file moved without
+3. Handle the **already-open** case, which step 1 alone does not. All three
+   workflows push to a fixed branch name, so when last week's PR is still
+   open, `gh pr create` fails and the script takes its `"already exists"`
+   branch — which today does nothing. Auto-merge is set at creation time, so
+   that PR never gets it, and one week of blocked CI is enough to reintroduce
+   the stall permanently. The `"already exists"` branch has to enable
+   auto-merge on the existing PR rather than shrug. (Review.)
+4. Wait for Monday 2026-09-07 and check whether the data file moved without
    intervention. That is the only real verification.
-4. Deliberately break a refresh (malformed JSON) and confirm CI blocks the
+5. Deliberately break a refresh (malformed JSON) and confirm CI blocks the
    auto-merge rather than landing it.
 
 ## Gates
 
-- Step 4 is required before this is called done. Auto-merge that cannot be
+- Step 5 is required before this is called done. Auto-merge that cannot be
   stopped is worse than the stale data it replaces.
-- Step 3 cannot be simulated — a manual dispatch proves the mechanism but not
+- Step 4 cannot be simulated — a manual dispatch proves the mechanism but not
   the schedule, and the schedule firing correctly is already established.
 - Auto-merge scoped to bot-authored data PRs only.
 
