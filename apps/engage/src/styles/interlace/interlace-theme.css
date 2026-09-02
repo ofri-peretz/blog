@@ -1,0 +1,564 @@
+@layer interlace.brand {
+  /* ─────────────────────────────────────────────────────────────────
+   *  LIGHT — default
+   * ──────────────────────────────────────────────────────────────── */
+  :root {
+    /* Brand
+     *
+     * Burnt orange, from the mark. #7d350c measures 8.80:1 on white, 8.12:1
+     * on `--accent` (#fef4ed), and 7.46:1 on its OWN 10% tint — that last one
+     * is the binding constraint. `bg-primary/10` + `text-primary` is a stock
+     * shadcn badge pattern, and it composites to #f3ebe7 on white; a lighter
+     * orange (#8a3a10) landed at 6.63:1 there and axe failed the enhanced
+     * check. This value tracks violet-800's old profile (8.98 / 7.56) so the
+     * AAA floor holds on every catalogue surface AND on brand-tinted ones. */
+    --interlace-primary: #7d350c;            /* 8.80:1 on white (AAA) */
+    --interlace-primary-hover: #6b2b09;      /* 10.63:1 on white */
+    --interlace-primary-active: #4d2009;     /* 13.76:1 on white */
+    --interlace-primary-foreground: #ffffff;
+    --interlace-primary-subtle: #fef4ed;     /* warm tint for backgrounds */
+    --interlace-primary-subtle-foreground: #4d2009;  /* 12.70:1 on subtle (AAA) */
+
+    /* Surface */
+    --interlace-background: #ffffff;
+    --interlace-foreground: #0d0b09;         /* near-black, slight warm tint */
+    --interlace-card: #ffffff;
+    --interlace-card-foreground: #0d0b09;
+    --interlace-popover: #ffffff;
+    --interlace-popover-foreground: #0d0b09;
+    --interlace-muted: #faf7f4;              /* warm-tinted neutral */
+    --interlace-muted-foreground: #4d453c;   /* 8.06:1 on white (AAA body); darkened from #6b6580 to clear AA even under axe sub-pixel rounding on hairline text */
+    --interlace-border: #eae7e2;    /* 1.23:1 on white — decorative separators only, exempt from 1.4.11 */
+    /* `--input` is the BOUNDARY of a form control (input / textarea / select
+     * trigger / checkbox / radio / switch track), so WCAG 2.2 SC 1.4.11
+     * (Non-text Contrast, AA) demands ≥3:1 against the adjacent surface —
+     * the border is the only thing identifying the control.
+     *
+     * It used to alias `--border` (#eae7e2 → 1.23:1 on white): every
+     * unfocused field in the DS was effectively invisible to a low-vision
+     * user. Forked to a warm mid-grey that clears the floor while keeping
+     * the brand's warm cast. Decorative `--border` deliberately stays soft. */
+    --interlace-input: #8f857a;              /* 3.62:1 on white (SC 1.4.11 AA) */
+    --interlace-ring: var(--interlace-primary);
+
+    /* Accent */
+    --interlace-accent: #fef4ed;             /* warm tint */
+    --interlace-accent-foreground: #73300d;  /* 8.98:1 on accent (AAA) */
+
+    /* Secondary */
+    --interlace-secondary: #f5f3f0;
+    --interlace-secondary-foreground: #1f1a15;
+
+    /* Destructive (Tailwind red-800 — bumped from red-700 #b91c1c (6.4:1) so
+     * text-destructive on white clears WCAG 2.2 AAA (≥7:1) for normal body
+     * text. red-800 #991b1b ≈ 8.0:1. */
+    --interlace-destructive: #991b1b;
+    --interlace-destructive-foreground: #ffffff;
+
+    /* Success (Tailwind emerald-800 — bumped from emerald-600 #059669 (3.7:1).
+     * text-success on white now ≈ 7.3:1, clearing AAA. The original brand
+     * green stays available for bg-success surfaces (paired with white
+     * foreground) where the contrast is between surface and foreground, not
+     * surface and parent. */
+    --interlace-success: #065f46;
+    --interlace-success-foreground: #ffffff;
+
+    /* Warning (Tailwind amber-900 — bumped from amber-600 #d97706 (3.5:1).
+     * Yellow on white can't physically clear 7:1 at its brand-bright value,
+     * so the text token drops to amber-900 #78350f ≈ 8.5:1. For "yellow
+     * background" treatments, pair `bg-amber-500` (decorative bg) with
+     * `text-warning` (this token) — contrast is then warning on amber, not
+     * warning on white. */
+    --interlace-warning: #78350f;
+    --interlace-warning-foreground: #ffffff;
+
+    /* Info (Tailwind blue-800 — new semantic token. text-info on white ≈
+     * 8.5:1, AAA. Pair with bg-info-foreground for filled surfaces. */
+    --interlace-info: #1e40af;
+    --interlace-info-foreground: #ffffff;
+
+    /* Caution — the rung BETWEEN warning and destructive. Scorecard ladders
+     * need five distinguishable tones (excellent / good / fair / poor /
+     * fail); without this token `poor` had no home and GradeBadge reached
+     * outside the palette for a raw `bg-orange-900`. Tailwind orange-900
+     * #7c2d12 ≈ 9.0:1 on white and stays hue-distinct from `--warning`
+     * (amber-900 #78350f) at a glance while sharing the warm family. */
+    --interlace-caution: #7c2d12;
+    --interlace-caution-foreground: #ffffff;
+
+    /* Scrim — the dark wash laid over an arbitrary image so text on top
+     * stays legible (featured article covers, media overlays). Like the
+     * hero surface these do NOT invert: the scrim's whole job is to be
+     * darker than whatever photo sits under it, in either colour scheme.
+     * Always used with a Tailwind alpha modifier (`bg-scrim/70`) — the
+     * solid values are the ramp's endpoints, not what ships on screen.
+     * #ffffff on #000000/70 over a mid-tone cover measures ≥ 7:1. */
+    --interlace-scrim: #000000;
+    --interlace-scrim-foreground: #ffffff;
+
+    /* Cosmic hero effects — the three colours the starfield preset paints
+     * onto <canvas> / SVG gradients (shooting-star head, its trail, meteor
+     * streak). They live in the brand layer because the hero is the most
+     * brand-visible surface we ship, and because canvas ignores the
+     * cascade: HeroCosmic resolves these at runtime rather than letting a
+     * vendored default paint the pre-brand violet palette (R19).
+     *
+     * The hero always renders on a deep near-black gradient in BOTH modes
+     * (it is its own surface, not a themed one), so these do not invert. */
+    --interlace-hero-star: #fbb99a;   /* brand orange tint — star head */
+    --interlace-hero-trail: #0d9460;  /* brand green — trail gradient */
+    --interlace-hero-meteor: #fdd6c2; /* palest orange — meteor streak */
+
+    /* Cosmic hero surface. The hero is its OWN surface, not a themed one:
+     * a starfield only reads as a starfield on near-black, so these do not
+     * invert with the colour scheme. That is exactly why they need their
+     * own tokens — reaching for `--background` / `--foreground` here would
+     * paint black text on a black hero in light mode (the bug this pair
+     * replaces). #f0ede9 on #0d0b09 measures 16.4:1 (AAA). */
+    --interlace-hero-surface: #0d0b09;      /* gradient midpoint */
+    --interlace-hero-surface-deep: #000000; /* gradient floor */
+    --interlace-hero-foreground: #f0ede9;   /* 16.4:1 on the surface (AAA) */
+
+    /* Window controls — the three macOS traffic-light dots used by the
+     * CodeWindow chrome. Purely decorative (the dot row is `aria-hidden`),
+     * but they live here so a consumer forking the brand can restyle the
+     * chrome without patching component source. Values are the macOS
+     * system colours the affordance is quoting. */
+    --interlace-window-control-close: #ff5f57;
+    --interlace-window-control-minimize: #febc2e;
+    --interlace-window-control-zoom: #28c840;
+
+    /* Chart palette — five distinct hues for series colors, brand-owned
+     * so consumers can fork via `@layer interlace.brand`. Values match the
+     * existing oklch ladder in theme.css (≥4.5:1 on bg-card light); the
+     * promotion here makes the chart series an explicit brand surface
+     * with `@layer interlace.brand` override semantics like every other
+     * brand-coupled token. */
+    --interlace-chart-1: oklch(0.55 0.16 41);   /* brand orange */
+    --interlace-chart-2: oklch(0.55 0.14 162);  /* brand green */
+    --interlace-chart-3: oklch(0.55 0.18 264);  /* blue */
+    --interlace-chart-4: oklch(0.55 0.14 90);   /* olive */
+    --interlace-chart-5: oklch(0.55 0.13 200);  /* cyan */
+
+    /* Visualisation chrome — the parts of a chart that are NOT the series.
+     *
+     * `--chart-N` answers "which line is which". These answer "what is the
+     * line drawn on": gridlines, axis, graph edges. Three hex values; every
+     * other `--viz-*` token in the semantics layer is a var() alias of an
+     * already-AA-verified token, so a brand fork has three numbers to pick,
+     * not fifteen. Warm-neutral to sit with the brand, not the cool greys.
+     *
+     * Contrast, measured against `--interlace-background` #ffffff (which is
+     * also `--interlace-card` in light mode):
+     *   grid  #e0dad2 → 1.39:1  DECORATIVE. Gridlines must never be the sole
+     *                           carrier of a value — that is what the axis
+     *                           labels and the sr-only table are for. Kept
+     *                           deliberately below 3:1 so a dense grid does
+     *                           not fight the series it exists to support.
+     *   axis  #8d857a → 3.64:1  Clears WCAG 2.2 SC 1.4.11 (3:1, non-text UI
+     *                           boundary). The axis IS structural — it is what
+     *                           tells you where zero is.
+     *   edge  #e0dad2 → 1.39:1  Ambient graph texture, same weight as grid.
+     *                           An edge that MEANS something (selected, on the
+     *                           highlighted path) switches to `--viz-edge-active`
+     *                           (= `--primary`). Same split as the slider rail
+     *                           vs knob: the low-contrast element is
+     *                           supplementary, the high-contrast one carries
+     *                           the success criterion. */
+    --interlace-viz-grid: #e0dad2;
+    --interlace-viz-axis: #8d857a;
+    --interlace-viz-edge: #e0dad2;
+
+    /* Radii (8/12/16 — three-step scale) */
+    --interlace-radius-sm: 0.5rem;   /*  8px */
+    --interlace-radius-md: 0.75rem;  /* 12px */
+    --interlace-radius-lg: 1rem;     /* 16px */
+
+    /* Brand mark — bar fills for the two-bar Interlace mark (nav lockups;
+     * see packages/ui/src/patterns/brand-logo.tsx). Decorative fills, not
+     * text, so they track the favicon pair rather than the AAA text ramp.
+     * Values match the eslint.interlace.tools nav mark. */
+    --interlace-brand-mark-bar-o: #a84c17;
+    --interlace-brand-mark-bar-g: #0a6b47;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+   *  INTERLACE · DARK — the scheme axis.
+   *
+   *  `.dark` is the shadcn / next-themes class every consumer already
+   *  writes; `[data-scheme='dark']` is the attribute spelling for hosts
+   *  that would rather not touch className. They are the SAME axis, and
+   *  neither of them says anything about which brand is active — that is
+   *  `[data-theme]`, handled in styles/themes/*.css.
+   * ──────────────────────────────────────────────────────────────── */
+  .dark,
+  [data-scheme='dark'] {
+    /* Brand — inverted weight: a light tint of the same burnt orange, so
+     * both directions clear AAA. text-primary on near-black is 11.79:1, and
+     * bg-primary with text-primary-foreground (#0a0a0a) is the same 11.79:1.
+     * The cover orange #f4794a is only 7.24:1 here, too dark to carry the
+     * bidirectional pair, hence the lighter tint. */
+    --interlace-primary: #fbb99a;            /* 11.79:1 on dark bg (AAA) */
+    --interlace-primary-hover: #fcc9b0;      /* 13.31:1 */
+    --interlace-primary-active: #fdd6c2;     /* 14.68:1 */
+    --interlace-primary-foreground: #0a0a0a; /* near-black — 11.79:1 on primary */
+    --interlace-primary-subtle: #3d1a08;     /* tinted background */
+    --interlace-primary-subtle-foreground: #fdd6c2;  /* 11.54:1 on subtle (AAA) */
+
+    /* Surface */
+    --interlace-background: #0a0a0a;
+    --interlace-foreground: #f0ede9;
+    --interlace-card: #171412;
+    --interlace-card-foreground: #f0ede9;
+    --interlace-popover: #171412;
+    --interlace-popover-foreground: #f0ede9;
+    --interlace-muted: #171412;
+    --interlace-muted-foreground: #c9c3bb;   /* 9.6:1 on #0a0a0a (AAA); brightened from #a09cb3 (4.94:1) to clear AA even when stories render against `bg-fd-card/50` tinted surfaces */
+    --interlace-border: #252019;    /* 1.22:1 on near-black — decorative separators only */
+    /* Dark counterpart of the SC 1.4.11 fork above. #252019 measured
+     * 1.22:1 on `--background` — same invisible-control failure as light. */
+    --interlace-input: #6b635a;              /* 3.35:1 on #0a0a0a (SC 1.4.11 AA) */
+    --interlace-ring: var(--interlace-primary);
+
+    /* Accent */
+    --interlace-accent: #3d1a08;             /* deep warm tint */
+    --interlace-accent-foreground: #fcc9b0;  /* 10.46:1 on accent (AAA) */
+
+    /* Secondary */
+    --interlace-secondary: #201c17;
+    --interlace-secondary-foreground: #f0ede9;
+
+    /* Destructive (red-300 — bumped from red-500 #ef4444 (~5.2:1) so
+     * text-destructive on near-black clears AAA. red-300 #fca5a5 ≈ 9:1. */
+    --interlace-destructive: #fca5a5;
+    --interlace-destructive-foreground: #0a0a0a;
+
+    /* Success (emerald-400 — bumped from emerald-500 #10b981 (~6.3:1) for
+     * AAA on dark. emerald-400 #34d399 ≈ 8.5:1. */
+    --interlace-success: #34d399;
+    --interlace-success-foreground: #052e16;
+
+    /* Warning (amber-500 — already 7.7:1 on near-black, AAA. No bump needed
+     * because yellows are physically easier on dark backgrounds than on light). */
+    --interlace-warning: #f59e0b;
+    --interlace-warning-foreground: #1e1b2e;
+
+    /* Info (blue-300 — new semantic. text-info on near-black ≈ 8.7:1 (AAA). */
+    --interlace-info: #93c5fd;
+    --interlace-info-foreground: #0a0a0a;
+
+    /* Caution (orange-300 — the dark-mode twin of the light orange-900 rung.
+     * #fdba74 ≈ 10.9:1 on near-black; against its own `--caution-foreground`
+     * (#0a0a0a) the filled chip reads the same 10.9:1, so the pair holds in
+     * both directions like every other status token here. */
+    --interlace-caution: #fdba74;
+    --interlace-caution-foreground: #0a0a0a;
+
+    /* ── Scheme-invariant tokens, restated ──────────────────────────
+     * The nine tokens below plus the three radii hold the SAME value in
+     * both schemes — a scrim is dark because it sits on a photo, and the
+     * cosmic hero paints its own near-black surface in either scheme (see
+     * the light block for the full reasoning on each).
+     *
+     * They are restated here anyway, following the precedent the window
+     * controls set below: every theme × scheme block is a COMPLETE
+     * override surface. That is what makes `THEME_TOKENS` checkable — a
+     * per-scheme block that only carries the tokens which happen to
+     * invert gives a forking consumer no way to tell "deliberately the
+     * same" apart from "forgotten", and the lock no way to tell either. */
+    --interlace-scrim: #000000;
+    --interlace-scrim-foreground: #ffffff;
+
+    --interlace-hero-star: #fbb99a;   /* brand orange tint — star head */
+    --interlace-hero-trail: #0d9460;  /* brand green — trail gradient */
+    --interlace-hero-meteor: #fdd6c2; /* palest orange — meteor streak */
+
+    --interlace-hero-surface: #0d0b09;      /* gradient midpoint */
+    --interlace-hero-surface-deep: #000000; /* gradient floor */
+    --interlace-hero-foreground: #f0ede9;   /* 16.4:1 on the surface (AAA) */
+
+    /* Radii (8/12/16 — three-step scale) */
+    --interlace-radius-sm: 0.5rem;   /*  8px */
+    --interlace-radius-md: 0.75rem;  /* 12px */
+    --interlace-radius-lg: 1rem;     /* 16px */
+
+    /* Window controls — macOS ships the same traffic-light hues in dark
+     * mode, so these do not invert. Declared here anyway so the dark block
+     * is a complete override surface for a forking consumer. */
+    --interlace-window-control-close: #ff5f57;
+    --interlace-window-control-minimize: #febc2e;
+    --interlace-window-control-zoom: #28c840;
+
+    /* Chart palette — lifted lightness so each series stays ≥4.5:1 on
+     * `bg-card` (near-black). Same five hues as light, repositioned for
+     * dark surfaces. */
+    --interlace-chart-1: oklch(0.78 0.14 41);   /* brand orange */
+    --interlace-chart-2: oklch(0.78 0.12 162);  /* brand green */
+    --interlace-chart-3: oklch(0.78 0.16 264);  /* blue */
+    --interlace-chart-4: oklch(0.78 0.12 90);   /* olive */
+    --interlace-chart-5: oklch(0.78 0.11 200);  /* cyan */
+
+    /* Visualisation chrome — dark. Measured against BOTH dark surfaces,
+     * because a chart normally renders inside a Card, not on the page:
+     *   grid  #2d2823 → 1.36:1 on bg / 1.26:1 on card   DECORATIVE
+     *   axis  #746c60 → 3.82:1 on bg / 3.54:1 on card   clears SC 1.4.11 on both
+     *   edge  #2d2823 → 1.36:1 on bg / 1.26:1 on card   ambient
+     * Perceptual weight matched to light mode (1.39 / 3.64 / 1.39) so a grid
+     * does not read as heavier in one theme than the other. */
+    --interlace-viz-grid: #2d2823;
+    --interlace-viz-axis: #746c60;
+    --interlace-viz-edge: #2d2823;
+
+    /* Brand mark — brighter pair for dark chrome (favicon dark variant). */
+    --interlace-brand-mark-bar-o: #f4794a;
+    --interlace-brand-mark-bar-g: #0d9460;
+  }
+}
+
+@layer interlace.semantics {
+  /* ─────────────────────────────────────────────────────────────────
+   *  Bind brand tokens to the shadcn-bare semantic names. Apps that want
+   *  to override individual semantic values can re-declare them either
+   *  here (`@layer interlace.semantics { :root { --background: ... } }`)
+   *  AFTER importing this file, or they can fork the entire brand layer
+   *  upstream (`@layer interlace.brand { ... }`) to swap the underlying
+   *  hex values without touching the alias graph.
+   *
+   *  WHY FOUR SELECTORS AND NOT JUST `:root`. A custom property whose
+   *  value is a `var()` is substituted at computed-value time on the
+   *  element that DECLARES it, then inherited as a resolved value. So
+   *  `:root { --primary: var(--interlace-primary) }` freezes whatever
+   *  `--interlace-primary` is on the root. If a subtree re-brands itself
+   *  (`<div class="dark">` — which is exactly what a Storybook decorator
+   *  or a side-by-side theme preview does), the brand token changes on
+   *  that div while `--primary` stays frozen at the root's value, and
+   *  nothing repaints. Re-binding on every element that can carry a brand
+   *  override is what makes subtree theming work.
+   *
+   *  `[data-theme]` is attribute-presence, not a value match: it covers
+   *  every theme file that ever ships, so adding themes/<name>.css needs
+   *  no edit here. THIS LIST IS THE COMPLETE SET OF BRAND-OVERRIDE
+   *  SELECTORS — a new one must be added here too, or its subtree will
+   *  render the parent's semantics over the child's brand.
+   * ──────────────────────────────────────────────────────────────── */
+  :root,
+  .dark,
+  [data-scheme='dark'],
+  [data-theme] {
+    --primary: var(--interlace-primary);
+    --primary-foreground: var(--interlace-primary-foreground);
+    --background: var(--interlace-background);
+    --foreground: var(--interlace-foreground);
+    --card: var(--interlace-card);
+    --card-foreground: var(--interlace-card-foreground);
+    --popover: var(--interlace-popover);
+    --popover-foreground: var(--interlace-popover-foreground);
+    --muted: var(--interlace-muted);
+    --muted-foreground: var(--interlace-muted-foreground);
+    --accent: var(--interlace-accent);
+    --accent-foreground: var(--interlace-accent-foreground);
+    --secondary: var(--interlace-secondary);
+    --secondary-foreground: var(--interlace-secondary-foreground);
+    --border: var(--interlace-border);
+    --input: var(--interlace-input);
+    --ring: var(--interlace-ring);
+    --destructive: var(--interlace-destructive);
+    --destructive-foreground: var(--interlace-destructive-foreground);
+
+    /* Status semantics — NEW. Surfaces success / warning / info as
+     * shadcn-bare token names so consumers reach for `bg-success`,
+     * `text-warning`, `bg-info` instead of `bg-emerald-700` /
+     * `bg-amber-500` / `bg-blue-600`. Brand fork-friendly: override
+     * `--interlace-success` / `-warning` / `-info` in
+     * `@layer interlace.brand` to swap the underlying hex. */
+    --success: var(--interlace-success);
+    --success-foreground: var(--interlace-success-foreground);
+    --warning: var(--interlace-warning);
+    --warning-foreground: var(--interlace-warning-foreground);
+    --info: var(--interlace-info);
+    --info-foreground: var(--interlace-info-foreground);
+    --caution: var(--interlace-caution);
+    --caution-foreground: var(--interlace-caution-foreground);
+
+    --scrim: var(--interlace-scrim);
+    --scrim-foreground: var(--interlace-scrim-foreground);
+    --hero-star: var(--interlace-hero-star);
+    --hero-trail: var(--interlace-hero-trail);
+    --hero-meteor: var(--interlace-hero-meteor);
+    --hero-surface: var(--interlace-hero-surface);
+    --hero-surface-deep: var(--interlace-hero-surface-deep);
+    --hero-foreground: var(--interlace-hero-foreground);
+
+    /* Window-control dots — unprefixed names so the CodeWindow chrome can be
+     * lifted into a consumer that defines only these three properties. */
+    --window-control-close: var(--interlace-window-control-close);
+    --window-control-minimize: var(--interlace-window-control-minimize);
+    --window-control-zoom: var(--interlace-window-control-zoom);
+
+    /* Chart palette — semantic aliases of the brand layer. Overrides
+     * the bridge layer (theme.css) values, so a consumer who wants
+     * different chart hues forks `@layer interlace.brand` to set
+     * `--interlace-chart-N` and the `--chart-N` token flows through. */
+    --chart-1: var(--interlace-chart-1);
+    --chart-2: var(--interlace-chart-2);
+    --chart-3: var(--interlace-chart-3);
+    --chart-4: var(--interlace-chart-4);
+    --chart-5: var(--interlace-chart-5);
+
+    /* Visualisation semantics — the chart's non-series vocabulary.
+     *
+     * Declared HERE and not in `theme.css`, on purpose: `--chart-N` is a
+     * shadcn-bare name the bridge layer must supply for stock shadcn chart
+     * code, but `--viz-*` is Interlace-original. `index.css` imports both, so
+     * every consumer on the canonical one-line import gets it.
+     *
+     * Three resolve to brand hex (grid / axis / edge — contrast tables above).
+     * Every other one is an ALIAS of a token whose contrast is already verified
+     * in both themes. Deliberate: a diverging red/green scale that drifts away
+     * from `--success` / `--destructive` is how a product ends up with two
+     * greens that mean "good". One fork surface, one green. */
+    --viz-grid: var(--interlace-viz-grid);
+    --viz-axis: var(--interlace-viz-axis);
+    --viz-edge: var(--interlace-viz-edge);
+
+    /* Meaning-bearing marks — each an existing, verified token. */
+    --viz-edge-active: var(--primary);
+    --viz-node: var(--muted-foreground);
+    --viz-node-active: var(--primary);
+    --viz-crosshair: var(--muted-foreground);
+
+    /* Direction. NOTE FOR COMPONENT AUTHORS: colour must never be the only
+     * signal — red/green is invisible to ~8% of men. Every component using
+     * these also prints a sign, an arrow, or a shape. See
+     * docs/philosophies/VISUALIZATION_PHILOSOPHY.md. */
+    --viz-positive: var(--success);
+    --viz-negative: var(--destructive);
+    --viz-neutral: var(--muted-foreground);
+
+    /* Threshold / target bands drawn behind the series. Alpha-composited off
+     * `--foreground` so it tracks the theme instead of needing a pair. */
+    --viz-band: color-mix(in srgb, var(--foreground) 6%, transparent);
+
+    /* Annotations — an action drawn ON the curve. Three kinds, three verified
+     * hues, distinguished by marker SHAPE as well as hue (shape is what
+     * survives greyscale). */
+    --viz-annotation-publish: var(--primary);
+    --viz-annotation-release: var(--info);
+    --viz-annotation-action: var(--warning);
+
+    /* Override fumadocs-prefixed tokens for AA contrast.
+     *
+     * Fumadocs `neutral.css` ships `--color-fd-muted-foreground: #737373`,
+     * which yields 4.34–4.46:1 contrast against the `bg-fd-card/40-50`
+     * surfaces our Section / SectionHeader stories render — just below
+     * the WCAG 2.2 AA 4.5:1 floor and gates Storybook a11y CI red.
+     *
+     * Rebinding to the brand muted-foreground (a darker warm grey in
+     * light, lighter in dark) clears the threshold and keeps brand
+     * consistency between shadcn-styled and fumadocs-styled surfaces.
+     */
+    --color-fd-muted-foreground: var(--interlace-muted-foreground);
+
+    /* Brand mark bar fills — the UNPREFIXED names are the cross-repo
+     * contract: brand-logo.tsx and the eslint docs site both read
+     * `var(--brand-mark-bar-*)`, so a consumer outside this monorepo can
+     * define just these two properties and render the same lockup. */
+    --brand-mark-bar-o: var(--interlace-brand-mark-bar-o);
+    --brand-mark-bar-g: var(--interlace-brand-mark-bar-g);
+  }
+}
+
+/* Register the shadcn-bare tokens as Tailwind v4 theme keys so utilities
+ * like `bg-card`, `text-foreground`, `border-border`, `bg-primary` are
+ * generated. `inline` preserves the `var()` reference, so the runtime
+ * `.dark { --background: ... }` overrides above flow through to every
+ * utility. Without this block, Tailwind v4 emits no `bg-card` rule
+ * regardless of what `--card` resolves to on :root.
+ *
+ * STAYS AT TOP LEVEL (NOT inside `@layer`): Tailwind v4's `@theme`
+ * directive is a special generator — it registers tokens AND emits
+ * utility rules in Tailwind's own `theme` / `utilities` layers. Wrapping
+ * it in a custom `@layer interlace.*` block breaks that processing. The
+ * cascade-layer story applies to the alias bindings above, not to the
+ * token-registration directive. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Status semantics — generates bg-success, text-warning, bg-info,
+   * border-info etc. */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-caution: var(--caution);
+  --color-caution-foreground: var(--caution-foreground);
+
+  /* Scrim — generates bg-scrim/70, text-scrim-foreground,
+   * border-scrim-foreground/30 so image-overlay surfaces stop reaching for
+   * `bg-black/70` + `text-white` palette escapes. */
+  --color-scrim: var(--scrim);
+  --color-scrim-foreground: var(--scrim-foreground);
+
+  /* Cosmic-hero surface — generates bg-hero-surface / text-hero-foreground
+   * so HeroCosmic paints its always-dark surface from tokens instead of
+   * `via-slate-950 to-black` palette escapes. */
+  --color-hero-surface: var(--hero-surface);
+  --color-hero-surface-deep: var(--hero-surface-deep);
+  --color-hero-foreground: var(--hero-foreground);
+
+  /* Window-control dots — generates bg-window-control-close etc. so the
+   * CodeWindow chrome stays inside the Tailwind utility surface (R18/R19)
+   * instead of reaching for `bg-[#ff5f57]`. */
+  --color-window-control-close: var(--window-control-close);
+  --color-window-control-minimize: var(--window-control-minimize);
+  --color-window-control-zoom: var(--window-control-zoom);
+
+  /* Chart palette utilities — generates bg-chart-1, text-chart-2,
+   * border-chart-3 etc. Already declared in theme.css (bridge layer);
+   * re-declared here at semantics-layer priority so brand overrides
+   * propagate. */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Visualisation utilities — generates stroke-viz-axis, fill-viz-band,
+   * text-viz-positive, bg-viz-grid etc. Charts are SVG, so `stroke-*` and
+   * `fill-*` are the utilities actually used; Tailwind emits them from the
+   * same `--color-*` registration as `bg-*` / `text-*`. */
+  --color-viz-grid: var(--viz-grid);
+  --color-viz-axis: var(--viz-axis);
+  --color-viz-edge: var(--viz-edge);
+  --color-viz-edge-active: var(--viz-edge-active);
+  --color-viz-node: var(--viz-node);
+  --color-viz-node-active: var(--viz-node-active);
+  --color-viz-crosshair: var(--viz-crosshair);
+  --color-viz-positive: var(--viz-positive);
+  --color-viz-negative: var(--viz-negative);
+  --color-viz-neutral: var(--viz-neutral);
+  --color-viz-band: var(--viz-band);
+  --color-viz-annotation-publish: var(--viz-annotation-publish);
+  --color-viz-annotation-release: var(--viz-annotation-release);
+  --color-viz-annotation-action: var(--viz-annotation-action);
+}

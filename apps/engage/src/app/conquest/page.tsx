@@ -43,12 +43,12 @@ interface Repo {
 }
 
 const BAND_COLOUR: Record<string, string> = {
-  held: "var(--color-good)",
-  likely: "var(--color-accent)",
-  plausible: "var(--color-warn)",
-  "long shot": "var(--color-ink-3)",
-  dead: "var(--color-ink-3)",
-  unknown: "var(--color-ink-3)",
+  held: "var(--success)",
+  likely: "var(--primary)",
+  plausible: "var(--warning)",
+  "long shot": "var(--muted-foreground)",
+  dead: "var(--muted-foreground)",
+  unknown: "var(--muted-foreground)",
 };
 
 const pct = (v: number | null | undefined) =>
@@ -85,24 +85,24 @@ export default function Conquest() {
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
           >
             ← control room
           </Link>
           <Refresh onClick={refresh} at={at} busy={busy} />
         </div>
         <h1 className="text-[28px] font-semibold tracking-tight">Conquest map</h1>
-        <p className="max-w-[74ch] text-[14px] text-[var(--color-ink-2)]">
+        <p className="max-w-[74ch] text-[14px] text-[var(--muted-foreground)]">
           Every repository worth landing in, placed by <strong>value</strong> against{" "}
           <strong>odds</strong>. Value is adoption depth, not stars — a config that runs our
           rules on every install outweighs a listing with twenty times the stars. Odds are a
           scorecard from measured GitHub behaviour, never a fitted probability.
         </p>
         {data?.ageHours != null && (
-          <p className="font-mono text-[10px] text-[var(--color-ink-3)]">
+          <p className="font-mono text-[10px] text-[var(--muted-foreground)]">
             signals measured {data.ageHours}h ago
             {data.stale && (
-              <span className="text-[var(--color-warn)]">
+              <span className="text-[var(--warning)]">
                 {" "}
                 · stale, re-run scripts/gh-signals.ts
               </span>
@@ -110,7 +110,7 @@ export default function Conquest() {
           </p>
         )}
         {data?.error && (
-          <p className="font-mono text-[11px] text-[var(--color-accent)]">
+          <p className="font-mono text-[11px] text-[var(--primary)]">
             {data.error}
             {data.hint ? ` — ${data.hint}` : ""}
           </p>
@@ -119,38 +119,38 @@ export default function Conquest() {
 
       {/* ── held ───────────────────────────────────────────────────────────── */}
       {held.length > 0 && (
-        <section className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-good)] bg-[var(--color-panel)] p-4">
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-good)]">
+        <section className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--success)] bg-[var(--card)] p-4">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--success)]">
             held · {held.length}
           </span>
           {held.map((r) => (
             <button
               key={r.slug}
               onClick={() => setSel(r.slug)}
-              className="rounded-md border border-[var(--color-good)] px-2 py-1 font-mono text-[11px] text-[var(--color-good)]"
+              className="rounded-md border border-[var(--success)] px-2 py-1 font-mono text-[11px] text-[var(--success)]"
               title={r.note}
             >
               {r.slug}
-              <span className="ml-1 text-[var(--color-ink-3)]">{r.depth}</span>
+              <span className="ml-1 text-[var(--muted-foreground)]">{r.depth}</span>
             </button>
           ))}
         </section>
       )}
 
       {/* ── the board ──────────────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-        <div className="mb-2 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+        <div className="mb-2 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
           <span>← lower odds · higher odds →</span>
           <span>↑ higher value</span>
         </div>
-        <div className="relative h-[420px] w-full border border-[var(--color-line)]">
+        <div className="relative h-[420px] w-full border border-[var(--border)]">
           {/* quadrant guides at the band thresholds the scorecard actually uses */}
-          <div className="absolute inset-y-0 left-[45%] w-px bg-[var(--color-line)]" />
-          <div className="absolute inset-y-0 left-[70%] w-px bg-[var(--color-line)]" />
-          <span className="absolute bottom-1 left-[45.5%] font-mono text-[9px] text-[var(--color-ink-3)]">
+          <div className="absolute inset-y-0 left-[45%] w-px bg-[var(--border)]" />
+          <div className="absolute inset-y-0 left-[70%] w-px bg-[var(--border)]" />
+          <span className="absolute bottom-1 left-[45.5%] font-mono text-[9px] text-[var(--muted-foreground)]">
             plausible
           </span>
-          <span className="absolute bottom-1 left-[70.5%] font-mono text-[9px] text-[var(--color-ink-3)]">
+          <span className="absolute bottom-1 left-[70.5%] font-mono text-[9px] text-[var(--muted-foreground)]">
             likely
           </span>
 
@@ -170,15 +170,15 @@ export default function Conquest() {
                   top: `${y}%`,
                   width: size,
                   height: size,
-                  borderColor: BAND_COLOUR[o.band] ?? "var(--color-ink-3)",
+                  borderColor: BAND_COLOUR[o.band] ?? "var(--muted-foreground)",
                   background:
-                    sel === r.slug ? (BAND_COLOUR[o.band] ?? "var(--color-ink-3)") : "transparent",
+                    sel === r.slug ? (BAND_COLOUR[o.band] ?? "var(--muted-foreground)") : "transparent",
                 }}
               />
             );
           })}
         </div>
-        <div className="mt-3 flex flex-wrap gap-4 font-mono text-[10px] text-[var(--color-ink-3)]">
+        <div className="mt-3 flex flex-wrap gap-4 font-mono text-[10px] text-[var(--muted-foreground)]">
           {["likely", "plausible", "long shot"].map((b) => (
             <span key={b} className="flex items-center gap-1.5">
               <span
@@ -193,10 +193,10 @@ export default function Conquest() {
       </section>
 
       {/* ── the ranked list, which is what you actually act from ───────────── */}
-      <section className="overflow-x-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
+      <section className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="border-b border-[var(--color-line)] font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+            <tr className="border-b border-[var(--border)] font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
               <th className="px-3 py-2 text-left">repo</th>
               <th className="px-3 py-2 text-left">state</th>
               <th className="px-3 py-2 text-left">depth</th>
@@ -212,8 +212,8 @@ export default function Conquest() {
               <tr
                 key={r.slug}
                 onClick={() => setSel(r.slug)}
-                className={`cursor-pointer border-b border-[var(--color-line)] last:border-0 hover:bg-[var(--color-ground)] ${
-                  sel === r.slug ? "bg-[var(--color-ground)]" : ""
+                className={`cursor-pointer border-b border-[var(--border)] last:border-0 hover:bg-[var(--background)] ${
+                  sel === r.slug ? "bg-[var(--background)]" : ""
                 }`}
               >
                 <td className="px-3 py-2 font-mono text-[12px]">{r.slug}</td>
@@ -222,7 +222,7 @@ export default function Conquest() {
                     {r.odds?.band ?? r.state}
                   </span>
                 </td>
-                <td className="px-3 py-2 font-mono text-[11px] text-[var(--color-ink-3)]">
+                <td className="px-3 py-2 font-mono text-[11px] text-[var(--muted-foreground)]">
                   {r.depth}
                 </td>
                 <td className="px-3 py-2 text-right font-mono text-[11px]">
@@ -250,39 +250,39 @@ export default function Conquest() {
 
       {/* ── breakdown: the score is never shown without its reasons ─────────── */}
       {selected && (
-        <section className="flex flex-col gap-2 rounded-xl border border-[var(--color-accent)] bg-[var(--color-panel)] p-4">
+        <section className="flex flex-col gap-2 rounded-xl border border-[var(--primary)] bg-[var(--card)] p-4">
           <div className="flex items-baseline justify-between gap-3">
             <a
               href={`https://github.com/${selected.slug}`}
               target="_blank"
               rel="noreferrer"
-              className="font-mono text-[13px] text-[var(--color-accent)]"
+              className="font-mono text-[13px] text-[var(--primary)]"
             >
               {selected.slug} ↗
             </a>
-            <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+            <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
               {selected.odds?.band} · score {selected.odds?.score ?? "—"} · value{" "}
               {selected.odds?.value ?? "—"} · reach {selected.odds?.reach ?? 0}
             </span>
           </div>
           {selected.note && (
-            <p className="border-l-2 border-[var(--color-line)] pl-2 text-[12px] text-[var(--color-ink-2)]">
+            <p className="border-l-2 border-[var(--border)] pl-2 text-[12px] text-[var(--muted-foreground)]">
               {selected.note}
             </p>
           )}
           <ul className="flex flex-col gap-0.5">
             {(selected.odds?.components ?? []).map((c) => (
-              <li key={c} className="font-mono text-[11px] text-[var(--color-ink-2)]">
+              <li key={c} className="font-mono text-[11px] text-[var(--muted-foreground)]">
                 {c}
               </li>
             ))}
             {(selected.odds?.blockers ?? []).map((b) => (
-              <li key={b} className="font-mono text-[11px] text-[var(--color-accent)]">
+              <li key={b} className="font-mono text-[11px] text-[var(--primary)]">
                 ⚠ {b}
               </li>
             ))}
           </ul>
-          <p className="font-mono text-[10px] text-[var(--color-ink-3)]">
+          <p className="font-mono text-[10px] text-[var(--muted-foreground)]">
             bots {pct(selected.signals?.botShare)} of sampled PRs · {selected.signals?.stars ?? "—"}★
           </p>
         </section>

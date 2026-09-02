@@ -2,10 +2,25 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Callout } from "@/components/ui/callout";
+import { RankedBarList } from "@/components/ui/meter";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatStrip } from "@/components/ui/stat-strip";
+import { Delta } from "@/components/ui/charts/delta";
+import type { Point } from "@/components/ui/charts/scale";
+import { Sparkline } from "@/components/ui/charts/sparkline";
+import { TimeSeries } from "@/components/ui/charts/time-series";
+import {
+  DataTable,
+  sortRows,
+  type DataTableSort,
+} from "@/components/ui/patterns/data-table";
+
 const card =
-  "rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]";
+  "rounded-xl border border-[var(--border)] bg-[var(--card)]";
 const h2 =
-  "border-b border-[var(--color-line)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]";
+  "border-b border-[var(--border)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]";
 
 export function Section({
   title,
@@ -27,12 +42,18 @@ export function Section({
   );
 }
 
+/**
+ * The panel-level loading state.
+ *
+ * Now a thin wrapper over the DS `<Skeleton count>` — which is what makes it
+ * announce itself (`role="status"`, `aria-busy`, `aria-live="polite"` and a
+ * "Loading…" label). The hand-rolled version was a silent div: a screen reader
+ * heard nothing at all while a panel was fetching.
+ */
 export function Skel({ rows = 4 }: { rows?: number }) {
   return (
     <div className={`${card} p-4`}>
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="skeleton mb-2 h-8 w-full" />
-      ))}
+      <Skeleton count={rows} className="h-8 w-full" />
     </div>
   );
 }
@@ -93,7 +114,7 @@ export function Collapse({
           onClick={toggle}
           aria-expanded={open}
           title={open ? "Collapse" : "Expand"}
-          className="shrink-0 text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+          className="shrink-0 text-[var(--muted-foreground)] hover:text-[var(--primary)]"
         >
           {open ? "▾" : "▸"}
         </button>
@@ -177,8 +198,8 @@ export function Dictate({ onText }: { onText: (t: string) => void }) {
       title={on ? "Stop dictating" : "Dictate — appends to the draft"}
       className={`rounded-lg border px-3 py-2.5 text-sm ${
         on
-          ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
-          : "border-[var(--color-line)] text-[var(--color-ink-2)]"
+          ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+          : "border-[var(--border)] text-[var(--muted-foreground)]"
       }`}
     >
       {on ? "◉ listening" : "🎙 dictate"}
@@ -198,7 +219,29 @@ export interface Thread {
   at: string;
   articleTitle: string;
   articleUrl: string;
+  /**
+   * COMMENT IN vs COMMENT OUT — the distinction the inbox was flattening.
+   *
+   * `replyToUs: false` is someone commenting on OUR article. `true` is someone
+   * answering a comment WE left on THEIRS. They are different conversations
+   * and they are owed different replies: the first is a guest on our turf, the
+   * second is us being invited further into someone else's. Rendering them as
+   * one undifferentiated list is why "13 waiting" did not tell you what to do.
+   */
+  replyToUs?: boolean;
+  depth?: number;
+  ageDays?: number;
+  /** Marked sent locally but absent from dev.to — a send that did not land. */
+  sendFailed?: boolean;
+  /** Author's profile 404s — suspended or deleted. Nobody to reply to. */
+  authorGone?: boolean;
+  /** Display name. A handle alone often does not say who this is. */
+  authorName?: string | null;
 }
+
+/** The exact-comment permalink. Anchor form; the other shapes 404. */
+export const commentUrl = (t: Pick<Thread, "articleUrl" | "commentId">) =>
+  t.commentId ? `${t.articleUrl}#comment-${t.commentId}` : t.articleUrl;
 
 /**
  * Same shape as the "Up next" card, deliberately: one item at a time, the text
@@ -218,6 +261,7 @@ export function Threads({
   onRetry,
   focused = true,
   onFocus,
+  onJump,
 }: {
   threads: Thread[];
   i: number;
@@ -230,17 +274,19 @@ export function Threads({
   /** Whether Enter/s/r currently drive THIS stepper rather than the queue. */
   focused?: boolean;
   onFocus?: () => void;
+  /** Jump straight to a thread instead of stepping to it. */
+  onJump?: (index: number) => void;
 }) {
   const t = threads[i];
   if (!t)
     return (
-      <div className={`${card} p-6 text-center text-[var(--color-ink-2)]`}>
+      <div className={`${card} p-6 text-center text-[var(--muted-foreground)]`}>
         {/* "Nothing to do" and "you have been through everything loaded" are
             different states and used to render the same sentence — which reads
             as a bug the moment the header still shows a count. */}
         {threads.length ? (
           <>
-            <b className="block text-[var(--color-good)]">
+            <b className="block text-[var(--success)]">
               Worked through all {threads.length}
             </b>
             <p className="mt-1 text-sm">
@@ -248,7 +294,7 @@ export function Threads({
             </p>
             <button
               onClick={onRetry}
-              className="mt-3 rounded-lg border border-[var(--color-line)] px-3.5 py-2 text-[13px] text-[var(--color-ink-2)]"
+              className="mt-3 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] text-[var(--muted-foreground)]"
             >
               Refresh replies
             </button>
@@ -262,30 +308,77 @@ export function Threads({
     <article
       onMouseDown={onFocus}
       onFocusCapture={onFocus}
-      className={`rounded-xl border bg-[var(--color-panel)] p-6 ${focused ? "border-[var(--color-accent)]" : "border-[var(--color-line)]"}`}
+      className={`rounded-xl border bg-[var(--card)] p-6 ${focused ? "border-[var(--primary)]" : "border-[var(--border)]"}`}
     >
-      <div className="flex flex-wrap items-baseline gap-2">
+      {/* Direction first, because it changes how you answer. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] ${
+            t.replyToUs
+              ? "bg-[var(--primary)]/15 text-[var(--primary)]"
+              : "bg-[var(--success)]/15 text-[var(--success)]"
+          }`}
+        >
+          {t.replyToUs ? "↩ replied to us" : "← on our article"}
+        </span>
+        {typeof t.ageDays === "number" && (
+          <span
+            className={`font-mono text-[11px] ${t.ageDays > 30 ? "text-[var(--warning)]" : "text-[var(--muted-foreground)]"}`}
+          >
+            {t.ageDays}d old
+          </span>
+        )}
+        {t.authorGone && (
+          <span
+            className="rounded border border-[var(--muted-foreground)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted-foreground)]"
+            title="This account's dev.to profile 404s — suspended or deleted. The comment is still on the article, but a reply reaches nobody."
+          >
+            account gone
+          </span>
+        )}
+        {t.sendFailed && (
+          <span
+            className="rounded border border-[var(--destructive)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--destructive)]"
+            title="Marked sent locally, but dev.to has no reply from us — that send did not land."
+          >
+            send failed
+          </span>
+        )}
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-baseline gap-2">
         <a
           href={`https://dev.to/${t.author}`}
           target="_blank"
           rel="noopener"
-          className="font-mono text-[12px] text-[var(--color-accent)]"
+          className="font-mono text-[12px] text-[var(--primary)]"
         >
           @{t.author}
         </a>
-        <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+        {t.authorName && (
+          <span className="text-[13px] font-medium text-[var(--foreground)]">
+            {t.authorName}
+          </span>
+        )}
+        <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
           {new Date(t.at).toLocaleDateString()}
         </span>
-        <span className="truncate text-[12px] text-[var(--color-ink-3)]">
-          on “{t.articleTitle}”
-        </span>
+        {/* Straight to the comment, so you can read it in context before
+            answering without losing the card. */}
+        <a
+          href={commentUrl(t)}
+          target="_blank"
+          rel="noopener"
+          className="truncate text-[12px] text-[var(--muted-foreground)] underline decoration-dotted underline-offset-2 hover:text-[var(--primary)]"
+        >
+          on “{t.articleTitle}” ↗
+        </a>
       </div>
-      <p className="mt-2 border-l-2 border-[var(--color-line)] pl-3 text-[14px] text-[var(--color-ink-2)]">
+      <p className="mt-2 border-l-2 border-[var(--border)] pl-3 text-[14px] text-[var(--muted-foreground)]">
         {t.body}
       </p>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-[var(--color-warn)] p-3 text-[13px] text-[var(--color-warn)]">
+        <p className="mt-4 rounded-lg border border-[var(--warning)] p-3 text-[13px] text-[var(--warning)]">
           Draft agent failed: {error}. Nothing was written — the agent never ran,
           which is different from it writing a bad reply. Write the reply below
           or retry.
@@ -296,20 +389,20 @@ export function Threads({
         value={reply}
         onChange={(e) => setReply(e.target.value)}
         placeholder={drafting ? "Drafting…" : "No draft — write the reply here."}
-        className="mt-4 min-h-40 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-ground)] p-3 text-[14.5px] leading-relaxed"
+        className="mt-4 min-h-40 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 text-[14.5px] leading-relaxed"
       />
 
       <div className="mt-4 flex flex-wrap items-center gap-2.5">
         <button
           onClick={() => onAct("done")}
           disabled={drafting || !reply.trim()}
-          className="rounded-lg bg-[var(--color-accent)] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] disabled:opacity-50"
         >
           Copy &amp; open →
         </button>
         <button
           onClick={() => onAct("skip")}
-          className="rounded-lg border border-[var(--color-line)] px-4 py-2.5 text-sm text-[var(--color-ink-2)]"
+          className="rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)]"
         >
           Skip
         </button>
@@ -320,20 +413,78 @@ export function Threads({
           <button
             onClick={onRetry}
             disabled={drafting}
-            className="rounded-lg border border-[var(--color-line)] px-4 py-2.5 text-sm text-[var(--color-ink-2)] disabled:opacity-50"
+            className="rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)] disabled:opacity-50"
           >
             Retry draft
           </button>
         )}
-        <span className="ml-auto font-mono text-[12px] text-[var(--color-ink-3)]">
+        <span className="ml-auto font-mono text-[12px] text-[var(--muted-foreground)]">
           {i + 1} of {threads.length}
         </span>
       </div>
-      <p className="mt-2.5 text-[12.5px] text-[var(--color-ink-3)]">
+      <p className="mt-2.5 text-[12.5px] text-[var(--muted-foreground)]">
         {focused
           ? "Enter next · s skip · r refresh"
           : "Keys are on Up next — click this card to take them."}
       </p>
+
+      {/*
+        The whole queue, jumpable.
+
+        A stepper alone answers "what is next" and hides "what is waiting". With
+        13 threads and the oldest at 181 days, stepping is the slow way to reach
+        the one that actually matters — and it made the panel read as though
+        there were nowhere to act. Direction and age are on every row so the
+        pick is informed before the click.
+      */}
+      {threads.length > 1 && onJump && (
+        <div className="mt-4 border-t border-[var(--border)] pt-3">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+            all {threads.length} waiting
+          </div>
+          <ul className="flex flex-col gap-0.5">
+            {threads.map((x, n) => (
+              <li key={x.commentId}>
+                <button
+                  onClick={() => onJump(n)}
+                  className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[12px] ${
+                    n === i
+                      ? "bg-[var(--primary)]/12 text-[var(--foreground)]"
+                      : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40"
+                  } ${x.authorGone ? "opacity-45" : ""}`}
+                  title={x.authorGone ? "account gone — profile 404s" : undefined}
+                >
+                  <span className="w-3 shrink-0 font-mono text-[10px]">
+                    {x.replyToUs ? "↩" : "←"}
+                  </span>
+                  <span
+                    className={`w-44 shrink-0 truncate text-[11px] ${x.authorGone ? "line-through" : ""}`}
+                    title={`@${x.author}${x.authorName ? ` — ${x.authorName}` : ""}`}
+                  >
+                    <span className="font-mono">@{x.author}</span>
+                    {x.authorName && (
+                      <span className="text-[var(--foreground)]"> {x.authorName}</span>
+                    )}
+                  </span>
+                  <span
+                    className={`w-11 shrink-0 text-right font-mono text-[10px] ${
+                      (x.ageDays ?? 0) > 30 ? "text-[var(--warning)]" : ""
+                    }`}
+                  >
+                    {x.ageDays}d
+                  </span>
+                  <span className="truncate">{x.articleTitle}</span>
+                  {x.drafted && (
+                    <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--success)]">
+                      drafted
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </article>
   );
 }
@@ -345,62 +496,43 @@ export function Impact({
 }: {
   rows: Record<string, string | number | null>[];
 }) {
-  const series = useMemo(() => {
-    const devto = rows
-      .filter((r) => r.platform === "devto")
-      .map((r) => ({
-        day: String(r.observed_on),
-        followers: Number(r.followers ?? 0),
-        views: Number(r.total_views ?? 0),
-      }))
-      .sort((a, b) => a.day.localeCompare(b.day));
-    return devto;
-  }, [rows]);
+  const points = useMemo<Point[]>(
+    () =>
+      rows
+        .filter((r) => r.platform === "devto")
+        .map((r) => ({
+          t: String(r.observed_on),
+          // `null` is a day we did not observe, and the DS treats it as a gap
+          // rather than a zero. The hand-rolled version coerced it with
+          // `Number(x ?? 0)`, which drew a real follower count crashing to the
+          // floor on every missing snapshot.
+          v: r.followers == null ? null : Number(r.followers),
+        }))
+        .sort((a, b) => a.t.localeCompare(b.t)),
+    [rows],
+  );
 
-  if (series.length < 2)
-    return (
-      <div className={`${card} p-6 text-[var(--color-ink-2)]`}>
-        Not enough history to plot yet ({series.length} day
-        {series.length === 1 ? "" : "s"}).
-      </div>
-    );
-
-  const W = 900;
-  const H = 160;
-  const max = Math.max(...series.map((d) => d.followers));
-  const min = Math.min(...series.map((d) => d.followers));
-  const span = max - min || 1;
-  const pt = (i: number, v: number) =>
-    `${(i / (series.length - 1)) * W},${H - ((v - min) / span) * (H - 20) - 10}`;
-  const path = series.map((d, i) => pt(i, d.followers)).join(" ");
-  const first = series[0];
-  const last = series[series.length - 1];
-  const delta = last.followers - first.followers;
+  const last = [...points].reverse().find((p) => p.v !== null);
 
   return (
     <div className={`${card} overflow-hidden`}>
-      <div className="flex flex-wrap items-baseline gap-4 border-b border-[var(--color-line)] px-4 py-3">
+      <div className="flex flex-wrap items-baseline gap-4 border-b border-[var(--border)] px-4 py-3">
         <span className="text-2xl font-semibold tabular-nums">
-          {last.followers.toLocaleString()}
+          {last?.v == null ? "—" : last.v.toLocaleString()}
         </span>
-        <span
-          className={`font-mono text-[13px] ${delta >= 0 ? "text-[var(--color-good)]" : "text-[var(--color-accent)]"}`}
-        >
-          {delta >= 0 ? "+" : ""}
-          {delta} over {series.length} days
-        </span>
-        <span className="ml-auto font-mono text-[11px] text-[var(--color-ink-3)]">
-          dev.to followers · {first.day} → {last.day}
+        <Delta points={points} unit="followers" className="font-mono text-[13px]" />
+        <span className="ml-auto font-mono text-[11px] text-[var(--muted-foreground)]">
+          dev.to followers
         </span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img">
-        <polyline
-          points={path}
-          fill="none"
-          stroke="var(--color-good)"
-          strokeWidth={2}
+      <div className="p-4">
+        <TimeSeries
+          points={points}
+          label="dev.to followers"
+          unit="followers"
+          height={160}
         />
-      </svg>
+      </div>
     </div>
   );
 }
@@ -422,41 +554,66 @@ export function Plugins({
     return [...m.values()].sort((a, b) => b.count - a.count);
   }, [findings]);
 
+  const [sort, setSort] = useState<DataTableSort | null>({
+    columnId: "count",
+    direction: "desc",
+  });
+
+  // `<DataTable>` is deliberately presentational about sort: it renders
+  // `aria-sort` and emits `onSortChange`, but never reorders. The reorder is
+  // the caller's, via the exported `sortRows` helper.
+  const sorted = useMemo(
+    () => sortRows(byRule, sort, (r, id) => (id === "count" ? r.count : r.rule)),
+    [byRule, sort],
+  );
+
   return (
-    <>
-    <div className={`${card} max-h-[460px] overflow-auto`}>
-      <table className="w-full text-[13.5px]">
-        <thead>
-          <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-            <th className="p-3 font-medium">Rule</th>
-            <th className="p-3 font-medium">Hits</th>
-            <th className="p-3 font-medium">Sample</th>
-          </tr>
-        </thead>
-        <tbody>
-          {byRule.map((r) => (
-            <tr
-              key={r.rule}
-              className="border-b border-[var(--color-line)] last:border-0"
-            >
-              <td className="p-3 font-mono text-[12px]">{r.rule}</td>
-              <td className="p-3 tabular-nums">{r.count}</td>
-              <td className="p-3 text-[var(--color-ink-2)]">{r.sample}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className={card}>
+      {/*
+        `<DataTable>` brings what all nine hand-rolled tables lacked: a real
+        `<caption>`, `scope` on every header, `aria-sort`, a keyboard-reachable
+        scroll region, and sortable columns. The `max-h` cap moved onto the
+        component's own scroll container.
+      */}
+      <DataTable
+        caption="Plugin findings by rule"
+        captionHidden
+        dense
+        rows={sorted}
+        rowKey={(r) => r.rule}
+        sort={sort}
+        onSortChange={setSort}
+        empty="No findings — our plugins are clean over our own scripts."
+        className="[&_[data-slot=data-table-scroll]]:max-h-[460px]"
+        columns={[
+          {
+            id: "rule",
+            header: "Rule",
+            sortable: true,
+            cell: (r) => <span className="font-mono text-[12px]">{r.rule}</span>,
+          },
+          {
+            id: "count",
+            header: "Hits",
+            align: "end",
+            sortable: true,
+            cell: (r) => r.count,
+          },
+          {
+            id: "sample",
+            header: "Sample",
+            cell: (r) => (
+              <span className="text-[var(--muted-foreground)]">{r.sample}</span>
+            ),
+          },
+        ]}
+      />
+      <p className="border-t border-[var(--border)] p-3 text-[12.5px] text-[var(--muted-foreground)]">
+        Our own plugins over our own scripts. A rule with a very high hit count on
+        trusted local code is an FP candidate, not a finding —{" "}
+        <code>detect-object-injection</code> is the classic example.
+      </p>
     </div>
-    {/* OUTSIDE the max-h/overflow wrapper above. Inside it, this note
-        scrolled away the moment the table passed 460px — and a note that
-        explains how to read the data is worth least when there is the most
-        data to read. (Review, third pass.) */}
-    <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] text-[var(--color-ink-3)]">
-      Our own plugins over our own scripts. A rule with a very high hit count on
-      trusted local code is an FP candidate, not a finding —{" "}
-      <code>detect-object-injection</code> is the classic example.
-    </p>
-    </>
   );
 }
 
@@ -475,60 +632,79 @@ export function Benchmark({ data }: { data: any }) {
   const o = data.ours ?? {};
   return (
     <div className="flex flex-col gap-3">
-      <div className={`${card} p-4`}>
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-          <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
-            us
-          </span>
-          <span className="text-[13.5px]">
-            {o.n} articles · median <b>{o.rxMedian}</b> reactions · p90{" "}
-            <b>{o.rxP90}</b> · <b>{Math.round((o.rxZeroShare ?? 0) * 100)}%</b>{" "}
-            earn zero · median <b>{o.viewsMedian}</b> views
-          </span>
-        </div>
-      </div>
+      <StatStrip
+        caption="us"
+        cols={5}
+        items={[
+          { key: "n", label: "Articles", value: o.n ?? null },
+          { key: "rx", label: "Median rx", value: o.rxMedian ?? null },
+          { key: "p90", label: "p90 rx", value: o.rxP90 ?? null },
+          {
+            key: "zero",
+            label: "Earn zero",
+            value: o.rxZeroShare == null ? null : Math.round(o.rxZeroShare * 100),
+            unit: "%",
+          },
+          { key: "views", label: "Median views", value: o.viewsMedian ?? null },
+        ]}
+      />
 
-      <div className={`${card} overflow-x-auto`}>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-              <th className="p-2.5 font-medium">Tag</th>
-              <th className="p-2.5 text-right font-medium">Feed depth</th>
-              <th className="p-2.5 text-right font-medium">Posts/day</th>
-              <th className="p-2.5 text-right font-medium">Tag zero-rate</th>
-              <th className="p-2.5 text-right font-medium">Our edge</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data.tags ?? []).map((t: any) => {
-              const edge = t.zeroShareEdge ?? 0;
-              return (
-                <tr key={t.tag} className="border-b border-[var(--color-line)] last:border-0">
-                  <td className="p-2.5 font-mono text-[12px]">#{t.tag}</td>
-                  <td className="p-2.5 text-right tabular-nums text-[var(--color-ink-3)]">
-                    {t.oldestDays}d
-                  </td>
-                  <td className="p-2.5 text-right tabular-nums text-[var(--color-ink-3)]">
-                    ~{t.perDay}
-                  </td>
-                  <td className="p-2.5 text-right tabular-nums">
-                    {Math.round((t.rxZeroShare ?? 0) * 100)}%
-                  </td>
-                  <td
-                    className={`p-2.5 text-right tabular-nums font-semibold ${
-                      edge > 0 ? "text-[var(--color-good)]" : "text-[var(--color-warn)]"
+      <div className={card}>
+        <DataTable
+          caption="Tag feed depth and our zero-reaction edge"
+          captionHidden
+          dense
+          rows={(data.tags ?? []) as any[]}
+          rowKey={(t: any) => t.tag}
+          empty="No tag baseline sampled yet."
+          columns={[
+            {
+              id: "tag",
+              header: "Tag",
+              cell: (t: any) => <span className="font-mono text-[12px]">#{t.tag}</span>,
+            },
+            {
+              id: "depth",
+              header: "Feed depth",
+              align: "end",
+              className: "text-[var(--muted-foreground)]",
+              cell: (t: any) => `${t.oldestDays}d`,
+            },
+            {
+              id: "perDay",
+              header: "Posts/day",
+              align: "end",
+              className: "text-[var(--muted-foreground)]",
+              cell: (t: any) => `~${t.perDay}`,
+            },
+            {
+              id: "zero",
+              header: "Tag zero-rate",
+              align: "end",
+              cell: (t: any) => `${Math.round((t.rxZeroShare ?? 0) * 100)}%`,
+            },
+            {
+              id: "edge",
+              header: "Our edge",
+              align: "end",
+              cell: (t: any) => {
+                const edge = t.zeroShareEdge ?? 0;
+                return (
+                  <span
+                    className={`font-semibold ${
+                      edge > 0 ? "text-[var(--success)]" : "text-[var(--warning)]"
                     }`}
                   >
                     {edge > 0 ? "+" : ""}
                     {Math.round(edge * 100)}pp
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] leading-relaxed text-[var(--color-ink-3)]">
-          <b className="text-[var(--color-ink-2)]">Edge</b> = how much smaller our
+                  </span>
+                );
+              },
+            },
+          ]}
+        />
+        <p className="border-t border-[var(--border)] p-3 text-[12.5px] leading-relaxed text-[var(--muted-foreground)]">
+          <b className="text-[var(--muted-foreground)]">Edge</b> = how much smaller our
           zero-reaction share is than the tag&apos;s. Positive means a larger
           fraction of our articles earn <em>something</em>. <b>Feed depth</b> is
           how far back 100 articles reaches — the window an article is visible
@@ -537,31 +713,33 @@ export function Benchmark({ data }: { data: any }) {
           {data.note && (
             <>
               {" "}
-              <span className="text-[var(--color-warn)]">{data.note}</span>
+              <span className="text-[var(--warning)]">{data.note}</span>
             </>
           )}
         </p>
       </div>
 
       {data.drawdown?.alarm && (
-        <div className="rounded-xl border border-[var(--color-warn)] p-3 text-[13px] text-[var(--color-warn)]">
-          <b>Flat line — {data.drawdown.flatDays} days without follower growth.</b>{" "}
+        <Callout
+          tone="warn"
+          title={`Flat line — ${data.drawdown.flatDays} days without follower growth`}
+        >
           25 such days passed unnoticed in June. Publishing is what restarts the
           wave.
-        </div>
+        </Callout>
       )}
 
       {data.curve?.length > 0 && (
         <div className={`${card} p-3`}>
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">
             Where the views actually land
           </div>
           <div className="flex flex-wrap gap-4 font-mono text-[12px]">
             {data.curve.map((c: any) => (
               <span key={c.ageBucket}>
-                <span className="text-[var(--color-ink-3)]">{c.ageBucket}</span>{" "}
+                <span className="text-[var(--muted-foreground)]">{c.ageBucket}</span>{" "}
                 <b>{c.medianDailyViews}</b>/day
-                <span className="text-[var(--color-ink-3)]"> (n={c.n})</span>
+                <span className="text-[var(--muted-foreground)]"> (n={c.n})</span>
               </span>
             ))}
           </div>
@@ -572,23 +750,6 @@ export function Benchmark({ data }: { data: any }) {
 }
 
 /* ── Trends ─────────────────────────────────────────────────────────────── */
-
-function Spark({ points, tone }: { points: { t: string; v: number }[]; tone: string }) {
-  if (points.length < 2)
-    return <div className="h-10 text-[11px] text-[var(--color-ink-3)]">one point</div>;
-  const W = 260, H = 40;
-  const vs = points.map((p) => p.v);
-  const min = Math.min(...vs), max = Math.max(...vs);
-  const span = max - min || 1;
-  const d = points
-    .map((p, i) => `${(i / (points.length - 1)) * W},${H - ((p.v - min) / span) * (H - 6) - 3}`)
-    .join(" ");
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-10 w-full" preserveAspectRatio="none" role="img">
-      <polyline points={d} fill="none" stroke={tone} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
 
 /**
  * Every tracked metric, at a chosen granularity — not one chart.
@@ -618,47 +779,54 @@ export function TrendGrid({
             onClick={() => onGrain(g)}
             className={`border px-2 py-0.5 ${
               grain === g
-                ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-panel)]"
-                : "border-[var(--color-line)] text-[var(--color-ink-2)]"
+                ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--card)]"
+                : "border-[var(--border)] text-[var(--muted-foreground)]"
             }`}
           >
             {g}
           </button>
         ))}
-        <span className="ml-2 text-[var(--color-ink-3)]">
+        <span className="ml-2 text-[var(--muted-foreground)]">
           {data.days} days · {data.source}
         </span>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {(data.metrics ?? []).map((m: any) => {
-          const up = (m.change ?? 0) >= 0;
-          const tone = up ? "var(--color-good)" : "var(--color-accent)";
-          return (
-            <div key={m.key} className={`${card} p-3`}>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-                  {m.label}
-                </span>
-                <span className="text-[17px] font-semibold tabular-nums">
-                  {m.last?.toLocaleString() ?? "—"}
-                </span>
-              </div>
-              <Spark points={m.points} tone={tone} />
-              <div className="flex justify-between font-mono text-[11px]">
-                <span style={{ color: tone }}>
-                  {m.change == null ? "—" : `${up ? "+" : ""}${m.change.toLocaleString()}`}
-                  {m.pct != null && ` (${m.pct > 0 ? "+" : ""}${m.pct}%)`}
-                </span>
-                <span className="text-[var(--color-ink-3)]">
-                  last {grain}:{" "}
-                  {m.lastChange == null
-                    ? "—"
-                    : `${m.lastChange > 0 ? "+" : ""}${m.lastChange}`}
-                </span>
-              </div>
+        {(data.metrics ?? []).map((m: any) => (
+          <div key={m.key} className={`${card} p-3`}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+                {m.label}
+              </span>
+              <span className="text-[17px] font-semibold tabular-nums">
+                {m.last?.toLocaleString() ?? "—"}
+              </span>
             </div>
-          );
-        })}
+            {/*
+              `<Sparkline>` is fixed-aspect and centred rather than stretched to
+              the card width — the hand-rolled one used
+              `preserveAspectRatio="none"`, which distorted the slope of every
+              series differently depending on how wide its card happened to be.
+            */}
+            <div className="my-1.5">
+              <Sparkline
+                points={m.points}
+                label={m.label}
+                width={260}
+                height={40}
+                className="h-10 w-full"
+              />
+            </div>
+            <div className="flex justify-between gap-2 font-mono text-[11px]">
+              <Delta points={m.points} unit={m.label} />
+              <span className="text-[var(--muted-foreground)]">
+                last {grain}:{" "}
+                {m.lastChange == null
+                  ? "—"
+                  : `${m.lastChange > 0 ? "+" : ""}${m.lastChange}`}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -677,27 +845,27 @@ export function Roster({ roster }: { roster: any[] }) {
   const [all, setAll] = useState(false);
   if (!roster?.length)
     return (
-      <div className={`${card} p-4 text-[13px] text-[var(--color-ink-2)]`}>
+      <div className={`${card} p-4 text-[13px] text-[var(--muted-foreground)]`}>
         Roster unavailable — the DEV organisation endpoint did not answer.
       </div>
     );
   const shown = all ? roster : roster.slice(0, 12);
   return (
     <div className={card}>
-      <div className="flex items-center justify-between border-b border-[var(--color-line)] px-3 py-2 font-mono text-[11px] text-[var(--color-ink-3)]">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-2 font-mono text-[11px] text-[var(--muted-foreground)]">
         <span>{roster.length} people in the googleai org</span>
-        <button onClick={() => setAll((v) => !v)} className="border border-[var(--color-line)] px-2 py-0.5">
+        <button onClick={() => setAll((v) => !v)} className="border border-[var(--border)] px-2 py-0.5">
           {all ? "top 12" : `all ${roster.length}`}
         </button>
       </div>
-      <div className="divide-y divide-[var(--color-line)]">
+      <div className="divide-y divide-[var(--border)]">
         {shown.map((m) => (
           <div key={m.username} className="flex flex-wrap items-center gap-2.5 p-2.5">
             <span
               className={`rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${
                 m.rank <= 2
-                  ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                  : "border-[var(--color-line)] text-[var(--color-ink-3)]"
+                  ? "border-[var(--primary)] text-[var(--primary)]"
+                  : "border-[var(--border)] text-[var(--muted-foreground)]"
               }`}
             >
               {m.role}
@@ -706,12 +874,12 @@ export function Roster({ roster }: { roster: any[] }) {
               href={`https://dev.to/${m.username}`}
               target="_blank"
               rel="noopener"
-              className="font-mono text-[12px] text-[var(--color-accent)]"
+              className="font-mono text-[12px] text-[var(--primary)]"
             >
               @{m.username}
             </a>
-            <span className="text-[12.5px] text-[var(--color-ink-2)]">{m.name}</span>
-            <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--color-ink-3)]">
+            <span className="text-[12.5px] text-[var(--muted-foreground)]">{m.name}</span>
+            <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--muted-foreground)]">
               {m.summary}
             </span>
           </div>
@@ -735,48 +903,51 @@ export function Correlate({ data }: { data: any }) {
   if (!data) return <Skel rows={3} />;
   if (data.blocked)
     return (
-      <div className={`${card} p-5 text-[13.5px] text-[var(--color-ink-2)]`}>
-        <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
-          Not yet answerable
-        </p>
+      <Callout tone="note" title="Not yet answerable">
         <p className="max-w-[70ch]">{data.blocked}</p>
-        <p className="mt-2 font-mono text-[11.5px] text-[var(--color-ink-3)]">
+        <p className="mt-2 font-mono text-[11.5px] text-[var(--muted-foreground)]">
           {data.days} day(s) recorded · {data.actions} logged actions
         </p>
-      </div>
+      </Callout>
     );
   return (
     <div className={card}>
-      <table className="w-full text-[13.5px]">
-        <thead>
-          <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-            <th className="p-3 font-medium">Metric delta</th>
-            <th className="p-3 font-medium">Lag</th>
-            <th className="p-3 text-right font-medium">r</th>
-            <th className="p-3 text-right font-medium">n</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.results.map((r: any) => (
-            <tr key={`${r.metric}-${r.lag}`} className="border-b border-[var(--color-line)] last:border-0">
-              <td className="p-3">{r.metric}</td>
-              <td className="p-3 font-mono text-[12px] text-[var(--color-ink-3)]">
-                {r.lag === 0 ? "same day" : `+${r.lag}d`}
-              </td>
-              <td
-                className={`p-3 text-right tabular-nums ${
-                  Math.abs(r.r) >= 0.5 ? "text-[var(--color-good)]" : ""
-                }`}
-              >
+      <DataTable
+        caption="Actions correlated against next-day metric deltas"
+        captionHidden
+        dense
+        rows={data.results as any[]}
+        rowKey={(r: any) => `${r.metric}-${r.lag}`}
+        empty="No correlations computed yet."
+        columns={[
+          { id: "metric", header: "Metric delta", cell: (r: any) => r.metric },
+          {
+            id: "lag",
+            header: "Lag",
+            className: "font-mono text-[12px] text-[var(--muted-foreground)]",
+            cell: (r: any) => (r.lag === 0 ? "same day" : `+${r.lag}d`),
+          },
+          {
+            id: "r",
+            header: "r",
+            align: "end",
+            cell: (r: any) => (
+              <span className={Math.abs(r.r) >= 0.5 ? "text-[var(--success)]" : undefined}>
                 {r.r > 0 ? "+" : ""}
                 {r.r}
-              </td>
-              <td className="p-3 text-right tabular-nums text-[var(--color-ink-3)]">{r.n}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] text-[var(--color-ink-3)]">
+              </span>
+            ),
+          },
+          {
+            id: "n",
+            header: "n",
+            align: "end",
+            className: "text-[var(--muted-foreground)]",
+            cell: (r: any) => r.n,
+          },
+        ]}
+      />
+      <p className="border-t border-[var(--border)] p-3 text-[12.5px] text-[var(--muted-foreground)]">
         Actions vs next-day <b>deltas</b>, not levels — followers only go up, so
         correlating against the total would just rediscover that time passes.
         These rank hypotheses worth testing. They are not causes.
@@ -860,7 +1031,7 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
 
   return (
     <div className={card}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-line)] px-3 py-2.5 font-mono text-[11px] text-[var(--color-ink-3)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5 font-mono text-[11px] text-[var(--muted-foreground)]">
         <span>
           {plugins.length} packages · {num(totalWeekly)}/wk combined
         </span>
@@ -869,7 +1040,7 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="filter…"
-            className="w-24 rounded border border-[var(--color-line)] bg-[var(--color-ground)] px-1.5 py-0.5 font-mono text-[11px]"
+            className="w-24 rounded border border-[var(--border)] bg-[var(--background)] px-1.5 py-0.5 font-mono text-[11px]"
           />
           {SORTS.map((s) => (
             <button
@@ -877,8 +1048,8 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
               onClick={() => setSort(s.key)}
               className={`border px-1.5 py-0.5 ${
                 sort === s.key
-                  ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-panel)]"
-                  : "border-[var(--color-line)]"
+                  ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--card)]"
+                  : "border-[var(--border)]"
               }`}
             >
               {s.label}
@@ -889,8 +1060,8 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
 
       <div className="max-h-[520px] overflow-auto">
         <table className="w-full text-[13px]">
-          <thead className="sticky top-0 bg-[var(--color-panel)]">
-            <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+          <thead className="sticky top-0 bg-[var(--card)]">
+            <tr className="border-b border-[var(--border)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
               <th className="p-2.5 font-medium">Package</th>
               <th className="p-2.5 text-right font-medium">Weekly</th>
               <th className="p-2.5 text-right font-medium">Rules</th>
@@ -905,8 +1076,8 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
                 <Fragment key={p.id}>
                   <tr
                     onClick={() => setSel(open ? null : p.id)}
-                    className={`cursor-pointer border-b border-[var(--color-line)] last:border-0 ${
-                      open ? "bg-[var(--color-ground)]" : ""
+                    className={`cursor-pointer border-b border-[var(--border)] last:border-0 ${
+                      open ? "bg-[var(--background)]" : ""
                     }`}
                   >
                     <td className="p-2.5">
@@ -914,12 +1085,12 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
                         {p.name.replace(/^eslint-plugin-/, "")}
                       </span>
                       {p.deprecated && (
-                        <span className="ml-1.5 font-mono text-[10px] uppercase text-[var(--color-warn)]">
+                        <span className="ml-1.5 font-mono text-[10px] uppercase text-[var(--warning)]">
                           deprecated
                         </span>
                       )}
                       {!p.published && (
-                        <span className="ml-1.5 font-mono text-[10px] uppercase text-[var(--color-ink-3)]">
+                        <span className="ml-1.5 font-mono text-[10px] uppercase text-[var(--muted-foreground)]">
                           unpublished
                         </span>
                       )}
@@ -927,7 +1098,7 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
                     <td className="p-2.5 text-right tabular-nums">
                       {num(p.weeklyDownloads)}
                     </td>
-                    <td className="p-2.5 text-right tabular-nums text-[var(--color-ink-3)]">
+                    <td className="p-2.5 text-right tabular-nums text-[var(--muted-foreground)]">
                       {num(p.rules)}
                     </td>
                     <td className="p-2.5 text-right tabular-nums">
@@ -937,10 +1108,10 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
                         <span
                           className={
                             p.coveragePct >= 100
-                              ? "text-[var(--color-good)]"
+                              ? "text-[var(--success)]"
                               : p.coveragePct >= 80
                                 ? ""
-                                : "text-[var(--color-warn)]"
+                                : "text-[var(--warning)]"
                           }
                         >
                           {p.coveragePct}%
@@ -962,7 +1133,7 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
                             target="_blank"
                             rel="noopener"
                             onClick={(e) => e.stopPropagation()}
-                            className="rounded border border-[var(--color-line)] px-1.5 py-0.5 text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                            className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
                           >
                             {label}
                           </a>
@@ -971,12 +1142,12 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
                     </td>
                   </tr>
                   {open && (
-                    <tr className="border-b border-[var(--color-line)]">
-                      <td colSpan={5} className="bg-[var(--color-ground)] p-3">
-                        <p className="mb-2 max-w-[76ch] text-[13px] text-[var(--color-ink-2)]">
+                    <tr className="border-b border-[var(--border)]">
+                      <td colSpan={5} className="bg-[var(--background)] p-3">
+                        <p className="mb-2 max-w-[76ch] text-[13px] text-[var(--muted-foreground)]">
                           {p.description ?? "No description recorded."}
                         </p>
-                        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-[11.5px] text-[var(--color-ink-2)] sm:grid-cols-4">
+                        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-[11.5px] text-[var(--muted-foreground)] sm:grid-cols-4">
                           {(
                             [
                               ["version", p.version ?? "—"],
@@ -990,7 +1161,7 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
                             ] as const
                           ).map(([k, v]) => (
                             <div key={k} className="flex justify-between gap-2">
-                              <dt className="text-[var(--color-ink-3)]">{k}</dt>
+                              <dt className="text-[var(--muted-foreground)]">{k}</dt>
                               <dd className="truncate">{v}</dd>
                             </div>
                           ))}
@@ -1001,7 +1172,7 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
                               `npm i -D ${p.name}`,
                             )
                           }
-                          className="mt-3 rounded border border-[var(--color-line)] px-2 py-1 font-mono text-[10px] uppercase hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                          className="mt-3 rounded border border-[var(--border)] px-2 py-1 font-mono text-[10px] uppercase hover:border-[var(--primary)] hover:text-[var(--primary)]"
                         >
                           copy install
                         </button>
@@ -1036,9 +1207,9 @@ export function Promotion({
   }[];
 }) {
   const tone: Record<string, string> = {
-    merged: "text-[var(--color-good)] border-[var(--color-good)]",
-    open: "text-[var(--color-warn)] border-[var(--color-warn)]",
-    closed: "text-[var(--color-ink-3)] border-[var(--color-line)]",
+    merged: "text-[var(--success)] border-[var(--success)]",
+    open: "text-[var(--warning)] border-[var(--warning)]",
+    closed: "text-[var(--muted-foreground)] border-[var(--border)]",
   };
   const [state, setState] = useState<string>("all");
   const [q, setQ] = useState("");
@@ -1078,7 +1249,7 @@ export function Promotion({
 
   return (
     <div className={card}>
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--color-line)] px-3 py-2 font-mono text-[11px]">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-3 py-2 font-mono text-[11px]">
         {["all", "open", "merged", "closed"].map((s) =>
           counts[s] ? (
             <button
@@ -1086,8 +1257,8 @@ export function Promotion({
               onClick={() => setState(s)}
               className={`border px-2 py-0.5 ${
                 state === s
-                  ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                  : "border-[var(--color-line)] text-[var(--color-ink-2)]"
+                  ? "border-[var(--primary)] text-[var(--primary)]"
+                  : "border-[var(--border)] text-[var(--muted-foreground)]"
               }`}
             >
               {s} {counts[s]}
@@ -1098,40 +1269,40 @@ export function Promotion({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="filter repo or title…"
-          className="ml-auto min-w-[150px] flex-1 rounded border border-[var(--color-line)] bg-[var(--color-ground)] px-2 py-0.5 font-mono text-[11px]"
+          className="ml-auto min-w-[150px] flex-1 rounded border border-[var(--border)] bg-[var(--background)] px-2 py-0.5 font-mono text-[11px]"
         />
-        <span className="text-[var(--color-ink-3)]">{rows.length} shown</span>
+        <span className="text-[var(--muted-foreground)]">{rows.length} shown</span>
       </div>
 
       {/* Scrolls rather than truncating. The previous version rendered
           `prs.slice(0, 12)` while the section header counted all 23 — eleven
           promotion PRs were simply invisible, and nothing on screen said so.
           A capped list that does not admit its cap is a lie about coverage. */}
-      <div className="max-h-[420px] divide-y divide-[var(--color-line)] overflow-y-auto">
+      <div className="max-h-[420px] divide-y divide-[var(--border)] overflow-y-auto">
         {rows.map((p) => (
           <a
             key={p.url}
             href={p.url}
             target="_blank"
             rel="noopener"
-            className="flex flex-wrap items-center gap-3 p-3 hover:bg-[color-mix(in_srgb,var(--color-ink)_4%,transparent)]"
+            className="flex flex-wrap items-center gap-3 p-3 hover:bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)]"
           >
             <span
               className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase ${tone[p.state] ?? tone.closed}`}
             >
               {p.state}
             </span>
-            <span className="font-mono text-[12px] text-[var(--color-ink-3)]">
+            <span className="font-mono text-[12px] text-[var(--muted-foreground)]">
               {p.repo}
             </span>
             <span className="min-w-0 flex-1 truncate text-[13.5px]">{p.title}</span>
-            <span className="font-mono text-[10.5px] text-[var(--color-ink-3)]">
+            <span className="font-mono text-[10.5px] text-[var(--muted-foreground)]">
               {p.updated?.slice(0, 10)}
             </span>
           </a>
         ))}
         {rows.length === 0 && (
-          <p className="p-3 text-[13px] text-[var(--color-ink-3)]">
+          <p className="p-3 text-[13px] text-[var(--muted-foreground)]">
             Nothing matches that filter.
           </p>
         )}
@@ -1176,94 +1347,99 @@ export function SiteHealth({
     error: string | null;
   };
 }) {
-  const tint = {
-    good: "text-[var(--color-ok,#3fb950)]",
-    "needs-improvement": "text-[var(--color-warn,#d29922)]",
-    poor: "text-[var(--color-bad,#f85149)]",
-  } as const;
-
   // ms for LCP/INP, unitless-to-3dp for CLS — showing CLS as "0ms" was the
   // first thing that made this table look broken.
   const ms = (v: number | null) => (v === null ? "—" : `${Math.round(v)}ms`);
   const cls = (v: number | null) => (v === null ? "—" : v.toFixed(3));
 
   return (
-    <div className={`${card} overflow-x-auto`}>
-      {vitals.error ? (
-        <p className="p-3 text-[13px] text-[var(--color-ink-3)]">
-          Web vitals unavailable — {vitals.error}
-        </p>
-      ) : (
-        <table className="w-full text-[13.5px]">
-          <thead>
-            <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-              <th className="p-3 font-medium">App</th>
-              <th className="p-3 font-medium">p75 LCP</th>
-              <th className="p-3 font-medium">p75 INP</th>
-              <th className="p-3 font-medium">p75 CLS</th>
-              <th className="p-3 font-medium">Samples</th>
-            </tr>
-          </thead>
-          <tbody>
-            {vitals.rows.map((r) => (
-              <tr
-                key={r.app}
-                className="border-b border-[var(--color-line)] last:border-0"
+    <div className={card}>
+      {/*
+        The verdict used to be carried by colour alone, on two hex literals
+        (`#3fb950` / `#f85149`) sitting behind `var(--success)` /
+        `var(--destructive)` fallbacks for tokens that were never defined — so
+        this panel was the one surface that ignored the palette entirely, in
+        both schemes. It is now a `<Badge>` with a token tone: shape AND colour.
+      */}
+      <DataTable
+        caption="Core Web Vitals, p75 over 7 days"
+        captionHidden
+        dense
+        rows={vitals.rows}
+        rowKey={(r) => r.app}
+        error={vitals.error ? `Web vitals unavailable — ${vitals.error}` : undefined}
+        empty="No vitals samples yet."
+        columns={[
+          {
+            id: "app",
+            header: "App",
+            cell: (r) => <span className="font-mono text-[12px]">{r.app}</span>,
+          },
+          {
+            id: "verdict",
+            header: "Verdict",
+            cell: (r) => (
+              <Badge
+                variant={r.verdict === "poor" ? "destructive" : "outline"}
+                className={
+                  r.verdict === "good"
+                    ? "text-[var(--success)]"
+                    : r.verdict === "needs-improvement"
+                      ? "text-[var(--warning)]"
+                      : undefined
+                }
               >
-                <td className={`p-3 font-mono text-[12px] ${tint[r.verdict]}`}>
-                  {r.app}
-                </td>
-                <td className="p-3 tabular-nums">{ms(r.lcp)}</td>
-                <td className="p-3 tabular-nums">{ms(r.inp)}</td>
-                <td className="p-3 tabular-nums">{cls(r.cls)}</td>
-                <td className="p-3 tabular-nums text-[var(--color-ink-3)]">
-                  {r.samples}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+                {r.verdict}
+              </Badge>
+            ),
+          },
+          { id: "lcp", header: "p75 LCP", align: "end", cell: (r) => ms(r.lcp) },
+          { id: "inp", header: "p75 INP", align: "end", cell: (r) => ms(r.inp) },
+          { id: "cls", header: "p75 CLS", align: "end", cell: (r) => cls(r.cls) },
+          {
+            id: "samples",
+            header: "Samples",
+            align: "end",
+            className: "text-[var(--muted-foreground)]",
+            cell: (r) => r.samples,
+          },
+        ]}
+      />
 
-      <div className="border-t border-[var(--color-line)]">
-        {errors.error ? (
-          <p className="p-3 text-[13px] text-[var(--color-ink-3)]">
-            Errors unavailable — {errors.error}
-          </p>
-        ) : errors.rows.length === 0 ? (
-          <p className="p-3 text-[13px] text-[var(--color-ink-3)]">
-            No exceptions in the last 30 days.
-          </p>
-        ) : (
-          <table className="w-full text-[13.5px]">
-            <thead>
-              <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-                <th className="p-3 font-medium">App</th>
-                <th className="p-3 font-medium">People</th>
-                <th className="p-3 font-medium">Hits</th>
-                <th className="p-3 font-medium">Exception</th>
-              </tr>
-            </thead>
-            <tbody>
-              {errors.rows.slice(0, 10).map((e, i) => (
-                <tr
-                  key={`${e.app}:${e.message}:${i}`}
-                  className="border-b border-[var(--color-line)] last:border-0"
-                >
-                  <td className="p-3 font-mono text-[12px]">{e.app}</td>
-                  <td className="p-3 tabular-nums">{e.users}</td>
-                  <td className="p-3 tabular-nums text-[var(--color-ink-3)]">
-                    {e.count}
-                  </td>
-                  <td className="p-3 text-[var(--color-ink-2)]">{e.message}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      <div className="border-t border-[var(--border)]">
+        <DataTable
+          caption="Exceptions over 30 days, ranked by people affected"
+          captionHidden
+          dense
+          rows={errors.rows.slice(0, 10)}
+          rowKey={(e) => `${e.app}:${e.message}`}
+          error={errors.error ? `Errors unavailable — ${errors.error}` : undefined}
+          empty="No exceptions in the last 30 days."
+          columns={[
+            {
+              id: "app",
+              header: "App",
+              cell: (e) => <span className="font-mono text-[12px]">{e.app}</span>,
+            },
+            { id: "users", header: "People", align: "end", cell: (e) => e.users },
+            {
+              id: "count",
+              header: "Hits",
+              align: "end",
+              className: "text-[var(--muted-foreground)]",
+              cell: (e) => e.count,
+            },
+            {
+              id: "message",
+              header: "Exception",
+              className: "text-[var(--muted-foreground)]",
+              cell: (e) => e.message,
+            },
+          ]}
+        />
       </div>
 
-      <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] text-[var(--color-ink-3)]">
+      <p className="border-t border-[var(--border)] p-3 text-[12.5px] text-[var(--muted-foreground)]">
         p75, the statistic Google ranks on. Vitals over 7 days, exceptions over
         30 — errors are rare enough here that a weekly window reads empty and
         looks like health. Ranked by people affected, not hit count.
@@ -1276,16 +1452,16 @@ export function SiteHealth({
 
 export function People({ people }: { people: any[] }) {
   return (
-    <div className={`${card} divide-y divide-[var(--color-line)]`}>
+    <div className={`${card} divide-y divide-[var(--border)]`}>
       {people.map((p) => (
         <div key={p.username} className="flex flex-wrap items-center gap-3 p-3">
           <a href={`https://dev.to/${p.username}`} target="_blank" rel="noopener"
-             className="font-mono text-[12.5px] text-[var(--color-accent)]">@{p.username}</a>
-          <span className="rounded border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--color-ink-3)]">
+             className="font-mono text-[12.5px] text-[var(--primary)]">@{p.username}</a>
+          <span className="rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--muted-foreground)]">
             {p.cohort}
           </span>
           {!p.verified && (
-            <span className="font-mono text-[10px] text-[var(--color-warn)]" title="Membership not confirmed — verify before acting">
+            <span className="font-mono text-[10px] text-[var(--warning)]" title="Membership not confirmed — verify before acting">
               unverified
             </span>
           )}
@@ -1293,23 +1469,23 @@ export function People({ people }: { people: any[] }) {
             <>
               <a href={p.latest.url} target="_blank" rel="noopener"
                  className="min-w-0 flex-1 truncate text-[13px]">{p.latest.title}</a>
-              <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+              <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                 {p.latest.ageDays}d · {p.latest.reactions} rx
               </span>
               {p.latest.reactable && (
                 <a href={p.latest.url} target="_blank" rel="noopener"
-                   className="rounded-md bg-[var(--color-good)] px-2.5 py-1 font-mono text-[10px] uppercase text-white"
+                   className="rounded-md bg-[var(--success)] px-2.5 py-1 font-mono text-[10px] uppercase text-[var(--success-foreground)]"
                    title="Inside the 7-day window where reacting can bank a x1.5 reputation multiplier if they take Top 7">
                   react now
                 </a>
               )}
             </>
           ) : (
-            <span className="flex-1 text-[12.5px] text-[var(--color-ink-3)]">no recent article found</span>
+            <span className="flex-1 text-[12.5px] text-[var(--muted-foreground)]">no recent article found</span>
           )}
         </div>
       ))}
-      <p className="p-3 text-[12.5px] text-[var(--color-ink-3)]">
+      <p className="p-3 text-[12.5px] text-[var(--muted-foreground)]">
         <b>react now</b> marks an article still inside the 7-day window. If that
         author takes Top 7 that week, a positive reaction banks a permanent
         <b> x1.5</b> on your reputation_modifier (cap 4.0), which multiplies reach
@@ -1361,26 +1537,26 @@ export function Board({ prs }: { prs: any[] }) {
   };
 
   const Row = ({ p, act }: { p: any; act: boolean }) => (
-    <div className="flex flex-wrap items-center gap-3 p-3 hover:bg-[color-mix(in_srgb,var(--color-ink)_4%,transparent)]">
+    <div className="flex flex-wrap items-center gap-3 p-3 hover:bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)]">
       <span className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase ${
-        act ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-            : "border-[var(--color-line)] text-[var(--color-ink-3)]"}`}>
+        act ? "border-[var(--primary)] text-[var(--primary)]"
+            : "border-[var(--border)] text-[var(--muted-foreground)]"}`}>
         {act ? "you" : "them"}
       </span>
       <a href={p.url} target="_blank" rel="noopener"
-         className="font-mono text-[11.5px] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+         className="font-mono text-[11.5px] text-[var(--muted-foreground)] hover:text-[var(--primary)]">
         {p.repo}#{p.number}
       </a>
       <a href={p.url} target="_blank" rel="noopener"
-         className="min-w-0 flex-1 truncate text-[13.5px] hover:text-[var(--color-accent)]">
+         className="min-w-0 flex-1 truncate text-[13.5px] hover:text-[var(--primary)]">
         {p.title}
       </a>
-      <span className="font-mono text-[11px] text-[var(--color-ink-2)]">{p.reason}</span>
+      <span className="font-mono text-[11px] text-[var(--muted-foreground)]">{p.reason}</span>
       {act && (
         <button
           onClick={() => spawn(p)}
           title="Open a Claude session in the right repo, prompt pre-filled"
-          className="rounded border border-[var(--color-accent)] px-2 py-0.5 font-mono text-[10px] uppercase text-[var(--color-accent)]"
+          className="rounded border border-[var(--primary)] px-2 py-0.5 font-mono text-[10px] uppercase text-[var(--primary)]"
         >
           {spawned[p.url] ?? "fix it"}
         </button>
@@ -1390,19 +1566,19 @@ export function Board({ prs }: { prs: any[] }) {
 
   return (
     <div className={card}>
-      <div className="border-b border-[var(--color-line)] px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-accent)]">
+      <div className="border-b border-[var(--border)] px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-[var(--primary)]">
         Action required · {mine.length}
       </div>
-      <div className="divide-y divide-[var(--color-line)]">
+      <div className="divide-y divide-[var(--border)]">
         {mine.length ? mine.map((p) => <Row key={p.url} p={p} act />)
-          : <p className="p-3 text-[13px] text-[var(--color-ink-3)]">Nothing blocked on you.</p>}
+          : <p className="p-3 text-[13px] text-[var(--muted-foreground)]">Nothing blocked on you.</p>}
       </div>
-      <div className="border-y border-[var(--color-line)] px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
+      <div className="border-y border-[var(--border)] px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">
         Waiting on maintainers · {theirs.length}
       </div>
       {/* Scrolls instead of slicing. The header counts every PR, so a capped
           list made the two disagree with nothing on screen to explain it. */}
-      <div className="max-h-[360px] divide-y divide-[var(--color-line)] overflow-y-auto">
+      <div className="max-h-[360px] divide-y divide-[var(--border)] overflow-y-auto">
         {theirs.map((p) => <Row key={p.url} p={p} act={false} />)}
       </div>
     </div>
@@ -1412,23 +1588,22 @@ export function Board({ prs }: { prs: any[] }) {
 /* ── Ecosystem ──────────────────────────────────────────────────────────── */
 
 export function Ecosystem({ totals }: { totals: Record<string, any> | null }) {
-  if (!totals) return <div className={`${card} p-6 text-[var(--color-ink-2)]`}>No ecosystem snapshot.</div>;
-  const cells: [string, any][] = [
-    ["Plugins", totals.total_plugins],
-    ["Rules", totals.total_rules],
-    ["npm total", totals.total_npm_downloads?.toLocaleString?.() ?? totals.total_npm_downloads],
-    ["npm / day", totals.daily_npm_downloads?.toLocaleString?.() ?? totals.daily_npm_downloads],
-    ["Test cov", totals.test_coverage != null ? `${totals.test_coverage}%` : null],
-  ];
+  // `StatStrip` distinguishes "we have no snapshot" (empty) from "the snapshot
+  // says zero" — and prints a `not counted` badge for a null cell rather than a
+  // bare em-dash that reads as a value.
   return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-5">
-      {cells.map(([k, v]) => (
-        <div key={k} className="bg-[var(--color-panel)] p-4">
-          <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">{k}</div>
-          <div className="mt-1 text-2xl font-semibold tabular-nums">{v ?? "—"}</div>
-        </div>
-      ))}
-    </div>
+    <StatStrip
+      cols={5}
+      state={{ empty: !totals }}
+      announce={{ noun: "ecosystem snapshot" }}
+      items={[
+        { key: "plugins", label: "Plugins", value: totals?.total_plugins ?? null },
+        { key: "rules", label: "Rules", value: totals?.total_rules ?? null },
+        { key: "npm-total", label: "npm total", value: totals?.total_npm_downloads ?? null },
+        { key: "npm-day", label: "npm / day", value: totals?.daily_npm_downloads ?? null },
+        { key: "cov", label: "Test cov", value: totals?.test_coverage ?? null, unit: "%" },
+      ]}
+    />
   );
 }
 
@@ -1473,13 +1648,13 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
   const related = new Set<string>([...outLinks, ...inLinks]);
 
   const color = (s: string) =>
-    s === "ready" ? "var(--color-accent)"
-      : String(s).startsWith("publish") || String(s).startsWith("retrofit") ? "var(--color-good)"
-      : "var(--color-ink-3)";
+    s === "ready" ? "var(--primary)"
+      : String(s).startsWith("publish") || String(s).startsWith("retrofit") ? "var(--success)"
+      : "var(--muted-foreground)";
 
   return (
     <div className={`${card} overflow-hidden`}>
-      <div className="border-b border-[var(--color-line)] px-4 py-2.5 font-mono text-[11px] text-[var(--color-ink-3)]">
+      <div className="border-b border-[var(--border)] px-4 py-2.5 font-mono text-[11px] text-[var(--muted-foreground)]">
         {nodes.length} articles · {edges.length} internal links · lanes are tiers
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_270px]">
@@ -1489,18 +1664,18 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
             const y = 40 + (li / Math.max(1, lanes.length - 1)) * (H - 80);
             return (
               <g key={t}>
-                <line x1={20} y1={y} x2={W - 20} y2={y} stroke="var(--color-line)" strokeWidth={1} />
+                <line x1={20} y1={y} x2={W - 20} y2={y} stroke="var(--border)" strokeWidth={1} />
           <defs>
             {/* Arrowheads, so direction survives a greyscale screenshot and a
                 reader who cannot separate orange from green. */}
             <marker id="arrow-out" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
-              <path d="M0,0 L8,4 L0,8 z" fill="var(--color-accent)" />
+              <path d="M0,0 L8,4 L0,8 z" fill="var(--primary)" />
             </marker>
             <marker id="arrow-in" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
-              <path d="M0,0 L8,4 L0,8 z" fill="var(--color-good)" />
+              <path d="M0,0 L8,4 L0,8 z" fill="var(--success)" />
             </marker>
           </defs>
-                <text x={4} y={y - 6} className="fill-[var(--color-ink-3)]"
+                <text x={4} y={y - 6} className="fill-[var(--muted-foreground)]"
                       style={{ fontSize: 9, fontFamily: "monospace" }}>{t}</text>
               </g>
             );
@@ -1517,7 +1692,7 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
               <path key={i}
                     d={`M${e.x1},${e.y1} C${e.x1},${(e.y1 + e.y2) / 2} ${e.x2},${(e.y1 + e.y2) / 2} ${e.x2},${e.y2}`}
                     fill="none"
-                    stroke={out ? "var(--color-accent)" : inc ? "var(--color-good)" : "var(--color-ink-3)"}
+                    stroke={out ? "var(--primary)" : inc ? "var(--success)" : "var(--muted-foreground)"}
                     strokeWidth={lit ? 1.6 : 0.5}
                     markerEnd={out ? "url(#arrow-out)" : inc ? "url(#arrow-in)" : undefined}
                     opacity={sel ? (lit ? 0.95 : 0.04) : 0.16} />
@@ -1527,7 +1702,7 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
             const dim = sel && slug !== sel && !related.has(slug);
             return (
               <circle key={slug} cx={p.x} cy={p.y} r={slug === sel ? 5.5 : 3.4}
-                      fill={color(p.status)} stroke="var(--color-panel)" strokeWidth={1}
+                      fill={color(p.status)} stroke="var(--card)" strokeWidth={1}
                       opacity={dim ? 0.15 : 1} className="cursor-pointer"
                       onClick={() => setSel(slug === sel ? null : slug)}>
                 <title>{slug} · {p.tier} · {p.status}</title>
@@ -1536,24 +1711,24 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
           })}
         </svg>
 
-        <aside className="border-t border-[var(--color-line)] p-4 text-[13px] md:border-l md:border-t-0">
+        <aside className="border-t border-[var(--border)] p-4 text-[13px] md:border-l md:border-t-0">
           {node ? (
             <>
               <div className="font-semibold leading-snug">{node.title ?? node.slug}</div>
-              <div className="mt-1 font-mono text-[10.5px] text-[var(--color-ink-3)]">{node.slug}</div>
+              <div className="mt-1 font-mono text-[10.5px] text-[var(--muted-foreground)]">{node.slug}</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="rounded border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[10px]">{node.tier}</span>
-                <span className="rounded border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[10px]">{node.status}</span>
-                {node.domain && <span className="rounded border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[10px]">{node.domain}</span>}
+                <span className="rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px]">{node.tier}</span>
+                <span className="rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px]">{node.status}</span>
+                {node.domain && <span className="rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px]">{node.domain}</span>}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <a href={`https://ofriperetz.dev/articles/${node.slug}`} target="_blank" rel="noopener"
-                   className="rounded-md border border-[var(--color-accent)] px-2 py-1 font-mono text-[10px] uppercase text-[var(--color-accent)]">
+                   className="rounded-md border border-[var(--primary)] px-2 py-1 font-mono text-[10px] uppercase text-[var(--primary)]">
                   live →
                 </a>
                 <a href={`https://github.com/ofri-peretz/blog/blob/main/apps/blog/content/articles/${node.slug}.md`}
                    target="_blank" rel="noopener"
-                   className="rounded-md border border-[var(--color-line)] px-2 py-1 font-mono text-[10px] uppercase text-[var(--color-ink-2)]">
+                   className="rounded-md border border-[var(--border)] px-2 py-1 font-mono text-[10px] uppercase text-[var(--muted-foreground)]">
                   source →
                 </a>
               </div>
@@ -1563,55 +1738,55 @@ export function ArticleWeb({ nodes }: { nodes: any[] }) {
                   article spends its authority on; inbound is what it receives.
                   Colour carries it at a glance, the glyph carries it for anyone
                   who cannot separate the hues. */}
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--color-accent)]">
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--primary)]">
                 ↗ Links out · {outLinks.length}
-                <span className="ml-1.5 normal-case tracking-normal text-[var(--color-ink-3)]">
+                <span className="ml-1.5 normal-case tracking-normal text-[var(--muted-foreground)]">
                   authority this one spends
                 </span>
               </p>
-              <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto border-l-2 border-[var(--color-accent)] pl-2">
+              <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto border-l-2 border-[var(--primary)] pl-2">
                 {outLinks.map((l: string) => (
                   <li key={l}>
-                    <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--color-ink-2)] hover:text-[var(--color-accent)]">
-                      <span className="text-[var(--color-accent)]">↗</span> {l}
+                    <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--muted-foreground)] hover:text-[var(--primary)]">
+                      <span className="text-[var(--primary)]">↗</span> {l}
                     </button>
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--color-good)]">
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-[var(--success)]">
                 ↙ Cited by · {inLinks.length}
-                <span className="ml-1.5 normal-case tracking-normal text-[var(--color-ink-3)]">
+                <span className="ml-1.5 normal-case tracking-normal text-[var(--muted-foreground)]">
                   authority it receives
                 </span>
               </p>
               {inLinks.length ? (
-                <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto border-l-2 border-[var(--color-good)] pl-2">
+                <ul className="mt-1 flex max-h-56 flex-col gap-0.5 overflow-y-auto border-l-2 border-[var(--success)] pl-2">
                   {inLinks.map((l: string) => (
                     <li key={l}>
-                      <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--color-ink-2)] hover:text-[var(--color-good)]">
-                        <span className="text-[var(--color-good)]">↙</span> {l}
+                      <button onClick={() => setSel(l)} className="text-left text-[12px] text-[var(--muted-foreground)] hover:text-[var(--success)]">
+                        <span className="text-[var(--success)]">↙</span> {l}
                       </button>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1 text-[12px] text-[var(--color-warn)]">
+                <p className="mt-1 text-[12px] text-[var(--warning)]">
                   Orphan — nothing links here. In a tiered corpus that means it
                   earns no authority from the rest of the web.
                 </p>
               )}
             </>
           ) : (
-            <p className="text-[var(--color-ink-3)]">
+            <p className="text-[var(--muted-foreground)]">
               Click a node to trace its links. Lanes are tiers; curves are internal
               citations.
             </p>
           )}
         </aside>
       </div>
-      <p className="border-t border-[var(--color-line)] px-4 py-2.5 text-[12px] text-[var(--color-ink-3)]">
-        <span className="text-[var(--color-good)]">green</span> published ·{" "}
-        <span className="text-[var(--color-accent)]">orange</span> queued · grey planned.
+      <p className="border-t border-[var(--border)] px-4 py-2.5 text-[12px] text-[var(--muted-foreground)]">
+        <span className="text-[var(--success)]">green</span> published ·{" "}
+        <span className="text-[var(--primary)]">orange</span> queued · grey planned.
       </p>
     </div>
   );
@@ -1639,7 +1814,7 @@ export function Refresh({
 }) {
   const ago = at ? Math.round((Date.now() - at) / 1000) : null;
   return (
-    <span className="flex items-center gap-2 font-mono text-[10px] normal-case tracking-normal text-[var(--color-ink-3)]">
+    <span className="flex items-center gap-2 font-mono text-[10px] normal-case tracking-normal text-[var(--muted-foreground)]">
       {at && (
         <span title={new Date(at).toISOString()}>
           {ago! < 60 ? `${ago}s ago` : `${Math.round(ago! / 60)}m ago`}
@@ -1649,7 +1824,7 @@ export function Refresh({
         onClick={onClick}
         disabled={busy}
         aria-label="Refresh this section"
-        className="rounded border border-[var(--color-line)] px-2 py-0.5 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-40"
+        className="rounded border border-[var(--border)] px-2 py-0.5 hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-40"
       >
         {busy ? "…" : "↻"}
       </button>
@@ -1677,25 +1852,25 @@ export function Person({
           href={data.profile}
           target="_blank"
           rel="noopener"
-          className="font-mono text-[14px] text-[var(--color-accent)]"
+          className="font-mono text-[14px] text-[var(--primary)]"
         >
           @{data.username}
         </a>
         {data.cached && (
-          <span className="font-mono text-[10px] text-[var(--color-ink-3)]">
+          <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
             cached
           </span>
         )}
         <button
           onClick={onClose}
-          className="ml-auto rounded border border-[var(--color-line)] px-2 py-0.5 font-mono text-[11px] text-[var(--color-ink-3)]"
+          className="ml-auto rounded border border-[var(--border)] px-2 py-0.5 font-mono text-[11px] text-[var(--muted-foreground)]"
         >
           close
         </button>
       </div>
 
       {data.error ? (
-        <p className="mt-3 text-[13px] text-[var(--color-warn)]">{data.error}</p>
+        <p className="mt-3 text-[13px] text-[var(--warning)]">{data.error}</p>
       ) : (
         <>
           {/* Classified actions first — the reason to open this at all. */}
@@ -1704,18 +1879,18 @@ export function Person({
               {data.actions.map((a: any, i: number) => (
                 <li
                   key={i}
-                  className="rounded-lg border border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_7%,transparent)] p-3 text-[13px]"
+                  className="rounded-lg border border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_7%,transparent)] p-3 text-[13px]"
                 >
-                  <b className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-accent)]">
+                  <b className="font-mono text-[11px] uppercase tracking-wider text-[var(--primary)]">
                     {a.kind}
                   </b>
-                  <span className="ml-2 text-[var(--color-ink-2)]">{a.why}</span>
+                  <span className="ml-2 text-[var(--muted-foreground)]">{a.why}</span>
                   {a.url && (
                     <a
                       href={a.url}
                       target="_blank"
                       rel="noopener"
-                      className="ml-2 text-[var(--color-accent)] underline"
+                      className="ml-2 text-[var(--primary)] underline"
                     >
                       open →
                     </a>
@@ -1725,43 +1900,55 @@ export function Person({
             </ul>
           )}
 
-          <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-4">
-            {[
-              ["Posts", s.postCount],
-              ["Median gap", s.medianGapDays != null ? `${s.medianGapDays.toFixed(1)}d` : "—"],
-              ["Median rx", s.medianReactions],
-              ["Our sent/drafted", `${data.ours?.sent ?? 0}/${data.ours?.drafted ?? 0}`],
-            ].map(([k, v]) => (
-              <div key={String(k)} className="bg-[var(--color-panel)] p-3">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-                  {k}
-                </div>
-                <div className="mt-0.5 text-lg font-semibold tabular-nums">{String(v)}</div>
-              </div>
-            ))}
+          <div className="mt-4">
+            <StatStrip
+              cols={4}
+              items={[
+                { key: "posts", label: "Posts", value: s.postCount ?? null },
+                {
+                  key: "gap",
+                  label: "Median gap",
+                  value: s.medianGapDays != null ? s.medianGapDays.toFixed(1) : null,
+                  unit: "d",
+                },
+                { key: "rx", label: "Median rx", value: s.medianReactions ?? null },
+                {
+                  key: "ours",
+                  label: "Our sent/drafted",
+                  value: `${data.ours?.sent ?? 0}/${data.ours?.drafted ?? 0}`,
+                },
+              ]}
+            />
           </div>
 
-          {/* Publish-day histogram — "they ship Tue/Thu" is actionable. */}
-          <div className="mt-4 flex items-end gap-1.5">
-            {(s.dow ?? []).map((n: number, i: number) => (
-              <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                <div
-                  className="w-full rounded-sm bg-[var(--color-good)]"
-                  style={{ height: `${8 + (n / maxDow) * 44}px`, opacity: n ? 1 : 0.2 }}
-                  title={`${n} post(s)`}
-                />
-                <span className="font-mono text-[9px] text-[var(--color-ink-3)]">
-                  {DOW[i]}
-                </span>
-              </div>
-            ))}
+          {/*
+            Publish-day histogram — "they ship Tue/Thu" is actionable.
+            `<RankedBarList order="given">` keeps calendar order and swaps the
+            vertical bars for horizontal ones. That is a deliberate trade: the
+            old bars encoded count as HEIGHT with no axis and no accessible
+            value at all; each row here is a `role="meter"` with a real
+            `aria-valuenow`, and a day with no posts renders the hatch rather
+            than a 20%-opacity stub that reads as "a small number".
+          */}
+          <div className="mt-4">
+            <RankedBarList
+              caption="Posts by weekday"
+              order="given"
+              size="sm"
+              max={maxDow || null}
+              rows={(s.dow ?? []).map((n: number, i: number) => ({
+                key: DOW[i],
+                label: DOW[i],
+                value: n,
+              }))}
+            />
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             {(s.topTags ?? []).map((t: any) => (
               <span
                 key={t.tag}
-                className="rounded-full border border-[var(--color-line)] px-2 py-0.5 font-mono text-[10px] text-[var(--color-ink-2)]"
+                className="rounded-full border border-[var(--border)] px-2 py-0.5 font-mono text-[10px] text-[var(--muted-foreground)]"
               >
                 #{t.tag} · {t.n}
               </span>
@@ -1769,23 +1956,23 @@ export function Person({
           </div>
 
           <details className="mt-4">
-            <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
+            <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">
               Recent posts ({data.posts?.length ?? 0})
             </summary>
-            <div className="mt-2 divide-y divide-[var(--color-line)]">
+            <div className="mt-2 divide-y divide-[var(--border)]">
               {(data.posts ?? []).slice(0, 12).map((p: any) => (
                 <a
                   key={p.id}
                   href={p.url}
                   target="_blank"
                   rel="noopener"
-                  className="flex items-center gap-3 py-2 text-[13px] hover:text-[var(--color-accent)]"
+                  className="flex items-center gap-3 py-2 text-[13px] hover:text-[var(--primary)]"
                 >
-                  <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+                  <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                     {p.ageDays}d
                   </span>
                   <span className="min-w-0 flex-1 truncate">{p.title}</span>
-                  <span className="font-mono text-[11px] text-[var(--color-ink-2)]">
+                  <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                     {p.reactions} rx
                   </span>
                 </a>
@@ -1793,7 +1980,7 @@ export function Person({
             </div>
           </details>
 
-          <p className="mt-3 text-[11.5px] text-[var(--color-ink-3)]">
+          <p className="mt-3 text-[11.5px] text-[var(--muted-foreground)]">
             Their follower count is absent on purpose — Dev.to exposes followers
             only for your own account, so any number here would be invented.
           </p>
@@ -1843,8 +2030,8 @@ export function Trends({
 
   if (!days.length)
     return (
-      <div className={`${card} p-6 text-[14px] text-[var(--color-ink-2)]`}>
-        <b className="block text-[var(--color-ink)]">No history yet.</b>
+      <div className={`${card} p-6 text-[14px] text-[var(--muted-foreground)]`}>
+        <b className="block text-[var(--foreground)]">No history yet.</b>
         {data?.hint ??
           "Run `npm run engage:snapshot` in agents/footprint. Series need days and cannot be back-filled — that is the one thing here money and compute cannot buy."}
       </div>
@@ -1862,31 +2049,31 @@ export function Trends({
   return (
     <div className="flex flex-col gap-3">
       <div className={`${card} overflow-hidden`}>
-        <div className="flex flex-wrap items-baseline gap-3 border-b border-[var(--color-line)] px-4 py-2.5">
+        <div className="flex flex-wrap items-baseline gap-3 border-b border-[var(--border)] px-4 py-2.5">
           <span className="text-[13px] font-semibold">{active?.label}</span>
-          <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+          <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
             {days.length} day{days.length === 1 ? "" : "s"} of history
           </span>
         </div>
         {pts.length < 2 ? (
-          <p className="p-6 text-[13px] text-[var(--color-ink-2)]">
+          <p className="p-6 text-[13px] text-[var(--muted-foreground)]">
             {pts.length} point so far. A line needs two — check back tomorrow.
           </p>
         ) : (
           <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img">
             <path d={`${line}L${X(pts.length - 1)},${H}L${X(0)},${H}Z`}
-                  fill="var(--color-good)" opacity={0.08} />
-            <path d={line} fill="none" stroke="var(--color-good)" strokeWidth={2} />
+                  fill="var(--success)" opacity={0.08} />
+            <path d={line} fill="none" stroke="var(--success)" strokeWidth={2} />
             {pts.map((p, i) =>
               annDays.has(String(p.t).slice(0, 10)) ? (
                 <line key={i} x1={X(i)} y1={0} x2={X(i)} y2={H}
-                      stroke="var(--color-accent)" strokeWidth={1}
+                      stroke="var(--primary)" strokeWidth={1}
                       strokeDasharray="3 3" opacity={0.6} />
               ) : null,
             )}
           </svg>
         )}
-        <p className="border-t border-[var(--color-line)] px-4 py-2 text-[11.5px] text-[var(--color-ink-3)]">
+        <p className="border-t border-[var(--border)] px-4 py-2 text-[11.5px] text-[var(--muted-foreground)]">
           Dashed lines are days you took an action. Once there are weeks of
           history, this is where &quot;we did things&quot; becomes &quot;this
           produced that&quot;.
@@ -1903,15 +2090,15 @@ export function Trends({
               const delta = first != null && last != null ? last - first : null;
               return (
                 <tr key={r.key} onClick={() => onMetric(r.key)}
-                    className={`cursor-pointer border-t border-[var(--color-line)] ${
-                      metric === r.key ? "bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)]" : ""}`}>
+                    className={`cursor-pointer border-t border-[var(--border)] ${
+                      metric === r.key ? "bg-[color-mix(in_srgb,var(--primary)_10%,transparent)]" : ""}`}>
                   <td className="p-2.5">{r.label}</td>
                   <td className="p-2.5 text-right font-mono tabular-nums">
                     {last?.toLocaleString() ?? "—"}
                   </td>
                   <td className={`p-2.5 text-right font-mono tabular-nums ${
-                    delta == null ? "text-[var(--color-ink-3)]"
-                      : delta >= 0 ? "text-[var(--color-good)]" : "text-[var(--color-accent)]"}`}>
+                    delta == null ? "text-[var(--muted-foreground)]"
+                      : delta >= 0 ? "text-[var(--success)]" : "text-[var(--primary)]"}`}>
                     {delta == null ? "—" : `${delta >= 0 ? "+" : ""}${delta.toLocaleString()}`}
                   </td>
                 </tr>
