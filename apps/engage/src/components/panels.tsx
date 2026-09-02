@@ -1194,7 +1194,17 @@ export function PluginCatalog({ plugins }: { plugins: PluginRow[] }) {
 export function Promotion({
   prs,
 }: {
-  prs: { title: string; url: string; repo: string; state: string; updated: string }[];
+  // `updated` is OPTIONAL, and saying so is the actual fix. It was typed as
+  // a required string while the render used `p.updated?.slice()` — the type
+  // asserted something the code did not believe, so every reader had to
+  // guess which was right. The sort below crashed on the answer.
+  prs: {
+    title: string;
+    url: string;
+    repo: string;
+    state: string;
+    updated?: string;
+  }[];
 }) {
   const tone: Record<string, string> = {
     merged: "text-[var(--success)] border-[var(--success)]",
@@ -1224,7 +1234,16 @@ export function Promotion({
       // someone. Merged is history, closed is a decision already made.
       .sort((a, b) => {
         const rank = (x: string) => (x === "open" ? 0 : x === "merged" ? 1 : 2);
-        return rank(a.state) - rank(b.state) || b.updated.localeCompare(a.updated);
+        // `updated` is TYPED as string but rendered with `p.updated?.slice()`
+        // below — that optional chain is evidence it can be absent in real
+        // data, and localeCompare on undefined throws and takes the whole
+        // Promotion panel down. Coerce rather than trust the type: a missing
+        // timestamp sorts last, which is the honest place for "we don't know
+        // when this changed". (Review flagged this three times.)
+        return (
+          rank(a.state) - rank(b.state) ||
+          (b.updated ?? "").localeCompare(a.updated ?? "")
+        );
       });
   }, [prs, state, q]);
 

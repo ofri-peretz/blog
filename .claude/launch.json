@@ -4,9 +4,8 @@
     {
       "name": "engage",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["exec", "--workspace", "engage", "--", "next", "dev", "apps/engage", "-p", "7778"],
-      "port": 7778,
-      "autoPort": false
+      "runtimeArgs": ["run", "dev", "--workspace", "apps/engage"],
+      "port": 7777
     }
   ]
 }
