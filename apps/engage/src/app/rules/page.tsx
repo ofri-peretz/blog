@@ -6,6 +6,28 @@ import { useCachedSection } from "@/lib/client-cache";
 import { Refresh } from "@/components/panels";
 import type { RuleEntry } from "@/lib/sources";
 
+/**
+ * Only ever hand http(s) to an href. CWE-79.
+ *
+ * `docsUrl` arrives from rules-manifest.json, which a script generates by
+ * reading plugin metadata. React does NOT sanitize href, so a `javascript:`
+ * value there executes on click — and "the manifest is trusted" is a property
+ * of today's toolchain, not of the rendering code. A one-line check costs
+ * nothing and removes the class.
+ *
+ * Returns null for anything else, so the caller renders no link rather than
+ * a broken or hostile one. (Review flagged this three times.)
+ */
+function safeHttpUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw, "https://ofriperetz.dev");
+    return u.protocol === "https:" || u.protocol === "http:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 type Payload = {
   generatedAt: string | null;
   totals: Record<string, number> | null;
@@ -303,9 +325,9 @@ export default function Rules() {
                                   ({num(d.vulnerable)} vulnerable)
                                 </span>
                               ) : null}
-                              {r.docsUrl ? (
+                              {safeHttpUrl(r.docsUrl) ? (
                                 <a
-                                  href={r.docsUrl}
+                                  href={safeHttpUrl(r.docsUrl)!}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-[var(--color-accent)]"
