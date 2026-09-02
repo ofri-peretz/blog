@@ -61,9 +61,11 @@ what makes it an invariant problem rather than a bug list.
 
 ## How we will know it worked
 
-- **Binary:** `responsive-lock` extended to `.interlace/` **fails** on the
-  eight known grids before anything is fixed. If it passes, the extension is
-  vacuous and proves nothing — that failure is the whole experiment.
+- **Binary:** `responsive-lock` extended to `.interlace/` **fails** on all
+  eight known grids unscoped (proving the glob reaches the tree), then fails
+  on the four reachable grids scoped (the gate that ships). A green result in
+  either pass means the extension is vacuous and proves nothing — that failure
+  is the whole experiment.
 - **Binary:** the count of directory-walking locks that cover the generated
   tree goes from 0 to a number we chose deliberately, with the ones we
   excluded named and justified.
