@@ -154,7 +154,7 @@ export default async function ArticlesPage(props: PageProps) {
           </div>
         ) : (
           <>
-            <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {articles.map((article, idx) => (
                 <li key={article.slug}>
                   <ArticleCard

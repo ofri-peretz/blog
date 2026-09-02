@@ -5,8 +5,10 @@
 // packages/ui/src/primitives/skeleton.tsx — replaces the old shadcn
 // copy; the vendored code-block consumes variant="code-block").
 // Copy-with-provenance until the registry install path replaces it.
-// Local deltas: the `cn` import path and
-// `./skeleton-variants.js` → `./skeleton-variants` (both references).
+// Local deltas: the `cn` import path,
+// `./skeleton-variants.js` → `./skeleton-variants` (both references), and
+// `max-w-full` on the base class — see below. That last one is a real fix,
+// not a port detail, and belongs upstream in the DS.
 // ⟨/vendored⟩
  * @interlace/ui — Skeleton
  *
@@ -185,7 +187,14 @@ function Skeleton({
       aria-busy="true"
       aria-live="polite"
       className={cn(
-        'animate-pulse bg-muted',
+        // `max-w-full` because every width utility a caller reaches for is in
+        // REM, and rem scales with the root font-size. At text 200% a
+        // `w-48` skeleton is 384px on a 320px viewport and scrolled the whole
+        // document — WCAG 1.4.10. The repo has w-96 and w-80 skeletons too,
+        // which would be 768px and 640px there, so this belongs on the base
+        // rather than at each call site. `className` still wins if a caller
+        // genuinely needs to exceed its container.
+        'max-w-full animate-pulse bg-muted',
         SKELETON_VARIANT_CLASSES[variant],
         className,
       )}

@@ -57,7 +57,11 @@ export function DevToArticles({
       {...rest}
     >
       <Container size="content">
-        <div className="mb-8 flex items-baseline justify-between">
+        {/* flex-wrap + gap: at text 200% the heading and "View all →" do not
+            fit on one 320px row, and `justify-between` has no way to relieve
+            that — it distributes space it does not have. Wrapping drops the
+            link to its own line instead of widening the document by 5px. */}
+        <div className="mb-8 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
           <div>
             <SectionIndex value={index} data-testid="devto-articles-index" className="mb-3">
               Writing
@@ -73,7 +77,7 @@ export function DevToArticles({
             View all →
           </Link>
         </div>
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {articles.map((article) => {
             const reactions =
               article.frontmatter.reactions !== undefined &&

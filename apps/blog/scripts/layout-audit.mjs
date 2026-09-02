@@ -76,6 +76,12 @@ const VIEWPORTS = [
     { w: b, h: 800 },
   ]),
   ...[1440, 1920].map((w) => ({ w, h: 900 })),
+  // WCAG 1.4.4 (AA) — text at 200%, at the two widths where reflow actually
+  // has to work: the narrowest supported viewport, and a typical desktop.
+  // Two cases rather than a whole extra pass; doubling 126 runs to catch a
+  // criterion that fails the same way at every width is not worth four minutes.
+  { w: 320, h: 720, zoom: 200 },
+  { w: 1280, h: 800, zoom: 200 },
 ];
 
 const ROUTES = (
@@ -472,6 +478,17 @@ try {
               timeout: 30000,
             });
             await page.waitForTimeout(600); // let webfonts settle
+            // WCAG 1.4.4 (AA): content stays usable with text at 200%. Scaling
+            // the root font-size is the faithful test — TEXT zoom, not page
+            // zoom, so the layout has to absorb larger text at an unchanged
+            // viewport. Applied only at the widths carrying a zoom so the
+            // matrix does not double.
+            if (vp.zoom) {
+              await page.addStyleTag({
+                content: `html { font-size: ${vp.zoom}% !important; }`,
+              });
+              await page.waitForTimeout(200);
+            }
             const value = await page.evaluate(AUDIT_FN);
             // Assert, do not merely record. If the colour-scheme override ever
             // stopped reaching the app, every "light" pass would silently
@@ -486,11 +503,12 @@ try {
               });
               continue;
             }
-            results.push({ route, vp: vp.w, scheme, ...value });
+            results.push({ route, vp: vp.w, zoom: vp.zoom, scheme, ...value });
           } catch (err) {
             results.push({
               route,
               vp: vp.w,
+              zoom: vp.zoom,
               scheme,
               error: String(err).slice(0, 200),
             });
@@ -538,16 +556,16 @@ if (JSON_OUT) {
       (r.tapTargets?.length ?? 0) +
       (r.contrast?.length ?? 0);
     if (r.error) {
-      console.log(`✗ ${r.route} @${r.vp} ${r.scheme}  ERROR ${r.error}`);
+      console.log(`✗ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}  ERROR ${r.error}`);
       bad++;
       continue;
     }
     if (!issues) {
-      console.log(`✓ ${r.route} @${r.vp} ${r.scheme}`);
+      console.log(`✓ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}`);
       continue;
     }
     bad++;
-    console.log(`✗ ${r.route} @${r.vp} ${r.scheme}`);
+    console.log(`✗ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}`);
     if (r.docOverflow > 0)
       console.log(`    document scrolls sideways by ${r.docOverflow}px`);
     for (const o of r.overflow.slice(0, 4))
