@@ -41,26 +41,18 @@ const SUPABASE_DATA = readFileSync(
 
 describe("/api/homepage-stats lock", () => {
   describe("Supabase fallback for github stars + followers", () => {
-    it("totalStars falls back to creators.githubRepo.followers", () => {
-      // The `github-repo` platform row in creator_daily_metrics stores the
-      // GitHub star count in its `followers` column (see daily-ingest.ts).
-      // When GitHub GraphQL fails (missing token, rate-limit, network), the
-      // route MUST fall back to Supabase here, not silently return 0.
-      expect(ROUTE).toMatch(/creators\.githubRepo\?\.followers/);
-    });
-
-    it("followers falls back to creators.github.followers", () => {
-      expect(ROUTE).toMatch(/creators\.github\?\.followers/);
-    });
-
-    it("does NOT zero stars when github source is null", () => {
-      // Anti-pattern lock: `totalStars: github?.totalStars ?? 0` without
-      // a Supabase fallback would re-introduce the 2026-05-25 bug. Force
-      // the conditional to include a non-zero fallback.
-      expect(ROUTE).not.toMatch(
-        /totalStars:\s*github\??\.totalStars\s*\?\?\s*0[,;\n]/,
-      );
-    });
+    // MOVED. These three asserted a FALLBACK BEHAVIOUR with regexes over
+    // this file, and the anti-pattern guard was a negative match for one
+    // spelling that the correct code never matched either — so it could
+    // only fail on a form nobody writes. The behaviour now has a real test
+    // against the extracted mergeGitHubStats(), which fails when the
+    // 2026-05-25 bug is reintroduced in any spelling:
+    // see homepage-stats-fallback.test.ts. (behavioural-claims finding)
+    it("the route delegates the merge rather than inlining it", () => {
+      // What THIS file can honestly check: the wiring. The behaviour lives
+      // where it can be exercised.
+      expect(ROUTE).toContain("mergeGitHubStats(github, creators)");
+  });
   });
 
   describe("unstable_cache does NOT bake bad GitHub data", () => {
