@@ -67,6 +67,19 @@ jobs:
       #
       # A gate that checks less than the gate after it is not a gate, it is a
       # delay. Let the script own the route list so both read the same one.
+      #
+      # But the two gates are NOT equivalent, and an earlier version of this
+      # comment implied they were. CI has no Supabase or GitHub credentials, so
+      # `/scorecard` THROWS here and the audit measures its error boundary;
+      # deploy.yml runs against production, where the real page renders. Same
+      # route, different markup.
+      #
+      # That is worth having rather than skipping: the very first run of this
+      # widened matrix found a 4.05:1 contrast failure on the error page, which
+      # nothing had ever audited. It does mean /scorecard's real layout is
+      # proven only by the deploy gate — so a reflow regression in the live
+      # page still surfaces after merge, and closing that needs seeded data in
+      # CI, not a longer route list.
       - name: Layout audit (overflow, overlap, tap targets, contrast)
         run: node apps/blog/scripts/layout-audit.mjs
         env:
