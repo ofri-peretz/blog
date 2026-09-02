@@ -18,6 +18,26 @@
 import { describe, expect, it } from "vitest";
 
 import { mergeGitHubStats } from "@/lib/homepage-stats-merge";
+import type { GitHubData } from "@/lib/github-live-stats";
+
+/**
+ * A fully-typed zero baseline, spread into each case.
+ *
+ * The first version used `as never`, which switches type checking off — if
+ * GitHubData gained a required field, or the signature changed, nothing here
+ * would have complained. That is this audit's own disease: a check that
+ * quietly stops verifying. (Review.)
+ */
+const BASE_GITHUB: GitHubData = {
+  totalStars: 0,
+  totalForks: 0,
+  totalRepos: 0,
+  followers: 0,
+  recentCommits: 0,
+  totalContributions: 0,
+  starsBreakdown: [],
+  authenticated: false,
+};
 
 const SUPABASE = {
   githubRepo: { followers: 1234 }, // platform=github-repo.followers = stars
@@ -53,7 +73,7 @@ describe("when live GitHub returns a zero", () => {
     // failing outright. Trusting it would show a reader zero stars while
     // Supabase holds the real number — the same visible bug by a subtler route.
     const merged = mergeGitHubStats(
-      { totalStars: 0, followers: 0 } as never,
+      { ...BASE_GITHUB, totalStars: 0, followers: 0 },
       SUPABASE,
     );
     expect(merged.totalStars).toBe(1234);
@@ -64,7 +84,7 @@ describe("when live GitHub returns a zero", () => {
 describe("when live GitHub is healthy", () => {
   it("prefers the live numbers over Supabase", () => {
     const merged = mergeGitHubStats(
-      { totalStars: 9000, followers: 800, totalForks: 12 } as never,
+      { ...BASE_GITHUB, totalStars: 9000, followers: 800, totalForks: 12 },
       SUPABASE,
     );
     expect(merged.totalStars).toBe(9000);
