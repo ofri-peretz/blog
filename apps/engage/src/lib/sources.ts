@@ -611,3 +611,85 @@ export async function prBoard(): Promise<{ prs: Board[]; error: string | null }>
     return { prs: [], error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+export type RuleEntry = {
+  id: string;
+  prefix: string;
+  rule: string;
+  plugin: string;
+  description: string | null;
+  cwe: string | null;
+  cvss: number | null;
+  confidence: string | null;
+  type: string | null;
+  fixable: boolean;
+  hasSuggestions: boolean;
+  deprecated: boolean;
+  recommended: "error" | "warn" | null;
+  docsUrl: string | null;
+  corpusFindings: number | null;
+  budgetReason: string | null;
+  seal: {
+    axesMet: number;
+    axesTotal: number;
+    status: string;
+    knownGaps: number;
+  } | null;
+  detection: {
+    tp: number;
+    fp: number;
+    fn: number;
+    tn: number;
+    precision: number | null;
+    recall: number | null;
+    f1: number | null;
+    fixtures: number | null;
+    vulnerable: number | null;
+    missed: string[];
+    falsePositives: string[];
+    competitors: { name: string; tp: number; fp: number; fn: number; f1: number | null }[];
+  } | null;
+};
+
+/**
+ * Every rule we ship, with the evidence we have about each one.
+ *
+ * Read from `origin/main` of the eslint checkout rather than the working tree,
+ * on the same reasoning as `ruleCounts()` in /api/plugins: a local branch
+ * mid-edit is not what users have installed, and the control room should show
+ * what shipped.
+ *
+ * Returns `error` rather than throwing, and an EMPTY rule list rather than a
+ * partial one. A half-loaded manifest rendered as "we ship 12 rules" is worse
+ * than an outage, because it looks like an answer.
+ */
+export async function rules(): Promise<{
+  generatedAt: string | null;
+  totals: Record<string, number> | null;
+  rules: RuleEntry[];
+  error: string | null;
+}> {
+  const repo = join(process.env.HOME ?? "", "repos/ofriperetz.dev/eslint");
+  const empty = { generatedAt: null, totals: null, rules: [], error: null as string | null };
+  if (!existsSync(repo)) return { ...empty, error: "eslint checkout not found" };
+  try {
+    const raw = execFileSync(
+      "git",
+      ["show", "origin/main:apps/docs/src/data/rules-manifest.json"],
+      { cwd: repo, encoding: "utf8", timeout: 20_000, maxBuffer: 16 * 1024 * 1024 },
+    );
+    const parsed = JSON.parse(raw) as {
+      generatedAt?: string;
+      totals?: Record<string, number>;
+      rules?: RuleEntry[];
+    };
+    return {
+      generatedAt: parsed.generatedAt ?? null,
+      totals: parsed.totals ?? null,
+      rules: Array.isArray(parsed.rules) ? parsed.rules : [],
+      error: null,
+    };
+  } catch (e) {
+    return { ...empty, error: e instanceof Error ? e.message : "unreadable manifest" };
+  }
+}

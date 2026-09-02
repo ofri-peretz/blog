@@ -394,6 +394,9 @@ export default function Page() {
           <Link href="/releases" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
             releases →
           </Link>
+          <Link href="/rules" className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+            rules →
+          </Link>
         </div>
       </header>
 
