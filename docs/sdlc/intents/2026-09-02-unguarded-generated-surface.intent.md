@@ -9,10 +9,14 @@ status: open
 
 ## What
 
-Bring `apps/blog/.interlace/` — 97 generated components, 61 of them reachable
-from `src/` — inside the reach of the structural locks that already guard
-`src/`. Today **twelve** lock tests walk a directory and **zero** of them can
-see that tree.
+Bring `apps/blog/.interlace/` — 97 generated components, **17** of them
+reachable from `src/` through the import graph — inside the reach of the
+structural locks that already guard `src/`. Today **twelve** lock tests walk a
+directory and **zero** of them can see that tree.
+
+(An earlier draft said 61 reachable. That was a basename scan counting any
+filename mentioned anywhere under `src/`; the import graph gives 17. Review
+caught it — see the plan's ground truth for the correction.)
 
 ## Why now
 
@@ -26,9 +30,11 @@ exactly that shape, in `.interlace/`, pushed `/scorecard` 203px sideways at
 `path.resolve(__dirname, "..")` — `apps/blog/src` — and `.interlace/` is a
 sibling of `src/`, not a child.
 
-Eight grids in that tree still have the defect in source. They render
-correctly now only because [#234](https://github.com/ofri-peretz/blog/pull/234)
-added a CSS floor that supplies the missing base track. **That is symptom
+Eight grids in that tree still have the defect in source, **four of them in
+components `/scorecard` actually renders** — the same four that broke the page.
+They render correctly now only because
+[#234](https://github.com/ofri-peretz/blog/pull/234) added a CSS floor that
+supplies the missing base track. **That is symptom
 suppression standing in for an invariant**, and it is worth being honest that
 the repo's own doctrine — a fix is not done until a check would have caught it
 — is currently unmet here.

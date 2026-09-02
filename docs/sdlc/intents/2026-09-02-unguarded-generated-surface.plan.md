@@ -12,21 +12,47 @@ Intent: [`2026-09-02-unguarded-generated-surface.intent.md`](./2026-09-02-unguar
 
 | Claim | Value | Source | Read on |
 |---|---|---|---|
-| Generated components (`.tsx`) in `.interlace/` | 97 | `grep -rl 'AUTO-GENERATED FILE' --include=*.tsx` | 2026-09-02 |
+| Generated components (`.tsx`) in `.interlace/` | 97 | grep for the AUTO-GENERATED banner | 2026-09-02 |
 | Generated files, all types | 109 | same, no include filter | 2026-09-02 |
-| Reachable by name from `src/` | 61 | basename scan of `src/**` | 2026-09-02 |
-| Import specifiers `src/` uses | `#interlace/components/{analytics,scorecard}/…` | grep on `from "…interlace…"` | 2026-09-02 |
-| Lock tests that walk a directory | 12 | grep `readdirSync\|globSync` in `src/__tests__` | 2026-09-02 |
+| `#interlace/` import specifiers in `src/` | 10, across 4 files | grep for the specifier | 2026-09-02 |
+| Generated files reachable, following imports | **17** | import-graph walk from those 10 | 2026-09-02 |
+| ~~Reachable by basename scan~~ | ~~61~~ WRONG | counted any filename mentioned anywhere | 2026-09-02 |
+| Lock tests that walk a directory | 12 | grep for readdirSync or globSync in `src/__tests__` | 2026-09-02 |
 | Of those, covering `.interlace/` | **0** | every root resolves to `apps/blog/src` | 2026-09-02 |
-| Grids in `.interlace/` with responsive-only columns | 8 | grep for `grid` + `*:grid-cols-` without a base | 2026-09-02 |
-| Production deploys failed from this | 3 | `5de4ba3`, `25dbea7`, `1cb8d6a` | 2026-09-02 |
+| Grids in `.interlace/` with responsive-only columns | 8 total, **4 reachable** | class-string scan | 2026-09-02 |
+| Deploys that failed the layout gate | 3 consecutive | `5de4ba3`, `25dbea7`, `1cb8d6a` | 2026-09-02 |
+
+**The 61 was wrong and the correction matters.** It came from a basename scan
+— any `.interlace/` filename mentioned anywhere under `src/` counted as
+reachable, which counts comments, unrelated identifiers, and files that merely
+share a name. Following the actual import graph from the 10 real `#interlace/`
+specifiers gives **17**. Review caught it; the method was the error, not the
+arithmetic, and it is the third measurement mistake this SDLC directory has
+recorded. A heuristic over a codebase you have not read produces a confident
+wrong list — which is written in `2026-08-31-behavioural-claims.plan.md` in as
+many words, by me, before I did it again.
+
+**On the three deploys:** all three failed the layout gate, but `5de4ba3` is
+itself the commit that FIXED the article reflows — its deploy failed on a
+`/scorecard` case it never claimed to address. Read the row as "three
+consecutive deploys were blocked by this gap", not "three commits introduced
+it". The distinction matters because it is the gate working, not the gate
+misfiring.
 
 The last two rows are the argument. Eight instances of a defect the repo
 already knows how to detect, and three deploys that died on it.
 
-**61 reachable, not 97, and the difference matters.** A lock over all 97 would
-fail on components nothing renders, which is noise dressed as rigour. Scope to
-what `src/` can reach and say so.
+**17 reachable, not 97 — and not 61 either.** A lock over all 97 would fail on
+components nothing renders, which is noise dressed as rigour. Scope to what
+`src/` can actually reach through imports.
+
+The scoping choice is load-bearing and the plan must state it rather than leave
+it to whoever implements: **scoped to reachable, step 1 should go red on 4, not
+8.** Those four are `momentum-panel`, `momentum-panel-skeleton`, `ratchet-grid`
+and `ratchet-grid-skeleton` — precisely the components that broke `/scorecard`
+and the production deploy. The other four defective grids sit in unreachable
+files; they are real defects but nothing renders them, so they belong in the
+finding as a note, not in a gate.
 
 ## Approach
 
@@ -51,12 +77,23 @@ Three steps, in this order, because the first one is the experiment:
    `apps/interlace-docs-baseline/`, then `npm run sync`. Without that a red
    lock is a dead end for whoever hits it.
 
-**On the eight grids themselves:** they cannot be fixed here. Either the
-upstream baseline is corrected and re-synced, or the lock is pointed at
-`.interlace/` with those eight recorded as a known, dated allowlist that must
-shrink. Prefer the upstream fix; the allowlist is the fallback when the agents
-repo is not to hand — as it was not today, since
-`apps/interlace-docs-baseline/` does not exist in the local checkout.
+**On the defective grids themselves:** they cannot be fixed here. Either the
+upstream baseline is corrected and re-synced, or the lock lands with them
+recorded as a dated allowlist that must shrink. Prefer the upstream fix; the
+allowlist is the fallback when the agents repo is not to hand — as it was not
+today, since `apps/interlace-docs-baseline/` does not exist in the local
+checkout.
+
+**Allowlist spec, so it is not improvised later.** File:
+`apps/blog/src/__tests__/fixtures/interlace-grid-allowlist.json`. Shape: an
+array of `{ "file": "<path>:<line>", "class": "<the class string>", "since":
+"YYYY-MM-DD", "intent": "<slug>" }`. The lock asserts every offender it finds
+is present in the allowlist AND that the allowlist contains no entry it did not
+find — so a fixed grid fails the lock until its entry is deleted. That is the
+ratchet: it can only shrink, the same contract as
+`sdlc/baseline/unscored.json`. Header comment states, in one line, that these
+are upstream defects in generated files and that the fix is in the agents repo,
+not here.
 
 Rejected: **deleting #234's CSS floor once the lock is green.** The floor
 protects markup that regenerates from a source this repo does not own, and a
@@ -75,7 +112,16 @@ mechanisms is how one of them rots.
 2. Record the eight with their file:line in the finding.
 3. Fix upstream if the agents repo is available; otherwise land the lock with a
    dated allowlist and open the upstream work as its own intent.
-4. Walk the remaining eleven locks; extend or exclude each with a reason.
+4. Walk the remaining eleven; extend or exclude each with a reason. Two are
+   worth flagging in advance so the verdict pass does not stall on them:
+   - `interlace-floor-lock.test.ts` is named after the design system but roots
+     at `apps/blog/src` and has never read `.interlace/`. It is the one whose
+     name most invites the wrong assumption; whatever the verdict, say why the
+     name and the scope disagree.
+   - `markdown-heading-anchors.test.ts` is in the 12 because it walks a
+     directory, but it is not a `*-lock.test.ts` by CLAUDE.md's convention. It
+     still needs a verdict; it just is not a "lock" in the naming sense. (This
+     is why step 4 says eleven: 12 minus `responsive-lock`.)
 5. Measure suite runtime before and after. Report both numbers.
 6. Write the finding, including at least one lock this could not decide about.
 
