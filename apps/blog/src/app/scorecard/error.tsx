@@ -32,7 +32,13 @@ export default function ScorecardError({
             we&apos;re just not able to render them right now.
           </p>
           {error.digest && (
-            <p className="mt-4 font-mono text-xs text-muted-foreground/70">
+            /* Full `text-muted-foreground`, not `/70`. At 12px the faded
+               variant measured 4.05:1 against the dark surface — under the
+               4.5:1 AA floor for body text, and this is the one string on the
+               page a reader has to transcribe to get help. Fading the support
+               reference is exactly backwards. Caught the first time CI audited
+               this route. */
+            <p className="mt-4 font-mono text-xs text-muted-foreground">
               ref: {error.digest}
             </p>
           )}
