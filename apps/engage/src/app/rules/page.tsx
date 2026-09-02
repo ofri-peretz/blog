@@ -124,14 +124,14 @@ export default function Rules() {
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
           >
             ← control room
           </Link>
           <Refresh onClick={refresh} at={at} busy={busy} />
         </div>
         <h1 className="text-[28px] font-semibold tracking-tight">Rules</h1>
-        <p className="max-w-[70ch] text-[14px] text-[var(--color-ink-2)]">
+        <p className="max-w-[70ch] text-[14px] text-[var(--muted-foreground)]">
           Every plugin, every rule, and what its own fixture corpus measured:
           what it <strong>caught</strong>, what it <strong>wrongly reported</strong>,
           and what it <strong>missed</strong>. Expand a plugin for its rules, and
@@ -141,7 +141,7 @@ export default function Rules() {
       </header>
 
       {data?.error ? (
-        <p className="rounded border border-[var(--color-warn)] px-3 py-2 font-mono text-[12px] text-[var(--color-warn)]">
+        <p className="rounded border border-[var(--warning)] px-3 py-2 font-mono text-[12px] text-[var(--warning)]">
           {data.error}
         </p>
       ) : null}
@@ -154,22 +154,22 @@ export default function Rules() {
           ["clean sweep", t?.perfectDetection],
           ["sealed", t?.sealed],
         ] as const).map(([label, value]) => (
-          <div key={label} className="rounded border border-[var(--color-line)] px-3 py-2">
+          <div key={label} className="rounded border border-[var(--border)] px-3 py-2">
             <div className="font-mono text-[20px] tabular-nums">{num(value)}</div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink-3)]">
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
               {label}
             </div>
           </div>
         ))}
       </section>
 
-      <p className="max-w-[70ch] text-[13px] text-[var(--color-ink-3)]">
-        <strong className="text-[var(--color-ink-2)]">
+      <p className="max-w-[70ch] text-[13px] text-[var(--muted-foreground)]">
+        <strong className="text-[var(--muted-foreground)]">
           {num(t?.withDetection)} of {num(t?.rules)} rules have been measured at all
         </strong>{" "}
         — the rest show &ldquo;—&rdquo; rather than a score, because nobody has
         built them a corpus yet and a zero would imply somebody had.{" "}
-        <strong className="text-[var(--color-ink-2)]">Sealed is {num(t?.sealed)}</strong>
+        <strong className="text-[var(--muted-foreground)]">Sealed is {num(t?.sealed)}</strong>
         : {num(t?.withSealRecord)} rules carry a record and none has met all twelve axes.
       </p>
 
@@ -182,7 +182,7 @@ export default function Rules() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="search id, description, CWE…"
-          className="min-w-[220px] flex-1 rounded border border-[var(--color-line)] bg-transparent px-3 py-2 font-mono text-[12px]"
+          className="min-w-[220px] flex-1 rounded border border-[var(--border)] bg-transparent px-3 py-2 font-mono text-[12px]"
         />
         {(["all", "recommended", "measured", "imperfect"] as const).map((k) => (
           <button
@@ -192,14 +192,14 @@ export default function Rules() {
             onClick={() => setOnly(k)}
             className={`rounded border px-2 py-2 font-mono text-[11px] uppercase tracking-wider ${
               only === k
-                ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                : "border-[var(--color-line)] text-[var(--color-ink-3)]"
+                ? "border-[var(--primary)] text-[var(--primary)]"
+                : "border-[var(--border)] text-[var(--muted-foreground)]"
             }`}
           >
             {k}
           </button>
         ))}
-        <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+        <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
           {groups.length} plugins · {matching.length} rules
         </span>
       </section>
@@ -208,47 +208,47 @@ export default function Rules() {
         {groups.map((g) => {
           const open = openPlugin === g.prefix;
           return (
-            <div key={g.prefix} className="rounded border border-[var(--color-line)]">
+            <div key={g.prefix} className="rounded border border-[var(--border)]">
               <button
                 type="button"
                 aria-expanded={open}
                 onClick={() => setOpenPlugin(open ? null : g.prefix)}
-                className="flex w-full flex-wrap items-center justify-between gap-3 px-3 py-3 text-left hover:bg-[var(--color-line)]/20"
+                className="flex w-full flex-wrap items-center justify-between gap-3 px-3 py-3 text-left hover:bg-[var(--border)]/20"
               >
                 <span className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+                  <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                     {open ? "▾" : "▸"}
                   </span>
                   <span className="font-mono text-[14px]">{g.prefix}</span>
-                  <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+                  <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                     {g.rules.length} rules · {g.recommended} recommended
                   </span>
                 </span>
                 <span className="flex items-center gap-3 font-mono text-[11px]">
-                  <span className="text-[var(--color-ink-3)]">
+                  <span className="text-[var(--muted-foreground)]">
                     measured{" "}
-                    <span className="tabular-nums text-[var(--color-ink-2)]">
+                    <span className="tabular-nums text-[var(--muted-foreground)]">
                       {g.measured}/{g.rules.length}
                     </span>
                   </span>
                   {g.measured > 0 ? (
                     <>
-                      <span className="text-[var(--color-good)]">caught {g.tp}</span>
-                      <span className={g.fp ? "text-[var(--color-warn)]" : "text-[var(--color-ink-3)]"}>
+                      <span className="text-[var(--success)]">caught {g.tp}</span>
+                      <span className={g.fp ? "text-[var(--warning)]" : "text-[var(--muted-foreground)]"}>
                         false pos {g.fp}
                       </span>
-                      <span className={g.fn ? "text-[var(--color-warn)]" : "text-[var(--color-ink-3)]"}>
+                      <span className={g.fn ? "text-[var(--warning)]" : "text-[var(--muted-foreground)]"}>
                         missed {g.fn}
                       </span>
                     </>
                   ) : (
-                    <span className="text-[var(--color-ink-3)]">no corpus</span>
+                    <span className="text-[var(--muted-foreground)]">no corpus</span>
                   )}
                 </span>
               </button>
 
               {open ? (
-                <div className="flex flex-col divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]">
+                <div className="flex flex-col divide-y divide-[var(--border)] border-t border-[var(--border)]">
                   {g.rules.map((r) => {
                     const d = r.detection;
                     const ruleOpen = openRule === r.id;
@@ -266,15 +266,15 @@ export default function Rules() {
                               <span
                                 className={`rounded border px-1 py-0.5 font-mono text-[9px] uppercase ${
                                   r.recommended === "error"
-                                    ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                                    : "border-[var(--color-warn)] text-[var(--color-warn)]"
+                                    ? "border-[var(--primary)] text-[var(--primary)]"
+                                    : "border-[var(--warning)] text-[var(--warning)]"
                                 }`}
                               >
                                 {r.recommended}
                               </span>
                             ) : null}
                             {r.cwe ? (
-                              <span className="font-mono text-[10px] text-[var(--color-ink-3)]">
+                              <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
                                 {r.cwe}
                               </span>
                             ) : null}
@@ -282,44 +282,44 @@ export default function Rules() {
                           <span className="flex items-center gap-3 font-mono text-[11px] tabular-nums">
                             {d ? (
                               <>
-                                <span className="text-[var(--color-good)]">{d.tp} tp</span>
-                                <span className={d.fp ? "text-[var(--color-warn)]" : "text-[var(--color-ink-3)]"}>
+                                <span className="text-[var(--success)]">{d.tp} tp</span>
+                                <span className={d.fp ? "text-[var(--warning)]" : "text-[var(--muted-foreground)]"}>
                                   {d.fp} fp
                                 </span>
-                                <span className={d.fn ? "text-[var(--color-warn)]" : "text-[var(--color-ink-3)]"}>
+                                <span className={d.fn ? "text-[var(--warning)]" : "text-[var(--muted-foreground)]"}>
                                   {d.fn} fn
                                 </span>
-                                <span className="text-[var(--color-ink-3)]">F1 {pct(d.f1)}</span>
+                                <span className="text-[var(--muted-foreground)]">F1 {pct(d.f1)}</span>
                               </>
                             ) : (
-                              <span className="text-[var(--color-ink-3)]">not measured</span>
+                              <span className="text-[var(--muted-foreground)]">not measured</span>
                             )}
                           </span>
                         </button>
 
                         {ruleOpen ? (
-                          <div className="mt-2 flex flex-col gap-2 border-l border-[var(--color-line)] pl-3">
-                            <p className="max-w-[80ch] text-[13px] text-[var(--color-ink-2)]">
+                          <div className="mt-2 flex flex-col gap-2 border-l border-[var(--border)] pl-3">
+                            <p className="max-w-[80ch] text-[13px] text-[var(--muted-foreground)]">
                               {r.description ?? "no description in meta.docs"}
                             </p>
 
-                            <div className="flex flex-wrap gap-4 font-mono text-[11px] text-[var(--color-ink-3)]">
+                            <div className="flex flex-wrap gap-4 font-mono text-[11px] text-[var(--muted-foreground)]">
                               <span>
                                 corpus findings{" "}
-                                <span className="tabular-nums text-[var(--color-ink-2)]">
+                                <span className="tabular-nums text-[var(--muted-foreground)]">
                                   {num(r.corpusFindings)}
                                 </span>
                               </span>
                               <span>
                                 seal{" "}
-                                <span className="text-[var(--color-ink-2)]">
+                                <span className="text-[var(--muted-foreground)]">
                                   {r.seal ? `${r.seal.axesMet}/${r.seal.axesTotal}` : "—"}
                                 </span>
                               </span>
                               {d ? (
                                 <span>
                                   fixtures{" "}
-                                  <span className="tabular-nums text-[var(--color-ink-2)]">
+                                  <span className="tabular-nums text-[var(--muted-foreground)]">
                                     {num(d.fixtures)}
                                   </span>{" "}
                                   ({num(d.vulnerable)} vulnerable)
@@ -330,7 +330,7 @@ export default function Rules() {
                                   href={safeHttpUrl(r.docsUrl)!}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-[var(--color-accent)]"
+                                  className="text-[var(--primary)]"
                                 >
                                   docs →
                                 </a>
@@ -339,8 +339,8 @@ export default function Rules() {
 
                             {d && d.missed.length > 0 ? (
                               <div className="font-mono text-[11px]">
-                                <span className="text-[var(--color-warn)]">missed ({d.missed.length}):</span>{" "}
-                                <span className="text-[var(--color-ink-2)]">
+                                <span className="text-[var(--warning)]">missed ({d.missed.length}):</span>{" "}
+                                <span className="text-[var(--muted-foreground)]">
                                   {d.missed.slice(0, 6).join(", ")}
                                   {d.missed.length > 6 ? ` +${d.missed.length - 6}` : ""}
                                 </span>
@@ -349,10 +349,10 @@ export default function Rules() {
 
                             {d && d.falsePositives.length > 0 ? (
                               <div className="font-mono text-[11px]">
-                                <span className="text-[var(--color-warn)]">
+                                <span className="text-[var(--warning)]">
                                   false positives ({d.falsePositives.length}):
                                 </span>{" "}
-                                <span className="text-[var(--color-ink-2)]">
+                                <span className="text-[var(--muted-foreground)]">
                                   {d.falsePositives.slice(0, 6).join(", ")}
                                   {d.falsePositives.length > 6
                                     ? ` +${d.falsePositives.length - 6}`
@@ -363,7 +363,7 @@ export default function Rules() {
 
                             {d && d.competitors.length > 0 ? (
                               <div className="flex flex-col gap-1">
-                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink-3)]">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
                                   same fixtures, other plugins
                                 </span>
                                 {d.competitors.map((c) => (
@@ -371,8 +371,8 @@ export default function Rules() {
                                     key={c.name}
                                     className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]"
                                   >
-                                    <span className="text-[var(--color-ink-2)]">{c.name}</span>
-                                    <span className="flex gap-3 tabular-nums text-[var(--color-ink-3)]">
+                                    <span className="text-[var(--muted-foreground)]">{c.name}</span>
+                                    <span className="flex gap-3 tabular-nums text-[var(--muted-foreground)]">
                                       <span>{c.tp} tp</span>
                                       <span>{c.fp} fp</span>
                                       <span>{c.fn} fn</span>
@@ -385,10 +385,10 @@ export default function Rules() {
 
                             {r.budgetReason ? (
                               <details>
-                                <summary className="cursor-pointer font-mono text-[11px] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+                                <summary className="cursor-pointer font-mono text-[11px] text-[var(--muted-foreground)] hover:text-[var(--primary)]">
                                   why its corpus findings are allowed
                                 </summary>
-                                <p className="mt-1 max-w-[80ch] whitespace-pre-wrap text-[12px] text-[var(--color-ink-2)]">
+                                <p className="mt-1 max-w-[80ch] whitespace-pre-wrap text-[12px] text-[var(--muted-foreground)]">
                                   {r.budgetReason}
                                 </p>
                               </details>
@@ -404,7 +404,7 @@ export default function Rules() {
           );
         })}
         {groups.length === 0 ? (
-          <p className="py-6 font-mono text-[12px] text-[var(--color-ink-3)]">nothing matches</p>
+          <p className="py-6 font-mono text-[12px] text-[var(--muted-foreground)]">nothing matches</p>
         ) : null}
       </section>
     </main>

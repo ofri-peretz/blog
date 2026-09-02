@@ -63,12 +63,24 @@ function scores(): Record<string, { score: number; when: number }> {
     } catch {
       continue;
     }
-    const hit = text
-      .split("\n")
-      .filter((l) => l.includes("OVERALL SCORE:"))
-      .map((l) => SCORE.exec(l)?.[1])
-      .filter(Boolean)
-      .pop();
+    // PREFER the gate score over OVERALL — mirrors queue-artifact.ts.
+    //
+    // They are different numbers. OVERALL averages every reviewer; the gate
+    // score excludes Challenge, whose Axis 2 weights Gemini/AI brand fit at 40%
+    // and therefore caps any article with no AI angle regardless of how well it
+    // is written. That is precisely why Challenge does not gate — so measuring
+    // "below bar" against OVERALL let it veto through the dashboard instead.
+    //
+    // Measured 2026-08-12: 9 of 19 "below bar" articles were gate-PASSING.
+    // Falls back to OVERALL for logs predating the gate-score line.
+    const line = (needle: string) =>
+      text
+        .split("\n")
+        .filter((l) => l.includes(needle))
+        .map((l) => SCORE.exec(l)?.[1])
+        .filter(Boolean)
+        .pop();
+    const hit = line("Gate score") ?? line("OVERALL SCORE:");
     if (hit && parseFloat(hit) !== 5)
       out[slug] = { score: parseFloat(hit), when: mtime };
   }

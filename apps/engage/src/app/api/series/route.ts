@@ -9,7 +9,8 @@ import {
   ratio,
   type Grain,
   type Point,
-} from "@/lib/series";
+  type SeriesDef,
+} from "@/lib/series-all";
 import { trend, correlate, divergence } from "@/lib/detect";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +68,7 @@ function resolve(id: string, all: Map<string, Point[]>): Point[] | null {
 }
 
 /** A ratio is a rate: it is already normalised, so it must not be differenced. */
-const kindOf = (id: string): "cumulative" | "rate" =>
+const kindOf = (id: string): SeriesDef["kind"] =>
   RATIO.test(id.trim()) ? "rate" : (definition(id)?.kind ?? "cumulative");
 
 /**
@@ -118,8 +119,27 @@ export async function GET(req: Request) {
     });
   }
 
-  const { series: all, asOf } = await loadAll();
+  const { series: all, asOfById, asOf } = await loadAll();
   const ids = splitIds(idsParam).slice(0, 12);
+
+  /** A computed series is exactly as fresh as its STALEST input. */
+  const asOfFor = (id: string): string | null => {
+    const m = RATIO.exec(id.trim());
+    if (!m) return asOfById.get(id) ?? null;
+    const a = asOfById.get(m[1].trim()) ?? null;
+    const b = asOfById.get(m[2].trim()) ?? null;
+    if (!a) return b;
+    if (!b) return a;
+    return a < b ? a : b;
+  };
+
+  const sourceFor = (id: string): string => {
+    const m = RATIO.exec(id.trim());
+    if (!m) return definition(id)?.source ?? "unknown";
+    const a = definition(m[1].trim())?.source ?? "unknown";
+    const b = definition(m[2].trim())?.source ?? "unknown";
+    return a === b ? a : `${a} + ${b}`;
+  };
 
   const resolved = ids.map((id) => {
     const raw = resolve(id, all);
@@ -140,9 +160,14 @@ export async function GET(req: Request) {
     // Detection runs on the WINDOWED, BUCKETED series but before rebasing —
     // rebasing is a display concern and must not change whether a trend exists.
     const detectOn = transform === "delta" ? pts : bucketed;
-    const t = trend(detectOn, { isRate: kind === "rate" || transform === "delta" });
+    // Only a cumulative series needs differencing; rates and gauges are already
+    // normalised, and differencing them twice reports a stable metric as flat.
+    const t = trend(detectOn, {
+      isRate: kind !== "cumulative" || transform === "delta",
+    });
 
     const def = definition(id);
+    const seriesAsOf = asOfFor(id);
     return {
       id,
       label: labelOf(id),
@@ -154,13 +179,27 @@ export async function GET(req: Request) {
       first: pts[0]?.v ?? null,
       last: pts.at(-1)?.v ?? null,
       trend: t,
-      source: "supabase:creator_daily_metrics",
-      asOf,
+      source: sourceFor(id),
+      asOf: seriesAsOf,
+      staleAfterHours: staleAfterHours(id),
+      /**
+       * Age in hours of THIS series, so the UI can render "6h" or "9d" without
+       * recomputing the rule and reaching a different verdict than the API.
+       */
+      ageHours: seriesAsOf
+        ? Math.round(
+            (Date.now() - new Date(seriesAsOf + "T00:00:00Z").getTime()) / 3_600_000,
+          )
+        : null,
       stale: (() => {
         const budget = staleAfterHours(id);
-        if (!asOf || budget == null) return false;
+        if (budget == null) return false;
+        // No data at all is the most stale a series can be — not "fresh".
+        // Returning false here is how a dead ingest renders as a healthy
+        // empty chart.
+        if (!seriesAsOf) return true;
         return (
-          Date.now() - new Date(asOf + "T00:00:00Z").getTime() >
+          Date.now() - new Date(seriesAsOf + "T00:00:00Z").getTime() >
           budget * 3_600_000
         );
       })(),

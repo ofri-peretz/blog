@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { allItems, FOOTPRINT } from "@/lib/footprint";
-import { buildGraph, expandTwoHop } from "@/lib/network";
+import { buildGraph, expandTwoHop, pruneMissingAuthors, platformSeeds, ME, type Graph } from "@/lib/network";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -42,8 +42,64 @@ export async function GET(req: Request) {
   // one hop cannot observe reciprocity, only who showed up on our own picks.
   if (url0.searchParams.get("hops") === "1") return NextResponse.json(hop1);
 
+  /*
+   * Widen: the platform's own leading authors, not just our neighbourhood.
+   *
+   * Without this the graph is a closed loop — seeded from what we already
+   * touched, expanded from who that surfaced, so it can never contain anyone
+   * new. Measured before adding it: 20% of the platform's top 250 by
+   * engagement, and @jess (~22.7k engagement, the largest in the sample) absent
+   * entirely.
+   *
+   * Discovery failing is not fatal. It widens the map; the map still works
+   * without it, so a dead feed degrades to the old behaviour rather than
+   * failing the request.
+   */
+  let discovered: string[] = [];
+  let platform: [number, string][] = [];
+  try {
+    const d = await platformSeeds();
+    platform = d.seeds;
+    discovered = d.discovered;
+  } catch (e) {
+    console.warn("[network] platform discovery failed, continuing with our own seeds:", e);
+  }
+
   const extra = await expandTwoHop(hop1);
-  const graph = await buildGraph([...seeds, ...extra]);
+  const built = await buildGraph([...seeds, ...platform, ...extra]);
+
+  /*
+   * Drop authors dev.to has removed.
+   *
+   * Their comments stay on the articles, so they keep earning edges on every
+   * crawl and read as real, quiet participants indefinitely. Measured: 7 of 663
+   * were gone, and the handles are dev.to's auto-generated signup pattern —
+   * purged spam sitting in the network looking like reach.
+   *
+   * `removedAuthors` rides along in the response so the pruning is visible
+   * rather than a silent shrink between two refreshes.
+   */
+  const { graph, removed } = await pruneMissingAuthors(built);
+  if (removed.length)
+    console.log(`[network] pruned ${removed.length} removed author(s): ${removed.join(", ")}`);
+  (graph as Graph & { removedAuthors?: string[] }).removedAuthors = removed;
+
+  /*
+   * Mark who is NEW TERRITORY: a leading author on the platform that we have no
+   * edge with in either direction. That is the actionable half of widening the
+   * map — being in the graph is not the point, having a reason to reach them
+   * is.
+   */
+  const reached = new Set<string>();
+  for (const e of graph.edges) {
+    if (e.from === ME) reached.add(e.to);
+    if (e.to === ME) reached.add(e.from);
+  }
+  const targets = discovered.filter((u) => !reached.has(u));
+  (graph as Graph & { discovered?: string[]; targets?: string[] }).discovered = discovered;
+  (graph as Graph & { targets?: string[] }).targets = targets;
+  console.log(`[network] discovered ${discovered.length} leading author(s), ${targets.length} not yet reached`);
+
   try {
     mkdirSync(join(FOOTPRINT, "engagement"), { recursive: true });
     writeFileSync(CACHE, JSON.stringify(graph));

@@ -144,7 +144,7 @@ export function AudienceClock({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-3 text-[13px] text-[var(--color-ink-3)]">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-[13px] text-[var(--muted-foreground)]">
         Audience clock unavailable — {error}
       </div>
     );
@@ -153,9 +153,9 @@ export function AudienceClock({
   const totalPeople = zones.reduce((s, z) => s + z.people, 0);
 
   return (
-    <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-line)] p-3">
-        <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] p-3">
+        <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
           {mounted ? (
             <>
               your zone · {viewerTz} ·{" "}
@@ -172,7 +172,7 @@ export function AudienceClock({
         <button
           type="button"
           onClick={() => setUseLocal((v) => !v)}
-          className="rounded-md border border-[var(--color-line)] px-2 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--color-ink-2)] hover:text-[var(--color-ink-1,inherit)]"
+          className="rounded-md border border-[var(--border)] px-2 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
         >
           axis: {useLocal ? "your local time" : "UTC"}
         </button>
@@ -183,8 +183,8 @@ export function AudienceClock({
           aria-label="Audience awake share and reading volume by hour">
           <defs>
             <linearGradient id="ac-vol" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0.25" />
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.25" />
             </linearGradient>
           </defs>
 
@@ -199,7 +199,7 @@ export function AudienceClock({
                 y={PAD_T}
                 width={BAND}
                 height={PLOT_H}
-                fill="var(--color-warn)"
+                fill="var(--warning)"
                 opacity={awake ? 0.04 + a * 0.16 : 0.03}
               />
             );
@@ -213,7 +213,7 @@ export function AudienceClock({
               x2={W - PAD_R}
               y1={PAD_T + PLOT_H * (1 - t)}
               y2={PAD_T + PLOT_H * (1 - t)}
-              stroke="var(--color-line)"
+              stroke="var(--border)"
               strokeWidth="1"
               opacity="0.5"
             />
@@ -239,7 +239,7 @@ export function AudienceClock({
           {awake && (
             <polyline
               fill="none"
-              stroke="var(--color-good)"
+              stroke="var(--success)"
               strokeWidth="2"
               strokeLinejoin="round"
               points={awake
@@ -258,7 +258,7 @@ export function AudienceClock({
               x2={PAD_L + hover * BAND + BAND / 2}
               y1={PAD_T}
               y2={PAD_T + PLOT_H}
-              stroke="var(--color-ink-3)"
+              stroke="var(--muted-foreground)"
               strokeWidth="1"
               strokeDasharray="3 3"
             />
@@ -271,7 +271,7 @@ export function AudienceClock({
               x={PAD_L - 8}
               y={PAD_T + PLOT_H * (1 - t) + 4}
               textAnchor="end"
-              className="fill-[var(--color-ink-3)]"
+              className="fill-[var(--muted-foreground)]"
               style={{ fontSize: 10, fontFamily: "ui-monospace, monospace" }}
             >
               {Math.round(t * 100)}%
@@ -284,7 +284,7 @@ export function AudienceClock({
                 x={PAD_L + i * BAND + BAND / 2}
                 y={H - 10}
                 textAnchor="middle"
-                className="fill-[var(--color-ink-3)]"
+                className="fill-[var(--muted-foreground)]"
                 style={{ fontSize: 10, fontFamily: "ui-monospace, monospace" }}
               >
                 {axisLabel(h.utcHour)}
@@ -309,14 +309,14 @@ export function AudienceClock({
 
         {/* Hover readout — the same instant across every major reader zone. */}
         {mounted && hover !== null && (
-          <div className="pointer-events-none absolute right-3 top-3 w-64 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-3 shadow-lg">
-            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
+          <div className="pointer-events-none absolute right-3 top-3 w-64 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 shadow-lg">
+            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
               {String(hover).padStart(2, "0")}:00 UTC
             </div>
             <div className="mt-1 text-[13px]">
               <b>{Math.round((awake?.[hover] ?? 0) * 100)}%</b> of readers awake
               {" · "}
-              <span className="text-[var(--color-ink-3)]">
+              <span className="text-[var(--muted-foreground)]">
                 {hours[hover]?.views ?? 0} views
               </span>
             </div>
@@ -328,14 +328,14 @@ export function AudienceClock({
                     key={z.tz}
                     className="flex items-center justify-between gap-2 text-[12px]"
                   >
-                    <span className="truncate text-[var(--color-ink-2)]">
+                    <span className="truncate text-[var(--muted-foreground)]">
                       {z.tz.split("/").pop()?.replace(/_/g, " ")}
                     </span>
                     <span
                       className={
                         lh !== null && isAwake(lh)
-                          ? "font-mono tabular-nums text-[var(--color-good)]"
-                          : "font-mono tabular-nums text-[var(--color-ink-3)]"
+                          ? "font-mono tabular-nums text-[var(--success)]"
+                          : "font-mono tabular-nums text-[var(--muted-foreground)]"
                       }
                     >
                       {lh === null ? "—" : String(lh).padStart(2, "0")}:00
@@ -348,30 +348,30 @@ export function AudienceClock({
         )}
       </div>
 
-      <p className="border-t border-[var(--color-line)] p-3 text-[12.5px] text-[var(--color-ink-3)]">
+      <p className="border-t border-[var(--border)] p-3 text-[12.5px] text-[var(--muted-foreground)]">
         {mounted && best !== null ? (
           <>
             Readership peaks awake at{" "}
-            <b className="text-[var(--color-ink-2)]">
+            <b className="text-[var(--muted-foreground)]">
               {String(best).padStart(2, "0")}:00 UTC
             </b>{" "}
             ({Math.round((awake?.[best] ?? 0) * 100)}% of {totalPeople} readers),
             but most reading happens at{" "}
-            <b className="text-[var(--color-ink-2)]">
+            <b className="text-[var(--muted-foreground)]">
               {String(busiest).padStart(2, "0")}:00 UTC
             </b>
             . Bars are when people read — which partly reflects when we posted.
             The green curve is when they are simply awake, and owes us nothing.
             Publish into the gap.
             {" "}
-            <span className="text-[var(--color-ink-3)]">
+            <span className="text-[var(--muted-foreground)]">
               A reader is someone with 2+ pageviews in 90 days; single-hit
               crawlers are excluded, and they were ~46% of the raw count.
             </span>
             {totalPeople < 100 && (
               <>
                 {" "}
-                <b className="text-[var(--color-warn)]">
+                <b className="text-[var(--warning)]">
                   Small sample ({totalPeople}) — treat the shape as directional,
                   not decisive.
                 </b>
