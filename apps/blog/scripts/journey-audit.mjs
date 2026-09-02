@@ -35,7 +35,14 @@ const BASE = process.env.BASE ?? "https://ofriperetz.dev";
  * the difference is that here the condition cannot be weakened, so the budget
  * moves.
  */
-const NAV_MS = Number(process.env.JOURNEY_NAV_MS ?? 90000);
+// `??` only guards null/undefined, which let two bad inputs through:
+// `JOURNEY_NAV_MS=` gave `Number('') === 0`, and a Playwright timeout of 0
+// means NO ceiling — the exact opposite of this variable's job — while
+// `JOURNEY_NAV_MS=foo` gave NaN and threw at the call site. The review
+// suggested `Number(...) || 90_000`, which fixes both; this also rejects a
+// negative, which is truthy and would otherwise reach Playwright. (Review, 5x.)
+const NAV_MS_ENV = Number(process.env.JOURNEY_NAV_MS);
+const NAV_MS = NAV_MS_ENV > 0 ? NAV_MS_ENV : 90_000;
 
 // A code-heavy article that exists in the corpus (layout-audit's
 // "most code blocks" extreme) — the copy journey needs real blocks.
