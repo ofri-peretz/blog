@@ -16,6 +16,34 @@ import { chromium } from "playwright-core";
 
 const BASE = process.env.BASE ?? "https://ofriperetz.dev";
 
+/**
+ * Navigation budget for the journeys that still need `waitUntil: "load"`.
+ *
+ * #224 moved the code-block journey to `domcontentloaded` and was right to:
+ * its subject is the block being attached, which its own `waitFor` asserts, so
+ * `load` was a stricter precondition than the claim.
+ *
+ * The two palette journeys cannot follow it. The command palette input is
+ * rendered late enough that `domcontentloaded` does not have it — switching
+ * them makes the first journey fail OUTRIGHT, verified against a local
+ * production build and still failing with the element wait raised to 15s. For
+ * these two, `load` is carrying a correctness requirement rather than being
+ * merely stricter.
+ *
+ * So they keep `load` and get patience instead. 30s was not enough on a cold
+ * runner, which is the same "one slow subresource" failure #224 describes —
+ * the difference is that here the condition cannot be weakened, so the budget
+ * moves.
+ */
+// `??` only guards null/undefined, which let two bad inputs through:
+// `JOURNEY_NAV_MS=` gave `Number('') === 0`, and a Playwright timeout of 0
+// means NO ceiling — the exact opposite of this variable's job — while
+// `JOURNEY_NAV_MS=foo` gave NaN and threw at the call site. The review
+// suggested `Number(...) || 90_000`, which fixes both; this also rejects a
+// negative, which is truthy and would otherwise reach Playwright. (Review, 5x.)
+const NAV_MS_ENV = Number(process.env.JOURNEY_NAV_MS);
+const NAV_MS = NAV_MS_ENV > 0 ? NAV_MS_ENV : 90_000;
+
 // A code-heavy article that exists in the corpus (layout-audit's
 // "most code blocks" extreme) — the copy journey needs real blocks.
 const CODE_ARTICLE = "/articles/getting-started-eslint-plugin-secure-coding";
@@ -81,7 +109,7 @@ try {
     const docs = await res.json();
     const doc = docs.find((d) => d.title.length >= 20) ?? docs[0];
     if (!doc) throw new Error("search index is empty");
-    await page.goto(`${BASE}/articles`, { waitUntil: "load", timeout: 30000 });
+    await page.goto(`${BASE}/articles`, { waitUntil: "load", timeout: NAV_MS });
     await page.keyboard.press("ControlOrMeta+KeyK");
     const input = page.locator('[data-slot="command-palette-input"]');
     await input.waitFor({ state: "visible", timeout: 5000 });
@@ -114,15 +142,19 @@ try {
     const paletteCount = await page
       .locator('[data-slot="command-palette-content"]')
       .count();
-    if (paletteCount !== 0) throw new Error("navigated but the palette stayed open");
+    if (paletteCount !== 0)
+      throw new Error("navigated but the palette stayed open");
     pass("palette: ⌘K → type → ↓ → Enter navigates to the exact match");
   } catch (err) {
-    fail("palette: ⌘K → type → ↓ → Enter navigates to the exact match", err.message);
+    fail(
+      "palette: ⌘K → type → ↓ → Enter navigates to the exact match",
+      err.message,
+    );
   }
 
   // ── 2. Escape closes and restores focus to the trigger ────────────
   try {
-    await page.goto(`${BASE}/articles`, { waitUntil: "load", timeout: 30000 });
+    await page.goto(`${BASE}/articles`, { waitUntil: "load", timeout: NAV_MS });
     await page.locator('[data-slot="corpus-search-trigger"]').click();
     await page
       .locator('[data-slot="command-palette-input"]')
@@ -140,7 +172,10 @@ try {
       throw new Error("palette closed but focus did not return to the trigger");
     pass("palette: Escape closes and restores focus to the trigger");
   } catch (err) {
-    fail("palette: Escape closes and restores focus to the trigger", err.message);
+    fail(
+      "palette: Escape closes and restores focus to the trigger",
+      err.message,
+    );
   }
 
   // ── 3. Copy is a receipt: click writes the EXACT code text ────────
