@@ -3,11 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { cachedFetch } from "@/lib/client-cache";
+import { Callout } from "@/components/ui/callout";
+import { RankedBarList } from "@/components/ui/meter";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatStrip } from "@/components/ui/stat-strip";
 
 const APP_TONE: Record<string, string> = {
-  eslint_docs: "var(--color-accent)",
-  blog: "var(--color-good)",
-  ds: "var(--color-warn)",
+  eslint_docs: "var(--primary)",
+  blog: "var(--success)",
+  ds: "var(--warning)",
 };
 
 function fmt(seconds: number) {
@@ -61,12 +65,12 @@ export default function Journeys() {
       <header className="flex flex-col gap-1">
         <Link
           href="/"
-          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+          className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
         >
           ← control room
         </Link>
         <h1 className="text-[28px] font-semibold tracking-tight">Journeys</h1>
-        <p className="max-w-[74ch] text-[14px] text-[var(--color-ink-2)]">
+        <p className="max-w-[74ch] text-[14px] text-[var(--muted-foreground)]">
           Individual sessions as ordered paths. Aggregates cannot tell you
           whether 68 views were 68 glances or one person reading — a path can.
         </p>
@@ -79,22 +83,22 @@ export default function Journeys() {
             onClick={() => setDays(n)}
             className={`border px-2 py-0.5 ${
               days === n
-                ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-panel)]"
-                : "border-[var(--color-line)] text-[var(--color-ink-2)]"
+                ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--card)]"
+                : "border-[var(--border)] text-[var(--muted-foreground)]"
             }`}
           >
             {n}d
           </button>
         ))}
-        <span className="mx-1 text-[var(--color-line)]">|</span>
+        <span className="mx-1 text-[var(--border)]">|</span>
         {["all", ...apps].map((a) => (
           <button
             key={a}
             onClick={() => setApp(a)}
             className={`border px-2 py-0.5 ${
               app === a
-                ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                : "border-[var(--color-line)] text-[var(--color-ink-2)]"
+                ? "border-[var(--primary)] text-[var(--primary)]"
+                : "border-[var(--border)] text-[var(--muted-foreground)]"
             }`}
           >
             {a}
@@ -103,13 +107,11 @@ export default function Journeys() {
       </div>
 
       {!d ? (
-        <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="skeleton mb-2 h-7 w-full" />
-          ))}
-        </div>
+        <Skeleton variant="stat-strip" count={8} label="Loading session journeys" />
       ) : d.error ? (
-        <p className="text-[13px] text-[var(--color-warn)]">{d.error}</p>
+        <Callout tone="danger" title="Journeys unavailable">
+          {d.error}
+        </Callout>
       ) : (
         <>
           {/* These four come from a server-side aggregate over EVERY session.
@@ -119,97 +121,92 @@ export default function Journeys() {
               Label it rather than letting the numbers imply a scope they do
               not have. */}
           {app !== "all" && (
-            <p className="-mb-1 font-mono text-[11px] text-[var(--color-warn)]">
+            <Callout tone="warn" title="Two different populations">
               Totals below cover <b>all properties</b>; the session list is
               filtered to <b>{app}</b>.
-            </p>
+            </Callout>
           )}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              ["sessions", s.sessions],
-              ["read more than one page", s.multiStep],
-              [
-                "bounced",
-                s.bounceRate != null ? `${Math.round(s.bounceRate * 100)}%` : "—",
-              ],
-              [
-                "median time (multi-page)",
-                s.medianSeconds != null ? fmt(s.medianSeconds) : "—",
-              ],
-            ].map(([label, v]) => (
-              <div
-                key={String(label)}
-                className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4"
-              >
-                <div className="text-2xl font-semibold tabular-nums">
-                  {v ?? "—"}
-                </div>
-                <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
-                  {label}
-                </div>
-              </div>
-            ))}
-          </div>
+          <StatStrip
+            cols={4}
+            announce={{ noun: "session totals" }}
+            items={[
+              { key: "sessions", label: "sessions", value: s.sessions ?? null },
+              { key: "multi", label: "read more than one page", value: s.multiStep ?? null },
+              {
+                key: "bounce",
+                label: "bounced",
+                value: s.bounceRate != null ? Math.round(s.bounceRate * 100) : null,
+                unit: "%",
+              },
+              {
+                key: "median",
+                label: "median time (multi-page)",
+                value: s.medianSeconds != null ? fmt(s.medianSeconds) : null,
+              },
+            ]}
+          />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <section className="flex flex-col gap-2">
-              <h2 className="border-b border-[var(--color-line)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
-                Where they come from
-              </h2>
-              {(d.referrers ?? []).map((r: any) => (
-                <div
-                  key={r.source}
-                  className="flex items-center justify-between gap-3 text-[13px]"
-                >
-                  <span className="truncate font-mono text-[12px]">
-                    {r.source === "$direct" ? "direct / unknown" : r.source}
-                  </span>
-                  <span className="tabular-nums text-[var(--color-ink-3)]">
-                    {r.n}
-                  </span>
-                </div>
-              ))}
-              <p className="mt-1 text-[12px] text-[var(--color-ink-3)]">
+            <div className="flex flex-col gap-2">
+              {/*
+                These were two bare label/number rows with no visual magnitude
+                at all. `<RankedBarList>` gives each row a `role="meter"` bar
+                against a shared denominator, so "where they come from" is
+                readable as a shape and not just as a column of integers.
+              */}
+              <RankedBarList
+                caption="Where they come from"
+                size="sm"
+                rows={(d.referrers ?? []).map((r: any) => ({
+                  key: r.source,
+                  // `RankedBarList` sets `uppercase` on its own label span and
+                  // exposes no way to opt out, so a URL or a hostname has to
+                  // re-assert its casing from inside the node. Left alone it
+                  // renders `/DOCS/SECURITY/...` for a case-sensitive path.
+                  label: (
+                    <span className="normal-case">
+                      {r.source === "$direct" ? "direct / unknown" : r.source}
+                    </span>
+                  ),
+                  value: r.n ?? null,
+                }))}
+              />
+              <p className="mt-1 text-[12px] text-[var(--muted-foreground)]">
                 Scope differs from &ldquo;doors&rdquo; on purpose: referrers are
                 counted over the <b>deep sessions listed below</b> (a one-page
                 bounce&apos;s referrer says little about intent), while doors are a
                 server-side aggregate over <b>every</b> session.
               </p>
-            </section>
+            </div>
 
-            <section className="flex flex-col gap-2">
-              <h2 className="border-b border-[var(--color-line)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
-                The doors people come through
-              </h2>
-              {(d.doors ?? []).slice(0, 10).map((x: any) => (
-                <div
-                  key={`${x.app}${x.landing}`}
-                  className="flex items-center justify-between gap-3 text-[13px]"
-                >
+            <RankedBarList
+              caption="The doors people come through"
+              size="sm"
+              rows={(d.doors ?? []).slice(0, 10).map((x: any) => ({
+                key: `${x.app}${x.landing}`,
+                label: (
                   <span className="min-w-0 truncate">
                     <span
                       className="mr-1.5 font-mono text-[10px] uppercase"
-                      style={{ color: APP_TONE[x.app] ?? "var(--color-ink-3)" }}
+                      style={{ color: APP_TONE[x.app] ?? "var(--muted-foreground)" }}
                     >
                       {x.app}
                     </span>
-                    <span className="font-mono text-[11.5px] text-[var(--color-ink-2)]">
+                    <span className="font-mono text-[11.5px] normal-case">
                       {x.landing || "/"}
                     </span>
                   </span>
-                  <span className="tabular-nums text-[var(--color-ink-3)]">
-                    {x.n}
-                  </span>
-                </div>
-              ))}
-            </section>
+                ),
+                value: x.n ?? null,
+              }))}
+            />
           </div>
 
           <section className="flex flex-col gap-3">
-            <h2 className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--color-line)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
+            <h2 className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--border)] pb-2 font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
               <span>Deepest sessions · {rows.length}</span>
               {d.note && (
-                <span className="normal-case tracking-normal text-[var(--color-ink-3)]">
+                <span className="normal-case tracking-normal text-[var(--muted-foreground)]">
                   {d.note}
                 </span>
               )}
@@ -218,16 +215,16 @@ export default function Journeys() {
               {rows.map((x: any) => (
                 <div
                   key={x.sid + x.started}
-                  className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-3"
+                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3"
                 >
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-[11px] text-[var(--color-ink-3)]">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-[11px] text-[var(--muted-foreground)]">
                     <span
                       className="uppercase"
-                      style={{ color: APP_TONE[x.app] ?? "var(--color-ink-3)" }}
+                      style={{ color: APP_TONE[x.app] ?? "var(--muted-foreground)" }}
                     >
                       {x.app}
                     </span>
-                    <span className="text-[var(--color-ink-2)]">
+                    <span className="text-[var(--muted-foreground)]">
                       {x.steps} pages · {fmt(x.seconds)}
                     </span>
                     <span>{x.country}</span>
@@ -247,9 +244,9 @@ export default function Journeys() {
                     {x.path.split(" → ").map((step: string, i: number) => (
                       <span key={i} className="flex items-center gap-1.5">
                         {i > 0 && (
-                          <span className="text-[var(--color-ink-3)]">→</span>
+                          <span className="text-[var(--muted-foreground)]">→</span>
                         )}
-                        <span className="rounded bg-[var(--color-ground)] px-1.5 py-0.5 font-mono text-[11.5px] text-[var(--color-ink-2)]">
+                        <span className="rounded bg-[var(--background)] px-1.5 py-0.5 font-mono text-[11.5px] text-[var(--muted-foreground)]">
                           {step}
                         </span>
                       </span>

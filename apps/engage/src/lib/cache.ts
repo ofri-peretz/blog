@@ -23,6 +23,57 @@ const DIR = join(FOOTPRINT, "engagement", ".cache");
  *   1. the entry is older than its TTL, or
  *   2. the caller explicitly forced it (the section's own refresh button).
  */
+/**
+ * Async twin of `cached`, for producers that await (a network crawl).
+ *
+ * Kept as a separate function rather than making `cached` generic over
+ * sync/async: the sync one is called in places that use its return value
+ * immediately, and quietly turning those into promises would leave `[object
+ * Promise]` rendering as a number.
+ *
+ * A failed produce does NOT overwrite a good entry — on error the stale value
+ * is returned with `fresh: false` if one exists. An inbox that empties itself
+ * because Dev.to rate-limited us for ten seconds is exactly the "silence looks
+ * like success" failure this app keeps finding.
+ */
+export async function cachedAsync<T>(
+  key: string,
+  ttlMs: number,
+  force: boolean,
+  produce: () => Promise<T>,
+): Promise<{ value: T; at: number; fresh: boolean; error?: string }> {
+  const file = join(DIR, `${key}.json`);
+  const readHit = (): { value: T; at: number } | null => {
+    if (!existsSync(file)) return null;
+    try {
+      const hit = JSON.parse(readFileSync(file, "utf8"));
+      return { value: hit.value as T, at: hit.at };
+    } catch {
+      return null;
+    }
+  };
+
+  const hit = readHit();
+  if (!force && hit && Date.now() - hit.at < ttlMs)
+    return { value: hit.value, at: hit.at, fresh: false };
+
+  try {
+    const value = await produce();
+    const at = Date.now();
+    try {
+      mkdirSync(DIR, { recursive: true });
+      writeFileSync(file, JSON.stringify({ at, value }));
+    } catch {
+      /* an unwritable cache is a slow app, not a broken one */
+    }
+    return { value, at, fresh: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (hit) return { value: hit.value, at: hit.at, fresh: false, error: message };
+    throw e;
+  }
+}
+
 export function cached<T>(
   key: string,
   ttlMs: number,

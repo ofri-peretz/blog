@@ -4,35 +4,18 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCachedSection } from "@/lib/client-cache";
 import { Refresh } from "@/components/panels";
+import { Callout } from "@/components/ui/callout";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatStrip } from "@/components/ui/stat-strip";
+import { DataTable } from "@/components/ui/patterns/data-table";
 
 type Gate = "pass" | "below-bar" | "unscored";
 
 const TONE: Record<Gate, string> = {
-  pass: "text-[var(--color-good)]",
-  "below-bar": "text-[var(--color-warn)]",
-  unscored: "text-[var(--color-ink-3)]",
+  pass: "text-[var(--success)]",
+  "below-bar": "text-[var(--warning)]",
+  unscored: "text-[var(--muted-foreground)]",
 };
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string | number;
-  tone?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-      <div className={`text-2xl font-semibold tabular-nums ${tone ?? ""}`}>
-        {value}
-      </div>
-      <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-3)]">
-        {label}
-      </div>
-    </div>
-  );
-}
 
 /**
  * The release queue, in the control room.
@@ -65,11 +48,7 @@ export default function Queue() {
   if (!d)
     return (
       <main className="mx-auto max-w-6xl px-5 py-10">
-        <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="skeleton mb-2 h-8 w-full" />
-          ))}
-        </div>
+        <Skeleton variant="data-table" label="Loading the release queue" />
       </main>
     );
 
@@ -82,7 +61,7 @@ export default function Queue() {
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-3)] hover:text-[var(--color-accent)]"
+            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
           >
             ← control room
           </Link>
@@ -91,39 +70,37 @@ export default function Queue() {
         <h1 className="text-[28px] font-semibold tracking-tight">
           Release queue
         </h1>
-        <p className="max-w-[70ch] text-[14px] text-[var(--color-ink-2)]">
+        <p className="max-w-[70ch] text-[14px] text-[var(--muted-foreground)]">
           Every article, its gate score, and when the next one ships. The
           cadence comes from the publisher itself — mirroring it here is how it
           drifted in two places last time.
         </p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="articles" value={t.articles ?? "—"} />
-        <Stat label="published" value={t.published ?? "—"} />
-        <Stat label="median score" value={t.median ?? "—"} />
-        <Stat
-          label={`below ${d.scoreBar}`}
-          value={t.belowBar ?? "—"}
-          tone={t.belowBar ? "text-[var(--color-warn)]" : undefined}
-        />
-        <Stat
-          label="unscored"
-          value={t.unscored ?? "—"}
-          tone={t.unscored ? "text-[var(--color-warn)]" : undefined}
-        />
-        <Stat label="no cover" value={t.missingCover ?? "—"} />
-      </div>
+      <StatStrip
+        cols={6}
+        announce={{ noun: "queue totals" }}
+        items={[
+          { key: "articles", label: "articles", value: t.articles ?? null },
+          { key: "published", label: "published", value: t.published ?? null },
+          { key: "median", label: "median score", value: t.median ?? null },
+          { key: "below", label: `below ${d.scoreBar}`, value: t.belowBar ?? null },
+          { key: "unscored", label: "unscored", value: t.unscored ?? null },
+          { key: "cover", label: "no cover", value: t.missingCover ?? null },
+        ]}
+      />
 
       {/* Schedule */}
-      <section className="rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
-        <div className="border-b border-[var(--color-line)] px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <div className="border-b border-[var(--border)] px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">
           Schedule · every {s.minDays ?? "?"} days
         </div>
         {s.error ? (
-          <p className="p-4 text-[13px] text-[var(--color-warn)]">
-            Publisher did not answer: {s.error}
-          </p>
+          <div className="p-4">
+            <Callout tone="warn" title="Publisher did not answer">
+              {s.error}
+            </Callout>
+          </div>
         ) : (
           <div className="flex flex-col gap-3 p-4">
             <div className="flex flex-wrap gap-2">
@@ -132,8 +109,8 @@ export default function Queue() {
                   key={f}
                   className={`rounded-lg border px-2.5 py-1 font-mono text-[11.5px] ${
                     i === 0
-                      ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                      : "border-[var(--color-line)] text-[var(--color-ink-2)]"
+                      ? "border-[var(--primary)] text-[var(--primary)]"
+                      : "border-[var(--border)] text-[var(--muted-foreground)]"
                   }`}
                 >
                   {new Date(f).toLocaleString(undefined, {
@@ -146,7 +123,7 @@ export default function Queue() {
                 </span>
               ))}
             </div>
-            <p className="text-[13px] text-[var(--color-ink-2)]">
+            <p className="text-[13px] text-[var(--muted-foreground)]">
               {(s.queue ?? []).length} article
               {(s.queue ?? []).length === 1 ? "" : "s"} queued
               {(s.queue ?? []).length > 0 && (
@@ -157,16 +134,16 @@ export default function Queue() {
                 </>
               )}
               . {(s.stranded ?? []).length > 0 && (
-                <span className="text-[var(--color-warn)]">
+                <span className="text-[var(--warning)]">
                   {s.stranded.length} stranded (written, never scheduled).
                 </span>
               )}
             </p>
             {(s.fires ?? []).length > (s.queue ?? []).length && (
-              <p className="text-[12.5px] text-[var(--color-warn)]">
-                The queue is shorter than the schedule — {(s.fires ?? []).length - (s.queue ?? []).length} of the next{" "}
+              <Callout tone="warn" title="The queue is shorter than the schedule">
+                {(s.fires ?? []).length - (s.queue ?? []).length} of the next{" "}
                 {(s.fires ?? []).length} slots have nothing to publish.
-              </p>
+              </Callout>
             )}
           </div>
         )}
@@ -181,8 +158,8 @@ export default function Queue() {
               onClick={() => setFilter(f)}
               className={`rounded-md border px-2.5 py-1 font-mono text-[11px] ${
                 filter === f
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
-                  : "border-[var(--color-line)] text-[var(--color-ink-2)]"
+                  ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                  : "border-[var(--border)] text-[var(--muted-foreground)]"
               }`}
             >
               {f}
@@ -193,78 +170,91 @@ export default function Queue() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="filter…"
-          className="min-w-[160px] flex-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-ground)] px-3 py-1.5 font-mono text-[12px]"
+          className="min-w-[160px] flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 font-mono text-[12px]"
         />
-        <span className="font-mono text-[11px] text-[var(--color-ink-3)]">
+        <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
           {rows.length} shown
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)]">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="border-b border-[var(--color-line)] text-left font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--color-ink-3)]">
-              <th className="p-2.5 font-medium">Article</th>
-              <th className="p-2.5 text-right font-medium">Score</th>
-              <th className="p-2.5 font-medium">Status</th>
-              <th className="p-2.5 text-right font-medium">Words</th>
-              <th className="p-2.5 font-medium">Links</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((a: any) => (
-              <tr
-                key={a.slug}
-                className="border-b border-[var(--color-line)] last:border-0"
-              >
-                <td className="max-w-[380px] p-2.5">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
+        <DataTable
+          caption="Every article, its gate score and its publish status"
+          captionHidden
+          dense
+          rows={rows}
+          rowKey={(a: any) => a.slug}
+          empty="Nothing matches this filter."
+          columns={[
+            {
+              id: "article",
+              header: "Article",
+              className: "max-w-[380px]",
+              cell: (a: any) => (
+                <>
                   <div className="truncate">{a.title}</div>
-                  <div className="truncate font-mono text-[10.5px] text-[var(--color-ink-3)]">
+                  <div className="truncate font-mono text-[10.5px] text-[var(--muted-foreground)]">
                     {a.slug}
                   </div>
-                </td>
-                <td
-                  className={`p-2.5 text-right tabular-nums ${TONE[a.gate as Gate]}`}
-                >
-                  {a.score ?? "—"}
-                </td>
-                <td className="p-2.5 font-mono text-[11px] text-[var(--color-ink-2)]">
+                </>
+              ),
+            },
+            {
+              id: "score",
+              header: "Score",
+              align: "end",
+              cell: (a: any) => (
+                <span className={TONE[a.gate as Gate]}>{a.score ?? "—"}</span>
+              ),
+            },
+            {
+              id: "status",
+              header: "Status",
+              className: "font-mono text-[11px] text-[var(--muted-foreground)]",
+              cell: (a: any) => (
+                <>
                   {a.published ? "published" : (a.status ?? "draft")}
                   {!a.hasCover && (
-                    <span className="ml-1.5 text-[var(--color-warn)]">
-                      no cover
-                    </span>
+                    <span className="ml-1.5 text-[var(--warning)]">no cover</span>
                   )}
-                </td>
-                <td className="p-2.5 text-right tabular-nums text-[var(--color-ink-3)]">
-                  {a.words.toLocaleString()}
-                </td>
-                <td className="p-2.5">
-                  <span className="flex gap-1.5 font-mono text-[10px] uppercase">
+                </>
+              ),
+            },
+            {
+              id: "words",
+              header: "Words",
+              align: "end",
+              className: "text-[var(--muted-foreground)]",
+              cell: (a: any) => a.words.toLocaleString(),
+            },
+            {
+              id: "links",
+              header: "Links",
+              cell: (a: any) => (
+                <span className="flex gap-1.5 font-mono text-[10px] uppercase">
+                  <a
+                    href={`https://ofriperetz.dev/articles/${a.slug}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                  >
+                    live
+                  </a>
+                  {a.devtoUrl && (
                     <a
-                      href={`https://ofriperetz.dev/articles/${a.slug}`}
+                      href={a.devtoUrl}
                       target="_blank"
                       rel="noopener"
-                      className="rounded border border-[var(--color-line)] px-1.5 py-0.5 text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                      className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
                     >
-                      live
+                      dev.to
                     </a>
-                    {a.devtoUrl && (
-                      <a
-                        href={a.devtoUrl}
-                        target="_blank"
-                        rel="noopener"
-                        className="rounded border border-[var(--color-line)] px-1.5 py-0.5 text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-                      >
-                        dev.to
-                      </a>
-                    )}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  )}
+                </span>
+              ),
+            },
+          ]}
+        />
       </div>
     </main>
   );
