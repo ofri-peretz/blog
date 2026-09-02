@@ -51,7 +51,7 @@ export function ArticleThreads({
       >
         Threads
       </h2>
-      <div className="mt-4 grid gap-6 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2">
         <ThreadGroup
           label="This piece draws on"
           glyph="→"
@@ -92,7 +92,7 @@ function ThreadGroup({
       <h3 className="text-sm text-muted-foreground">{label}</h3>
       <ul className="mt-2 space-y-2">
         {visible.map((item) => (
-          <li key={item.slug} className="flex items-baseline gap-2 text-sm">
+          <li key={item.slug} className="flex flex-wrap items-baseline gap-x-2 text-sm">
             <span aria-hidden="true" className="shrink-0 text-strand-b">
               {glyph}
             </span>
@@ -108,8 +108,12 @@ function ThreadGroup({
             >
               {item.title}
             </TrackedLink>
+            {/* The meta span was `shrink-0`. At text 200% that is a refusal
+                to shrink, and it overflowed at 1280 as well as 320 — 70px at
+                the worst. The row wraps now, so the meta drops to its own line
+                instead of widening the document. */}
             {(item.series || item.minutes != null) && (
-              <span className="shrink-0 text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {/* The series name hides below md: at 320px the full
                     meta pushed the whole document 22px sideways, and at
                     exactly 640px (the sm edge) long series names still

@@ -71,7 +71,7 @@ export function Agenda({
             Software is changing authors. Trust has to keep up.
           </h2>
         </div>
-        <dl className="mt-8 grid gap-8 sm:grid-cols-3">
+        <dl className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-3">
           {IDEAS.map((idea) => (
             <div key={idea.title}>
               <dt className="font-semibold text-foreground">{idea.title}</dt>
