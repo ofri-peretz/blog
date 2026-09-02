@@ -24,6 +24,7 @@ import {
   getCachedNpmAlltimeTotal,
   getCachedPluginLatest,
 } from "@/lib/supabase-data";
+import { mergeGitHubStats } from "@/lib/homepage-stats-merge";
 import {
   getCachedGitHubStats,
   type GitHubData,
@@ -119,27 +120,7 @@ export async function GET(): Promise<Response> {
     totalComments: creators.devto?.total_comments ?? 0,
   };
 
-  // GitHub field merging — Supabase is the source of truth for cumulative
-  // counters (stars + followers) where the daily-ingest writes them. Live
-  // GraphQL adds the fields Supabase doesn't track (forks, repos, commits,
-  // contributions). When GraphQL fails, fall back to zeros for those — but
-  // never zero out stars/followers, since Supabase has them.
-  const githubMerged: GitHubData = {
-    totalStars:
-      github?.totalStars && github.totalStars > 0
-        ? github.totalStars
-        : (creators.githubRepo?.followers ?? 0), // platform=github-repo.followers stores star count (see daily-ingest.ts)
-    totalForks: github?.totalForks ?? 0,
-    totalRepos: github?.totalRepos ?? 0,
-    followers:
-      github?.followers && github.followers > 0
-        ? github.followers
-        : (creators.github?.followers ?? 0),
-    recentCommits: github?.recentCommits ?? 0,
-    totalContributions: github?.totalContributions ?? 0,
-    starsBreakdown: github?.starsBreakdown ?? [],
-    authenticated: github?.authenticated ?? false,
-  };
+  const githubMerged = mergeGitHubStats(github, creators);
 
   const source: HomepageStatsResponse["source"] =
     github && (ecosystem || creators.devto)
