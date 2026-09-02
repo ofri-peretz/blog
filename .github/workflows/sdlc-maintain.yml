@@ -41,8 +41,20 @@ jobs:
 
       - name: Run detectors
         id: detect
+        env:
+          # Staged as env rather than interpolated into the `run:` body. CWE-78:
+          # `${{ }}` inside a run block is substituted by the template engine
+          # BEFORE the shell parses the line, so the value becomes script text.
+          # This particular input is typed `boolean`, so it could only ever have
+          # produced one of two literals — not exploitable. The pattern is what
+          # is banned, because the next input to be added this way will be a
+          # string, and `devto-publish-scope-lock` enforces it across every
+          # workflow on purpose.
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
-          node scripts/sdlc/detect.mjs ${{ inputs.dry_run && '--dry-run' || '' }} \
+          ARGS=()
+          if [ "$DRY_RUN" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/sdlc/detect.mjs "${ARGS[@]}" \
             | tee "$RUNNER_TEMP/detect.log"
           {
             echo '## SDLC stage 6 — detector run'
