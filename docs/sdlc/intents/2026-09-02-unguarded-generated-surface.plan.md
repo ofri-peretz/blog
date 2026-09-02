@@ -14,7 +14,8 @@ Intent: [`2026-09-02-unguarded-generated-surface.intent.md`](./2026-09-02-unguar
 |---|---|---|---|
 | Generated components (`.tsx`) in `.interlace/` | 97 | grep for the AUTO-GENERATED banner | 2026-09-02 |
 | Generated files, all types | 109 | same, no include filter | 2026-09-02 |
-| `#interlace/` import specifiers in `src/` | 10, across 4 files | grep for the specifier | 2026-09-02 |
+| `#interlace/` import specifiers in `src/` | 10, across **2** files | parsed `import`/`export … from` lines | 2026-09-02 |
+| ~~…across 4 files~~ | ~~4~~ WRONG | `grep -rl` also matched two comments | 2026-09-02 |
 | Generated files reachable, following imports | **17** | import-graph walk from those 10 | 2026-09-02 |
 | ~~Reachable by basename scan~~ | ~~61~~ WRONG | counted any filename mentioned anywhere | 2026-09-02 |
 | Lock tests that walk a directory | 12 | grep for readdirSync or globSync in `src/__tests__` | 2026-09-02 |
@@ -31,6 +32,14 @@ arithmetic, and it is the third measurement mistake this SDLC directory has
 recorded. A heuristic over a codebase you have not read produces a confident
 wrong list — which is written in `2026-08-31-behavioural-claims.plan.md` in as
 many words, by me, before I did it again.
+
+**And "4 files" was the same mistake again, one paragraph later.** `grep -rl`
+matched two files that only mention `#interlace/` in a comment. Parsing the
+import lines gives **2** — `app/layout.tsx` (2) and `app/scorecard/page.tsx`
+(8), which is where the 10 specifiers come from. The 10 was right because
+comments were not counted toward it; the file count was not. Review caught it,
+in the same review that caught the 61. Four measurement errors now, and every
+one of them a grep standing in for a parse.
 
 **On the three deploys:** all three failed the layout gate, but `5de4ba3` is
 itself the commit that FIXED the article reflows — its deploy failed on a
@@ -64,11 +73,23 @@ and has no business reading UI components.
 
 Three steps, in this order, because the first one is the experiment:
 
-1. **Extend `responsive-lock` to `.interlace/` and watch it go red on the eight
-   grids.** Verified failing FIRST. A green extension means the glob missed the
-   tree and the whole exercise is theatre — this repo has produced exactly that
-   failure twice already (the `@/` alias miscount, and a regex that could not
-   match its target), so it is the likeliest way this goes wrong.
+1. **Extend `responsive-lock` to `.interlace/` and watch it go red.** Verified
+   failing FIRST. A green extension means the glob missed the tree and the
+   whole exercise is theatre — this repo has produced exactly that failure
+   twice already (the `@/` alias miscount, and a regex that could not match its
+   target), so it is the likeliest way this goes wrong.
+
+   **Two counts, two purposes, and they must not be conflated** — an earlier
+   draft of this plan said "8" here and "4" in the ground truth, which cannot
+   both be the gate:
+   - **Unscoped**, over all of `.interlace/`: expect red on **8**. This is a
+     one-off diagnostic that proves the glob reaches the tree at all.
+   - **Scoped to reachable**, which is what actually ships: expect red on
+     **4**. This is the gate.
+
+   Run the unscoped pass once to prove reach, then scope down. If the scoped
+   pass is green while the unscoped one is red, the scoping is wrong, not the
+   lock.
 2. **Decide per-lock, in writing, for the other eleven.** Each gets extended or
    gets a one-line reason it should not be. The output is a table in the
    finding, not a silent choice.
@@ -107,8 +128,10 @@ mechanisms is how one of them rots.
 
 ## Sequence
 
-1. Extend `responsive-lock`'s scan root to include `.interlace/`, scoped to
-   reachable components. Run it. **Expect red on 8.**
+1. Extend `responsive-lock`'s scan root to include `.interlace/`. Run it
+   UNSCOPED first — **expect red on 8**, which proves the glob reaches the
+   tree. Then scope to reachable components — **expect red on 4**, which is
+   the gate that ships. Both numbers recorded; neither assumed.
 2. Record the eight with their file:line in the finding.
 3. Fix upstream if the agents repo is available; otherwise land the lock with a
    dated allowlist and open the upstream work as its own intent.
