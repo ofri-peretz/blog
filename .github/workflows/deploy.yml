@@ -206,8 +206,13 @@ jobs:
       #
       # Drives the runner's preinstalled Chrome over CDP with node's built-in
       # WebSocket (node 24 via .nvmrc). No Playwright, nothing to install.
-      # 12, not 5, and the step name no longer lies: the matrix is 14 viewports
-      # x 9 routes x 2 themes = 252 combinations, not "6 routes".
+      # 12, not 5, and the step name no longer lies: the matrix is 16 viewports
+      # x 9 routes x 2 themes = 288 combinations, not "6 routes".
+      #
+      # (16, not 14: VIEWPORTS is 4 narrow + 4 breakpoints x 2 + 2 wide + the
+      # 2 zoom entries #127 added. An earlier revision of this comment said 14
+      # and 252 while citing "286/288" three lines down — the second number was
+      # right and the first was arithmetic done from memory. Review caught it.)
       #
       # MEASURED before changing: 218s against a local production build, and
       # the 2026-09-02 run reached 286/288 and was killed 5ms after printing
@@ -224,7 +229,7 @@ jobs:
       # the measurement itself and wants its own PR with a before/after
       # comparison proving identical findings; it does not belong in a fix
       # whose job is to unblock production.
-      - name: Audit layout + contrast (14 viewports x 9 routes x 2 themes)
+      - name: Audit layout + contrast (16 viewports x 9 routes x 2 themes)
         timeout-minutes: 12
         env:
           BASE: https://ofriperetz.dev
