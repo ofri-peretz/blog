@@ -399,3 +399,25 @@ body {
 :root:not(.dark) [data-slot="code-block-pre"] span[style*="color:#e36209"] {
   color: #bc4c00 !important;
 }
+
+/* ── Deep links have to LAND somewhere visible ─────────────────────────────
+   The site header is `sticky top-0`, so a browser scrolling an #anchor to
+   viewport top puts the target underneath it. Measured on production
+   2026-09-02: header 57px, heading top 0px, scroll-margin-top 0px —
+   every heading deep link on the site landed obscured. That covers a shared
+   section URL, an in-page link inside an article, and every entry in the
+   generated table of contents.
+
+   `scroll-margin-top` moves only the SCROLL resting position, not layout, so
+   nothing shifts and CLS is untouched. 5.5rem = 88px clears the 57px header
+   with room to read the heading rather than have it flush against the bar.
+
+   :where() keeps specificity at zero, so any component that needs its own
+   offset (article-playground uses scroll-mt-24) still wins without !important.
+
+   Applied to ids generally, not only headings: `#playground` is a <section>,
+   and the next anchor target will be something else again. The rule is about
+   where a deep link lands, not about what kind of element it points at. */
+:where([id]) {
+  scroll-margin-top: 5.5rem;
+}
