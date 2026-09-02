@@ -61,8 +61,20 @@ describe("typed event names are frozen", () => {
   });
 });
 
-describe("each surface fires its event", () => {
-  it("corpus map dots track clicks", () => {
+// WIRING, not firing. Every assertion in this block reads source text, and
+// text cannot show that an event was ever SENT — only that the surface is
+// wired to send it. The distinction is not pedantic: every event named here
+// reads zero in production, so 14 assertions have been claiming these fire
+// while nothing has ever contradicted them.
+//
+// Structural evidence is legitimate for a structural claim ("this is a
+// TrackedLink carrying slug + package" is exactly what the source can show).
+// What over-claimed was the verb. Renamed rather than converted, because
+// rendering 14 surfaces to re-prove what a grep already establishes would
+// cost runtime and buy nothing. The one genuine behaviour in the block —
+// read depth — moved to a rendered test. See the behavioural-claims finding.
+describe("each surface is WIRED to its event", () => {
+  it("corpus map dots are wired to track clicks", () => {
     expect(MAP).toContain('track("corpus_map:dot_click"');
   });
 
@@ -78,7 +90,7 @@ describe("each surface fires its event", () => {
     expect(ARTICLE).toMatch(/<TrackedLink[\s\S]{0,500}eslint\.interlace\.tools\/play/);
   });
 
-  it("the map fires your-thread with the aggregate count only", () => {
+  it("the map is wired to send your-thread with the aggregate count only", () => {
     expect(MAP).toContain('track("corpus_map:your_thread"');
     expect(MAP).toContain("read_count: trace.ids.length");
     // The thread itself never leaves the browser — no slugs in the event.
@@ -91,7 +103,7 @@ describe("each surface fires its event", () => {
     expect(CARDS).toContain("slug: currentSlug, package: p.name");
   });
 
-  it("quick-open fires open (source only) and select (slug only)", () => {
+  it("quick-open is wired to send open (source only) and select (slug only)", () => {
     const SEARCH = read("components/corpus-search.tsx");
     expect(SEARCH).toContain('track("quick_open:palette_view", { source: "hotkey" })');
     expect(SEARCH).toContain('track("quick_open:palette_view", { source: "button" })');
@@ -124,7 +136,7 @@ describe("each surface fires its event", () => {
     expect(THREADS).toContain("direction,");
   });
 
-  it("the loom fires weave_change on every applied state", () => {
+  it("the loom is wired to send weave_change on every applied state", () => {
     const LOOM = read("components/loom/loom-composer.tsx");
     expect(LOOM).toContain('track("loom:weave_change"');
     expect(LOOM).toContain("series: next.series.join(\",\")");
@@ -140,7 +152,18 @@ describe("each surface fires its event", () => {
     );
   });
 
-  it("read depth fires once per milestone from a passive, self-removing listener", () => {
+  it("read depth is wired: passive, rAF-throttled, once-per-milestone guard", () => {
+    // NAME NARROWED, and the behaviour moved rather than mocked. Whether a
+    // milestone fires ONCE, and whether the listener removes itself, are
+    // functions of scroll position — and the component reads
+    // getBoundingClientRect() and window.innerHeight, which jsdom returns as
+    // zeroes. A unit test would have to fake the rects, and would then be
+    // asserting the arithmetic of its own mock rather than the component.
+    //
+    // So this keeps the structural half (the guard exists, the listener is
+    // passive and throttled, the page mounts it) and the behavioural half
+    // lives in journey-audit.mjs, where a real browser scrolls a real
+    // article and the capture request is observed on the wire.
     const DEPTH = read("components/reading-depth.tsx");
     expect(DEPTH).toContain('track("article:read_depth"');
     // Once per milestone — the fired set is the guard.
@@ -156,7 +179,7 @@ describe("each surface fires its event", () => {
     expect(PAGE).toContain("<ReadingDepth slug={slug} />");
   });
 
-  it("loom export fires only after the download was actually handed over", () => {
+  it("loom export is ordered after the download hand-off in source", () => {
     const LOOM = read("components/loom/loom-composer.tsx");
     // Same honesty rule: the guard (`if (!svg) return`) sits above, so a
     // click with nothing to serialize reports nothing.
