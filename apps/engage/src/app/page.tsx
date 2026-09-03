@@ -324,6 +324,38 @@ export default function Page() {
     [threads, ri, reply],
   );
 
+  /**
+   * Mark any row in the waiting list handled without walking the stepper to
+   * it. Same write as `replyAct`, same checked result. Deliberately NOT added
+   * to `session`: "replied" here means a reply posted at some earlier, unknown
+   * time, and charging it to the pace gauge now would block the next real one.
+   */
+  const markThread = useCallback(
+    async (n: number, action: "done" | "skip") => {
+      const t = threads?.[n];
+      if (!t) return;
+      try {
+        const r = await fetch("/api/threads", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ commentId: t.commentId, action }),
+        });
+        const j = await r.json().catch(() => ({ ok: false }));
+        if (!j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
+        setThreads((ts) => (ts ? ts.filter((_, k) => k !== n) : ts));
+        // Keep the card pointing at the same thread when a row above it goes.
+        if (n < ri) setRi((k) => Math.max(0, k - 1));
+        setActErr(null);
+      } catch (e: any) {
+        setActErr(
+          `@${t.author} was not recorded (${String(e?.message ?? e).slice(0, 80)}). ` +
+            `If you replied, mark it again once the server is back — otherwise it will be offered twice.`,
+        );
+      }
+    },
+    [threads, ri],
+  );
+
   const acted = useMemo(
     () => [...(state?.acted ?? []), ...session],
     [state, session],
@@ -358,7 +390,11 @@ export default function Page() {
           kind: item.kind,
           date: item.date,
           slot: item.slot,
-          action,
+          // "done" means the tab opened; the server records it as `opened` and
+          // the reconciler promotes it to `posted` once dev.to shows the comment.
+          action: action === "done" ? "open" : action,
+          // The edited text, so the ledger carries what was pasted, not the draft.
+          text: item.kind === "comment" && action === "done" ? draft : null,
         }),
       });
       const j = await r.json().catch(() => ({ ok: false }));
@@ -819,6 +855,7 @@ export default function Page() {
             onRetry={refreshThreads}
             focused={focus === "replies"}
             onFocus={() => setFocus("replies")}
+            onMark={markThread}
             onJump={(n) => {
               setRi(n);
               // Load that thread's draft, or clear the box — carrying the

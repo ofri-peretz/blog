@@ -68,7 +68,26 @@ export function replyDrafts(): ReplyDraft[] {
 }
 
 export type ActionKind = "comment" | "reaction";
-export type ItemStatus = "pending" | "reminded" | "posted" | "skipped";
+/**
+ * `opened` is what a click actually proves: the tab opened and the draft went
+ * to the clipboard. `posted` is reserved for a reply the reconciler has SEEN on
+ * dev.to (or an explicit human override). `expired` is the reconciler giving
+ * up after 48 h with a reason. Before this split, `posted` meant "opened", and
+ * every conversion number downstream was built on that.
+ */
+export type ItemStatus =
+  | "pending"
+  | "reminded"
+  | "opened"
+  | "posted"
+  | "skipped"
+  | "expired";
+export type ActAction = "open" | "skip" | "posted";
+
+/** What an action does to a status. Pure, so the selfcheck can pin it. */
+export function nextStatus(action: ActAction): ItemStatus {
+  return action === "skip" ? "skipped" : action === "posted" ? "posted" : "opened";
+}
 
 export interface Article {
   id: number;
@@ -87,15 +106,30 @@ export interface Item {
   comment?: string;
   category?: string;
   status: ItemStatus;
+  /** The exact text at click time — the ledger records what was sent, not what was drafted. */
+  sent_text?: string | null;
+  /** Set only by the reconciler in agents/footprint, never by this app. */
+  verified_at?: string | null;
+  /** From the generator: why this item was proposed (graph-aware discovery). */
+  why?: string | null;
+  relevance?: "high" | "medium" | "low" | null;
+  alt_comment?: string | null;
 }
 
 /** CST day key, matching `todayCST()` in _engage-lib so both agree on "today". */
-export function todayCST(): string {
-  return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/Chicago" }),
-  )
-    .toISOString()
-    .slice(0, 10);
+export function todayCST(now: Date = new Date()): string {
+  // Format the wall-clock date in Chicago directly. The previous shape parsed a
+  // Chicago-local string back into a Date in the MACHINE zone and then took
+  // the UTC date of that, so after 19:00 CDT "today" was tomorrow — and
+  // disagreed with the generator in agents/_engage-lib.ts, which uses this
+  // same Intl form. Two definitions of "today" over one queue directory is
+  // how an action lands in a file the other side is not reading.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
 }
 
 function readQueueFile(date: string): any | null {
@@ -118,6 +152,11 @@ function toItems(q: any, date: string): Item[] {
     tldr: d.tldr,
     comment: d.comment,
     status: d.status,
+    sent_text: d.sent_text ?? null,
+    verified_at: d.verified_at ?? null,
+    why: d.why ?? null,
+    relevance: d.relevance ?? null,
+    alt_comment: d.alt_comment ?? null,
   }));
   const reactions: Item[] = (q.reactions ?? []).map((r: any) => ({
     kind: "reaction" as const,
@@ -126,6 +165,7 @@ function toItems(q: any, date: string): Item[] {
     article: r.article,
     category: r.category,
     status: r.status,
+    why: r.why ?? null,
   }));
   return [...drafts, ...reactions];
 }
@@ -191,7 +231,7 @@ export function stream(limit = 50): Item[] {
 export function everActedArticleIds(): Set<number> {
   return new Set(
     allItems()
-      .filter((i) => i.status === "posted")
+      .filter((i) => i.status === "posted" || i.status === "opened")
       .map((i) => i.article.id),
   );
 }
@@ -208,7 +248,8 @@ export function recordAction(
   kind: ActionKind,
   date: string,
   slot: number,
-  action: "done" | "skip",
+  action: ActAction,
+  text?: string | null,
 ): { ok: boolean; error?: string } {
   const p = join(QUEUE_DIR, `${date}.json`);
   const q = readQueueFile(date);
@@ -216,8 +257,13 @@ export function recordAction(
   const list = kind === "reaction" ? (q.reactions ?? []) : (q.drafts ?? []);
   const item = list.find((i: any) => i.slot === slot);
   if (!item) return { ok: false, error: `no ${kind} at slot ${slot}` };
-  item.status = action === "skip" ? "skipped" : "posted";
+  item.status = nextStatus(action);
   item.posted_at = new Date().toISOString();
+  if (kind === "comment" && typeof text === "string") item.sent_text = text;
+  // Reactions cannot be read back through the API, so a reaction click is the
+  // honest ceiling of verification: it goes straight to posted.
+  if (kind === "reaction" && action === "open") item.status = "posted";
+  if (action === "posted") item.verified_at = new Date().toISOString();
   writeFileSync(p, JSON.stringify(q, null, 2) + "\n");
   return { ok: true };
 }

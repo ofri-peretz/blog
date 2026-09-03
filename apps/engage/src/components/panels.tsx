@@ -262,6 +262,7 @@ export function Threads({
   focused = true,
   onFocus,
   onJump,
+  onMark,
 }: {
   threads: Thread[];
   i: number;
@@ -276,6 +277,12 @@ export function Threads({
   onFocus?: () => void;
   /** Jump straight to a thread instead of stepping to it. */
   onJump?: (index: number) => void;
+  /**
+   * Mark a row handled without making it the current card. "replied" is for a
+   * reply you already posted; the server keeps it visible as `sendFailed`
+   * until dev.to shows the reply, so a mark that did not land cannot hide.
+   */
+  onMark?: (index: number, action: "done" | "skip") => void;
 }) {
   const t = threads[i];
   if (!t)
@@ -444,10 +451,10 @@ export function Threads({
           </div>
           <ul className="flex flex-col gap-0.5">
             {threads.map((x, n) => (
-              <li key={x.commentId}>
+              <li key={x.commentId} className="flex items-center gap-1">
                 <button
                   onClick={() => onJump(n)}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[12px] ${
+                  className={`flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1 text-left text-[12px] ${
                     n === i
                       ? "bg-[var(--primary)]/12 text-[var(--foreground)]"
                       : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40"
@@ -480,6 +487,26 @@ export function Threads({
                     </span>
                   )}
                 </button>
+                {onMark && !x.authorGone && (
+                  <>
+                    <button
+                      onClick={() => onMark(n, "done")}
+                      title="I already replied to this on dev.to"
+                      aria-label={`mark @${x.author} replied`}
+                      className="shrink-0 rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--success)] hover:bg-[var(--muted)]/40"
+                    >
+                      ✓ replied
+                    </button>
+                    <button
+                      onClick={() => onMark(n, "skip")}
+                      title="Skip — does not deserve a reply"
+                      aria-label={`skip @${x.author}`}
+                      className="shrink-0 rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40"
+                    >
+                      skip
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>
