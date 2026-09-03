@@ -513,6 +513,9 @@ export default function Page() {
           <Link href="/rules" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             rules →
           </Link>
+          <Link href="/customers" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
+            customers →
+          </Link>
         </div>
       </header>
 
