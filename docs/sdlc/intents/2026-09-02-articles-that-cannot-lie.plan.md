@@ -12,14 +12,18 @@ Intent: [`2026-09-02-articles-that-cannot-lie.intent.md`](./2026-09-02-articles-
 
 | Claim | Value | Source | Read on |
 |---|---|---|---|
-| Fenced code blocks in the corpus | **655** | fence count ÷ 2 over `content/articles/*.md` | 2026-09-02 |
+| Fenced code blocks in the corpus | 655 | fence parse over `content/articles/*.md` | 2026-09-02 |
+| …that are JS/TS, i.e. **lintable** | **393** | same parse, by info string | 2026-09-02 |
 | Articles | 91 | same | 2026-09-02 |
 | Blocks whose diagnostics are verified | **0** | nothing reads them | 2026-09-02 |
 | Browser Linter bundle, already shipped | 362 KB brotli | `measured-claims-lock` | 2026-09-02 |
 | Articles embedding a live Linter | 3 | `lint-embeds.ts` | 2026-09-02 |
 | Known past claim errors | export shape, rule counts, "taint" | prior findings | 2026-09-02 |
 
-655 checkable claims, zero checked, and a Linter already paid for.
+**393 is the number that matters, not 655.** The rest are bash (143), text
+(90), yaml, json and sql — they make no claim a linter could settle. Quoting
+655 as the checkable surface would overstate it by 67%, and this plan's own
+intent is about claims outrunning their evidence.
 
 ## Approach
 
@@ -85,3 +89,32 @@ disagrees with its code.
 - **The checker becomes a second, worse test suite.** It asserts one thing:
   does this rule fire on this code. Anything more belongs in the plugins' own
   tests.
+
+
+---
+
+## Outcome (2026-09-02, steps 1-2)
+
+Built and proven. `scripts/verify-code-claims.mjs` parses `lint:pkg/rule` (and
+`lint:!pkg/rule`) from the fence, runs `Linter.verify()` with that plugin, and
+asserts firing — not positions, so prose edits above a block cannot break it.
+
+Annotated the vulnerable/fixed pair in the JWT article. Both verify:
+
+    ✓ :27  jwt/no-algorithm-none fired 1x
+    ✓ :89  jwt/no-algorithm-none correctly silent
+
+**Seen failing in all four modes**, each with a distinct message: swapped
+claim, non-existent rule (`renamed or removed?`), uninstalled plugin, and a
+`lint:` claim on a non-lintable fence. The last is the gate the plan demanded —
+a non-lintable block is rejected loudly rather than skipped, because a skipped
+check that reads like a passed one is this repo's recurring defect.
+
+### Found while annotating, not yet resolved
+
+The article installs `eslint-plugin-jwt-security`; this workspace devDepends on
+`eslint-plugin-jwt`. **Both exist on npm** — 3.2.0 and 2.2.14 respectively — so
+the article is likely correct and the workspace pin is the stale one. That has
+a bearing on every article's install block and belongs to whichever intent owns
+the rename, not this one. Recorded here because the checker surfaced it on its
+first real use, which is the argument for the checker.
