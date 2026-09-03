@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-02-diagnostics-link-home
 opened: 2026-09-02
-status: open
+status: withdrawn
 ---
 
 # Intent: the tool runs in thousands of repos and never points home
@@ -67,3 +67,41 @@ the question the page answers.
 - Not shipping URLs before the redirect contract exists. Published packages
   cannot be edited after the fact, which makes this the one place where getting
   it right beats getting it soon.
+
+
+---
+
+## WITHDRAWN, 2026-09-02 — the premise was false
+
+**All 503 of 503 rules already carry `meta.docs.url`.** Every diagnostic this
+ecosystem prints already links to
+`https://eslint.interlace.tools/docs/security/<plugin>/rules/<rule>`.
+
+The intent claimed "zero of 102 rule sources set `meta.docs.url`". Both numbers
+were wrong and for the same reason: I grepped rule **source files** for a
+literal `docs.url`, and the URL is not written there. It is injected centrally
+by `rule-creator.ts:280` — `docs: { ...meta.docs, url: urlCreator(name) }` —
+so no rule file contains the string and every rule ends up with the field.
+
+The `102` was a second error stacked on the first: it counted files matching
+the flat glob `packages/*/src/rules/*.ts`, while 57 packages have a rules
+directory and the runtime rule count is 503.
+
+Review caught the "sampled" hedge in the plan and asked which packages it
+covered. Answering that question is what exposed the whole thing.
+
+### What survives, and it is small
+
+The URLs land on prose. The residual idea — that a developer arriving from a
+diagnostic should meet a **running reproduction** rather than a description —
+is still interesting, but it is a change to the docs site, not this blog, and
+it is a fraction of what this intent claimed. It gets its own intent, in the
+right repo, if it earns one.
+
+### The lesson, which is not new here
+
+Grepping source for a value that a factory injects finds nothing and proves
+nothing. That is the sixth measurement error in this directory and the same
+shape as all five before it: **a proxy standing in for the thing itself.** The
+runtime answer — `require` the package and read `meta.docs.url` — was three
+lines away the whole time.

@@ -12,12 +12,13 @@ Intent: [`2026-09-02-articles-that-cannot-lie.intent.md`](./2026-09-02-articles-
 
 | Claim | Value | Source | Read on |
 |---|---|---|---|
-| Fenced code blocks in the corpus | 655 | fence parse over `content/articles/*.md` | 2026-09-02 |
-| …that are JS/TS, i.e. **lintable** | **393** | same parse, by info string | 2026-09-02 |
+| Fenced code blocks in the corpus | 655 | `collectAllFences()` in `scripts/verify-code-claims.mjs` | 2026-09-02 |
+| …that are JS/TS, i.e. **lintable** | **393** | same parser, counting JS/TS info strings | 2026-09-02 |
 | Articles | 91 | same | 2026-09-02 |
-| Blocks whose diagnostics are verified | **0** | nothing reads them | 2026-09-02 |
+| Blocks whose diagnostics are verified | **0** at open, **2** now | `node apps/blog/scripts/verify-code-claims.mjs` | 2026-09-02 |
 | Browser Linter bundle, already shipped | 362 KB brotli | `measured-claims-lock` | 2026-09-02 |
 | Articles embedding a live Linter | 3 | `lint-embeds.ts` | 2026-09-02 |
+| Non-lintable blocks (the untouched remainder) | **262** | 655 − 393 | 2026-09-02 |
 | Known past claim errors | export shape, rule counts, "taint" | prior findings | 2026-09-02 |
 
 **393 is the number that matters, not 655.** The rest are bash (143), text

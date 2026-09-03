@@ -12,11 +12,13 @@ Intent: [`2026-09-02-your-code-your-tab.intent.md`](./2026-09-02-your-code-your-
 
 | Claim | Value | Source | Read on |
 |---|---|---|---|
-| Playground editor is writable | yes — `useState(initialCode)` | `lint-playground.tsx:106` | 2026-09-02 |
+| Playground editor is writable | yes — `useState(initialCode)` | the `LintPlayground` component in `components/ui/lint-playground.tsx` | 2026-09-02 |
 | Samples offered | 3, curated | `lint-embeds.ts` | 2026-09-02 |
 | Bundle | 362 KB brotli, 3 plugins | `measured-claims-lock` | 2026-09-02 |
 | `article:playground_open` events, ever | **0** | PostHog | 2026-09-02 |
 | Backend involved in linting | none | it runs in the tab | 2026-09-02 |
+| Rules across all plugins | **503** | `require()` each package, count `Object.keys(rules)` | 2026-09-02 |
+| ~~Rule count~~ | ~~397~~ STALE | a remembered figure; the runtime count is 503 | 2026-09-02 |
 
 The capability exists. The invitation and the promise do not.
 
@@ -39,7 +41,7 @@ stay empty hands them the check. That sentence is the feature.
 Rejected: **a privacy policy paragraph.** Policies are promises about the
 future; an empty network tab is an observation about the present.
 
-Rejected: **loading all 397 rules eagerly** to make the demo impressive. The
+Rejected: **loading all 503 rules eagerly** to make the demo impressive. The
 size claim is already gated by `measured-claims`, and a page that takes four
 seconds to become useful has lost the reader it was built for.
 

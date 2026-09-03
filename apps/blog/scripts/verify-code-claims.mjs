@@ -14,9 +14,11 @@
  *     ```ts lint:node-security/detect-child-process
  *     ```js lint:!jwt/no-none-algorithm      <- claims it reports NOTHING
  *
- * No annotation, no check. That keeps the ~600 config, terminal and JSON
- * blocks untouched and means nobody has to learn anything to write an
- * ordinary block.
+ * No annotation, no check. That keeps the 262 non-lintable blocks — bash,
+ * text, yaml, json, sql — untouched, and means nobody has to learn anything to
+ * write an ordinary block. (262, not "~600": 655 total minus 393 JS/TS. The
+ * first draft of this comment said ~600 while the companion test said ~260,
+ * which is a file about unchecked claims carrying two of its own.)
  *
  * ASSERTS FIRING, NOT POSITIONS. Line numbers move whenever surrounding prose
  * is edited, and a checker that fails on unrelated edits gets switched off

@@ -6,14 +6,22 @@ opened: 2026-09-02
 
 # Plan: settle the URL contract before a single one ships
 
+> **WITHDRAWN 2026-09-02 — the premise was false.** All 503 of 503 rules
+> already carry `meta.docs.url`. This plan is kept, not deleted, because its
+> ground-truth table contains the error and deleting it would remove the
+> evidence. Every number in the table below marked WRONG is preserved
+> deliberately. See the intent for the correction.
+
 Intent: [`2026-09-02-diagnostics-link-home.intent.md`](./2026-09-02-diagnostics-link-home.intent.md)
 
 ## Ground truth
 
 | Claim | Value | Source | Read on |
 |---|---|---|---|
-| Rules with a `docs.url` | **0** | grep over `packages/*/src/rules/*.ts` | 2026-09-02 |
-| Rule source files | 102 in the sampled packages | same | 2026-09-02 |
+| ~~Rules with a `docs.url`~~ | ~~0~~ **WRONG — it is 503 of 503** | grepped SOURCE for a literal the factory injects | 2026-09-02 |
+| Rules with a `docs.url`, measured at runtime | **503 of 503** | require each package, read `meta.docs.url` | 2026-09-02 |
+| ~~Rule source files~~ | ~~102 in the sampled packages~~ WRONG | flat glob missed nested rules; 57 packages have a rules dir | 2026-09-02 |
+| Rules, counted at runtime | **503** across 19 loadable packages | require each package | 2026-09-02 |
 | Blog pageviews | ~323 / month | analytics | 2026-08 |
 | Repositories running the plugins | thousands | outreach database | 2026-08 |
 
