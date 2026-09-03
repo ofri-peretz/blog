@@ -44,6 +44,13 @@ const ROUTES = [
    */
   { path: '/terminal', mustContain: ['Terminal'] },
   { path: '/conquest', mustContain: ['Conquest'] },
+  /**
+   * The customer monitor was drafted in the forked palette before the DS
+   * landed and ported afterwards, so it is the third page this list exists
+   * for. Its loading shell is the adoption `<StatStrip loading>`, which
+   * reserves the strip's geometry as a `stat-strip` skeleton.
+   */
+  { path: '/customers', mustContain: ['Customers', 'data-variant="stat-strip"'] },
 ];
 
 /**
