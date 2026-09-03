@@ -14,7 +14,7 @@ Intent: [`2026-09-02-your-code-your-tab.intent.md`](./2026-09-02-your-code-your-
 |---|---|---|---|
 | Playground editor is writable | yes — `useState(initialCode)` | the `LintPlayground` component in `components/ui/lint-playground.tsx` | 2026-09-02 |
 | Samples offered | 3, curated | `lint-embeds.ts` | 2026-09-02 |
-| Bundle | 362 KB brotli, 3 plugins | `measured-claims-lock` | 2026-09-02 |
+| Bundle | **459 KB** CDN-served, 3 plugins (370,746 local `-q 11`) | `measured-claims-lock` | 2026-09-03 |
 | `article:playground_open` events, ever | **0** | PostHog | 2026-09-02 |
 | Backend involved in linting | none | it runs in the tab | 2026-09-02 |
 | Rules across all plugins | **503** | `require()` each package, count `Object.keys(rules)` | 2026-09-02 |

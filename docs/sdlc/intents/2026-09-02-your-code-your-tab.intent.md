@@ -39,7 +39,7 @@ which every measurement we have says is currently not happening.
   failed regardless of intent.
 - The claim must be checkable by a reader — a network tab that stays empty is
   the proof, and the page should say where to look.
-- Bundle cost is already 362 KB brotli for three plugins. The full set is
+- Bundle cost is already 459 KB as the CDN sends it, for three plugins. The full set is
   larger; loading must stay lazy and the number stays quoted honestly, as
   `measured-claims` enforces.
 - No new backend. The moment there is a server, the promise gets complicated.

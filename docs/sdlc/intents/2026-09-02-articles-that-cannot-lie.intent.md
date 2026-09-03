@@ -29,7 +29,7 @@ Applying that to prose about linting — using the linter — is not a clever tr
 it is the minimum consistency the site owes its own thesis.
 
 The capability is already paid for. `eslint-in-the-browser` bundles a real
-Linter with the published plugins at 362 KB brotli, and three articles embed
+Linter with the published plugins at 459 KB CDN-served, and three articles embed
 it. Nothing new has to be invented: the same `Linter.verify()` that powers the
 playground can run over the corpus in CI.
 
