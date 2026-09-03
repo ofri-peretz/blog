@@ -76,16 +76,16 @@ Dev.to API directly (commands in the plan).
 
 All counts, from files and tables this repo owns, read weekly. Eight-week targets.
 
-| Signal | Now | Target | Tier |
-| --- | --- | --- | --- |
-| Mutual ties | 1 | ≥ 15 | 4 |
-| Distinct authors who commented on us, 90-day window | 18 | ≥ 40 | 4 |
-| Core reach: mutual ties with top-40 non-staff nodes | 0 | ≥ 5 | 4 |
-| Rank among non-staff nodes, same sample policy | ~17 | top 10 | 4 |
-| Replies waiting, daily check | 35 | ≤ 5 on 12 of 14 days | 4 |
-| Median hours from their comment to our reply | unmeasured | < 24 | 4 |
-| Comment yield, articles published in the last 30 days | 0.8 / article lifetime | ≥ 1.5 / article in first 14 days | 4 |
-| Daily session wall time, first action to list clear | unmeasured | < 10 min median | 4 |
+| Signal                                                | Now                    | Target                           | Tier |
+| ----------------------------------------------------- | ---------------------- | -------------------------------- | ---- |
+| Mutual ties                                           | 1                      | ≥ 15                             | 4    |
+| Distinct authors who commented on us, 90-day window   | 18                     | ≥ 40                             | 4    |
+| Core reach: mutual ties with top-40 non-staff nodes   | 0                      | ≥ 5                              | 4    |
+| Rank among non-staff nodes, same sample policy        | ~17                    | top 10                           | 4    |
+| Replies waiting, daily check                          | 35                     | ≤ 5 on 12 of 14 days             | 4    |
+| Median hours from their comment to our reply          | unmeasured             | < 24                             | 4    |
+| Comment yield, articles published in the last 30 days | 0.8 / article lifetime | ≥ 1.5 / article in first 14 days | 4    |
+| Daily session wall time, first action to list clear   | unmeasured             | < 10 min median                  | 4    |
 
 If mutual ties and core reach move but rank does not, the sample policy is the
 first suspect, not the strategy. If replies waiting drops but nothing else moves,

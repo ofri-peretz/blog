@@ -13,35 +13,35 @@ Intent: [`2026-09-02-engage-truth-and-reach.intent.md`](./2026-09-02-engage-trut
 Read on 2026-09-02 against the app started from this checkout (`apps/engage`,
 `npm run dev`) and the data in `~/repos/ofriperetz.dev/agents/footprint`.
 
-| Claim | Value | Source |
-| --- | --- | --- |
-| Open items in the stream | 50 | `curl :7777/api/state` → `items.length` |
-| Ever acted / ever drafted | 106 / — | same, `totals` |
-| Replies waiting, drafted | 32, 0 undrafted | `curl :7777/api/threads` |
-| Last action in the control room's ledger | 2026-08-26T22:08Z | `sqlite3 engage.db "select max(at) from actions"` |
-| Ledger actions, done / skip | 143 / 18 | `sqlite3 engage.db "select action,count(*) from actions group by action"` |
-| Items marked today, via | 4, `engage-hub` (legacy) | last entries of `.devto-engaged.json`; queue `posted_at` 2026-09-03T03:29–03:30Z |
-| Comment conversion, all queue days | 82 posted / 125 drafted (66%); 31 `reminded` + 7 `pending` never resolved | python over `engagement/queue/*.json` |
-| Reaction conversion | 20 / 49 (41%); 28 never resolved | same |
-| `/api/state` wall time, cold / warm | 11.4 s / 13.9 s | `curl -w %{time_total}` twice |
-| `/api/people`, `/api/board`, `/api/network` cold | 15.5 s, 15.7 s, 147.8 s | same |
-| `releaseQueue()` uses `lib/cache.ts` | no | `grep -n cache lib/footprint.ts` |
-| App `todayCST()` on 2026-09-02 22:30 CDT | `2026-09-03` | `/api/state` → `date`; agents' `_engage-lib.ts` gives `2026-09-02` |
-| `act` request body fields | `kind, date, slot, action` — no text | `src/app/api/act/route.ts` |
-| `act("done")` sets | `posted`, immediately | `lib/footprint.ts` `recordAction` |
-| Digest buckets | `posted, skipped, failed, pending` only | `agents/footprint/scripts/engage-digest.ts:35-42` |
-| launchd entry for the app | none | `ls agents/footprint/launchd` |
-| Tests under `apps/engage` | `lib/detect.selfcheck.ts` only | `find apps/engage -name '*test*' -o -name '*selfcheck*'` |
-| `.claude/launch.json` in this repo | absent (PR #142 says to use it) | `ls .claude` |
-| Local `main` vs `origin/main` on `apps/engage`, before this session | 3 commits behind (#147, #157, #153) | `git log main..origin/main -- apps/engage`; fast-forwarded 2026-09-02 |
-| Home-page sections on current `main` | 21, page height 16,013 px | DOM query over `h2,h3` |
-| DEV community network renders | yes, 91 SVG nodes / 389 edges | DOM query on `[data-slot="network-graph"]` |
-| Stalled-feed alerts at the top of the page | 38, all `npm.downloads.*` | `/` page text |
-| npm series lag vs stall budget | asOf 2026-08-31 on 09-02 (2-day source lag) vs `staleAfterHours: 36` | `/api/series?ids=npm.downloads.total`; `lib/series-npm.ts:92` |
-| Daily impact ingest location | moved to the public `impact-ingest` repo on 2026-08-09 | `git log -- .github/workflows/daily-impact-ingest.yml` in `agents` |
-| Unmerged engage work on `fix/exclude-automated-traffic` | 15 commits, +2,516 lines, 5 files: `/customers` page, `/api/prs`, `/api/alerts`, `/api/customers`, `scripts/smoke.mjs` | `git log origin/main..origin/fix/exclude-automated-traffic -- apps/engage` |
-| Merge dry-run of that branch onto `main` | 1 conflict, `src/app/page.tsx` | `git merge-tree --write-tree origin/main origin/fix/exclude-automated-traffic` |
-| `com.ofri.datasync` launchd job | loaded, last exit 127 | `launchctl list \| grep ofri` |
+| Claim                                                               | Value                                                                                                                  | Source                                                                           | Read on    |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------- |
+| Open items in the stream                                            | 50                                                                                                                     | `curl :7777/api/state` → `items.length`                                          | 2026-09-02 |
+| Ever acted / ever drafted                                           | 106 / —                                                                                                                | same, `totals`                                                                   | 2026-09-02 |
+| Replies waiting, drafted                                            | 32, 0 undrafted                                                                                                        | `curl :7777/api/threads`                                                         | 2026-09-02 |
+| Last action in the control room's ledger                            | 2026-08-26T22:08Z                                                                                                      | `sqlite3 engage.db "select max(at) from actions"`                                | 2026-09-02 |
+| Ledger actions, done / skip                                         | 143 / 18                                                                                                               | `sqlite3 engage.db "select action,count(*) from actions group by action"`        | 2026-09-02 |
+| Items marked today, via                                             | 4, `engage-hub` (legacy)                                                                                               | last entries of `.devto-engaged.json`; queue `posted_at` 2026-09-03T03:29–03:30Z | 2026-09-02 |
+| Comment conversion, all queue days                                  | 82 posted / 125 drafted (66%); 31 `reminded` + 7 `pending` never resolved                                              | python over `engagement/queue/*.json`                                            | 2026-09-02 |
+| Reaction conversion                                                 | 20 / 49 (41%); 28 never resolved                                                                                       | same                                                                             | 2026-09-02 |
+| `/api/state` wall time, cold / warm                                 | 11.4 s / 13.9 s                                                                                                        | `curl -w %{time_total}` twice                                                    | 2026-09-02 |
+| `/api/people`, `/api/board`, `/api/network` cold                    | 15.5 s, 15.7 s, 147.8 s                                                                                                | same                                                                             | 2026-09-02 |
+| `releaseQueue()` uses `lib/cache.ts`                                | no                                                                                                                     | `grep -n cache lib/footprint.ts`                                                 | 2026-09-02 |
+| App `todayCST()` on 2026-09-02 22:30 CDT                            | `2026-09-03`                                                                                                           | `/api/state` → `date`; agents' `_engage-lib.ts` gives `2026-09-02`               | 2026-09-02 |
+| `act` request body fields                                           | `kind, date, slot, action` — no text                                                                                   | `src/app/api/act/route.ts`                                                       | 2026-09-02 |
+| `act("done")` sets                                                  | `posted`, immediately                                                                                                  | `lib/footprint.ts` `recordAction`                                                | 2026-09-02 |
+| Digest buckets                                                      | `posted, skipped, failed, pending` only                                                                                | `agents/footprint/scripts/engage-digest.ts:35-42`                                | 2026-09-02 |
+| launchd entry for the app                                           | none                                                                                                                   | `ls agents/footprint/launchd`                                                    | 2026-09-02 |
+| Tests under `apps/engage`                                           | `lib/detect.selfcheck.ts` only                                                                                         | `find apps/engage -name '*test*' -o -name '*selfcheck*'`                         | 2026-09-02 |
+| `.claude/launch.json` in this repo                                  | absent (PR #142 says to use it)                                                                                        | `ls .claude`                                                                     | 2026-09-02 |
+| Local `main` vs `origin/main` on `apps/engage`, before this session | 3 commits behind (#147, #157, #153)                                                                                    | `git log main..origin/main -- apps/engage`; fast-forwarded 2026-09-02            | 2026-09-02 |
+| Home-page sections on current `main`                                | 21, page height 16,013 px                                                                                              | DOM query over `h2,h3`                                                           | 2026-09-02 |
+| DEV community network renders                                       | yes, 91 SVG nodes / 389 edges                                                                                          | DOM query on `[data-slot="network-graph"]`                                       | 2026-09-02 |
+| Stalled-feed alerts at the top of the page                          | 38, all `npm.downloads.*`                                                                                              | `/` page text                                                                    | 2026-09-02 |
+| npm series lag vs stall budget                                      | asOf 2026-08-31 on 09-02 (2-day source lag) vs `staleAfterHours: 36`                                                   | `/api/series?ids=npm.downloads.total`; `lib/series-npm.ts:92`                    | 2026-09-02 |
+| Daily impact ingest location                                        | moved to the public `impact-ingest` repo on 2026-08-09                                                                 | `git log -- .github/workflows/daily-impact-ingest.yml` in `agents`               | 2026-09-02 |
+| Unmerged engage work on `fix/exclude-automated-traffic`             | 15 commits, +2,516 lines, 5 files: `/customers` page, `/api/prs`, `/api/alerts`, `/api/customers`, `scripts/smoke.mjs` | `git log origin/main..origin/fix/exclude-automated-traffic -- apps/engage`       | 2026-09-02 |
+| Merge dry-run of that branch onto `main`                            | 1 conflict, `src/app/page.tsx`                                                                                         | `git merge-tree --write-tree origin/main origin/fix/exclude-automated-traffic`   | 2026-09-02 |
+| `com.ofri.datasync` launchd job                                     | loaded, last exit 127                                                                                                  | `launchctl list \| grep ofri`                                                    |
 
 ## Approach
 
@@ -49,7 +49,7 @@ Fix truth before reach, and delete before adding. The legacy hub is the first
 thing to go: two surfaces writing two ledgers means every number on the home
 page is wrong in a way nobody can see.
 
-**Rejected:** a reconciler that reads the Dev.to comments API *on click*. Same
+**Rejected:** a reconciler that reads the Dev.to comments API _on click_. Same
 failure as drafting on click, which the app already documents: latency in the
 flow and a hard dependency at the worst moment. The reconciler runs from the
 existing five-minute launchd loop in `agents`, where the queue generator and the
@@ -73,7 +73,7 @@ depend on A.
    only ledger, `.devto-engaged.json`, stays read-only history.
 2. Add `.claude/launch.json` here with the `engage` config PR #142 describes.
 3. Fix `todayCST()` in `lib/footprint.ts` to the `Intl.DateTimeFormat("en-CA",
-   {timeZone:"America/Chicago"})` form the generator uses. Lock: a test that pins
+{timeZone:"America/Chicago"})` form the generator uses. Lock: a test that pins
    22:30 CDT to the same calendar day.
 4. `engage-digest.ts` counts `reminded`, `opened`, `expired`; the row sums to the total.
 
@@ -85,7 +85,7 @@ depend on A.
    `engage-run.sh auto` during business hours: for each `opened` comment, read
    `/api/comments?a_id=`, look for `ofri-peretz` newer than `posted_at`. Found →
    `posted` + `verified_at`; not found after 48 h → `expired`, reason `not
-   observed`. Reactions cannot be read back; they go `opened → posted` on click
+observed`. Reactions cannot be read back; they go `opened → posted` on click
    and the UI says so. On a 429, stop; never expire on a failed read.
 7. Run the reconciler once over the 66-item backlog. Partnership table and
    gauges read `posted` only, with an "opened, unverified" count beside it.

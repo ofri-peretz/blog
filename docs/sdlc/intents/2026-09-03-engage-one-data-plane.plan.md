@@ -10,15 +10,15 @@ Intent: [`2026-09-03-engage-one-data-plane.intent.md`](./2026-09-03-engage-one-d
 
 ## Ground truth
 
-| Claim | Value | Source (2026-09-03) |
-| --- | --- | --- |
-| Live checkout branch and drift | `chore/content-focus-h2-2026`; 49 ahead / 27 behind on `footprint/scripts`; 392 uncommitted lines in 4 engage files; 77 untracked | `git log --oneline origin/main..HEAD -- footprint/scripts`, `git status --short` |
-| Dry-run merge of main | 15 conflicts | `git merge-tree --write-tree HEAD origin/main` |
-| Data root in the shared lib | `FOOTPRINT_ROOT = join(__dirname, "..")` | `footprint/scripts/_engage-lib.ts:20` |
-| Loop entry | `engage-run.sh` hardcodes `FOOTPRINT=/Users/ofri/repos/ofriperetz.dev/agents/footprint`, `cd`s there, runs `scripts/*.ts` relative | `engage-run.sh` |
-| Self-heal on main exists | `git pull --ff-only` when parked on clean `main` | PR #143 body |
-| launchd jobs loaded | `com.ofri.engage` (loop, every 5 min), `com.ofri.engage-app` (keepalive), plus publish-next, adopters, social-watcher, intel-enrich, datasync (exit 127) | `launchctl list \| grep ofri` |
-| Control room data root | `FOOTPRINT_ROOT` env, else `~/repos/ofriperetz.dev/agents/footprint` | `apps/engage/src/lib/footprint.ts:16` |
+| Claim                          | Value                                                                                                                                                    | Source                                                                           | Read on    |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------- |
+| Live checkout branch and drift | `chore/content-focus-h2-2026`; 49 ahead / 27 behind on `footprint/scripts`; 392 uncommitted lines in 4 engage files; 77 untracked                        | `git log --oneline origin/main..HEAD -- footprint/scripts`, `git status --short` | 2026-09-03 |
+| Dry-run merge of main          | 15 conflicts                                                                                                                                             | `git merge-tree --write-tree HEAD origin/main`                                   | 2026-09-03 |
+| Data root in the shared lib    | `FOOTPRINT_ROOT = join(__dirname, "..")`                                                                                                                 | `footprint/scripts/_engage-lib.ts:20`                                            | 2026-09-03 |
+| Loop entry                     | `engage-run.sh` hardcodes `FOOTPRINT=/Users/ofri/repos/ofriperetz.dev/agents/footprint`, `cd`s there, runs `scripts/*.ts` relative                       | `engage-run.sh`                                                                  | 2026-09-03 |
+| Self-heal on main exists       | `git pull --ff-only` when parked on clean `main`                                                                                                         | PR #143 body                                                                     | 2026-09-03 |
+| launchd jobs loaded            | `com.ofri.engage` (loop, every 5 min), `com.ofri.engage-app` (keepalive), plus publish-next, adopters, social-watcher, intel-enrich, datasync (exit 127) | `launchctl list \| grep ofri`                                                    |
+| Control room data root         | `FOOTPRINT_ROOT` env, else `~/repos/ofriperetz.dev/agents/footprint`                                                                                     | `apps/engage/src/lib/footprint.ts:16`                                            | 2026-09-03 |
 
 ## Approach
 

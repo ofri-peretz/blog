@@ -53,13 +53,13 @@ Read on 2026-09-03 while executing the two previous intents.
 
 ## How we will know it worked
 
-| Signal | Now | Target |
-| --- | --- | --- |
-| Checkout the loop executes from | dirty feature branch | `main`, `git status` clean, self-updating |
-| Overlays needed to activate a merged PR | one per file, by hand | 0 |
-| Engage scripts with a `__dirname`-relative data path outside the shared root | unaudited | 0 (pinned by a selfcheck) |
-| Ledgers written by any running surface | 2 | 1 (`engage.db`) |
-| Processes that can bind :7777 | 2 (app, legacy hub) | 1 |
+| Signal                                                                       | Now                   | Target                                    |
+| ---------------------------------------------------------------------------- | --------------------- | ----------------------------------------- |
+| Checkout the loop executes from                                              | dirty feature branch  | `main`, `git status` clean, self-updating |
+| Overlays needed to activate a merged PR                                      | one per file, by hand | 0                                         |
+| Engage scripts with a `__dirname`-relative data path outside the shared root | unaudited             | 0 (pinned by a selfcheck)                 |
+| Ledgers written by any running surface                                       | 2                     | 1 (`engage.db`)                           |
+| Processes that can bind :7777                                                | 2 (app, legacy hub)   | 1                                         |
 
 ## Not doing
 

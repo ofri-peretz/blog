@@ -10,13 +10,13 @@ Intent: [`2026-09-03-engage-reply-latency.intent.md`](./2026-09-03-engage-reply-
 
 ## Ground truth
 
-| Claim | Value | Source (2026-09-03) |
-| --- | --- | --- |
-| Inbox waiting | 35 (UI), 23 pending drafts, 6 older than 30 days | `/api/threads`, `engage-inbox-notify --dry-run` |
-| Standing latency today | 2,326 h, median over `handledAt` marks | `/api/standing` |
-| Bulk mark | 28 records `sent` with identical `handledAt` 2026-08-10 | `app/api/threads/route.ts` comment |
-| Inbox builder | walks comment trees, keeps only threads with no reply from us | `apps/engage/src/lib/inbox.ts` |
-| Reconciler scope | comment drafts only | `agents/footprint/scripts/engage-reconcile.ts` |
+| Claim                  | Value                                                         | Source                                          | Read on    |
+| ---------------------- | ------------------------------------------------------------- | ----------------------------------------------- | ---------- |
+| Inbox waiting          | 35 (UI), 23 pending drafts, 6 older than 30 days              | `/api/threads`, `engage-inbox-notify --dry-run` | 2026-09-03 |
+| Standing latency today | 2,326 h, median over `handledAt` marks                        | `/api/standing`                                 | 2026-09-03 |
+| Bulk mark              | 28 records `sent` with identical `handledAt` 2026-08-10       | `app/api/threads/route.ts` comment              | 2026-09-03 |
+| Inbox builder          | walks comment trees, keeps only threads with no reply from us | `apps/engage/src/lib/inbox.ts`                  | 2026-09-03 |
+| Reconciler scope       | comment drafts only                                           | `agents/footprint/scripts/engage-reconcile.ts`  | 2026-09-03 |
 
 ## Approach
 

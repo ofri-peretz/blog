@@ -75,16 +75,16 @@ terminal is.
 All Tier-4 operational data, read from files this repo already owns. Counts, not
 rates, except where the denominator is above 100.
 
-| Signal | Source | Now | Counts as evidence |
-| --- | --- | --- | --- |
-| Replies waiting, undrafted or unanswered | `GET /api/threads` | 32 | ≤ 5 at any daily check for 14 days |
-| Median hours from their reply to ours | `engage.db` `threads` + reconciler | unmeasured | < 24 h over 30 days |
-| Items in `opened` older than 48 h | reconciler report | n/a (state does not exist) | 0 |
-| Comments verified live vs marked done | reconciler | 0 verified | ≥ 85% of `done` in 4 weeks |
-| Ledgers in use | `.devto-engaged.json` mtime, `engage.db` | 2 | 1 |
-| `GET /api/state` wall time, warm | `curl -w %{time_total}` | 11.4–13.9 s | < 500 ms |
-| App reachable when the Mac is up | healthcheck | no check | 100% of checks, 14 days |
-| Digest columns sum to the queue total | `engage-digest.ts` output | no | every day |
+| Signal                                   | Source                                   | Now                        | Counts as evidence                 |
+| ---------------------------------------- | ---------------------------------------- | -------------------------- | ---------------------------------- |
+| Replies waiting, undrafted or unanswered | `GET /api/threads`                       | 32                         | ≤ 5 at any daily check for 14 days |
+| Median hours from their reply to ours    | `engage.db` `threads` + reconciler       | unmeasured                 | < 24 h over 30 days                |
+| Items in `opened` older than 48 h        | reconciler report                        | n/a (state does not exist) | 0                                  |
+| Comments verified live vs marked done    | reconciler                               | 0 verified                 | ≥ 85% of `done` in 4 weeks         |
+| Ledgers in use                           | `.devto-engaged.json` mtime, `engage.db` | 2                          | 1                                  |
+| `GET /api/state` wall time, warm         | `curl -w %{time_total}`                  | 11.4–13.9 s                | < 500 ms                           |
+| App reachable when the Mac is up         | healthcheck                              | no check                   | 100% of checks, 14 days            |
+| Digest columns sum to the queue total    | `engage-digest.ts` output                | no                         | every day                          |
 
 ## Not doing
 

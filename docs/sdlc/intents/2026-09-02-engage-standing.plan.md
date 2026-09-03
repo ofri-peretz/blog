@@ -15,22 +15,22 @@ marks would measure clicks, not conversations.
 
 Read on 2026-09-02.
 
-| Claim | Value | Source |
-| --- | --- | --- |
-| Our node after a fresh crawl | degree 46, in 38, out 51, mutual `[xulingfeng]`, rank 19 of 1,796 | `curl ':7777/api/network?refresh=1'`, node `ofri-peretz` |
-| Sample size | 219 articles, `fetchedAt` 2026-09-03T04:41Z | same, `sampledArticles` |
-| Top nodes | sloan 429 (staff), sylwia-lask 310 (in 669, out 43, mutual 10), the_nortern_dev 138, marcosomma 93, nazar-boyko 91 | same, sorted by `degree` |
-| Edges into us | 18 distinct authors | same, `edges.filter(to === "ofri-peretz")` |
-| Comments on our articles | 67 on 15 of 85 articles; 20 distinct commenters; top four articles = 40 | Dev.to `/api/articles?username=ofri-peretz` then `/api/comments?a_id=` per article |
-| Replies waiting | 35, oldest 100 d, 0 undrafted | `curl :7777/api/threads` |
-| How the graph counts | `degree` = distinct partners either direction; `mutual` = A→B and B→A both observed; edges point at the article owner | `lib/network.ts:98-123` |
-| Inbound was structurally zero before #153 | `expandTwoHop` filtered `!n.us` | commit 2f4527a message |
-| Discovery today | `pickTags(3)` from `TAG_POOL`, then `fetchTrending(TAGS, {maxAgeDays: 3})` | `agents/footprint/scripts/engage-daily.ts:83,112` |
-| Series spine sources | one: `supabase:creator_daily_metrics`, plus npm and PostHog adapters | `lib/series.ts:62`, `lib/series-npm.ts` |
-| Snapshot table shape | `snapshots(day, followers, articles, reactions, comments, views, at)` | `lib/store.ts:46` |
-| Known cohorts | `forem`, `googleai`, asserted with `verified` flags | `lib/people.ts:22-38` |
-| Control-band file shape in `eslint` | `{id, description, collector, window, minPoints, worse}` per band, deterministic watcher | `eslint/cadence/.agent/control-bands.json` |
-| Followers, 30 days | 1,553 → 1,748 | home page Impact panel |
+| Claim                                     | Value                                                                                                                 | Source                                                                             | Read on    |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
+| Our node after a fresh crawl              | degree 46, in 38, out 51, mutual `[xulingfeng]`, rank 19 of 1,796                                                     | `curl ':7777/api/network?refresh=1'`, node `ofri-peretz`                           | 2026-09-02 |
+| Sample size                               | 219 articles, `fetchedAt` 2026-09-03T04:41Z                                                                           | same, `sampledArticles`                                                            | 2026-09-02 |
+| Top nodes                                 | sloan 429 (staff), sylwia-lask 310 (in 669, out 43, mutual 10), the_nortern_dev 138, marcosomma 93, nazar-boyko 91    | same, sorted by `degree`                                                           | 2026-09-02 |
+| Edges into us                             | 18 distinct authors                                                                                                   | same, `edges.filter(to === "ofri-peretz")`                                         | 2026-09-02 |
+| Comments on our articles                  | 67 on 15 of 85 articles; 20 distinct commenters; top four articles = 40                                               | Dev.to `/api/articles?username=ofri-peretz` then `/api/comments?a_id=` per article | 2026-09-02 |
+| Replies waiting                           | 35, oldest 100 d, 0 undrafted                                                                                         | `curl :7777/api/threads`                                                           | 2026-09-02 |
+| How the graph counts                      | `degree` = distinct partners either direction; `mutual` = A→B and B→A both observed; edges point at the article owner | `lib/network.ts:98-123`                                                            | 2026-09-02 |
+| Inbound was structurally zero before #153 | `expandTwoHop` filtered `!n.us`                                                                                       | commit 2f4527a message                                                             | 2026-09-02 |
+| Discovery today                           | `pickTags(3)` from `TAG_POOL`, then `fetchTrending(TAGS, {maxAgeDays: 3})`                                            | `agents/footprint/scripts/engage-daily.ts:83,112`                                  | 2026-09-02 |
+| Series spine sources                      | one: `supabase:creator_daily_metrics`, plus npm and PostHog adapters                                                  | `lib/series.ts:62`, `lib/series-npm.ts`                                            | 2026-09-02 |
+| Snapshot table shape                      | `snapshots(day, followers, articles, reactions, comments, views, at)`                                                 | `lib/store.ts:46`                                                                  | 2026-09-02 |
+| Known cohorts                             | `forem`, `googleai`, asserted with `verified` flags                                                                   | `lib/people.ts:22-38`                                                              | 2026-09-02 |
+| Control-band file shape in `eslint`       | `{id, description, collector, window, minPoints, worse}` per band, deterministic watcher                              | `eslint/cadence/.agent/control-bands.json`                                         | 2026-09-02 |
+| Followers, 30 days                        | 1,553 → 1,748                                                                                                         | home page Impact panel                                                             | 2026-09-02 |
 
 ## Approach
 
@@ -68,7 +68,7 @@ four weeks of A.
    `reply_latency_h_median`, `comment_yield_14d`, plus `sample_size` and
    `sample_hash` (sha of sorted `sampledIds`).
 2. `store.ts`: table `standing(day PRIMARY KEY, …metrics, sample_size,
-   sample_hash, at)`. Written once per day at the end of a network refresh; a
+sample_hash, at)`. Written once per day at the end of a network refresh; a
    second refresh the same day overwrites.
 3. `lib/series-standing.ts`: source `sqlite:standing`, group "Standing", kind
    `gauge` for ranks and waiting, `cumulative` for mutual and in-authors,

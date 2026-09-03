@@ -39,12 +39,12 @@ fires on it. "Waiting" means what dev.to says is waiting.
 
 ## How we will know it worked
 
-| Signal | Now | Target |
-| --- | --- | --- |
-| Median hours, their comment → our observed reply, last 30 days | unmeasured (marks say 2,326) | < 24 |
-| Replies waiting at the daily check | 23–35 | ≤ 5 on 12 of 14 days |
-| Threads older than 7 days with no reply | 6 older than 30 days | 0 |
-| Answered threads with an observed reply timestamp | 0 | 100% of answered |
+| Signal                                                         | Now                          | Target               |
+| -------------------------------------------------------------- | ---------------------------- | -------------------- |
+| Median hours, their comment → our observed reply, last 30 days | unmeasured (marks say 2,326) | < 24                 |
+| Replies waiting at the daily check                             | 23–35                        | ≤ 5 on 12 of 14 days |
+| Threads older than 7 days with no reply                        | 6 older than 30 days         | 0                    |
+| Answered threads with an observed reply timestamp              | 0                            | 100% of answered     |
 
 ## Not doing
 
