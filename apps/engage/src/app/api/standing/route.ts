@@ -48,7 +48,11 @@ export async function GET(req: Request) {
     threads = inbox.value.threads
       .filter((t) => drafts.get(t.commentId)?.status !== "skipped" && !t.authorGone)
       .map((t) => {
-        const d = drafts.get(t.commentId) as any;
+        // No `as any`: `handledAt` is on ReplyDraft now, so the compiler
+        // checks this rather than trusting it. The cast is what let the field
+        // be written in one route and read in another with nothing verifying
+        // the two agreed. (Review.)
+        const d = drafts.get(t.commentId);
         return { at: t.at, answeredAt: d?.status === "sent" && d.handledAt ? d.handledAt : null };
       });
   } catch (e) {

@@ -55,6 +55,18 @@ export interface ReplyDraft {
   at: string;
   draft?: string | null;
   status: "pending" | "sent" | "skipped";
+  /**
+   * When the draft left `pending` — set by `threads/route.ts` on send or skip.
+   *
+   * Declared here because `standing/route.ts` reads it to compute answer
+   * latency, and it was previously written at runtime and reached through an
+   * `as any`. That works, and it works invisibly: the type checker could not
+   * see the dependency, so renaming the field would have broken the standing
+   * endpoint with no compile error anywhere. (Review.)
+   *
+   * Optional because every draft written before this field existed lacks it.
+   */
+  handledAt?: string;
 }
 
 export function replyDrafts(): ReplyDraft[] {

@@ -66,6 +66,13 @@ export function rankActions(
     else if (!from.has(t.author) && !to.has(t.author)) { score += 1; why.push("new author"); }
     else why.push("keeps a conversation going");
     if (core.has(t.author)) { score += 2; why.push(`core node (top ${coreN})`); }
+    // A direct reply to our own comment is a stronger signal than a top-level
+    // one: they read what we wrote and answered it. `replyToUs` was plumbed
+    // from page.tsx through this interface and then never read — a dead
+    // parameter that made the fixture's `replyToUs: false` prove nothing.
+    // (Review.) Weight is deliberately below the mutual-tie 3: answering a
+    // reply is good, opening a closed loop is better.
+    if (t.replyToUs) { score += 2; why.push("replied directly to us"); }
     const weeks = Math.min(4, Math.floor((t.ageDays ?? 0) / 7));
     if (weeks) { score += 0.5 * weeks; why.push(`waited ${t.ageDays}d`); }
     rows.push({ source: "thread", index: t.index, author: t.author, score, why: why.join(" · ") });
