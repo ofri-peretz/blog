@@ -14,7 +14,7 @@
  * auto-merge never fires. The checks are the reviewer. That is true of
  * generated numbers and false of anything a person writes.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -48,14 +48,36 @@ describe("every refresh workflow can actually deliver", () => {
     });
   }
 
-  it("all three are covered — a fourth refresher must be added here too", () => {
-    // The first draft of the intent said "both refresh workflows" and named
-    // two; bench-receipts would have been left on the same 0% delivery rate
-    // the whole intent exists to fix. This list is the guard against that
-    // recurring.
-    const onDisk = readFileSync(path.join(WF, "..", "..", "package.json"), "utf-8")
-      ? REFRESHERS.map(([f]) => f)
-      : [];
-    expect(onDisk).toHaveLength(3);
+  it("covers every *-refresh.yml on disk — a fourth must be added here too", () => {
+    /*
+     * This assertion replaces a tautology, and the tautology is worth
+     * recording because of where it appeared. The first version read:
+     *
+     *   const onDisk = readFileSync(...package.json, "utf-8")
+     *     ? REFRESHERS.map(([f]) => f)
+     *     : [];
+     *   expect(onDisk).toHaveLength(3);
+     *
+     * `readFileSync` returns a non-empty string, which is always truthy, so
+     * the ternary always took the first branch and the test reduced to
+     * `expect(REFRESHERS).toHaveLength(3)` — it asserted that a constant three
+     * lines above it still had three entries. A fourth refresher appearing on
+     * disk, which is the ONLY thing it claimed to catch, would not have failed
+     * it.
+     *
+     * That shipped in the same PR that closed an intent about locks whose
+     * claims outrun their evidence. Review caught it. It now reads the
+     * directory.
+     */
+    const onDisk = readdirSync(WF)
+      .filter((f) => /-refresh\.ya?ml$/.test(f))
+      .sort();
+    const covered = REFRESHERS.map(([f]) => f).sort();
+    expect(
+      onDisk,
+      `these refresh workflows are not covered by REFRESHERS, so nothing ` +
+        `checks that they can deliver: ` +
+        `${onDisk.filter((f) => !covered.includes(f)).join(", ")}`,
+    ).toEqual(covered);
   });
 });
