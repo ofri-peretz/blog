@@ -36,7 +36,7 @@ what it expects:
 
 The checker parses the info string, runs `Linter.verify()` with that plugin and
 rule, and asserts the rule fires at least once. No annotation, no check — so
-the 600-odd config, terminal and JSON blocks stay untouched and no author has
+the 262 config, terminal and JSON blocks stay untouched and no author has
 to learn anything to write an ordinary block.
 
 **Assert firing, not exact positions.** Line numbers move when prose around
