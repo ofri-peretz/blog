@@ -51,6 +51,9 @@ interface Item {
   tldr?: string;
   comment?: string;
   category?: string;
+  why?: string | null;
+  relevance?: "high" | "medium" | "low" | null;
+  alt_comment?: string | null;
 }
 interface State {
   date: string;
@@ -705,6 +708,27 @@ export default function Page() {
                 </span>
               ))}
             </div>
+            {(item.relevance || item.why) && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.08em]">
+                {item.relevance && (
+                  <span
+                    title="Relevance tier from the morning batch — a keyword heuristic that only sets the default button"
+                    className={`rounded border px-1.5 py-0.5 ${
+                      item.relevance === "high"
+                        ? "border-[var(--success)] text-[var(--success)]"
+                        : item.relevance === "low"
+                          ? "border-[var(--warning)] text-[var(--warning)]"
+                          : "border-[var(--border)] text-[var(--muted-foreground)]"
+                    }`}
+                  >
+                    {item.relevance} relevance
+                  </span>
+                )}
+                {item.why && (
+                  <span className="normal-case tracking-normal text-[var(--muted-foreground)]">{item.why}</span>
+                )}
+              </div>
+            )}
             {item.tldr && (
               <p className="mt-3 border-l-2 border-[var(--border)] pl-3 text-sm text-[var(--muted-foreground)]">
                 {item.tldr}
@@ -718,18 +742,42 @@ export default function Page() {
               />
             )}
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              {/* LOW relevance pre-selects Skip, per the skill's gate: still one
+                  click to override, but the default is the honest one. */}
               <button
                 onClick={() => act("done")}
-                className="rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)]"
+                className={
+                  item.relevance === "low"
+                    ? "rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)]"
+                    : "rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)]"
+                }
               >
                 {item.kind === "comment" ? "Copy & open →" : "Open →"}
               </button>
               <button
                 onClick={() => act("skip")}
-                className="rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)]"
+                className={
+                  item.relevance === "low"
+                    ? "rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)]"
+                    : "rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)]"
+                }
               >
                 Skip
               </button>
+              {item.kind === "comment" && item.alt_comment && (
+                <button
+                  onClick={() => {
+                    // Swap, don't regenerate: both takes were drafted in the
+                    // morning batch, so this is a file read, never a model call.
+                    const other = draft === item.alt_comment ? (item.comment ?? "") : item.alt_comment!;
+                    setDraft(other);
+                  }}
+                  title="Swap to the second take drafted this morning"
+                  className="rounded-lg border border-[var(--border)] px-3 py-2.5 text-sm text-[var(--muted-foreground)]"
+                >
+                  {draft === item.alt_comment ? "First take" : "Other take"}
+                </button>
+              )}
               <span className="ml-auto font-mono text-[12px] text-[var(--muted-foreground)]">
                 {i + 1} of {items.length}
               </span>
