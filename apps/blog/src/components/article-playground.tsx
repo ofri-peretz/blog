@@ -68,7 +68,7 @@ export function ArticlePlayground({ currentSlug }: { currentSlug: string }) {
               setOpen(true);
             }}
           >
-            Try it live — loads the linter in your browser (362 KB)
+            Try it live — loads the linter in your browser (459 KB)
           </button>
         )}
       </div>
