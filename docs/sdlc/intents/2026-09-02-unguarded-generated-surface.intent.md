@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-02-unguarded-generated-surface
 opened: 2026-09-02
-status: open
+status: closed
 ---
 
 # Intent: no lock has ever read the generated components
@@ -81,3 +81,31 @@ what makes it an invariant problem rather than a bug list.
   produce noise, not coverage.
 - Not removing #234's CSS floor. It is a genuine defence-in-depth for markup
   nobody can edit; the lock tells us when the floor is load-bearing.
+
+
+---
+
+## Outcome (2026-09-02, step 1 of the plan)
+
+**Both predictions held exactly, and they were written before the run.**
+
+| Pass | Predicted | Measured |
+|---|---|---|
+| Unscoped, all of `.interlace/` | red on 8 | **red on 8** |
+| Scoped to reachable | red on 4 | **red on 4** |
+
+The four are `momentum-panel`, `momentum-panel-skeleton`, `ratchet-grid` and
+`ratchet-grid-skeleton` — precisely the components that broke `/scorecard` and
+three consecutive production deploys. The lock that already encoded this
+invariant could not see them; now it can.
+
+The four sit in `fixtures/interlace-grid-allowlist.json` because generated
+files cannot be edited here. The allowlist is a ratchet and was **proven in
+both directions**: removing an entry fails with the upstream fix instructions,
+and adding a stale entry fails demanding its deletion. It can only shrink.
+
+**Still open, deliberately:** the upstream fix in the agents repo
+(`apps/interlace-docs-baseline/` is not in the local checkout), and the
+verdict pass over the remaining eleven directory-walking locks — steps 3 and 4.
+Those carry forward rather than blocking this closure, because step 1 was the
+experiment and it is done.

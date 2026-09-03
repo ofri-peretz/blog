@@ -1,0 +1,26 @@
+[
+  {
+    "file": ".interlace/components/scorecard/momentum-panel.tsx:72",
+    "class": "grid gap-6 sm:grid-cols-3",
+    "since": "2026-09-02",
+    "intent": "2026-09-02-unguarded-generated-surface"
+  },
+  {
+    "file": ".interlace/components/scorecard/momentum-panel-skeleton.tsx:34",
+    "class": "grid gap-6 sm:grid-cols-3",
+    "since": "2026-09-02",
+    "intent": "2026-09-02-unguarded-generated-surface"
+  },
+  {
+    "file": ".interlace/components/scorecard/ratchet-grid.tsx:102",
+    "class": "grid gap-4 sm:grid-cols-2 lg:grid-cols-3",
+    "since": "2026-09-02",
+    "intent": "2026-09-02-unguarded-generated-surface"
+  },
+  {
+    "file": ".interlace/components/scorecard/ratchet-grid-skeleton.tsx:44",
+    "class": "grid gap-4 sm:grid-cols-2 lg:grid-cols-3",
+    "since": "2026-09-02",
+    "intent": "2026-09-02-unguarded-generated-surface"
+  }
+]
