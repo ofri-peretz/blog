@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-08-31-browser-verification
 opened: 2026-08-31
-status: open
+status: closed
 ---
 
 # Intent: be able to prove a UI change works in a real browser
@@ -80,3 +80,22 @@ measurement-timing error of mine, not purely a broken pane.
   check, not a second test suite.
 - Not blocking merges on it yet. Establish that it works before making anything
   depend on it.
+
+
+---
+
+## Outcome (verified 2026-09-02)
+
+Closed. The newsletter journey is in `journey-audit.mjs` (step 4) and passes in
+CI — observed green on this session's runs:
+
+    ✓ newsletter: filling and submitting the form reaches a terminal state
+
+The diagnosis the plan called for also resolved: the form was never broken. The
+0×0 preview pane was, and the hydration failure was a measurement artifact of
+snapshotting before React finished. Recorded because the plan's step 2 made
+"it does not hydrate anywhere" a hard branch that would have outranked
+everything else — it was correctly not taken.
+
+Per the plan's constraint, the journey asserts the **rendered success state**
+and does not write to the production subscriber table.
