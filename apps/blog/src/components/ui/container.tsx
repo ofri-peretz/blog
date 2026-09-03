@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  *
  *   | size      | max-width | Use                                  |
  *   | --------- | --------- | ------------------------------------ |
- *   | `prose`   | 65ch      | Long-form text (rule docs, articles) |
+ *   | `prose`   | 52ch      | Long-form text (rule docs, articles) |
  *   | `content` | 1024px    | Default for landing sections         |
  *   | `wide`    | 1280px    | Card-grid heavy sections             |
  *   | `full`    | none      | Full-bleed hero, decorative bands    |
@@ -24,7 +24,16 @@ import { cn } from "@/lib/utils";
 const containerVariants = cva("mx-auto w-full px-4 sm:px-6 lg:px-8", {
   variants: {
     size: {
-      prose: "max-w-[65ch]",
+      // 52ch, not 65ch — and the two are not the unit you think. `ch` is the
+      // advance of the ZERO glyph, which in Geist is 1.418x the average glyph
+      // in English prose, so `65ch` rendered ~85 characters per line. The
+      // comfortable range is 45-75 (docs/TYPOGRAPHY.md).
+      //
+      // 52ch was MEASURED, not derived: counted characters on rendered lines
+      // at 65/52/50/48/46/44ch and took the value that landed nearest 66.
+      // Mobile is untouched — below the breakpoint the viewport binds before
+      // this max-width does, and the count stayed at 47 for every value tried.
+      prose: "max-w-[52ch]",
       content: "max-w-[1024px]",
       wide: "max-w-[1280px]",
       full: "max-w-none px-0 sm:px-0 lg:px-0",
