@@ -64,3 +64,29 @@ also does not merge.
   to the refresh bots' own PRs, not to the ten human PRs also sitting open.
 - Not deleting the PR step. A PR is a good audit trail; the defect is that it
   is also the stopping point.
+
+
+---
+
+## Progress (2026-09-02, steps 1-3 of the plan)
+
+Auto-merge is armed on **all three** refresh workflows, in **both** paths — the
+PR it just created, and the already-open PR that creation-time auto-merge can
+never reach. `refresh-delivery-lock.test.ts` pins both, and was verified
+failing by reverting `bench-receipts-refresh.yml` to its pre-fix state (2 tests
+red), then passing on restore.
+
+Step 2 is also done: #214 and #215 were merged by hand on 2026-09-02 — the
+first bot PRs ever to land.
+
+**NOT done, and the intent stays open for them:**
+
+- **Step 4**, the only real verification: whether `plugin-stats.json` on `main`
+  moves after the Monday 2026-09-07 run, with nobody touching it. That cannot
+  be simulated — a manual dispatch proves the mechanism, not the schedule.
+- **Step 5**, the required gate: deliberately break a refresh and confirm CI
+  blocks the auto-merge rather than landing it. Auto-merge that cannot be
+  stopped is worse than the stale data it replaces.
+- `bench-receipts` still reaches `gh pr create` never — it ran on 2026-08-31
+  and opened nothing. Arming it is forward-compatibility, not a fix; expect no
+  behaviour change from it until that upstream failure is diagnosed.
