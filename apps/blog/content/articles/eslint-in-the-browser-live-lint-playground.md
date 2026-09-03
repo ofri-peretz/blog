@@ -27,7 +27,7 @@ Every article about a lint rule has the same hole in it.
 
 I paste a snippet, I paste the finding it produces. You think: *fine, but does it fire on **my** code?* The article cannot answer — it can only ever show you someone else's code.
 
-So I shipped the linter instead. On [the JWT article](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) there is now a *Try it live* button: paste your own `jwt.verify` call and the published rule runs on it, in your browser, nothing leaving the page.
+So I shipped the linter instead. On [the JWT article](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) there is now a *Try it live* button: paste your own `jwt.verify` call and the published rule runs on it, in your browser.
 
 The reason is a number I did not expect.
 
@@ -45,7 +45,7 @@ With **two real security plugins bundled inside it**:
 
 Quote the last row, not the second. I first published 362 KB, having confirmed `content-encoding: br` — which proves the encoding, not the size. The CDN compresses on the fly below `-q 11`, so the honest number is **459 KB**. Same artifact byte for byte; only the compressor differs.
 
-That is still the whole argument. At 3 MB you write a blog post about the rule. At 459 KB you ship the rule.
+Still the whole argument. At 3 MB you write a blog post about the rule. At 459 KB you ship the rule.
 
 ## The recipe
 
@@ -105,20 +105,20 @@ Nulling the singleton separates a playground that self-heals from one dead until
 
 ## Three traps
 
-**Don't let your framework bundle it.** Asking Next.js to build the worker means teaching both webpack and Turbopack about `node:` schemes — two fragile configs for one artifact. Use esbuild yourself.
+**Don't let your framework bundle it.** Asking Next.js to build the worker means teaching both webpack and Turbopack about `node:` schemes: two fragile configs for one artifact. Use esbuild yourself.
 
 **A real worker has no `process`.** My spike ran under Node so `ReferenceError: process is not defined` only appeared in the browser. A spike passing is not the thing working.
 
-**Linting the artifact will OOM your editor.** ESLint tried to lint the 1.7 MB bundle and died with `Abort trap: 6` — which looks like a native crash but is heap exhaustion. Add `public/**` to `globalIgnores`.
+**Linting the artifact will OOM your editor.** ESLint tried to lint the 1.7 MB bundle and died with `Abort trap: 6`: heap exhaustion, not a native crash. Add `public/**` to `globalIgnores`.
 
 ## Try it
 
-Both run published npm packages — the tarballs `npm install` gives you:
+Both run published npm packages, the tarballs `npm install` gives you:
 
 - **[JWT `alg:none`](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g)** — remove `"none"` from the algorithms array, watch the finding clear.
 - **[node-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security)** — three rules on an upload handler.
 
-Nothing you type leaves the page, a sentence in the UI too, because asking someone to paste auth code into a stranger's site deserves an explicit answer.
+Nothing you type leaves the page, a sentence in the UI too, because pasting auth code into a stranger's site deserves an explicit answer.
 
 ## Reproduce it
 
@@ -132,6 +132,10 @@ brotli -q 11 -c public/lint-worker.js | wc -c  # 370746
 curl -s -H 'Accept-Encoding: br' https://ofriperetz.dev/lint-worker.js | wc -c   # 470563
 ```
 
-Those bytes drift as plugins ship rules — quote them with a date.
+Those bytes drift as plugins ship rules; quote them with a date.
 
-Browser-hosted linting is not new; ESLint and typescript-eslint both run excellent playgrounds. What is unusual is placement: not a destination you navigate to, but the rule the paragraph is arguing, running on your code, at the moment you wonder about it.
+Browser-hosted linting is not new; [ESLint](https://eslint.org/play) and [typescript-eslint](https://typescript-eslint.io/play) both run excellent playgrounds. What is unusual is placement: not a destination you navigate to, but the rule the paragraph is arguing, running on your code, at the moment you wonder about it.
+
+::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
+⭐ Star the repo if you have ever wanted docs that run instead of assert.
+::
