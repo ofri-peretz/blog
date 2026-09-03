@@ -18,6 +18,7 @@
  * extracted here so the rules can be asserted without a network.
  */
 import assert from "node:assert/strict";
+import { ourReplyAt } from "./inbox";
 
 const ME = "ofri-peretz";
 
@@ -103,3 +104,16 @@ const u = (name: string, children: C[] = []): C => ({ user: { username: name }, 
 }
 
 console.log("inbox.selfcheck: all assertions passed");
+
+
+// ── ourReplyAt: the platform's clock, earliest of our replies anywhere under the root ──
+{
+  const c = (id: string, username: string, created_at: string, children: any[] = []) => ({ id_code: id, user: { username }, created_at, children });
+  const root = c("r", "them", "2026-09-01T10:00:00Z", [
+    c("a", "someone", "2026-09-01T11:00:00Z", [c("b", ME, "2026-09-02T09:00:00Z")]),
+    c("d", ME, "2026-09-01T12:00:00Z"),
+  ]);
+  assert.equal(ourReplyAt(root.children), "2026-09-01T12:00:00Z", "earliest of our replies, not the deepest");
+  assert.equal(ourReplyAt([c("x", "them", "2026-09-01T10:00:00Z")]), null, "no reply is null, never a timestamp");
+}
+console.log("inbox.selfcheck: ourReplyAt ok");
