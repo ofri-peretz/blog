@@ -59,4 +59,35 @@ const now = Date.parse("2026-09-03T00:00:00Z");
   assert.equal(r1.find((r) => r.index === 1)!.score, 0.5, "second row for the same author is halved");
 }
 
+// ── 4. replyToUs is worth +2, and says so ──────────────────────────────────
+// Added because the field was scored without any fixture exercising the true
+// branch — which is the same defect the field had before it was scored at all:
+// every existing test passes `replyToUs: false`, so they prove the absence of
+// an effect, never its presence. A weight nothing measures is a weight that
+// can silently become zero. (Review.)
+{
+  const one = (replyToUs: boolean) =>
+    rankActions(
+      graph,
+      "me",
+      [{ index: 0, author: "fresh", ageDays: 0, replyToUs }],
+      [],
+      [],
+      now,
+    )[0];
+
+  const base = one(false);
+  const withReply = one(true);
+
+  assert.equal(withReply.score - base.score, 2, "a direct reply is worth +2");
+  assert.ok(
+    withReply.why.includes("replied directly to us"),
+    "the reason is stated, not just scored",
+  );
+  assert.ok(
+    !base.why.includes("replied directly"),
+    "and it is absent when the flag is false",
+  );
+}
+
 console.log("nba.selfcheck: ok");
