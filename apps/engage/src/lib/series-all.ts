@@ -17,5 +17,6 @@ import "@/lib/series-posthog";
 import "@/lib/series-npm";
 import "@/lib/series-adoption";
 import "@/lib/series-standing";
+import "@/lib/series-yield";
 
 export * from "@/lib/series";

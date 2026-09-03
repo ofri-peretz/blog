@@ -81,8 +81,51 @@ export function open(): DatabaseSync {
       sample_size     INTEGER NOT NULL, sample_hash TEXT NOT NULL,
       at              TEXT NOT NULL
     );
+
+    -- Comment yield (first 14 days), one row per day. See lib/yield.ts.
+    CREATE TABLE IF NOT EXISTS comment_yield (
+      day           TEXT PRIMARY KEY,
+      articles_30d  INTEGER, mean14d_30d REAL, with_any_30d INTEGER,
+      articles_total INTEGER, with_any_total INTEGER,
+      at            TEXT NOT NULL
+    );
+
+    -- Outreach PRs waiting on us, one row per day. See /api/prs.
+    CREATE TABLE IF NOT EXISTS outreach (
+      day            TEXT PRIMARY KEY,
+      open           INTEGER, our_move INTEGER, blocked INTEGER, behind_base INTEGER, conflicts INTEGER,
+      at             TEXT NOT NULL
+    );
   `);
   return db;
+}
+
+export function writeYield(day: string, s: import("./yield").YieldSummary) {
+  open()
+    .prepare(
+      `INSERT INTO comment_yield (day, articles_30d, mean14d_30d, with_any_30d, articles_total, with_any_total, at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(day) DO UPDATE SET articles_30d=excluded.articles_30d, mean14d_30d=excluded.mean14d_30d,
+         with_any_30d=excluded.with_any_30d, articles_total=excluded.articles_total,
+         with_any_total=excluded.with_any_total, at=excluded.at`,
+    )
+    .run(day, s.articles30d, s.mean14d30d, s.withAny30d, s.articlesTotal, s.withAnyTotal, new Date().toISOString());
+}
+export function yieldHistory(days = 400) {
+  return (open().prepare(`SELECT * FROM comment_yield ORDER BY day DESC LIMIT ?`).all(days) as Record<string, number | string | null>[]).reverse();
+}
+
+export function writeOutreach(day: string, r: { open: number; ourMove: number; blocked: number; behindBase: number; conflicts: number }) {
+  open()
+    .prepare(
+      `INSERT INTO outreach (day, open, our_move, blocked, behind_base, conflicts, at) VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(day) DO UPDATE SET open=excluded.open, our_move=excluded.our_move, blocked=excluded.blocked,
+         behind_base=excluded.behind_base, conflicts=excluded.conflicts, at=excluded.at`,
+    )
+    .run(day, r.open, r.ourMove, r.blocked, r.behindBase, r.conflicts, new Date().toISOString());
+}
+export function outreachHistory(days = 400) {
+  return (open().prepare(`SELECT * FROM outreach ORDER BY day DESC LIMIT ?`).all(days) as Record<string, number | string | null>[]).reverse();
 }
 
 /** One standing row per day. Re-running overwrites — a day has one truth. */

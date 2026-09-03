@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { FOOTPRINT } from "@/lib/footprint";
 import { publisherSchedule } from "@/lib/cache";
+import { pearson, type YieldRow } from "@/lib/yield";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -143,13 +144,39 @@ export async function GET(req: Request) {
     };
   });
 
+  /*
+   * First-14-day comment yield, read from the yield cache if /api/yield has
+   * run (never crawled here — a page load must not pay for dev.to). Matched on
+   * the dev.to URL the frontmatter records. The Pearson between gate score and
+   * yield is the calibration the comment-yield intent asks for; it refuses to
+   * speak below twenty pairs.
+   */
+  const YIELD_CACHE = join(FOOTPRINT, "engagement", ".cache", "yield.json");
+  const byUrl = new Map<string, YieldRow>();
+  try {
+    if (existsSync(YIELD_CACHE)) {
+      const cached = JSON.parse(readFileSync(YIELD_CACHE, "utf8"));
+      for (const r of cached?.value?.rows ?? []) byUrl.set(String(r.url).replace(/\/$/, ""), r);
+    }
+  } catch { /* an unreadable cache is "no yield yet", never a broken page */ }
+  const withYield = articles.map((a) => {
+    const y = a.devtoUrl ? byUrl.get(String(a.devtoUrl).replace(/\/$/, "")) : undefined;
+    return { ...a, comments14d: y ? y.comments14d : null, yieldClosed: y ? y.windowClosed : null };
+  });
+  const calibration = pearson(
+    withYield
+      .filter((a) => a.score !== null && typeof a.comments14d === "number" && a.yieldClosed)
+      .map((a) => [a.score as number, a.comments14d as number] as [number, number]),
+  );
+
   const scored = articles.filter((a) => a.score !== null);
   const unscored = articles.filter((a) => a.score === null);
 
   return NextResponse.json({
     schedule,
     scoreBar: SCORE_BAR,
-    articles: articles.sort((a, b) => (b.score ?? -1) - (a.score ?? -1)),
+    articles: withYield.sort((a, b) => (b.score ?? -1) - (a.score ?? -1)),
+    calibration,
     totals: {
       articles: articles.length,
       published: articles.filter((a) => a.published).length,
