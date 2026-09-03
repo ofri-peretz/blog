@@ -46,7 +46,7 @@ const MAX_CH = 56;
 
 describe("the prose measure stays inside the typography contract", () => {
   it("the prose container is set in the measured window", () => {
-    const m = /max-w-\[(\d+(?:\.\d+)?)ch\]/.exec(CONTAINER);
+    const m = /max-w-\[([\d.]+)ch\]/.exec(CONTAINER);
     expect(m, "container.tsx no longer sets a ch-based prose width").not.toBeNull();
     const ch = Number(m![1]);
     expect(
@@ -61,8 +61,8 @@ describe("the prose measure stays inside the typography contract", () => {
   it("globals.css agrees with the component", () => {
     // Two declarations of the same number is how they drift apart. This repo
     // has produced that defect repeatedly today alone.
-    const fromCss = /--container-prose:\s*(\d+(?:\.\d+)?)ch/.exec(GLOBALS);
-    const fromTsx = /max-w-\[(\d+(?:\.\d+)?)ch\]/.exec(CONTAINER);
+    const fromCss = /--container-prose:\s*([\d.]+)ch/.exec(GLOBALS);
+    const fromTsx = /max-w-\[([\d.]+)ch\]/.exec(CONTAINER);
     expect(fromCss).not.toBeNull();
     expect(Number(fromCss![1])).toBe(Number(fromTsx![1]));
   });

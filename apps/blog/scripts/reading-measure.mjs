@@ -13,7 +13,22 @@
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
 
-const BASE = process.env.BASE ?? "http://localhost:3000";
+/**
+ * No default. `browser-security/detect-mixed-content` — this repo's own plugin
+ * — errors on an `http://` literal, and it is right to: a hardcoded insecure
+ * origin is exactly the thing that survives into somewhere it should not.
+ *
+ * Requiring the caller to pass it is also simply better. It is the same
+ * conclusion `resolveIngestHost()` reached in app/go/resolver.ts: a script that
+ * talks to an origin should be told which one, not guess.
+ */
+const BASE = process.env.BASE;
+if (!BASE) {
+  console.error(
+    "BASE is required, e.g. BASE=https://ofriperetz.dev node scripts/reading-measure.mjs",
+  );
+  process.exit(2);
+}
 const ROUTE =
   process.env.MEASURE_ROUTE ??
   "/articles/getting-started-eslint-plugin-secure-coding";
