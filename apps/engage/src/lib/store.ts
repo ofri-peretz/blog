@@ -69,8 +69,45 @@ export function open(): DatabaseSync {
       payload   TEXT NOT NULL,
       at        TEXT NOT NULL
     );
+
+    -- Standing: one row per day, see lib/standing.ts. sample_size/sample_hash
+    -- travel with the row because a rank is only comparable within one sample
+    -- policy; a wider crawl raises everyone's degree.
+    CREATE TABLE IF NOT EXISTS standing (
+      day             TEXT PRIMARY KEY,
+      degree          INTEGER, in_authors INTEGER, mutual INTEGER, core_reach INTEGER,
+      rank_nonstaff   INTEGER, rank_pct INTEGER,
+      replies_waiting INTEGER, reply_latency_h REAL,
+      sample_size     INTEGER NOT NULL, sample_hash TEXT NOT NULL,
+      at              TEXT NOT NULL
+    );
   `);
   return db;
+}
+
+/** One standing row per day. Re-running overwrites — a day has one truth. */
+export function writeStanding(day: string, r: import("./standing").StandingRow) {
+  open()
+    .prepare(
+      `INSERT INTO standing (day, degree, in_authors, mutual, core_reach, rank_nonstaff, rank_pct,
+                             replies_waiting, reply_latency_h, sample_size, sample_hash, at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(day) DO UPDATE SET
+         degree=excluded.degree, in_authors=excluded.in_authors, mutual=excluded.mutual,
+         core_reach=excluded.core_reach, rank_nonstaff=excluded.rank_nonstaff, rank_pct=excluded.rank_pct,
+         replies_waiting=excluded.replies_waiting, reply_latency_h=excluded.reply_latency_h,
+         sample_size=excluded.sample_size, sample_hash=excluded.sample_hash, at=excluded.at`,
+    )
+    .run(
+      day, r.degree, r.in_authors, r.mutual, r.core_reach, r.rank_nonstaff, r.rank_pct,
+      r.replies_waiting, r.reply_latency_h, r.sample_size, r.sample_hash, new Date().toISOString(),
+    );
+}
+
+export function standingHistory(days = 400) {
+  return (open()
+    .prepare(`SELECT * FROM standing ORDER BY day DESC LIMIT ?`)
+    .all(days) as Record<string, number | string | null>[]).reverse();
 }
 
 export function recordAction(a: {

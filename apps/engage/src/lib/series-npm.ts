@@ -89,7 +89,10 @@ const base = {
   unit: "count",
   kind: "gauge",
   goodDirection: "up",
-  staleAfterHours: 36,
+  // npm publishes a day's downloads one to two days late by construction, and
+  // the ingest observes the day it is FOR. 36 h alerted on every package, every
+  // day — 38 permanent "stalled" rows above the queue. 72 h is the real budget.
+  staleAfterHours: 72,
   source: "supabase:plugin_daily_metrics.npm_downloads_d7",
   caveat: "rolling 7-day window — overlapping, so it averages across buckets rather than summing",
 } satisfies Omit<SeriesDef, "id" | "label">;

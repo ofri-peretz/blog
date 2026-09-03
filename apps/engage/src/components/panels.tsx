@@ -262,6 +262,7 @@ export function Threads({
   focused = true,
   onFocus,
   onJump,
+  onMark,
 }: {
   threads: Thread[];
   i: number;
@@ -276,6 +277,12 @@ export function Threads({
   onFocus?: () => void;
   /** Jump straight to a thread instead of stepping to it. */
   onJump?: (index: number) => void;
+  /**
+   * Mark a row handled without making it the current card. "replied" is for a
+   * reply you already posted; the server keeps it visible as `sendFailed`
+   * until dev.to shows the reply, so a mark that did not land cannot hide.
+   */
+  onMark?: (index: number, action: "done" | "skip") => void;
 }) {
   const t = threads[i];
   if (!t)
@@ -444,10 +451,10 @@ export function Threads({
           </div>
           <ul className="flex flex-col gap-0.5">
             {threads.map((x, n) => (
-              <li key={x.commentId}>
+              <li key={x.commentId} className="flex items-center gap-1">
                 <button
                   onClick={() => onJump(n)}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[12px] ${
+                  className={`flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1 text-left text-[12px] ${
                     n === i
                       ? "bg-[var(--primary)]/12 text-[var(--foreground)]"
                       : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40"
@@ -480,6 +487,26 @@ export function Threads({
                     </span>
                   )}
                 </button>
+                {onMark && !x.authorGone && (
+                  <>
+                    <button
+                      onClick={() => onMark(n, "done")}
+                      title="I already replied to this on dev.to"
+                      aria-label={`mark @${x.author} replied`}
+                      className="shrink-0 rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--success)] hover:bg-[var(--muted)]/40"
+                    >
+                      ✓ replied
+                    </button>
+                    <button
+                      onClick={() => onMark(n, "skip")}
+                      title="Skip — does not deserve a reply"
+                      aria-label={`skip @${x.author}`}
+                      className="shrink-0 rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40"
+                    >
+                      skip
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>
@@ -493,10 +520,22 @@ export function Threads({
 
 export function Impact({
   rows,
+  live = null,
+  today,
 }: {
   rows: Record<string, string | number | null>[];
+  /**
+   * The follower count read from the API on this page load. The rows are the
+   * daily ingest, which fires once in the morning (UTC), so by the evening the
+   * last row is ~15 h old and reads as "not updated". The live number closes
+   * that gap as a provisional point for today — labelled, so nobody mistakes
+   * a page-load reading for an ingested row.
+   */
+  live?: number | null;
+  /** Today's date key (CST), so the provisional point lands on the right day. */
+  today?: string;
 }) {
-  const points = useMemo<Point[]>(
+  const ingested = useMemo<Point[]>(
     () =>
       rows
         .filter((r) => r.platform === "devto")
@@ -511,8 +550,18 @@ export function Impact({
         .sort((a, b) => a.t.localeCompare(b.t)),
     [rows],
   );
-
-  const last = [...points].reverse().find((p) => p.v !== null);
+  const lastIngested = [...ingested].reverse().find((p) => p.v !== null);
+  // Only add the live point when it is NEWER than the last row: once today's
+  // ingest lands, the row wins and the provisional point disappears.
+  const provisional =
+    live != null && today && (!lastIngested || lastIngested.t < today)
+      ? { t: today, v: live }
+      : null;
+  const points = useMemo<Point[]>(
+    () => (provisional ? [...ingested, provisional] : ingested),
+    [ingested, provisional],
+  );
+  const last = provisional ?? lastIngested;
 
   return (
     <div className={`${card} overflow-hidden`}>
@@ -523,6 +572,9 @@ export function Impact({
         <Delta points={points} unit="followers" className="font-mono text-[13px]" />
         <span className="ml-auto font-mono text-[11px] text-[var(--muted-foreground)]">
           dev.to followers
+          {lastIngested && (
+            <> · ingested {lastIngested.t}{provisional ? ` · live now ${provisional.v.toLocaleString()}` : ""}</>
+          )}
         </span>
       </div>
       <div className="p-4">
