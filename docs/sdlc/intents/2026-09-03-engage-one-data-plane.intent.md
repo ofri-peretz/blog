@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-03-engage-one-data-plane
 opened: 2026-09-03
-status: open
+status: shipped
 ---
 
 # Intent: the engagement loop runs from `main`, with one hub and one ledger

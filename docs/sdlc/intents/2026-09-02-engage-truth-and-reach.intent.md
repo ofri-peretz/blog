@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-02-engage-truth-and-reach
 opened: 2026-09-02
-status: open
+status: shipped
 ---
 
 # Intent: every draft the control room offers ends in a verified action or a logged decision, and nothing waits on Ofri's memory
