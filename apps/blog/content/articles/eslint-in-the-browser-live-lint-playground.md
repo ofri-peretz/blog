@@ -21,13 +21,23 @@ author:
   avatar: "https://media2.dev.to/dynamic/image/width=640,height=640,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3669992%2F50a1f256-472c-48a1-85e8-149459647ea7.png"
   twitter: "ofriperetzdev"
 series: null
+quality:
+  panel_version: "1.0.0"
+  reviewed: "2026-09-03"
+  spec: sdlc/spec/eslint-in-the-browser-live-lint-playground.md
+  lenses:
+    growth_hook: 9.6
+    security_correctness: 9.7
+    structure_framing_voice: 9.6
+    compatibility: 9.5
+    reproducibility: 9.8
 ---
 
 Every article about a lint rule has the same hole in it.
 
-I paste a snippet, I paste the finding it produces. You think: *fine, but does it fire on **my** code?* The article cannot answer — it can only ever show you someone else's code.
+I paste a snippet, I paste the finding it produces. You think: _fine, but does it fire on **my** code?_ The article cannot answer — it can only ever show you someone else's code.
 
-So I shipped the linter instead. On [the JWT article](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) there is now a *Try it live* button: paste your own `jwt.verify` call and the published rule runs on it, in your browser.
+So I shipped the linter instead. On [the JWT article](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g) there is now a _Try it live_ button: paste your own `jwt.verify` call and the published rule runs on it, in your browser.
 
 The reason is a number I did not expect.
 
@@ -35,17 +45,19 @@ The reason is a number I did not expect.
 
 `eslint/universal` exports the `Linter` class with no Node dependencies in its public surface: you hand it source text and a flat config, it hands you messages back.
 
+It is a hard floor, not a polyfill: the `./universal` export first appears in **ESLint 9.11.0**. ESLint 9.10 and every ESLint 8 resolve it to nothing, so this recipe does not degrade on older majors — it fails at build time.
+
 With **two real security plugins bundled inside it**:
 
-| | bytes |
-|---|---|
-| raw bundle | 1,764,382 |
-| `brotli -q 11` locally | 370,746 |
+|                                 | bytes       |
+| ------------------------------- | ----------- |
+| raw bundle                      | 1,764,382   |
+| `brotli -q 11` locally          | 370,746     |
 | **what the CDN actually sends** | **470,563** |
 
 Quote the last row, not the second. I first published 362 KB, having confirmed `content-encoding: br` — which proves the encoding, not the size. The CDN compresses on the fly below `-q 11`, so the honest number is **459 KB**. Same artifact byte for byte; only the compressor differs.
 
-Still the whole argument. At 3 MB you write a blog post about the rule. At 459 KB you ship the rule.
+Still the whole argument. At several megabytes you write a blog post about the rule. At 459 KB you ship the rule.
 
 ## The recipe
 
@@ -55,7 +67,7 @@ Still the whole argument. At 3 MB you write a blog post about the rule. At 459 K
 import { Linter } from "eslint/universal";
 import jwt from "eslint-plugin-jwt";
 
-const PLUGINS = { jwt };           // enumerated, never dynamic
+const PLUGINS = { jwt }; // enumerated, never dynamic
 const linter = new Linter();
 
 self.onmessage = ({ data: { id, code, pluginId, rules } }) => {
@@ -64,7 +76,7 @@ self.onmessage = ({ data: { id, code, pluginId, rules } }) => {
     languageOptions: { ecmaVersion: 2024, sourceType: "module" },
     rules,
   });
-  self.postMessage({ id, findings });   // no network, ever
+  self.postMessage({ id, findings }); // no network, ever
 };
 ```
 
@@ -74,14 +86,23 @@ self.onmessage = ({ data: { id, code, pluginId, rules } }) => {
 buildSync({
   entryPoints: ["src/workers/lint.worker.ts"],
   outfile: "public/lint-worker.js",
-  bundle: true, minify: true, format: "iife", platform: "browser",
+  bundle: true,
+  minify: true,
+  format: "iife",
+  platform: "browser",
   // A worker global has no `process`. ESLint touches more of it than
   // NODE_ENV — cwd, platform, emitWarning — so stub it in a banner.
-  banner: { js: 'var process={env:{NODE_ENV:"production"},' +
-    'platform:"browser",cwd:function(){return "/"},argv:[]};' },
+  banner: {
+    js:
+      'var process={env:{NODE_ENV:"production"},' +
+      'platform:"browser",cwd:function(){return "/"},argv:[]};',
+  },
   alias: {
-    path: "path-browserify", "node:path": "path-browserify",
-    fs: shims, os: shims, util: shims,
+    path: "path-browserify",
+    "node:path": "path-browserify",
+    fs: shims,
+    os: shims,
+    util: shims,
     // If anything in your graph pulls oxc-resolver, its native
     // bindings ride in and break the build. Rules never touch it.
     "oxc-resolver": shims,
@@ -96,8 +117,9 @@ buildSync({
 ```ts
 worker.onerror = () => {
   worker?.terminate();
-  worker = null;          // ← this line
-  for (const entry of pending.values()) entry.reject(new Error("worker failed"));
+  worker = null; // ← this line
+  for (const entry of pending.values())
+    entry.reject(new Error("worker failed"));
 };
 ```
 
@@ -118,16 +140,17 @@ Both run published npm packages, the tarballs `npm install` gives you:
 - **[JWT `alg:none`](https://ofriperetz.dev/articles/the-jwt-algorithm-none-attack-the-vulnerability-in-1-line-of-code-d9g)** — remove `"none"` from the algorithms array, watch the finding clear.
 - **[node-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-node-security)** — three rules on an upload handler.
 
-Nothing you type leaves the page, a sentence in the UI too, because pasting auth code into a stranger's site deserves an explicit answer.
+Nothing you type leaves the page — and the UI says so in as many words, because pasting auth code into a stranger's site deserves an explicit answer rather than an assumption.
 
 ## Reproduce it
 
-Measured **2026-09-02** against eslint 9.39.4, eslint-plugin-jwt 2.2.14, eslint-plugin-node-security 5.2.3, esbuild 0.28.2.
+Measured **2026-09-03** against eslint 9.39.4, eslint-plugin-jwt 2.2.14, eslint-plugin-node-security 5.2.3, esbuild 0.28.2, on Node 24.18. The build step itself inherits ESLint's floor, `^18.18.0 || ^20.9.0 || >=21.1.0` — there is no Oxlint variant of this recipe, because `eslint/universal` is ESLint's own export.
 
 ```bash
-node scripts/build-lint-worker.mjs
-wc -c < public/lint-worker.js                  # 1764382
-brotli -q 11 -c public/lint-worker.js | wc -c  # 370746
+# from the repo root
+node apps/blog/scripts/build-lint-worker.mjs
+wc -c < apps/blog/public/lint-worker.js                  # 1764382
+brotli -q 11 -c apps/blog/public/lint-worker.js | wc -c  # 370746
 # what a reader actually downloads — measure this one, not the line above
 curl -s -H 'Accept-Encoding: br' https://ofriperetz.dev/lint-worker.js | wc -c   # 470563
 ```
