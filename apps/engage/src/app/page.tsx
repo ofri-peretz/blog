@@ -1012,7 +1012,11 @@ export default function Page() {
               {sources.impact.error}
             </p>
           ) : (
-            <Impact rows={sources.impact?.rows ?? []} />
+            <Impact
+              rows={sources.impact?.rows ?? []}
+              live={insights?.metrics?.followers ?? null}
+              today={state?.date}
+            />
           )
         ) : (
           <Skel rows={2} />

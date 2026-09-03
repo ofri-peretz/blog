@@ -520,10 +520,22 @@ export function Threads({
 
 export function Impact({
   rows,
+  live = null,
+  today,
 }: {
   rows: Record<string, string | number | null>[];
+  /**
+   * The follower count read from the API on this page load. The rows are the
+   * daily ingest, which fires once in the morning (UTC), so by the evening the
+   * last row is ~15 h old and reads as "not updated". The live number closes
+   * that gap as a provisional point for today — labelled, so nobody mistakes
+   * a page-load reading for an ingested row.
+   */
+  live?: number | null;
+  /** Today's date key (CST), so the provisional point lands on the right day. */
+  today?: string;
 }) {
-  const points = useMemo<Point[]>(
+  const ingested = useMemo<Point[]>(
     () =>
       rows
         .filter((r) => r.platform === "devto")
@@ -538,8 +550,18 @@ export function Impact({
         .sort((a, b) => a.t.localeCompare(b.t)),
     [rows],
   );
-
-  const last = [...points].reverse().find((p) => p.v !== null);
+  const lastIngested = [...ingested].reverse().find((p) => p.v !== null);
+  // Only add the live point when it is NEWER than the last row: once today's
+  // ingest lands, the row wins and the provisional point disappears.
+  const provisional =
+    live != null && today && (!lastIngested || lastIngested.t < today)
+      ? { t: today, v: live }
+      : null;
+  const points = useMemo<Point[]>(
+    () => (provisional ? [...ingested, provisional] : ingested),
+    [ingested, provisional],
+  );
+  const last = provisional ?? lastIngested;
 
   return (
     <div className={`${card} overflow-hidden`}>
@@ -550,6 +572,9 @@ export function Impact({
         <Delta points={points} unit="followers" className="font-mono text-[13px]" />
         <span className="ml-auto font-mono text-[11px] text-[var(--muted-foreground)]">
           dev.to followers
+          {lastIngested && (
+            <> · ingested {lastIngested.t}{provisional ? ` · live now ${provisional.v.toLocaleString()}` : ""}</>
+          )}
         </span>
       </div>
       <div className="p-4">
