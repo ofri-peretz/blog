@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-08-31-measured-claims
 opened: 2026-08-31
-status: open
+status: closed
 ---
 
 # Intent: a number in our copy must be checked against the thing it measures
@@ -58,3 +58,17 @@ about itself that nothing verified.**
   quietly wrong, not to generate prose.
 - Not extending this to the article corpus. Ninety articles quote hundreds of
   numbers with publication dates attached; that is a different problem.
+
+
+---
+
+## Outcome (verified 2026-09-02)
+
+Closed. `measured-claims-lock.test.ts` reads the size the playground gate
+quotes and compares it against a real brotli compression of the built artifact.
+
+**Verified by inversion, not by a green tick:** changing the quoted label from
+`(362 KB)` to `(999 KB)` turns the tolerance test red; restoring it passes. The
+lock also refuses to skip — if the label stops quoting a parseable size it
+fails rather than silently stopping, which is the specific rot this intent was
+opened about.

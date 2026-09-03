@@ -75,6 +75,91 @@ const tierA = [
   ...TIER_A_FILES.filter((p) => safeStat(p)?.isFile()),
 ].filter((p) => !TIER_C.has(p.replace(/\\/g, "/")));
 
+/**
+ * The generated DS tree — a SIBLING of `src/`, which this lock has never read
+ * despite being named after the design system it holds.
+ *
+ * Verdict from the 2026-09-02 lock-coverage pass: EXTEND, scoped to the
+ * components `src/` can actually reach. "No raw colour literal in source" is a
+ * universal invariant, so the search space was simply wrong.
+ *
+ * Measured when this was added: 112 raw literals across the whole generated
+ * tree, ZERO in the reachable set. So this assertion is green today because
+ * the reachable code is clean — NOT because it cannot see the files, which is
+ * the distinction the whole intent turns on and which the test below proves by
+ * injection rather than assertion.
+ */
+const INTERLACE_ROOT = path.resolve(__dirname, "..", "..", ".interlace");
+
+function reachableGenerated(): string[] {
+  if (!safeStat(INTERLACE_ROOT)?.isDirectory()) return [];
+  const specs = new Set<string>();
+  const srcFiles = listTsx(path.resolve(__dirname, ".."));
+  for (const f of srcFiles) {
+    for (const m of readFileSync(f, "utf-8").matchAll(
+      /^\s*(?:import|export)[^\n]*?from\s+"#interlace\/([^"]+)"/gm,
+    )) {
+      specs.add(m[1]);
+    }
+  }
+  const resolveSpec = (spec: string): string | null => {
+    for (const cand of [`${spec}.tsx`, `${spec}.ts`, `${spec}/index.ts`]) {
+      const abs = path.join(INTERLACE_ROOT, cand);
+      if (safeStat(abs)?.isFile()) return abs;
+    }
+    return null;
+  };
+  const seen = new Set<string>();
+  const queue = [...specs];
+  while (queue.length) {
+    const file = resolveSpec(queue.pop()!);
+    if (!file || seen.has(file)) continue;
+    seen.add(file);
+    const text = readFileSync(file, "utf-8");
+    for (const m of text.matchAll(/from\s+"(\.{1,2}\/[^"]+)"/g)) {
+      const abs = path.resolve(path.dirname(file), m[1]);
+      if (abs.startsWith(INTERLACE_ROOT)) {
+        queue.push(path.relative(INTERLACE_ROOT, abs));
+      }
+    }
+    for (const m of text.matchAll(/from\s+"#interlace\/([^"]+)"/g)) {
+      queue.push(m[1]);
+    }
+  }
+  return [...seen].filter((f) => f.endsWith(".tsx"));
+}
+
+describe("the generated DS tree obeys the same token floor", () => {
+  it("no reachable generated component carries a raw colour literal", () => {
+    const offenders: string[] = [];
+    for (const file of reachableGenerated()) {
+      readFileSync(file, "utf-8")
+        .split("\n")
+        .forEach((line, i) => {
+          const t = line.trim();
+          if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) return;
+          // `rgba(var(--token))` is token-based and correct; only literals count.
+          const stripped = line.replace(/\b(?:rgba?|hsla?|oklch)\(\s*var\([^)]*\)[^)]*\)/g, "");
+          if (/#[0-9a-fA-F]{3,8}\b/.test(stripped)) {
+            offenders.push(
+              `.interlace/${path.relative(INTERLACE_ROOT, file)}:${i + 1} ${t}` +
+                ` — GENERATED: fix upstream in the agents repo at` +
+                ` apps/interlace-docs-baseline/, then run \`npm run sync\`.`,
+            );
+          }
+        });
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("actually reads the tree — the reachable set is not empty", () => {
+    // Without this, the assertion above is green whether the code is clean or
+    // the glob is broken, and those are the two states this whole intent
+    // exists to tell apart. 17 reachable files on 2026-09-02.
+    expect(reachableGenerated().length).toBeGreaterThan(5);
+  });
+});
+
 describe("Interlace floor — Tier A regression lock", () => {
   it("ships at least one Tier A file (sanity)", () => {
     expect(tierA.length).toBeGreaterThan(10);

@@ -49,7 +49,23 @@ jobs:
             --title "chore(blog): weekly loom-embeds refresh $(date -u +%F)" \
             --body "Automated weekly sync of the article-embedded weaves' snapshot from the impact stack. Numbers only — review is a sanity glance." 2>&1); then
             echo "$OUT"
+            # Auto-merge, gated on the checks that already run. The PR stops
+            # being a stopping point and becomes an audit trail: build-test
+            # runs the locks over the committed data, so a malformed refresh
+            # fails CI and auto-merge simply never fires. Landing without a
+            # human is acceptable ONLY because the checks are the reviewer,
+            # which is true for generated numbers and would not be for prose.
+            gh pr merge --squash --auto "chore/loom-embeds-refresh" || \
+              echo "::warning::could not enable auto-merge on the new PR"
           else
             echo "$OUT"
             echo "$OUT" | grep -q "already exists" || exit 1
+            # The already-open case, which creating-time auto-merge never
+            # reaches. These workflows push to a FIXED branch name, so when
+            # last week's PR is still open `gh pr create` fails here — and
+            # before this, that branch did nothing at all. One week of
+            # blocked CI was enough to reintroduce the stall permanently.
+            echo "::notice::PR already open for chore/loom-embeds-refresh; enabling auto-merge on it"
+            gh pr merge --squash --auto "chore/loom-embeds-refresh" || \
+              echo "::warning::could not enable auto-merge on the existing PR"
           fi

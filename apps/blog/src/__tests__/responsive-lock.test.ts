@@ -28,6 +28,70 @@ function walk(dir: string, ext: string): string[] {
 }
 const rel = (p: string) => path.relative(SRC, p);
 
+/**
+ * The generated design-system tree, a SIBLING of `src/` — which is why every
+ * lock in this directory has been blind to it. `walk(SRC, …)` cannot reach
+ * `apps/blog/.interlace/`, and three grids in there broke /scorecard and three
+ * consecutive production deploys on 2026-09-02.
+ *
+ * Intent: docs/sdlc/intents/2026-09-02-unguarded-generated-surface.
+ */
+const INTERLACE = path.resolve(__dirname, "..", "..", ".interlace");
+
+/**
+ * Generated files `src/` can actually reach, by following imports.
+ *
+ * NOT a basename scan. The intent's first draft counted any `.interlace/`
+ * filename mentioned anywhere under `src/` and got 61; the import graph gives
+ * 17. The failure direction inverted with the method: a basename scan
+ * over-counts, this under-counts, because it follows static `from "…"` only.
+ * If this set ever looks too small, suspect the walk before the components.
+ */
+function reachableInterlace(): string[] {
+  if (!existsSync(INTERLACE)) return [];
+  const specs = new Set<string>();
+  for (const f of walk(SRC, ".ts").concat(walk(SRC, ".tsx"))) {
+    for (const m of readFileSync(f, "utf-8").matchAll(
+      /^\s*(?:import|export)[^\n]*?from\s+"#interlace\/([^"]+)"/gm,
+    )) {
+      specs.add(m[1]);
+    }
+  }
+  const resolve = (spec: string): string | null => {
+    for (const cand of [`${spec}.tsx`, `${spec}.ts`, `${spec}/index.ts`]) {
+      const abs = path.join(INTERLACE, cand);
+      if (existsSync(abs)) return abs;
+    }
+    return null;
+  };
+  const seen = new Set<string>();
+  const queue = [...specs];
+  while (queue.length) {
+    const file = resolve(queue.pop()!);
+    if (!file || seen.has(file)) continue;
+    seen.add(file);
+    const text = readFileSync(file, "utf-8");
+    for (const m of text.matchAll(/from\s+"(\.{1,2}\/[^"]+)"/g)) {
+      const abs = path.resolve(path.dirname(file), m[1]);
+      if (abs.startsWith(INTERLACE)) queue.push(path.relative(INTERLACE, abs));
+    }
+    for (const m of text.matchAll(/from\s+"#interlace\/([^"]+)"/g)) {
+      queue.push(m[1]);
+    }
+  }
+  return [...seen].filter((f) => f.endsWith(".tsx"));
+}
+
+/** Every `.tsx` under the generated tree, reachable or not. */
+function allInterlace(): string[] {
+  return existsSync(INTERLACE) ? walk(INTERLACE, ".tsx") : [];
+}
+
+const relAny = (p: string) =>
+  p.startsWith(INTERLACE)
+    ? `.interlace/${path.relative(INTERLACE, p)}`
+    : path.relative(SRC, p);
+
 describe("responsive + data-freshness structural rules", () => {
   /**
    * The /npm bug. The production build runs in GitHub Actions via
@@ -182,7 +246,7 @@ describe("responsive + data-freshness structural rules", () => {
    */
   it("every responsive grid declares a base column count", () => {
     const offenders: string[] = [];
-    for (const file of walk(SRC, ".tsx")) {
+    for (const file of [...walk(SRC, ".tsx"), ...reachableInterlace()]) {
       readFileSync(file, "utf-8")
         .split("\n")
         .forEach((line, i) => {
@@ -195,15 +259,50 @@ describe("responsive + data-freshness structural rules", () => {
               (t) => t.startsWith("grid-cols-") && !t.includes(":"),
             );
             if (responsive && !hasBase) {
+              const generated = file.startsWith(INTERLACE);
               offenders.push(
-                `${rel(file)}:${i + 1} grid has only responsive columns — add ` +
-                  `grid-cols-1 so the base track is minmax(0,1fr) and can shrink.`,
+                `${relAny(file)}:${i + 1} grid has only responsive columns — add ` +
+                  `grid-cols-1 so the base track is minmax(0,1fr) and can shrink.` +
+                  (generated
+                    ? ` THIS FILE IS GENERATED — do not edit it here. Fix it in` +
+                      ` the agents repo at apps/interlace-docs-baseline/, then` +
+                      ` run \`npm run sync\`.`
+                    : ""),
               );
             }
           }
         });
     }
-    expect(offenders, offenders.join("\n")).toEqual([]);
+    /*
+     * The generated offenders cannot be fixed here — every file in
+     * `.interlace/` says "DO NOT EDIT DIRECTLY, local edits will be overwritten
+     * on next sync". So they sit in a dated allowlist until the upstream
+     * baseline is corrected in the agents repo.
+     *
+     * The allowlist is a RATCHET, not a mute button: a stale entry — one whose
+     * grid has since been fixed — fails this test just as loudly as a new
+     * offender. It can only ever shrink. Same contract as
+     * `sdlc/baseline/unscored.json`.
+     */
+    const allowlist: { file: string }[] = JSON.parse(
+      readFileSync(
+        path.join(__dirname, "fixtures", "interlace-grid-allowlist.json"),
+        "utf-8",
+      ),
+    );
+    const allowed = new Set(allowlist.map((e) => e.file));
+    const key = (o: string) => o.split(" grid has only")[0];
+
+    const unexpected = offenders.filter((o) => !allowed.has(key(o)));
+    expect(unexpected, unexpected.join("\n")).toEqual([]);
+
+    const found = new Set(offenders.map(key));
+    const stale = [...allowed].filter((f) => !found.has(f));
+    expect(
+      stale,
+      `these grids are FIXED — delete their entries from ` +
+        `fixtures/interlace-grid-allowlist.json:\n${stale.join("\n")}`,
+    ).toEqual([]);
   });
 
   // DELIBERATELY NOT TESTED HERE: horizontal overflow.

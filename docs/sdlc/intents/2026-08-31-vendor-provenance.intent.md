@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-08-31-vendor-provenance
 opened: 2026-08-31
-status: open
+status: closed
 ---
 
 # Intent: no vendored file is silently unwatched
@@ -58,3 +58,22 @@ deferred — an exclusion with a good comment is still an exclusion.
 - Not moving to a real registry install path. That is the eventual answer and
   this is a stopgap on the copy-with-provenance approach — but the stopgap is
   what we have, and it should not have a hole in it.
+
+
+---
+
+## Outcome (verified 2026-09-02)
+
+Closed. `scripts/check-vendored-drift.mjs` exists, is wired to
+`.github/workflows/vendored-drift.yml` on a Monday 09:00 UTC cron, and last ran
+green on 2026-08-31.
+
+The binary criterion — "hand-editing a vendored file makes it report drift" —
+was proven **live and by accident**: #234 added `max-w-full` to the vendored
+`components/ui/skeleton.tsx`, and running the checker now exits 1 naming
+exactly that file. The check was not written for that edit and caught it
+anyway, which is the strongest evidence available that it is not vacuous.
+
+Consequence carried forward: that Skeleton delta is real drift and the fix
+belongs upstream in the interlace repo. The Monday run will report it until
+then — which is the designed behaviour, not a failure.
