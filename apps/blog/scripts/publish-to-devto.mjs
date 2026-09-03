@@ -32,12 +32,23 @@ import {
   collectDevtoLinks,
   transformBodyForDevto,
 } from "./devto-link-transforms.mjs";
+import { refusalMessage, unscoredOffenders } from "./quality-gate.mjs";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const CONTENT_DIR = join(__dirname, "..", "content", "articles");
+// repo root: apps/blog/scripts -> apps/blog -> apps -> .
+const BASELINE = join(
+  __dirname,
+  "..",
+  "..",
+  "..",
+  "sdlc",
+  "baseline",
+  "unscored.json",
+);
 
 const DEVTO_API_KEY = process.env.DEVTO_API_KEY;
 const SITE_URL = "https://ofriperetz.dev";
@@ -212,8 +223,7 @@ function createArticlePayload(article) {
   // SILENTLY DROPS the fragment, landing the reader at the top of the page
   // instead of on the playground. The /go/<slug> row already exists from
   // that article's own publish, and a fragment survives a 302 client-side.
-  const playgroundRegex =
-    /::playground-cta\{slug="([^"]+)"\}\n([^\n]+)\n::/g;
+  const playgroundRegex = /::playground-cta\{slug="([^"]+)"\}\n([^\n]+)\n::/g;
   transformedBody = transformedBody.replace(
     playgroundRegex,
     (_match, playgroundSlug, label) =>
@@ -595,6 +605,18 @@ async function main() {
       console.error(`❌ Article not found: ${specificArticle}`);
       process.exit(1);
     }
+  }
+
+  // The quality gate, BEFORE the API call — and on dry runs too, for the same
+  // reason the workflow's API-key probe runs on them: the point is to learn
+  // now, not when a live dispatch depends on it.
+  const offenders = unscoredOffenders(
+    articlesToPublish,
+    JSON.parse(readFileSync(BASELINE, "utf-8")).unscored,
+  );
+  if (offenders.length > 0) {
+    console.error("\n" + refusalMessage(offenders));
+    process.exit(1);
   }
 
   // Fetch existing DEV.TO articles
