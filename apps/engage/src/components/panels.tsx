@@ -7,6 +7,7 @@ import { Callout } from "@/components/ui/callout";
 import { RankedBarList } from "@/components/ui/meter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatStrip } from "@/components/ui/stat-strip";
+import { ago as sourceAgo, iso as sourceIso } from "@/lib/ago";
 import { Delta } from "@/components/ui/charts/delta";
 import type { Point } from "@/components/ui/charts/scale";
 import { Sparkline } from "@/components/ui/charts/sparkline";
@@ -1859,14 +1860,26 @@ export function Refresh({
   onClick,
   at,
   busy,
+  source = null,
 }: {
   onClick: () => void;
   at: number | null;
   busy: boolean;
+  /**
+   * When the SOURCE was read — the crawl, the ingest row, the GitHub sweep —
+   * as opposed to `at`, when this page fetched it. "3m ago" over a two-day-old
+   * row was the freshness intent's whole complaint; sections whose API carries
+   * a source time pass it, the others print nothing rather than a guess.
+   */
+  source?: string | number | null;
 }) {
   const ago = at ? Math.round((Date.now() - at) / 1000) : null;
+  const src = sourceAgo(source);
   return (
     <span className="flex items-center gap-2 font-mono text-[10px] normal-case tracking-normal text-[var(--muted-foreground)]">
+      {src && (
+        <span title={`source read ${sourceIso(source)}`}>source {src}</span>
+      )}
       {at && (
         <span title={new Date(at).toISOString()}>
           {ago! < 60 ? `${ago}s ago` : `${Math.round(ago! / 60)}m ago`}

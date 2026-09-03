@@ -145,5 +145,6 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ metrics, metricsError, authors });
+  // Live reads: the source time IS now. Printed so the header can say so.
+  return NextResponse.json({ metrics, metricsError, authors, asOf: new Date().toISOString() });
 }
