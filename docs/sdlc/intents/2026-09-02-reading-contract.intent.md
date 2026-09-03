@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-02-reading-contract
 opened: 2026-09-02
-status: open
+status: closed
 ---
 
 # Intent: the blog is accidentally good, and nothing holds it there
@@ -40,10 +40,21 @@ hygiene. That absence is the finding.
 
 The gap is already visible in the type, measured on production today:
 
-- The article measure runs **76 characters** at 1280px. The classic comfortable
-  range is 45–75, and Bringhurst's ideal is 66. One character over the upper
-  bound is not a defect any audit will ever flag — it is exactly the kind of
-  thing a contract catches and a floor never will.
+- The article measure runs **85 characters** at 1280px — median of 11 counted
+  lines, range 82–91. The classic comfortable range is 45–75 and Bringhurst's
+  ideal is 66, so this is **ten over the upper bound**, not one.
+
+  The first draft of this intent said 76, and a second estimate said 83.6. Both
+  were wrong, and wrong in the same way: they divided the column width by an
+  *average glyph advance*, which depends entirely on the sample string you
+  measure. Counting characters on real rendered lines gives 85. Two estimators
+  disagreeing was the signal to stop estimating — recorded because it is the
+  fifth measurement error in this SDLC directory and every one has been a proxy
+  standing in for the thing itself.
+
+  Mobile, correspondingly, is **fine**: 47 characters at 390px, inside the
+  range. The earlier claim that it sat below at 43 was the same estimator
+  error.
 - **144 of ~199** type-size usages are the two smallest steps (`text-sm`,
   `text-xs`), and `text-[10px]` appears 11 times outside the scale entirely.
   A site whose default voice is "small and dense" reads as a dashboard, not as
@@ -82,3 +93,34 @@ The gap is already visible in the type, measured on production today:
 - Not building new reader features. Six intents already wait on signals that
   have never fired; adding a seventh would repeat the mistake `reader-depth`
   was closed to avoid.
+
+
+---
+
+## Outcome (2026-09-02)
+
+| | Before | After |
+|---|---|---|
+| Measure @1280px | **85 chars** ✗ | **65** ✓ |
+| Measure @390px | 47 ✓ | 47 ✓ (untouched) |
+| Layout floor | 288/288 | **288/288** |
+| Unit suite | 713 | **719** |
+
+**The cause was a unit, not a value.** `ch` is the advance of the ZERO glyph —
+1.418x the average glyph in Geist — so a container set to `65ch` rendered ~85
+characters. It went unnoticed because the number *looked* right: 65ch, 65
+characters, near the ideal of 66. It was off by twenty.
+
+`52ch` was measured, not derived: counted at 65/52/50/48/46/44ch and took the
+value landing nearest 66. Mobile held at 47 for every value, because below the
+breakpoint the viewport binds before the max-width does — so the change is
+desktop-only without a media query.
+
+**The gate was seen failing first** (`✗ 85 chars`), which was the whole
+experiment, and the vitest lock fails in both directions: reverting to `65ch`,
+and desyncing `globals.css` from `container.tsx`.
+
+**Carried forward, not resolved:** the two questions `docs/TYPOGRAPHY.md` names
+as unsettled — whether the two smallest steps should carry 72% of the type, and
+whether 66 is right for a screen at 1.75 leading. Both need evidence this intent
+did not have.

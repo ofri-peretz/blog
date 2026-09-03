@@ -16,8 +16,9 @@ Intent: [`2026-09-02-reading-contract.intent.md`](./2026-09-02-reading-contract.
 | Design philosophy docs, blog repo | **0** | same | 2026-09-02 |
 | Intents whose subject is the reader's experience | **0 of 16** | read each `## What` | 2026-09-02 |
 | Article body type | 16px / 28px line-height (1.75) | computed style, production | 2026-09-02 |
-| Article measure at 1280px | **76 characters** | rendered width ÷ measured glyph width | 2026-09-02 |
-| Article measure at 390px | 43 characters | same | 2026-09-02 |
+| Article measure at 1280px | **85 characters** (median of 11 lines, 82–91) | counted on rendered lines via Range rects | 2026-09-02 |
+| ~~Article measure at 1280px~~ | ~~76~~, then ~~83.6~~ WRONG | width ÷ average glyph advance — sample-dependent | 2026-09-02 |
+| Article measure at 390px | **47 characters** (median of 15, 41–52) — in range | same counting method | 2026-09-02 |
 | Type-size usages that are the two smallest steps | 144 of ~199 | class scan of `src/**.tsx` | 2026-09-02 |
 | Off-scale type sizes | `text-[10px]` ×11, `text-[11px]` ×1 | same | 2026-09-02 |
 | Production LCP / CLS | 448ms / **0** | PerformanceObserver, production | 2026-09-02 |
@@ -26,9 +27,16 @@ Intent: [`2026-09-02-reading-contract.intent.md`](./2026-09-02-reading-contract.
 The last two rows are why this intent is about a ceiling and not a floor: the
 floor is genuinely met, and the site still has nothing that says what good is.
 
-**76 is the number to hold onto.** It is not a defect, no audit will ever flag
-it, and it is one character outside the range every typographer since Bringhurst
-has published. That is the exact shape of what a contract catches.
+**85 is the number to hold onto**, and how it was got matters as much as the
+value. Two estimates — 76, then 83.6 — disagreed, because both divided the
+column by an *average glyph advance* that depends on the sample string. Counting
+characters on real rendered lines settles it at 85: ten over the upper bound of
+45–75, not one.
+
+No audit will ever flag it. It is the exact shape of what a contract catches and
+a floor never will. It also means mobile needs nothing — 47 characters at 390px
+is comfortably inside the range, and the earlier "43, below range" was the same
+estimator error.
 
 ## Approach
 
@@ -92,6 +100,8 @@ stops noticing individual regressions.
 - **A contract nobody reads is worse than none**, because it implies agreement
   that does not exist. Mitigated by gating one rule — the gate is what makes
   the document load-bearing rather than decorative.
-- **Mobile is already at 43 characters**, below the comfortable range and not
-  fixable by narrowing anything. The contract has to state the floor honestly
-  rather than pretend 390px can hit 66.
+- **Mobile needs nothing**, which is a risk in the other direction: any fix
+  applied to the shared container also narrows a 390px column that is already
+  correct at 47 characters. The change must be desktop-only — a `max-width`
+  that only binds above the breakpoint — or it will make mobile worse while
+  fixing desktop.

@@ -81,7 +81,10 @@
      (`sm:max-w-(--container-prose)`) — the DS foundation.css value.
      Without it the var() is invalid at computed-value time and the
      dialog silently loses its desktop width cap. */
-  --container-prose: 65ch;
+  /* 52ch renders ~65 characters per line; `ch` is the zero glyph, 1.418x the
+     average glyph in Geist, so this is NOT 52 characters. Measured, not
+     derived — see docs/TYPOGRAPHY.md and reading-measure-lock. */
+  --container-prose: 52ch;
   /* Decorative-primitive tokens — replace baked-in hex defaults inside
      ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
   --beam-from: var(--brand-orange);
