@@ -108,7 +108,20 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const rows = await measure();
   let bad = 0;
   for (const r of rows) {
-    const ok = r.lines > 0 && r.median >= 45 && r.median <= 75;
+    // "found nothing to measure" and "measured, out of range" are different
+    // failures and must not print the same line. A route with no qualifying
+    // paragraph would otherwise report `median 0 chars`, which reads as a
+    // catastrophic measure rather than a broken selector. (Review.)
+    if (r.lines === 0) {
+      bad++;
+      console.log(
+        `✗ @${r.width}px  NO PARAGRAPH MEASURED — no .prose <p> with 200+ ` +
+          `chars of plain text on ${ROUTE}. The selector or the route is at ` +
+          `fault; this is NOT a measure failure.`,
+      );
+      continue;
+    }
+    const ok = r.median >= 45 && r.median <= 75;
     if (!ok) bad++;
     console.log(
       `${ok ? "✓" : "✗"} @${r.width}px  median ${r.median} chars ` +

@@ -85,6 +85,14 @@
      average glyph in Geist, so this is NOT 52 characters. Measured, not
      derived — see docs/TYPOGRAPHY.md and reading-measure-lock. */
   --container-prose: 52ch;
+
+  /* Dialogs are NOT prose and must not inherit the reading measure. This keeps
+     the width dialogs already had: `dialog.tsx` consumed the prose token, so
+     narrowing prose 65ch -> 52ch silently narrowed every dialog at sm+,
+     including the command palette — where a shorter box truncates the titles
+     and paths it exists to list. Review caught it. A reading measure is for
+     reading; a palette needs room for what it shows. */
+  --container-dialog: 65ch;
   /* Decorative-primitive tokens — replace baked-in hex defaults inside
      ui/border-beam, ui/meteors, ui/particles. Consumers override per-theme. */
   --beam-from: var(--brand-orange);

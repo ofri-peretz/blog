@@ -46,8 +46,14 @@ const MAX_CH = 56;
 
 describe("the prose measure stays inside the typography contract", () => {
   it("the prose container is set in the measured window", () => {
-    const m = /max-w-\[([\d.]+)ch\]/.exec(CONTAINER);
-    expect(m, "container.tsx no longer sets a ch-based prose width").not.toBeNull();
+    const m = /prose:\s*"max-w-\[([\d.]+)ch\]"/.exec(CONTAINER);
+    // Anchored to the `prose:` key, not the first ch-width in the file. An
+    // unanchored match would silently test a different variant the day someone
+    // adds one above it — the lock would stay green while prose drifted.
+    expect(
+      m,
+      "container.tsx no longer sets a ch-based width on the `prose` variant",
+    ).not.toBeNull();
     const ch = Number(m![1]);
     expect(
       ch,
@@ -55,14 +61,20 @@ describe("the prose measure stays inside the typography contract", () => {
         `well outside the 45-75 contract. Keep it within ${MIN_CH}-${MAX_CH}ch ` +
         `or re-measure with scripts/reading-measure.mjs and update this window.`,
     ).toBeGreaterThanOrEqual(MIN_CH);
-    expect(ch).toBeLessThanOrEqual(MAX_CH);
+    expect(
+      ch,
+      `prose container is ${ch}ch, above the measured ceiling of ${MAX_CH}ch. ` +
+        `Measured: 65ch->85, 52ch->65, 50ch->62, 46ch->58, 44ch->54 rendered ` +
+        `characters. Re-measure with BASE=<origin> node ` +
+        `scripts/reading-measure.mjs and move this window deliberately.`,
+    ).toBeLessThanOrEqual(MAX_CH);
   });
 
   it("globals.css agrees with the component", () => {
     // Two declarations of the same number is how they drift apart. This repo
     // has produced that defect repeatedly today alone.
     const fromCss = /--container-prose:\s*([\d.]+)ch/.exec(GLOBALS);
-    const fromTsx = /max-w-\[([\d.]+)ch\]/.exec(CONTAINER);
+    const fromTsx = /prose:\s*"max-w-\[([\d.]+)ch\]"/.exec(CONTAINER);
     expect(fromCss).not.toBeNull();
     expect(Number(fromCss![1])).toBe(Number(fromTsx![1]));
   });
