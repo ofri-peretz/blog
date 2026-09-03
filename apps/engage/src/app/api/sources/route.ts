@@ -23,6 +23,12 @@ export async function GET() {
   const plugins = pluginFindings();
   return NextResponse.json({
     impact: imp,
+    // The newest ingest row is the source time for everything read off Supabase here.
+    asOf:
+      (imp as any)?.rows?.reduce(
+        (m: string | null, r: any) => (r?.observed_on && (!m || String(r.observed_on) > m) ? String(r.observed_on) : m),
+        null,
+      ) ?? null,
     commenters: comm,
     promotion: promo,
     plugins,
