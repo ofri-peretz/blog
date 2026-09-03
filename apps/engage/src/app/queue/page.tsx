@@ -177,6 +177,15 @@ export default function Queue() {
         </span>
       </div>
 
+      {d?.calibration && (
+        <p className="text-[12.5px] text-[var(--muted-foreground)]">
+          Gate score vs first-14-day comments:{" "}
+          {d.calibration.r === null
+            ? `n = ${d.calibration.n}, below the 20-article floor — no r yet`
+            : `r = ${d.calibration.r} over ${d.calibration.n} articles`}
+          . This is the engagement reviewer's report card; a reviewer that predicts nothing reads as r ≈ 0.
+        </p>
+      )}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <DataTable
           caption="Every article, its gate score and its publish status"
@@ -219,6 +228,19 @@ export default function Queue() {
                   )}
                 </>
               ),
+            },
+            {
+              id: "yield",
+              header: "14d comments",
+              align: "end",
+              cell: (a: any) =>
+                a.comments14d == null ? (
+                  <span className="text-[var(--muted-foreground)]" title="no yield reading yet — /api/yield has not run, or the article has no dev.to URL">—</span>
+                ) : (
+                  <span className={a.yieldClosed ? (a.comments14d > 0 ? "text-[var(--success)]" : "") : "text-[var(--muted-foreground)]"} title={a.yieldClosed ? "comments by others in the first 14 days" : "window still open — not a verdict yet"}>
+                    {a.comments14d}{a.yieldClosed ? "" : "…"}
+                  </span>
+                ),
             },
             {
               id: "words",

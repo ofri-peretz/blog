@@ -170,6 +170,26 @@ export default function Customers() {
     totals: null,
     error: "unreachable",
   }));
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [updateResult, setUpdateResult] = useState<Record<string, { ok: boolean; message: string }>>({});
+  /** One click, one PR: the always-safe move, reported verbatim from GitHub. */
+  const updateBranch = async (p: any) => {
+    setUpdating(p.url);
+    try {
+      const r = await fetch("/api/prs/update", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ owner: p.owner, repo: p.repo, number: p.number }),
+      });
+      const j = await r.json().catch(() => ({ ok: false, message: `HTTP ${r.status}` }));
+      setUpdateResult((m) => ({ ...m, [p.url]: { ok: !!j.ok, message: j.message ?? j.error ?? "no answer" } }));
+      if (j.ok) setTimeout(() => refreshPrs(), 45_000);
+    } catch (e: any) {
+      setUpdateResult((m) => ({ ...m, [p.url]: { ok: false, message: String(e?.message ?? e).slice(0, 80) } }));
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   const customers: Customer[] = data?.customers ?? [];
   const candidateCount: number = data?.candidateCount ?? 0;
@@ -583,6 +603,26 @@ export default function Customers() {
                       <span>{p.weeklyDownloads.toLocaleString()} dl/wk</span>
                     ) : null}
                   </div>
+
+                  {p.behindBase ? (
+                    <div className="flex flex-wrap items-center gap-2 font-mono text-[10.5px]">
+                      <span className="text-[var(--warning)]">· our branch is behind the base</span>
+                      <button
+                        type="button"
+                        disabled={updating === p.url}
+                        onClick={() => updateBranch(p)}
+                        className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[var(--primary)] hover:bg-[var(--muted)]/40 disabled:opacity-50"
+                        title="PUT update-branch on our fork through GitHub — no clone, no force-push; a conflict is reported, never forced"
+                      >
+                        {updating === p.url ? "updating…" : "update branch"}
+                      </button>
+                      {updateResult[p.url] ? (
+                        <span className={updateResult[p.url].ok ? "text-[var(--success)]" : "text-[var(--destructive)]"}>
+                          {updateResult[p.url].message}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {p.blockers?.length ? (
                     <ul className="flex flex-col gap-0.5">
