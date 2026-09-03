@@ -26,6 +26,18 @@ import { allItems } from "@/lib/footprint";
  * source of what exists.
  */
 
+/** A thread we DID answer, kept for measurement rather than discarded. */
+export interface AnsweredThread {
+  commentId: string;
+  author: string;
+  /** Their comment, dev.to `created_at`. */
+  at: string;
+  /** Our earliest reply under it, dev.to `created_at`. */
+  repliedAt: string;
+  articleTitle: string;
+  onOurArticle: boolean;
+}
+
 export interface InboxThread {
   /** Dev.to comment id_code — stable, and what the reply endpoint keys on. */
   commentId: string;
@@ -144,6 +156,24 @@ async function devto<T>(url: string, attempts = 4): Promise<T> {
 }
 
 /** Does this subtree contain a reply from us anywhere below the node? */
+/**
+ * When did WE answer this thread, by dev.to's clock?
+ *
+ * The earliest reply by us anywhere under the thread root. This is the
+ * timestamp reply latency is measured from (reply-latency intent): a local
+ * "sent" mark says when a button was pressed, and 28 of those were pressed at
+ * the same second on 2026-08-10. The platform's `created_at` cannot be bulk-marked.
+ */
+export function ourReplyAt(children: RawComment[] = []): string | null {
+  let earliest: string | null = null;
+  for (const c of children) {
+    if (c.user?.username === ME && (!earliest || c.created_at < earliest)) earliest = c.created_at;
+    const deeper = ourReplyAt(c.children);
+    if (deeper && (!earliest || deeper < earliest)) earliest = deeper;
+  }
+  return earliest;
+}
+
 function answeredByUs(children: RawComment[] = []): boolean {
   for (const c of children) {
     if (c.user?.username === ME) return true;
@@ -154,6 +184,8 @@ function answeredByUs(children: RawComment[] = []): boolean {
 
 export async function buildInbox(): Promise<{
   threads: InboxThread[];
+  /** Threads we answered, with both timestamps from dev.to. */
+  answered: AnsweredThread[];
   articlesScanned: number;
   commentsSeen: number;
   /** Articles whose comments could not be read. Non-zero means INCOMPLETE. */
@@ -219,6 +251,8 @@ export async function buildInbox(): Promise<{
   console.log(`[inbox] crawling ${articles.length} articles (${engaged} we commented on)`);
 
   const out: InboxThread[] = [];
+
+  const answered: AnsweredThread[] = [];
   const failed: string[] = [];
   let commentsSeen = 0;
   let scanned = 0;
@@ -262,6 +296,18 @@ export async function buildInbox(): Promise<{
          * is not an inbox, it is the site.
          */
         const oursToAnswer = a.mine !== false || parentIsUs;
+        if (!isUs && oursToAnswer) {
+          const repliedAt = ourReplyAt(n.children);
+          if (repliedAt)
+            answered.push({
+              commentId: n.id_code,
+              author: n.user?.username ?? "(unknown)",
+              at: n.created_at,
+              repliedAt,
+              articleTitle: a.title,
+              onOurArticle: a.mine !== false,
+            });
+        }
         if (!isUs && oursToAnswer && !answeredByUs(n.children)) {
           out.push({
             commentId: n.id_code,
@@ -329,6 +375,7 @@ export async function buildInbox(): Promise<{
   );
   return {
     threads: out,
+    answered,
     articlesScanned: scanned,
     commentsSeen,
     articlesFailed: failed.length,
