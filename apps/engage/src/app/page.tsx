@@ -32,6 +32,8 @@ import { Callout } from "@/components/ui/callout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Meter } from "@/components/ui/meter";
 import { StatStrip } from "@/components/ui/stat-strip";
+import { rankActions } from "@/lib/nba";
+import { ME as ME_USER } from "@/lib/me";
 import { DataTable } from "@/components/ui/patterns/data-table";
 
 interface Article {
@@ -49,6 +51,9 @@ interface Item {
   tldr?: string;
   comment?: string;
   category?: string;
+  why?: string | null;
+  relevance?: "high" | "medium" | "low" | null;
+  alt_comment?: string | null;
 }
 interface State {
   date: string;
@@ -149,6 +154,8 @@ export default function Page() {
    * comment queue now: batch writes, app reads.
    */
   const [threadHint, setThreadHint] = useState<string | null>(null);
+  /** Today's standing row + history — see lib/standing.ts. */
+  const [standing, setStanding] = useState<any>(null);
 
 
   /** at[section] = when that section's data was last read. */
@@ -227,6 +234,7 @@ export default function Page() {
     pull("corr", "/api/correlate", (v: any) => setCorr(v)).catch(() => setCorr({ results: [], blocked: "unreachable" }));
     pull(`trends:day`, "/api/trends?grain=day", (v: any) => setTrends(v)).catch(() => setTrends(null));
     pull("bench", "/api/benchmark", (v: any) => setBench(v)).catch(() => setBench(null));
+    pull("standing", "/api/standing", (v: any) => setStanding(v)).catch(() => setStanding({ today: null, history: [], error: "unreachable" }));
 
     // Deep link: /?u=<author> opens that author's drill-down on load, so a link
     // to a person survives being pasted into a note or a second session.
@@ -324,11 +332,87 @@ export default function Page() {
     [threads, ri, reply],
   );
 
+  /**
+   * Mark any row in the waiting list handled without walking the stepper to
+   * it. Same write as `replyAct`, same checked result. Deliberately NOT added
+   * to `session`: "replied" here means a reply posted at some earlier, unknown
+   * time, and charging it to the pace gauge now would block the next real one.
+   */
+  const markThread = useCallback(
+    async (n: number, action: "done" | "skip") => {
+      const t = threads?.[n];
+      if (!t) return;
+      try {
+        const r = await fetch("/api/threads", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ commentId: t.commentId, action }),
+        });
+        const j = await r.json().catch(() => ({ ok: false }));
+        if (!j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
+        setThreads((ts) => (ts ? ts.filter((_, k) => k !== n) : ts));
+        // Keep the card pointing at the same thread when a row above it goes.
+        if (n < ri) setRi((k) => Math.max(0, k - 1));
+        setActErr(null);
+      } catch (e: any) {
+        setActErr(
+          `@${t.author} was not recorded (${String(e?.message ?? e).slice(0, 80)}). ` +
+            `If you replied, mark it again once the server is back — otherwise it will be offered twice.`,
+        );
+      }
+    },
+    [threads, ri],
+  );
+
+  /**
+   * Skip any queue item without walking the stepper to it. Same checked write
+   * as `act("skip")`; the current card keeps pointing at the same item.
+   */
+  const skipItem = useCallback(
+    async (n: number) => {
+      const it = state?.items?.[n];
+      if (!it) return;
+      try {
+        const r = await fetch("/api/act", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ kind: it.kind, date: it.date, slot: it.slot, action: "skip" }),
+        });
+        const j = await r.json().catch(() => ({ ok: false }));
+        if (!j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
+        setState((st) => (st ? { ...st, items: st.items.filter((_, k) => k !== n) } : st));
+        if (n < i) setI((k) => Math.max(0, k - 1));
+        setActErr(null);
+      } catch (e: any) {
+        setActErr(`@${it.article.author} was not recorded (${String(e?.message ?? e).slice(0, 80)}).`);
+      }
+    },
+    [state, i],
+  );
+
   const acted = useMemo(
     () => [...(state?.acted ?? []), ...session],
     [state, session],
   );
   const gs = useMemo(() => gauges(acted), [acted]);
+
+  /**
+   * "Do these first": the open items ranked by what each does to standing.
+   * Arithmetic over the graph and ages (lib/nba.ts) — the model never picks who.
+   * Jumping a row puts that card in place; Enter then sends it as before.
+   */
+  const nba = useMemo(() => {
+    if (!state) return [];
+    return rankActions(
+      graph as any,
+      ME_USER,
+      (threads ?? []).map((t, index) => ({ index, author: t.author, ageDays: t.ageDays, replyToUs: t.replyToUs, authorGone: t.authorGone })),
+      (state.items ?? []).map((it, index) => ({ index, author: it.article.author, kind: it.kind })),
+      acted.map((a) => ({ author: a.author, at: a.at })),
+    )
+      .filter((r) => r.score > 0)
+      .slice(0, 5);
+  }, [state, threads, graph, acted]);
   const hardBlock = blocked(gs);
 
   async function act(action: "done" | "skip") {
@@ -358,7 +442,11 @@ export default function Page() {
           kind: item.kind,
           date: item.date,
           slot: item.slot,
-          action,
+          // "done" means the tab opened; the server records it as `opened` and
+          // the reconciler promotes it to `posted` once dev.to shows the comment.
+          action: action === "done" ? "open" : action,
+          // The edited text, so the ledger carries what was pasted, not the draft.
+          text: item.kind === "comment" && action === "done" ? draft : null,
         }),
       });
       const j = await r.json().catch(() => ({ ok: false }));
@@ -427,6 +515,9 @@ export default function Page() {
           </Link>
           <Link href="/rules" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             rules →
+          </Link>
+          <Link href="/customers" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
+            customers →
           </Link>
         </div>
       </header>
@@ -539,6 +630,52 @@ export default function Page() {
         )}
       </Collapse>
 
+      {/* ── Do these first ──────────────────────────────────────────────── */}
+      {nba.length > 0 && (
+        <Collapse id="s23" head={<><span>Do these first · {nba.length}</span></>}>
+          <ul className="flex flex-col gap-1">
+            {nba.map((r) => {
+              const t = r.source === "thread" ? threads?.[r.index] : null;
+              const it = r.source === "item" ? state?.items?.[r.index] : null;
+              const title = t?.articleTitle ?? it?.article.title ?? "";
+              return (
+                <li key={`${r.source}:${r.index}`} className="flex items-center gap-2 rounded border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[12.5px]">
+                  <span className="w-10 shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">
+                    {r.source === "thread" ? "reply" : it?.kind === "reaction" ? "react" : "comment"}
+                  </span>
+                  <span className="w-40 shrink-0 truncate font-mono text-[11px]">@{r.author}</span>
+                  <span className="min-w-0 flex-1 truncate" title={title}>{title}</span>
+                  <span className="hidden shrink-0 text-[11px] text-[var(--muted-foreground)] md:inline" title={r.why}>{r.why}</span>
+                  <span className="shrink-0 font-mono text-[10px] text-[var(--success)]">+{r.score}</span>
+                  <button
+                    onClick={() => {
+                      if (r.source === "thread") { setRi(r.index); setReply(threads?.[r.index]?.draft ?? ""); setFocus("replies"); }
+                      else { setI(r.index); setFocus("queue"); }
+                    }}
+                    className="shrink-0 rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--primary)] hover:bg-[var(--muted)]/40"
+                    aria-label={`jump to @${r.author}`}
+                  >
+                    jump
+                  </button>
+                  <button
+                    onClick={() => (r.source === "thread" ? markThread(r.index, "skip") : skipItem(r.index))}
+                    className="shrink-0 rounded border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--muted-foreground)] hover:bg-[var(--muted)]/40"
+                    aria-label={`skip @${r.author}`}
+                  >
+                    skip
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-[12px] text-[var(--muted-foreground)]">
+            Ranked by what each action does to standing: closing a mutual tie first, an untouched core
+            node next, then any new author, with waiting time on top. Jump puts the card in place;
+            Enter sends it.
+          </p>
+        </Collapse>
+      )}
+
       <Collapse id="s1" head={<>
           Up next
         </>}>
@@ -574,6 +711,27 @@ export default function Page() {
                 </span>
               ))}
             </div>
+            {(item.relevance || item.why) && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.08em]">
+                {item.relevance && (
+                  <span
+                    title="Relevance tier from the morning batch — a keyword heuristic that only sets the default button"
+                    className={`rounded border px-1.5 py-0.5 ${
+                      item.relevance === "high"
+                        ? "border-[var(--success)] text-[var(--success)]"
+                        : item.relevance === "low"
+                          ? "border-[var(--warning)] text-[var(--warning)]"
+                          : "border-[var(--border)] text-[var(--muted-foreground)]"
+                    }`}
+                  >
+                    {item.relevance} relevance
+                  </span>
+                )}
+                {item.why && (
+                  <span className="normal-case tracking-normal text-[var(--muted-foreground)]">{item.why}</span>
+                )}
+              </div>
+            )}
             {item.tldr && (
               <p className="mt-3 border-l-2 border-[var(--border)] pl-3 text-sm text-[var(--muted-foreground)]">
                 {item.tldr}
@@ -587,18 +745,42 @@ export default function Page() {
               />
             )}
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              {/* LOW relevance pre-selects Skip, per the skill's gate: still one
+                  click to override, but the default is the honest one. */}
               <button
                 onClick={() => act("done")}
-                className="rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)]"
+                className={
+                  item.relevance === "low"
+                    ? "rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)]"
+                    : "rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)]"
+                }
               >
                 {item.kind === "comment" ? "Copy & open →" : "Open →"}
               </button>
               <button
                 onClick={() => act("skip")}
-                className="rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)]"
+                className={
+                  item.relevance === "low"
+                    ? "rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)]"
+                    : "rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm text-[var(--muted-foreground)]"
+                }
               >
                 Skip
               </button>
+              {item.kind === "comment" && item.alt_comment && (
+                <button
+                  onClick={() => {
+                    // Swap, don't regenerate: both takes were drafted in the
+                    // morning batch, so this is a file read, never a model call.
+                    const other = draft === item.alt_comment ? (item.comment ?? "") : item.alt_comment!;
+                    setDraft(other);
+                  }}
+                  title="Swap to the second take drafted this morning"
+                  className="rounded-lg border border-[var(--border)] px-3 py-2.5 text-sm text-[var(--muted-foreground)]"
+                >
+                  {draft === item.alt_comment ? "First take" : "Other take"}
+                </button>
+              )}
               <span className="ml-auto font-mono text-[12px] text-[var(--muted-foreground)]">
                 {i + 1} of {items.length}
               </span>
@@ -651,6 +833,44 @@ export default function Page() {
             none.
           </Callout>
         )}
+      </Collapse>
+
+      {/* ── Standing ────────────────────────────────────────────────────────
+          Are we becoming a more important author? Counts of observed comment
+          edges, see lib/standing.ts. Sample-bound, and the strip says so. */}
+      <Collapse id="s22" head={<><span>
+          Standing{standing?.today?.rank_nonstaff ? ` · #${standing.today.rank_nonstaff} among non-staff` : ""}
+        </span><Refresh onClick={() => pull("standing", "/api/standing", (v: any) => setStanding(v), true)} at={at.standing ?? null} busy={!!busy.standing} /></>}>
+        <StatStrip
+          cols={4}
+          loading={!standing}
+          state={{ error: standing?.error }}
+          announce={{ noun: "standing metrics" }}
+          items={(
+            [
+              ["Mutual ties", "mutual", "two-way comment ties"],
+              ["Commented on us", "in_authors", "distinct authors, observed"],
+              ["Core reach", "core_reach", "mutual ties with the top 40"],
+              ["Replies waiting", "replies_waiting", "unanswered threads"],
+              ["Rank", "rank_nonstaff", "among non-staff, by ties"],
+              ["Authors tied", "degree", "either direction"],
+              ["Reply latency", "reply_latency_h", "median hours, over marks"],
+              ["Sampled", "sample_size", "articles behind every number"],
+            ] as const
+          ).map(([label, k, note]) => {
+            const hist = standing?.history ?? [];
+            const prior = hist.length > 7 ? hist[hist.length - 8]?.[k] : null;
+            return { key: k, label, note, value: standing?.today?.[k] ?? null, prior: typeof prior === "number" ? prior : null };
+          })}
+        />
+        {standing?.error && (
+          <Callout tone="warn" title="No standing yet" className="mt-3">{standing.error}</Callout>
+        )}
+        <p className="mt-3 text-[12.5px] text-[var(--muted-foreground)]">
+          Every number is a count of comment edges or threads that exist on dev.to. Followers and
+          reactions are absent on purpose: the first is invisible for other accounts, the second
+          carries no &ldquo;who&rdquo;. Rank compares within one crawl policy only.
+        </p>
       </Collapse>
 
       {/* ── DEV community network ────────────────────────────────────────── */}
@@ -819,6 +1039,7 @@ export default function Page() {
             onRetry={refreshThreads}
             focused={focus === "replies"}
             onFocus={() => setFocus("replies")}
+            onMark={markThread}
             onJump={(n) => {
               setRi(n);
               // Load that thread's draft, or clear the box — carrying the
@@ -842,7 +1063,11 @@ export default function Page() {
               {sources.impact.error}
             </p>
           ) : (
-            <Impact rows={sources.impact?.rows ?? []} />
+            <Impact
+              rows={sources.impact?.rows ?? []}
+              live={insights?.metrics?.followers ?? null}
+              today={state?.date}
+            />
           )
         ) : (
           <Skel rows={2} />

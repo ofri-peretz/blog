@@ -23,24 +23,27 @@ export async function POST(req: Request) {
   if (raw.length > MAX_BODY)
     return NextResponse.json({ ok: false, error: "body too large" }, { status: 413 });
 
-  let body: { kind?: string; date?: string; slot?: number; action?: string };
+  let body: { kind?: string; date?: string; slot?: number; action?: string; text?: unknown };
   try {
     body = JSON.parse(raw);
   } catch {
     return NextResponse.json({ ok: false, error: "bad json" }, { status: 400 });
   }
 
-  const { kind, date, slot, action } = body;
+  const { kind, date, slot, text } = body;
+  // `done` is the pre-split client vocabulary; it meant "opened", so map it.
+  const action = body.action === "done" ? "open" : body.action;
   if (
     (kind !== "comment" && kind !== "reaction") ||
     typeof date !== "string" ||
     !DATE.test(date) ||
     typeof slot !== "number" ||
-    (action !== "done" && action !== "skip")
+    (action !== "open" && action !== "skip" && action !== "posted") ||
+    (text !== undefined && text !== null && typeof text !== "string")
   )
     return NextResponse.json({ ok: false, error: "bad params" }, { status: 400 });
 
-  const r = recordAction(kind, date, slot, action);
+  const r = recordAction(kind, date, slot, action, (text as string | null | undefined) ?? null);
 
   // Ledger + narrow cache invalidation. The queue file records WHAT the item
   // became; this records that YOU did it, when, and in which session — which is
