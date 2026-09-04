@@ -86,7 +86,6 @@ export function velocity(a: RadarIn, now = Date.now()): number {
 }
 
 /** Keyword hits in title and tags, plus home-tag overlap; the hits are returned for the panel. */
-/** Keyword hits in title and tags, plus home-tag overlap; the hits are returned for the panel. */
 export function relevance(a: RadarIn): { relevance: number; hits: string[] } {
   // "Dependency injection" is a framework topic, not ours; strip it before matching.
   const hay = `${a.title} ${tags(a).join(" ")}`
