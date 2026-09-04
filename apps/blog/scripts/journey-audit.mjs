@@ -110,9 +110,33 @@ try {
     const doc = docs.find((d) => d.title.length >= 20) ?? docs[0];
     if (!doc) throw new Error("search index is empty");
     await page.goto(`${BASE}/articles`, { waitUntil: "load", timeout: NAV_MS });
-    await page.keyboard.press("ControlOrMeta+KeyK");
+    // The trigger is rendered by the same client component that installs the
+    // global ⌘K handler, so waiting for it is the closest available signal
+    // that the handler exists. It is not proof — presence is not hydration —
+    // which is why the press is retried below rather than fired once.
+    //
+    // Journey 2 never hits this because `.click()` auto-waits for
+    // actionability; a raw keyboard press has no such guarantee and goes
+    // nowhere if it lands first. That asymmetry is why this journey failed
+    // twice in a row while the one directly beneath it passed.
     const input = page.locator('[data-slot="command-palette-input"]');
-    await input.waitFor({ state: "visible", timeout: 5000 });
+    await page
+      .locator('[data-slot="corpus-search-trigger"]')
+      .waitFor({ state: "visible", timeout: 5000 });
+    for (let attempt = 1; ; attempt++) {
+      await page.keyboard.press("ControlOrMeta+KeyK");
+      try {
+        await input.waitFor({ state: "visible", timeout: 1500 });
+        break;
+      } catch (err) {
+        // Still the keyboard path, still the same assertion — only the race
+        // is absorbed. Four attempts is a 6s ceiling, above the old 5s.
+        if (attempt >= 4)
+          throw new Error(
+            `⌘K did not open the palette after ${attempt} attempts: ${err.message}`,
+          );
+      }
+    }
     // Base UI sets initial focus asynchronously after mount — poll
     // rather than asserting the instant the input becomes visible.
     await page
@@ -268,21 +292,23 @@ try {
     // with a visible control, so .check() on the input can fail as "not
     // visible". Clicking the LABEL toggles it whichever shape it takes,
     // and is what a person actually does.
-    await form
-      .locator('label:has([name="consent"])')
-      .click({ timeout: 10000 });
+    await form.locator('label:has([name="consent"])').click({ timeout: 10000 });
     await form.locator('button[type="submit"]').click();
 
     // Either terminal state ends the wait. Racing them means a real
     // failure surfaces as its own message rather than a bare timeout.
     const settled = page
-      .locator('[data-testid="article-subscribe-done"], [data-slot="article-subscribe"] [role="alert"]')
+      .locator(
+        '[data-testid="article-subscribe-done"], [data-slot="article-subscribe"] [role="alert"]',
+      )
       .first();
     await settled.waitFor({ state: "visible", timeout: 20000 });
 
     const text = (await settled.textContent())?.trim() ?? "";
     if (!text) throw new Error("the form settled into an empty state");
-    pass("newsletter: filling and submitting the form reaches a terminal state");
+    pass(
+      "newsletter: filling and submitting the form reaches a terminal state",
+    );
   } catch (err) {
     fail(
       "newsletter: filling and submitting the form reaches a terminal state",

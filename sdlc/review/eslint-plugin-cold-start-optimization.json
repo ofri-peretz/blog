@@ -1,0 +1,44 @@
+{
+  "slug": "eslint-plugin-cold-start-optimization",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/eslint-plugin-cold-start-optimization.md",
+  "reviewed": "2026-09-04",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "BLOCKING, claim integrity: 'TypeScript 7's Go port is 2MB.' Measured 2026-09-04, typescript@7.0.2 \u2014 now npm's `latest`, so this is what a reader gets today, not a future scenario \u2014 installs 30.7MB: a 3.6MB JavaScript shim plus a 26.5MB platform-native Go binary it cannot run without. The compiler did not shrink by 12x, it grew. The article's conclusion is unchanged and better supported, which is why this is a correction rather than a retraction.",
+    "BLOCKING, REVIEW.md pass 3: the install snippet was a single npm line. Now four package managers, the eslint peer range covering 8, 9 and 10, an explicit statement that every other peer is optional, and `npm ls typescript` as the reader's own verification \u2014 which is the article's thesis turned into a command.",
+    "framing lock: 'Two wins, two axes' tripped sdlc-chain-lock's banned-vocabulary set. This is a genuine false positive \u2014 'wins' here means 'improvements', and the article's own singular 'a size win only' two paragraphs later is not on the list. Reworded to 'Two gains' rather than loosening the gate: the word list is a blunt instrument on purpose, and widening it to admit a benign use would weaken a check that exists to stop competitive framing. Recorded so the inconsistency is visible if it recurs."
+  ],
+  "checked_and_found_correct": [
+    "The two-door mechanism, which is the article's spine: @typescript-eslint/utils@8.0.0 declares only an eslint peer, 8.46.2 declares eslint AND typescript, and its peerDependenciesMeta is empty \u2014 so that peer is genuinely non-optional. The drift happened after 8.0.0 and was present by 8.20.0.",
+    "TypeScript 6.0.3 installs 24,116 KB. The headline 24MB is exact.",
+    "oxc-resolver installs 1,632 KB against a claimed 1.5MB, and the utils subtree 4,016 KB against a claimed 4.5MB \u2014 both the right instrument, with ordinary version drift.",
+    "The devkit's published manifest matches the article's 'Now' block verbatim, and has no `dependencies` field at all, so 'zero runtime dependencies' is literally true.",
+    "19 plugins, counted from the monorepo's eslint-plugin-* packages."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "The hook is a confession with a number in it, which is the most durable kind: a peer the author forgot to mark optional put 24MB under every plugin they publish. The structure keeps paying that off \u2014 two theories, both half right, which is why the first fix failed. The closing line does the CTA's job better than a CTA would: '`npm ls typescript` in a project that only installs a linter is an uncomfortable command to run.'"
+    },
+    "security_correctness": {
+      "score": 9.6,
+      "why": "Read as technical correctness. The mechanism claims are exact and were verified at the registry rather than from memory, including the subtle one \u2014 that the second door is non-optional, which is what makes it independent of the first. The size figures use install-tree measurement consistently, which is the correct instrument and one the article never states; the spec now does. Held here rather than higher because the TypeScript 7 figure was wrong by an order of magnitude in the wrong direction, in an article whose entire subject is size."
+    },
+    "structure_framing_voice": {
+      "score": 9.7,
+      "why": "The strongest lens. 'Two numbers, and they are not the same number' is the section most size articles never write, and it pre-empts exactly the conflation the author says they nearly published. 'The part I got wrong' and 'What is still on the floor' are both unusual and both earn their place \u2014 an article that reports a 49% remaining inefficiency and an unshipped -70ms win is not selling anything. 'Nobody reviews a manifest the way they review a function' is the line the piece turns on. Framing is careful: @typescript-eslint/utils is described factually, with the version where the peer appeared, and the author's own manifest is treated as the worse mistake."
+    },
+    "compatibility": {
+      "score": 9.6,
+      "why": "Was a single npm line, which pass 3 blocks. Now carries all four package managers and the peer range across ESLint 8, 9 and 10 \u2014 and, unusually, the compatibility section is on-topic rather than boilerplate, because the thing worth saying about installing this package is that it does not drag anything with it. The `npm ls typescript` check gives the reader a way to prove that themselves."
+    },
+    "reproducibility": {
+      "score": 9.5,
+      "why": "The lowest, and the honest reason is that this article contains two classes of number. The install-tree and manifest rows were all re-run on the reviewed date with a stated instrument. The timing figures, the 20-package tarball census, the 49% and the -70ms are dated single-machine measurements at a pinned commit that the article does not name, so a reader cannot re-run them at all. The article does flag them as pinned-commit timings; the spec now records explicitly that they were not re-verified, rather than letting a fully-sourced table imply that everything in it was."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear"
+}

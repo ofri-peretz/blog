@@ -1,0 +1,44 @@
+{
+  "slug": "ai-agents-rebranded-my-oss-ecosystem-two-pipelines-were-dead",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/ai-agents-rebranded-my-oss-ecosystem-two-pipelines-were-dead.md",
+  "reviewed": "2026-09-04",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "claim integrity: '54.20.1 from July 6' read as a publish date and is not one — npm published 54.20.1 on 3 July; 6 July was the last deploy that worked. Two different facts sharing one preposition. Now stated separately, with 58.4.4's publish date (30 July) alongside, which makes the drift concrete: an unpinned npx crossed four majors in under a month."
+  ],
+  "checked_and_found_correct": [
+    "Both CLI versions exist and their publish dates bracket the incident window exactly as described.",
+    "The fix is genuinely in the repo: VERCEL_CLI_VERSION: 54.20.1 on origin/main, and all four npx invocations consume it — which is the article's own caveat that the env var alone pins nothing.",
+    "The sibling deploy.yml is pinned too, at vercel@56.3.2, so the lesson was applied beyond the workflow the article describes.",
+    "`gh workflow list --all --json name,state` is a real command that returns the state field the article relies on."
+  ],
+  "method_notes": [
+    "The two workflow rows were first taken against a local checkout on an unrelated branch and produced BOTH a false negative (no pin found) and a false positive (an unpinned vercel@latest that does not exist on main). Re-taken with `git show origin/main:`. Worth recording inside a review of an article about trusting the wrong signal."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "Title carries the whole shape — the agent-scale flex and the twist that undercuts it in the same breath — and 'Merged is a feeling. Live is a measurement.' is the best line in the queued set. The opening paragraph refuses the easy version twice: not failing loudly, dead; not a missing deploy, a deploy that reported success over a two-week-old build. Closes on a two-part question that asks for a number, not an opinion."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "The mechanism is described precisely enough to be falsifiable and it survived being checked: an unpinned npx crossing majors, a builder emitting functions outside the output directory, an archive that packs only that directory, ENOENT on a file that was never packed. The escape hatch is closed with a measured number rather than an assertion, and disclosed as plan-specific. The second pipeline's insight — disabled workflows produce nothing, and an empty check rollup renders exactly like a passing one — is correct and is the kind of thing most incident write-ups get subtly wrong."
+    },
+    "structure_framing_voice": {
+      "score": 9.7,
+      "why": "Two failures, one lesson, then the lesson extracted as something portable — 'the one thing from that weekend I'd hand to someone else as-is' — with its three failure modes named in the order they bit. The section that lifts it is the admission immediately after: the check is still manual, one curl away from being automated, 'which is exactly the admission the live check exists to force'. An article that turns its own unfinished work into the argument rather than hiding it. 'What the agents could not do was notice' is the honest division of labour, and it is not flattering to the tooling the author sells."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "Nothing is installed, so pass 3's matrix does not bind. The surface it does own is two snippets, both verified: the workflow env var against the file on origin/main, and the gh command against a live repo. Held at the floor because the YAML block is illustrative rather than copy-pasteable — it shows the env line and then two example invocations as comments, so a reader cannot lift it whole, which is a fair choice for a narrative piece but is still a gap between what is shown and what can be run."
+    },
+    "reproducibility": {
+      "score": 9.5,
+      "why": "The lowest, honestly. Everything mechanistic reproduces. Everything else — 13 PRs, 1,580 tests, two weeks of stale build, four PRs against an empty rollup, 18,316 files against a 15,000 cap — is a single-event observation, one of the five repositories is private, and no reader can audit any of it. That is inherent to an incident write-up rather than a flaw in this one, and the article already discloses the cap as measured on our plan rather than quoted from docs. The spec now lists those five facts explicitly as not-re-runnable instead of letting a sourced table imply otherwise."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear"
+}

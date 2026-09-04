@@ -1,0 +1,44 @@
+{
+  "slug": "eslint-plugin-maintenance-signals",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/eslint-plugin-maintenance-signals.md",
+  "reviewed": "2026-09-04",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "BLOCKING, reproducibility: the article's own instructions did not reproduce the article's own table. It told the reader to run `npm view <plugin> time.modified`, but npm bumps `modified` on any metadata change — a deprecation, an ownership transfer — without a publish. For four of the six packages in its dead tier that field is 1,100 to 1,550 days newer than the last release, and it errs toward reassurance. eslint-plugin-flowtype reports 2026-01-24, reading as maintained; its last release was 2021-10-29. The table's 1,748 days is right and the command's 199 is wrong. Both shell snippets now read the publish date of the current version, and the article explains the trap rather than silently swapping the field."
+  ],
+  "checked_and_found_correct": [
+    "Every dead-tier figure reproduces to within one day: 3,295 / 2,327 / 2,087 / 1,747 / 1,506 / 951 against a published 3,296 / 2,328 / 2,088 / 1,748 / 1,507 / 951. The one-day spread is time-of-day rounding.",
+    "The three headline rows are exact or within a day — react 495 and import 417 exactly, jsx-a11y 654 against a published 655.",
+    "eslint-plugin-standard genuinely carries an npm deprecation flag, so the machine-readable-signal claim holds.",
+    "The comeback story is exact on all four of its dates: 3.0.1 on 2024-06-14, 4.0.0 on 2026-02-19, 4.0.1 on 2026-06-12, and the gap between the first two is 20 months."
+  ],
+  "could_not_determine": [
+    "'Nine of the eighteen I measured shipped nothing at all in the last twelve months.' The eighteen are never listed — the article names nine in the table and six in the dead tier, overlapping — so the denominator is not auditable by a reader and was not audited here. Left in place because the claim it supports is carried independently by the table, and recorded in the spec as the one number on the page nobody can check."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "Title is a dated, falsifiable claim about packages nearly every JavaScript developer has installed — named targets, an implicit number, and a year that makes it checkable rather than vague. The lead is the strongest possible version of the premise: a signal you can get in one second. Closes with a question that sends the reader to their own lockfile, which is the correct call to action for this piece."
+    },
+    "security_correctness": {
+      "score": 9.6,
+      "why": "Read as factual correctness. Every auditable number reproduces, including six dead-tier figures and four dates in the comeback section. The one claim that cannot be audited is flagged rather than dropped. Held here rather than higher because the article shipped a method that contradicted its own results — the data was right and the instructions were wrong, which is a correctness defect even when the table survives."
+    },
+    "structure_framing_voice": {
+      "score": 9.7,
+      "why": "The best-argued of the queued drafts. 'Dormant is not dead' arrives immediately after the table, before the reader has finished drawing the wrong conclusion, and it concedes the strongest counter-argument — a stable spec should produce a stable plugin — rather than answering a weak one. The three follow-up signals are concrete and free. 'The one that came back' is the section that earns the piece its credibility: it shows the package we have elsewhere called unmaintained shipping again, and turns that into a rule about expiry dates rather than an embarrassment to bury."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "The lowest, for the same structural reason as the other tool-agnostic pieces: there is nothing to install, so pass 3's package-manager and ESLint-major matrix does not bind. What it does own is the shell it hands the reader, and that is now correct — which is the compatibility surface this article actually has. Not raised above the floor because the corrected commands are two lines rather than one, and the batch one-liner remains long enough that a reader will most likely copy it without reading it."
+    },
+    "reproducibility": {
+      "score": 9.6,
+      "why": "Post-fix, strong. Every figure a reader can check was checked and reproduced, from a registry field that is stable and public, with the measurement date stated in the article and the drift acknowledged ('already drifting — eslint-plugin-jest was at 0 days when I measured it'). The actively-maintained rows cannot be re-verified to a past date because the registry does not preserve that, and the spec says so rather than implying the whole table was re-run."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear"
+}

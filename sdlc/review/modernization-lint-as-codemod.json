@@ -1,0 +1,43 @@
+{
+  "slug": "modernization-lint-as-codemod",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/modernization-lint-as-codemod.md",
+  "reviewed": "2026-09-04",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "BLOCKING, claim integrity: 'All four at error from day one — unusually, that is safe here, because a rule whose findings are 100% auto-fixable cannot leave you with a backlog.' Two of the four rules carry no fixer in 3.1.2. The claim held only because those two returned zero findings in the measurement; as advice to a reader whose code differs, it promises exactly the backlog it says cannot happen. Rewritten to name which two are fixable, with the command to check.",
+    "BLOCKING, REVIEW.md pass 3: the install snippet was npm-only and flat-config-only. Now covers npm, yarn, pnpm and bun, pins 3.1.2, states the peer range (ESLint 8, 9 and 10), the Node floor, and that there is no Oxlint port.",
+    "reproducibility: '389 files across four of my own repos' named neither the repos nor the command, so no reader could check anything. A named, public subset is now re-measured with the exact method and result.",
+    "reproducibility: '476 findings, all noise' attributed the failure to an unnamed rule in an unnamed plugin. It is react-features/react-no-inline-functions, now named, with a same-day figure on the same corpus (110) beside the modernization figure (8) so the comparison is on identical input rather than across two anecdotes."
+  ],
+  "checked_and_found_correct": [
+    "All four rule names load in 3.1.2, so the article's config will not crash. Worth noting the near-miss: the local checkout has 2.0.4, in which prefer-template-literal does not exist at all — counting rules from it would have produced 3 and a wrong article.",
+    "`[].at(-1)` and `e[e.length-1]` both return undefined on an empty array, exactly as the caveat paragraph claims.",
+    "11 + 44 = 55 — the historical per-rule split is internally consistent with the headline."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "Title is on formula — named target, concrete number, a claim that stings slightly ('my code predates the language') without being clickbait. It opens on a line of real code that the reader will recognise as their own and that passes review, which is a stronger hook than any assertion. Carries rule-docs and npm links plus a closing question. The number in the title survives review: the 55 findings genuinely were all auto-fixed."
+    },
+    "security_correctness": {
+      "score": 9.6,
+      "why": "Read as technical correctness, since nothing here is a security claim. Post-fix it is accurate and now unusually careful about the boundary between what was measured and what is true in general — the fixability distinction is exactly the kind of thing an article gets to be vague about and this one no longer is. Not higher because the defect was real and load-bearing: the sentence that had to be rewritten was the article's adoption advice, not a detail."
+    },
+    "structure_framing_voice": {
+      "score": 9.7,
+      "why": "The strongest lens. Six sections with a genuine argument running through them, and the best of them is 'The two that found nothing' — reporting a zero as a result, then explaining why a zero is the correct output, is writing most people would cut. Framing is landscape in the hardest direction: the negative example is our own rule in our own plugin, named. The measurement note now also records my own vacuous zero, which is on-voice for this corpus rather than an apology."
+    },
+    "compatibility": {
+      "score": 9.6,
+      "why": "Was the weakest lens by a distance — one npm line, one flat config, no version, nothing about ESLint majors or Oxlint — and pass 3 makes that blocking. Now carries all four package managers, a pinned 3.1.2, the peer range covering ESLint 8, 9 and 10, the Node 18 floor, and an explicit statement that no Oxlint port exists. The version pin does real work here rather than being ceremony: on an older major the article's own config is rejected outright."
+    },
+    "reproducibility": {
+      "score": 9.6,
+      "why": "The historical 389/55 remains un-re-runnable and the article says so plainly, which is the right treatment for a dated observation over repos a reader cannot clone. What carries the lens is the new measurement: a named public target, exact per-rule counts, and two guards — `unmatched: 0` proving all 189 files were configured, and a planted-violation run proving the harness can produce a non-zero. Both exist because two earlier attempts returned a confident, wrong zero."
+    }
+  },
+  "min": 9.6,
+  "verdict": "clear"
+}

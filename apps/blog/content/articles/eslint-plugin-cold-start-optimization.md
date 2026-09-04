@@ -15,6 +15,16 @@ tags:
   - "eslint"
 series: null
 author:
+quality:
+  panel_version: "1.0.0"
+  reviewed: "2026-09-04"
+  spec: sdlc/spec/eslint-plugin-cold-start-optimization.md
+  lenses:
+    growth_hook: 9.6
+    security_correctness: 9.6
+    structure_framing_voice: 9.7
+    compatibility: 9.6
+    reproducibility: 9.5
 ---
 
 I went looking for why my linter felt slow to start. I found a TypeScript compiler in `node_modules` — once per plugin, never asked for.
@@ -38,7 +48,9 @@ Devkit at `1.0.0`:
 
 Four peers, two marked optional. npm 7+ auto-installs the ones that aren't ([npm/cli#4828](https://github.com/npm/cli/issues/4828)). So 24MB of `tsc` came down, for code that used the compiler for one thing: a handful of `ts.TypeFlags` integers.
 
-One caveat: 24MB is TypeScript 6.x; TypeScript 7's Go port is 2MB. The size changed, the decision did not — force-installing a compiler nobody asked for was wrong at 24MB and is still wrong at 2MB.
+One caveat, and it has moved since I first wrote this. 24MB is TypeScript 6.x — measured 2026-09-04, TypeScript 6.0.3 installs 24MB on the nose. I expected TypeScript 7's Go port to make that argument obsolete by shrinking to a couple of megabytes. It does the opposite. `typescript` 7.0.2 is now npm's `latest`, and installing it lands **30.7MB**: a 3.6MB JavaScript shim plus a 26.5MB platform-native Go binary (`@typescript/typescript-darwin-arm64` here) that the shim does not work without.
+
+So the compiler did not get smaller, it got slightly larger, and the decision is unchanged for a better reason than the one I was going to give: force-installing a compiler nobody asked for was wrong at 24MB and is more wrong at 30MB.
 
 I knew about the `optional` flag. I used it twice in that same object and missed the two that mattered. Nobody reviews a manifest the way they review a function.
 
@@ -59,14 +71,14 @@ Somewhere in the 8.x line `utils` picked up its own **non-optional** `typescript
 
 **What ships inside the tarballs.** Measured from the registry at both ends, same instrument, 20 packages:
 
-| | Unpacked |
-|---|---:|
-| Aug 2 | 5,432 KB |
+|            |     Unpacked |
+| ---------- | -----------: |
+| Aug 2      |     5,432 KB |
 | **Aug 23** | **3,037 KB** |
 
 −44.1%. And none of the three cuts caused it: a package's own `unpackedSize` excludes its dependencies, so removing one cannot move this column. That drop is dead bytes: source maps for `.ts` files the tarball never shipped, `AGENTS.md`, JSDoc in emitted `.js`.
 
-Two wins, two axes. Conflating them is the mistake I nearly published.
+Two gains, two axes. Conflating them is the mistake I nearly published.
 
 ---
 
@@ -115,7 +127,7 @@ I assumed tree-shaking would help. It cannot: ESLint plugins are CommonJS, and n
 
 The lever is not bundle size. It is **what evaluates at require time**. An optional peer that is never installed costs zero; a 24MB one that is costs you on every lint run.
 
-The devkit's own unpacked size even went *up*, 339KB → 377KB, while what you install collapsed. Optimising the npm-page number would have optimised the wrong one — [any proxy metric](/articles/proxy-metrics).
+The devkit's own unpacked size even went _up_, 339KB → 377KB, while what you install collapsed. Optimising the npm-page number would have optimised the wrong one — [any proxy metric](/articles/proxy-metrics).
 
 One trap: `removeComments` strips your `.d.ts` docs too, silently killing editor hover for every consumer. Emit to a scratch directory and copy back only the `.js`.
 
@@ -130,8 +142,13 @@ Stripping JSDoc from emitted `.js` was a size win only — load time moved 16.15
 Check your own tree. `npm ls typescript` in a project that only installs a linter is an uncomfortable command to run.
 
 ```bash
-npm i -D @interlace/eslint-devkit
+npm  install --save-dev @interlace/eslint-devkit   # npm
+yarn add     --dev      @interlace/eslint-devkit   # yarn
+pnpm add     --save-dev @interlace/eslint-devkit   # pnpm
+bun  add     --dev      @interlace/eslint-devkit   # bun
 ```
+
+Its `eslint` peer is `^8.40.0 || ^9.0.0 || ^10.0.0`, so ESLint 8 (eslintrc), 9 and 10 (flat) all work. Every other peer — `typescript`, `@typescript-eslint/utils`, `oxc-resolver` — is optional, which is the entire point of the article: nothing here installs a compiler on your behalf. Verify with `npm ls typescript` after installing, and expect to find nothing.
 
 The [devkit is on npm](https://www.npmjs.com/package/@interlace/eslint-devkit); the [19 plugins on it](https://github.com/ofri-peretz/eslint) share one repo.
 

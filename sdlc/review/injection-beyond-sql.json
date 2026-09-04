@@ -1,0 +1,43 @@
+{
+  "slug": "injection-beyond-sql",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/injection-beyond-sql.md",
+  "reviewed": "2026-09-04",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "claim integrity: the article quoted CWE-943's title as \"improper neutralisation of special elements in data query logic\" — a British respelling inside quotation marks. MITRE spells it \"Improper Neutralization of Special Elements in Data Query Logic\". Quoted text either matches or is not quoted.",
+    "reproducibility: \"MITRE lists exactly four children under CWE-943\" is the article's most load-bearing precision claim and gave the reader no way to check it. The Research Concepts view (View-1000) is now named in the sentence.",
+    "growth_hook: a T1 with no CTA. Every other article in the corpus carries one; this ended on a bare byline."
+  ],
+  "checked_and_found_correct": [
+    "All 11 CWE numbers resolve to titles that match the row they are placed in, fetched from MITRE.",
+    "CWE-943 has exactly four children — 89, 90, 643, 652 — read from the Research Concepts view. The article's narrowing paragraph is accurate.",
+    "All 5 internal /articles/ links resolve to real files; PortSwigger and OWASP A03 both 200.",
+    "The empty `author:` field looked like a defect and is not — it is the corpus norm across published articles. Checked before reporting."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "Title is on the validated formula and unusually well-built: named target (SQL injection), concrete number (eight), and a claim that indicts the reader without insulting them. The opening is a scene rather than a definition — 'they grep for string concatenation near a database call' — and the close is a direct question plus a bet ('My money is on GraphQL'), which is the strongest engagement device in the corpus. Was held down by having no CTA at all; now fixed."
+    },
+    "security_correctness": {
+      "score": 9.8,
+      "why": "The strongest lens and the reason this is a T1. Eleven CWE mappings, every one verified against MITRE's published title. More importantly the article narrows its own table: it says outright that only four rows are formally filed under CWE-943, that GraphQL has no CWE at all, and that XXE, format string and prototype pollution 'are not siblings in any sense'. A tidier article would have claimed a family of nine and been wrong. It also correctly types GraphQL depth limits as CWE-400 resource exhaustion rather than injection."
+    },
+    "structure_framing_voice": {
+      "score": 9.7,
+      "why": "Four sections, each doing distinct work: the taxonomy, three concrete failure modes that differ from SQL's, why tooling misses them, and what to grep. Framing is landscape in the hardest way — the sharpest criticism in the piece is aimed at our own class of tool: pattern matching cannot prove reachability, it goes quiet one helper away, and 'a rule count is a poor proxy for coverage'. No banned vocabulary, no neighbour named as inferior."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "The lowest, and the honest reason is that there is almost nothing here to bind. The article ships no install snippet, no config, no version-pinned API, so REVIEW.md pass 3's package-manager and ESLint-major matrix does not apply. What keeps it at the floor rather than above it is that a reader who finishes convinced has no path from this article to a rule that helps — the two plugin links in the body are incidental, and the fix for that is a follow-up, not a rewrite of a piece that is deliberately tool-agnostic."
+    },
+    "reproducibility": {
+      "score": 9.6,
+      "why": "Every factual claim is a fetchable URL and all of them were fetched. The four-children claim — the one a skeptical reader would challenge — now names the MITRE view it lives in, so it is checkable in one click rather than on trust. Held below the top only by the GraphQL row, which is evidence of absence: the spec records the method rather than presenting it as equal to a fetched title."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear"
+}

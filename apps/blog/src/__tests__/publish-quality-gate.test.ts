@@ -145,11 +145,19 @@ describe("the gate, against the real corpus", () => {
     ).toEqual([]);
   });
 
-  it("refuses exactly the unscored drafts — so a whole-corpus publish exits 1", () => {
+  it("refuses exactly the unscored drafts, and no more", () => {
     // The gate is deliberately STRICTER than sdlc-quality-lock, which only
     // judges articles already carrying a devto_id. A draft's first publish is
     // precisely the moment a score has to exist, and it is the moment the lock
     // structurally cannot see.
+    //
+    // As of 2026-09-04 the queue is fully scored, so both sides of this are
+    // empty and the assertion is vacuous ON THIS CORPUS. That is deliberate:
+    // it is an AGREEMENT check that starts failing the moment an unscored
+    // draft appears and the gate does not catch it. The behavioural proof that
+    // the predicate actually refuses things lives in the unit tests above,
+    // which run it against synthetic articles and do not depend on the corpus
+    // containing an offender.
     const unscoredDrafts = corpus
       .filter((a) => !a.published && !a.frontmatter.quality)
       .map((a) => a.slug);
