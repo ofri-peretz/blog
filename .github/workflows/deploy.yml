@@ -214,23 +214,23 @@ jobs:
       # and 252 while citing "286/288" three lines down — the second number was
       # right and the first was arithmetic done from memory. Review caught it.)
       #
-      # MEASURED before changing: 218s against a local production build, and
-      # the 2026-09-02 run reached 286/288 and was killed 5ms after printing
-      # its summary — so production, over the network, sits right at the old
-      # 300s ceiling. The budget was already marginal; #127 added 36
-      # combinations (two 200%-text viewports x 9 routes x 2 themes) and
-      # pushed it over, which failed the deploy for three consecutive commits.
-      #
-      # Raising a timeout is usually the wrong fix, so the cause is recorded
-      # rather than waved at: the script navigates afresh for EVERY
-      # combination and then waits a fixed 600ms for webfonts — ~150s of the
-      # 218s is that sleep. Navigating once per (route, theme) and resizing
+      # The cause named in the previous revision of this comment is now fixed
+      # rather than budgeted around. It read: "the script navigates afresh for
+      # EVERY combination and then waits a fixed 600ms for webfonts — ~150s of
+      # the 218s is that sleep. Navigating once per (route, theme) and resizing
       # between viewports would cut it by more than half. That is a change to
       # the measurement itself and wants its own PR with a before/after
-      # comparison proving identical findings; it does not belong in a fix
-      # whose job is to unblock production.
+      # comparison proving identical findings."
+      #
+      # It got one. The script now navigates once per (route, theme) — 18
+      # navigations instead of 288 — and resizes between viewports.
+      #
+      # MEASURED against production, same machine, same 288 combinations:
+      # 289s before, 111s after. 12 minutes was headroom for a run that sat on
+      # a 300s ceiling; 6 is more than double the new figure and fails a hung
+      # run four times sooner.
       - name: Audit layout + contrast (16 viewports x 9 routes x 2 themes)
-        timeout-minutes: 12
+        timeout-minutes: 6
         env:
           BASE: https://ofriperetz.dev
           CHROME: /usr/bin/google-chrome

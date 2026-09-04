@@ -84,6 +84,13 @@ const VIEWPORTS = [
   { w: 1280, h: 800, zoom: 200 },
 ];
 
+// Settle budgets. The first paint of a route has to wait for webfonts; a
+// resize on that same page does not, because they are already loaded — it
+// only has to wait for reflow. Both are deliberately named rather than
+// inlined, because they are the two numbers this script's runtime is made of.
+const NAV_SETTLE_MS = 600;
+const RESIZE_SETTLE_MS = 250;
+
 const ROUTES = (
   process.env.ROUTES ??
   // Article routes are chosen by MEASURED worst-case content, not taste. The
@@ -463,32 +470,82 @@ try {
     });
     const page = await context.newPage();
     try {
+      // Navigate ONCE per (route, scheme), then resize between viewports.
+      //
+      // The previous shape navigated for all 16 viewports of every route —
+      // 288 navigations, each followed by a fixed 600ms webfont settle. That
+      // sleep alone was ~173s of a ~218s run, and the budget was marginal
+      // enough that adding two zoom viewports failed three consecutive
+      // production deploys.
+      //
+      // Three things have to be handled that a fresh navigation used to do
+      // for free, and each of them silently corrupts results if missed:
+      //
+      //   1. ZOOM LEAK. The 200%-text rule used to vanish with the next
+      //      goto. On a persistent page it would survive into every later
+      //      viewport. So it lives in one <style> element whose content is
+      //      REWRITTEN per viewport — set for a zoom entry, emptied for a
+      //      normal one — rather than appended.
+      //   2. SCROLL POSITION. Every geometry read here is viewport-relative
+      //      (getClientRects). A goto resets to the top; a resize does not,
+      //      so overlap and tap-target findings would shift with scroll.
+      //   3. REFLOW SETTLE. Fonts are already loaded after the first paint,
+      //      so this is a shorter wait than the original 600ms — but it is
+      //      not zero, because resize-driven layout is async.
+      //
+      // Whether that is genuinely equivalent is not asserted here, it is
+      // measured: see the before/after comparison in the PR that introduced
+      // this. Identical findings, or it does not ship.
       for (const route of ROUTES) {
+        let navError = null;
+        try {
+          await page.setViewportSize({
+            width: VIEWPORTS[0].w,
+            height: VIEWPORTS[0].h,
+          });
+          await page.goto(BASE + route, {
+            waitUntil: "domcontentloaded",
+            timeout: 30000,
+          });
+          await page.waitForTimeout(NAV_SETTLE_MS);
+        } catch (err) {
+          navError = String(err).slice(0, 200);
+        }
+
         for (const vp of VIEWPORTS) {
-          await page.setViewportSize({ width: vp.w, height: vp.h });
-          try {
-            // domcontentloaded, not load: the code-heaviest article
-            // carries enough third-party images that full `load` blew
-            // the 30s timeout on 16 CI combinations. Layout geometry is
-            // what's measured, and every <img> here carries explicit
-            // dimensions (CLS=0 doctrine), so paint completion isn't
-            // required — the settle below still lets webfonts land.
-            await page.goto(BASE + route, {
-              waitUntil: "domcontentloaded",
-              timeout: 30000,
+          if (navError) {
+            // One failed navigation used to fail one combination; now it
+            // would silently skip sixteen. Record each of them.
+            results.push({
+              route,
+              vp: vp.w,
+              zoom: vp.zoom,
+              scheme,
+              error: navError,
             });
-            await page.waitForTimeout(600); // let webfonts settle
+            continue;
+          }
+          try {
+            await page.setViewportSize({ width: vp.w, height: vp.h });
             // WCAG 1.4.4 (AA): content stays usable with text at 200%. Scaling
             // the root font-size is the faithful test — TEXT zoom, not page
             // zoom, so the layout has to absorb larger text at an unchanged
             // viewport. Applied only at the widths carrying a zoom so the
             // matrix does not double.
-            if (vp.zoom) {
-              await page.addStyleTag({
-                content: `html { font-size: ${vp.zoom}% !important; }`,
-              });
-              await page.waitForTimeout(200);
-            }
+            await page.evaluate((zoom) => {
+              const ID = "__layout_audit_zoom__";
+              let style = document.getElementById(ID);
+              if (!style) {
+                style = document.createElement("style");
+                style.id = ID;
+                document.head.appendChild(style);
+              }
+              style.textContent = zoom
+                ? `html { font-size: ${zoom}% !important; }`
+                : "";
+              window.scrollTo(0, 0);
+            }, vp.zoom ?? 0);
+            await page.waitForTimeout(RESIZE_SETTLE_MS);
             const value = await page.evaluate(AUDIT_FN);
             // Assert, do not merely record. If the colour-scheme override ever
             // stopped reaching the app, every "light" pass would silently
@@ -556,16 +613,22 @@ if (JSON_OUT) {
       (r.tapTargets?.length ?? 0) +
       (r.contrast?.length ?? 0);
     if (r.error) {
-      console.log(`✗ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}  ERROR ${r.error}`);
+      console.log(
+        `✗ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}  ERROR ${r.error}`,
+      );
       bad++;
       continue;
     }
     if (!issues) {
-      console.log(`✓ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}`);
+      console.log(
+        `✓ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}`,
+      );
       continue;
     }
     bad++;
-    console.log(`✗ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}`);
+    console.log(
+      `✗ ${r.route} @${r.vp}${r.zoom ? ` @${r.zoom}% text` : ""} ${r.scheme}`,
+    );
     if (r.docOverflow > 0)
       console.log(`    document scrolls sideways by ${r.docOverflow}px`);
     for (const o of r.overflow.slice(0, 4))
