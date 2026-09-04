@@ -66,4 +66,17 @@ assert.deepEqual(
 assert.equal(rows[0].score, 10);
 assert.equal(rows[1].commented, true);
 assert.equal(rows[0].commented, false);
+// A malformed date is infinitely old: dropped by the age cut, never NaN in a cell.
+assert.equal(
+  ageHours({ ...post(99, 0, 0, "x"), published_at: "bad-date" }, NOW),
+  Infinity,
+);
+assert.equal(
+  rank(
+    [{ ...post(98, 0, 9, "ESLint", ["security"]), published_at: "" }],
+    new Set(),
+    NOW,
+  ).length,
+  0,
+);
 console.log("radar.selfcheck: ok");

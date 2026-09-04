@@ -73,8 +73,10 @@ const tags = (a: RadarIn): string[] =>
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
 
+/** Hours since publish; Infinity for a missing or malformed date, so the age cut drops it rather than letting NaN through. */
 export function ageHours(a: RadarIn, now = Date.now()): number {
-  return Math.max(0, (now - Date.parse(a.published_at)) / 3_600_000);
+  const t = Date.parse(a.published_at ?? "");
+  return Number.isFinite(t) ? Math.max(0, (now - t) / 3_600_000) : Infinity;
 }
 
 /** Reactions per hour, with a one-hour floor so a five-minute-old post is not infinite. */

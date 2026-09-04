@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cachedAsync } from "@/lib/cache";
-import { sb } from "@/lib/series";
+import { sbPaged } from "@/lib/series";
 import { fetchJson } from "@/lib/throttle";
 import { HOME_TAGS } from "@/lib/league";
 import { rank, type RadarIn } from "@/lib/radar";
@@ -27,9 +27,10 @@ async function build() {
     }
   }
   // The warehouse knows which articles we already commented on.
-  const out = await sb(
-    "devto_comments?select=article_id&direction=eq.out&limit=1000",
-  ).catch(() => []);
+  // Paged: a cap here would show posts past it as un-commented without saying so.
+  const out = await sbPaged(
+    "devto_comments?select=article_id&direction=eq.out&order=comment_id.asc",
+  );
   const commented = new Set<number>(
     (out as any[]).map((r) => Number(r.article_id)),
   );
