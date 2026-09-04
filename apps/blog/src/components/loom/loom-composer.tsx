@@ -395,11 +395,21 @@ export function LoomComposer({
           <button
             type="button"
             className="underline hover:text-foreground"
+            onClick={() => apply({ ...state, form: "grid", normalize: "abs" })}
+          >
+            Show every thread side by side
+          </button>{" "}
+          instead — small multiples give each one its own axis, which is what
+          you want when the units are orders of magnitude apart. Dropping to{" "}
+          <button
+            type="button"
+            className="underline hover:text-foreground"
             onClick={() => apply({ ...state, normalize: "abs" })}
           >
-            Show absolute values
+            absolute values on one axis
           </button>{" "}
-          to read {unindexable.length === 1 ? "it" : "them"} as counts.
+          also works, but a 19-count thread against a 37,000-count one is a flat
+          line along the bottom — honest, and unreadable.
         </p>
       )}
 
