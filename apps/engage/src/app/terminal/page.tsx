@@ -58,8 +58,14 @@ interface Pair {
 
 /** The ratios worth having on the picker without typing them. */
 const PRESET_RATIOS: { id: string; label: string }[] = [
-  { id: "ratio(devto.reactions,devto.views)", label: "engagement rate — reactions / views" },
-  { id: "ratio(devto.comments,devto.views)", label: "conversation rate — comments / views" },
+  {
+    id: "ratio(devto.reactions,devto.views)",
+    label: "engagement rate — reactions / views",
+  },
+  {
+    id: "ratio(devto.comments,devto.views)",
+    label: "conversation rate — comments / views",
+  },
   { id: "ratio(devto.followers,devto.posts)", label: "followers per article" },
   { id: "ratio(github.stars,devto.views)", label: "stars per view" },
 ];
@@ -76,9 +82,11 @@ export default function Terminal() {
   const [ids, setIds] = useState<string[]>(["devto.followers", "devto.views"]);
   const [grain, setGrain] = useState<Grain>("week");
   const [transform, setTransform] = useState<Transform>("none");
-  const [data, setData] = useState<{ series: Loaded[]; pairs: Pair[]; asOf: string | null } | null>(
-    null,
-  );
+  const [data, setData] = useState<{
+    series: Loaded[];
+    pairs: Pair[];
+    asOf: string | null;
+  } | null>(null);
   const [at, setAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [events, setEvents] = useState<ChartMarker[]>([]);
@@ -88,9 +96,35 @@ export default function Terminal() {
     cachedFetch<{ catalog: Def[] }>("series:catalog", "/api/series")
       .then((j) => setCatalog(j.catalog ?? []))
       .catch(() => setCatalog([]));
-    cachedFetch<{ events: ChartMarker[] }>("events", "/api/events")
-      .then((j) => setEvents(j.events ?? []))
-      .catch(() => setEvents([]));
+    // Local events and warehouse attention events on one axis; either source
+    // failing leaves the other's markers up.
+    Promise.all([
+      cachedFetch<{ events: ChartMarker[] }>("events", "/api/events")
+        .then((j) => j.events ?? [])
+        .catch(() => []),
+      cachedFetch<{
+        events: {
+          observed_on: string;
+          kind: string;
+          source: string;
+          value: number;
+        }[];
+      }>("attention", "/api/attention")
+        .then((j) =>
+          (j.events ?? []).map(
+            (e): ChartMarker => ({
+              t: e.observed_on,
+              kind: "attention",
+              weight: 2,
+              label:
+                e.kind === "stars"
+                  ? `${e.value} stars · ${e.source}`
+                  : `+${e.value} via ${e.source}`,
+            }),
+          ),
+        )
+        .catch(() => []),
+    ]).then(([a, b]) => setEvents([...a, ...b]));
   }, []);
 
   /**
@@ -117,7 +151,10 @@ export default function Terminal() {
             ((jan4.getUTCDay() + 6) % 7)) /
             7,
         );
-      return { ...e, t: `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}` };
+      return {
+        ...e,
+        t: `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`,
+      };
     });
   }, [events, grain, showEvents]);
 
@@ -167,12 +204,15 @@ export default function Terminal() {
 
   /** id → the colour the chart actually drew it with. */
   const colourOf = useMemo(
-    () => new Map(chartSeries.map((s, i) => [s.id, PALETTE[i % PALETTE.length]])),
+    () =>
+      new Map(chartSeries.map((s, i) => [s.id, PALETTE[i % PALETTE.length]])),
     [chartSeries],
   );
 
   const toggle = (id: string) =>
-    setIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].slice(0, 6)));
+    setIds((cur) =>
+      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].slice(0, 6),
+    );
 
   const groups = [...new Set(catalog.map((d) => d.group))];
 
@@ -191,8 +231,9 @@ export default function Terminal() {
         <h1 className="text-[28px] font-semibold tracking-tight">Terminal</h1>
         <p className="max-w-[72ch] text-[14px] text-[var(--muted-foreground)]">
           Any series against any other, on one axis. Trend is measured on the{" "}
-          <strong>rate of change</strong>, not the total — a cumulative metric climbs forever
-          and would otherwise read as &ldquo;rising&rdquo; the month after it died.
+          <strong>rate of change</strong>, not the total — a cumulative metric
+          climbs forever and would otherwise read as &ldquo;rising&rdquo; the
+          month after it died.
         </p>
       </header>
 
@@ -241,7 +282,12 @@ export default function Terminal() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4 border-t border-[var(--border)] pt-3">
-          <Seg label="grain" value={grain} onChange={(v) => setGrain(v as Grain)} options={["day", "week", "month"]} />
+          <Seg
+            label="grain"
+            value={grain}
+            onChange={(v) => setGrain(v as Grain)}
+            options={["day", "week", "month"]}
+          />
           <Seg
             label="transform"
             value={transform}
@@ -289,12 +335,14 @@ export default function Terminal() {
               errored and empty series, so indexing the unfiltered list puts the
               wrong swatch under every label after the first failure. */}
           {(data?.series ?? []).map((s) => (
-            <span key={s.id} className="flex items-center gap-2 font-mono text-[11px]">
+            <span
+              key={s.id}
+              className="flex items-center gap-2 font-mono text-[11px]"
+            >
               <span
                 className="inline-block h-2 w-4 rounded-sm"
                 style={{
-                  background:
-                    colourOf.get(s.id) ?? "var(--muted-foreground)",
+                  background: colourOf.get(s.id) ?? "var(--muted-foreground)",
                 }}
               />
               <span className="text-[var(--muted-foreground)]">{s.label}</span>
@@ -311,10 +359,17 @@ export default function Terminal() {
             Trend — on the rate of change
           </h2>
           {(data?.series ?? []).map((s) => (
-            <div key={s.id} className="flex items-baseline justify-between gap-3 text-[13px]">
-              <span className="min-w-0 flex-1 truncate text-[var(--muted-foreground)]">{s.label}</span>
+            <div
+              key={s.id}
+              className="flex items-baseline justify-between gap-3 text-[13px]"
+            >
+              <span className="min-w-0 flex-1 truncate text-[var(--muted-foreground)]">
+                {s.label}
+              </span>
               {s.error ? (
-                <span className="font-mono text-[11px] text-[var(--primary)]">{s.error}</span>
+                <span className="font-mono text-[11px] text-[var(--primary)]">
+                  {s.error}
+                </span>
               ) : s.trend?.insufficient ? (
                 <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                   {s.trend.insufficient}
@@ -343,14 +398,22 @@ export default function Terminal() {
           </h2>
           {(data?.pairs ?? []).length ? (
             (data?.pairs ?? []).map((p) => (
-              <div key={`${p.a}|${p.b}`} className="flex flex-col gap-0.5 text-[13px]">
+              <div
+                key={`${p.a}|${p.b}`}
+                className="flex flex-col gap-0.5 text-[13px]"
+              >
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="min-w-0 flex-1 truncate text-[var(--muted-foreground)]">
                     {p.a} × {p.b}
                   </span>
                   <span className="font-mono text-[11px] text-[var(--foreground)]">
-                    {p.correlation.insufficient ? "—" : `r=${p.correlation.r.toFixed(2)}`}
-                    <span className="text-[var(--muted-foreground)]"> · n={p.correlation.n}</span>
+                    {p.correlation.insufficient
+                      ? "—"
+                      : `r=${p.correlation.r.toFixed(2)}`}
+                    <span className="text-[var(--muted-foreground)]">
+                      {" "}
+                      · n={p.correlation.n}
+                    </span>
                   </span>
                 </div>
                 {p.divergence.diverging && (
@@ -361,7 +424,9 @@ export default function Terminal() {
               </div>
             ))
           ) : (
-            <p className="text-[12px] text-[var(--muted-foreground)]">pick two or more series</p>
+            <p className="text-[12px] text-[var(--muted-foreground)]">
+              pick two or more series
+            </p>
           )}
         </div>
       </section>
@@ -401,7 +466,11 @@ function Seg({
             key={o}
             onClick={() => onChange(o)}
             className={`border px-2 py-1 font-mono text-[11px] ${
-              i === 0 ? "rounded-l-md" : i === options.length - 1 ? "rounded-r-md border-l-0" : "border-l-0"
+              i === 0
+                ? "rounded-l-md"
+                : i === options.length - 1
+                  ? "rounded-r-md border-l-0"
+                  : "border-l-0"
             } ${
               value === o
                 ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--card)]"

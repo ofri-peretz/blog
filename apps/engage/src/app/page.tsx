@@ -167,6 +167,8 @@ export default function Page() {
   const [impact, setImpact] = useState<any>(null);
   const [levers, setLevers] = useState<any>(null);
   const [ties, setTies] = useState<any>(null);
+  const [radar, setRadar] = useState<any>(null);
+  const [predictions, setPredictions] = useState<any>(null);
   const [bands, setBands] = useState<any>(null);
   /** What DEV's founders are building — the daily brief, read from the file the batch writes. */
   const [founders, setFounders] = useState<any>(null);
@@ -289,6 +291,11 @@ export default function Page() {
     );
     pull("ties", "/api/ties", (v: any) => setTies(v)).catch(() =>
       setTies(null),
+    pull("radar", "/api/radar", (v: any) => setRadar(v)).catch(() =>
+      setRadar(null),
+    );
+    pull("predict", "/api/predict", (v: any) => setPredictions(v)).catch(() =>
+      setPredictions(null),
     );
     pull("bands", "/api/bands", (v: any) => setBands(v)).catch(() =>
       setBands(null),
@@ -978,6 +985,27 @@ export default function Page() {
               at={at.ties ?? null}
               busy={!!busy.ties}
               source={ties?.cachedAt ?? null}
+      {/* ── Rising now ──────────────────────────────────────────────────────
+          Posts in our tags under a day old, ranked by reactions per hour times
+          subject overlap. An early comment on a post that will rise is the
+          cheapest visibility we have. lib/radar.ts. Nothing here posts. */}
+      <Collapse
+        id="s29"
+        head={
+          <>
+            <span>
+              Rising now
+              {radar?.rows?.length
+                ? ` · ${radar.rows.length} posts under 24 h`
+                : ""}
+            </span>
+            <Refresh
+              onClick={() =>
+                pull("radar", "/api/radar", (v: any) => setRadar(v), true)
+              }
+              at={at.radar ?? null}
+              busy={!!busy.radar}
+              source={radar?.cachedAt ?? null}
             />
           </>
         }
@@ -1060,6 +1088,89 @@ export default function Page() {
               </div>
             </div>
             <p className="text-[var(--muted-foreground)]">{ties.caveat}</p>
+        {!radar ? (
+          <Skel rows={3} />
+        ) : (
+          <div className="flex flex-col gap-2 text-[12px]">
+            <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+              <table className="w-full">
+                <thead>
+                  <tr className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                    <th className="px-2 py-1.5 text-left">post</th>
+                    <th className="px-2 py-1.5 text-right">age</th>
+                    <th className="px-2 py-1.5 text-right">rx</th>
+                    <th className="px-2 py-1.5 text-right">cm</th>
+                    <th className="px-2 py-1.5 text-right">rx/h</th>
+                    <th className="px-2 py-1.5 text-left">why us</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {radar.rows.map((r: any) => (
+                    <tr
+                      key={r.id}
+                      className={`border-t border-[var(--border)] ${r.commented ? "opacity-60" : ""}`}
+                    >
+                      <td
+                        className="max-w-[36ch] truncate px-2 py-1"
+                        title={r.title}
+                      >
+                        <a
+                          href={r.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[var(--primary)]"
+                        >
+                          {r.title}
+                        </a>
+                        <span className="text-[var(--muted-foreground)]">
+                          {" "}
+                          · @{r.author}
+                        </span>
+                        {r.commented ? (
+                          <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
+                            {" "}
+                            · commented
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono tabular-nums">
+                        {r.ageH}h
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono tabular-nums">
+                        {r.reactions}
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono tabular-nums">
+                        {r.comments}
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono tabular-nums">
+                        {r.velocity}
+                      </td>
+                      <td className="px-2 py-1 font-mono text-[10px] text-[var(--muted-foreground)]">
+                        {r.hits.join(" ") || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                  {radar.rows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-2 py-2 text-[var(--muted-foreground)]"
+                      >
+                        nothing under 24 hours in {radar.tags?.join(", ")}
+                        {radar.errors?.length
+                          ? ` · ${radar.errors.join("; ")}`
+                          : ""}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[var(--muted-foreground)]">
+              {radar.caveat} {radar.pulled} posts pulled from #
+              {radar.tags?.join(", #")}; the curator and the anti-bot rules
+              decide.
+            </p>
           </div>
         )}
       </Collapse>
@@ -1600,6 +1711,127 @@ export default function Page() {
             <p className="text-[12px] text-[var(--muted-foreground)] md:col-span-3">
               {levers.caveat} {levers.withSnapshots} of {levers.articles}{" "}
               articles have 14-day windows.
+            </p>
+          </div>
+        )}
+      </Collapse>
+
+      {/* ── Before you publish ───────────────────────────────────────────────
+          The levers applied to every draft on disk without a dev.to id: where
+          its shape lands among our own articles, and the two edits that would
+          move it. lib/predict.ts. */}
+      <Collapse
+        id="s28"
+        head={
+          <>
+            <span>
+              Before you publish
+              {predictions?.drafts?.length
+                ? ` · ${predictions.drafts.length} drafts`
+                : ""}
+            </span>
+            <Refresh
+              onClick={() =>
+                pull(
+                  "predict",
+                  "/api/predict",
+                  (v: any) => setPredictions(v),
+                  true,
+                )
+              }
+              at={at.predict ?? null}
+              busy={!!busy.predict}
+              source={predictions?.cachedAt ?? null}
+            />
+          </>
+        }
+      >
+        {!predictions ? (
+          <Skel rows={3} />
+        ) : (
+          <div className="flex flex-col gap-2 text-[12px]">
+            {predictions.drafts.length === 0 ? (
+              <div className="text-[var(--muted-foreground)]">
+                no drafts on disk without a dev.to id
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                <table className="w-full">
+                  <thead>
+                    <tr className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                      <th className="px-2 py-1.5 text-left">draft</th>
+                      <th className="px-2 py-1.5 text-right">views, 14d</th>
+                      <th className="px-2 py-1.5 text-right">comments, 14d</th>
+                      <th className="px-2 py-1.5 text-left">do these first</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...predictions.drafts]
+                      .sort(
+                        (a: any, b: any) =>
+                          (b.outcomes.comments14?.percentile ?? 0) -
+                          (a.outcomes.comments14?.percentile ?? 0),
+                      )
+                      .map((d: any) => (
+                        <tr
+                          key={d.slug}
+                          className="border-t border-[var(--border)] align-top"
+                        >
+                          <td
+                            className="max-w-[28ch] truncate px-2 py-1"
+                            title={d.title}
+                          >
+                            {d.title || d.slug}
+                          </td>
+                          {(["views14", "comments14"] as const).map((o) => (
+                            <td
+                              key={o}
+                              className="px-2 py-1 text-right font-mono tabular-nums"
+                            >
+                              {d.outcomes[o] ? (
+                                <>
+                                  top{" "}
+                                  {Math.max(1, 100 - d.outcomes[o].percentile)}%
+                                </>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          ))}
+                          <td className="px-2 py-1">
+                            {d.suggestions.length ? (
+                              d.suggestions.map((sg: any) => (
+                                <div key={sg.feature}>
+                                  {sg.edit}{" "}
+                                  <span className="font-mono text-[10px] text-[var(--success)]">
+                                    +{sg.gain}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[var(--muted-foreground)]">
+                                nothing the levers would change
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="text-[var(--muted-foreground)]">
+              {predictions.caveat} Top 1% is best, top 99% is last; among our{" "}
+              {predictions.corpus} published articles; weekday assumed from the
+              publisher&apos;s next fire,{" "}
+              {String(predictions.publishAt).slice(0, 10)}. Levers in play:{" "}
+              {predictions.levers
+                .map(
+                  (l: any) =>
+                    `${l.outcome} (${l.weights.join(", ") || "none"})`,
+                )
+                .join(" · ")}
+              .
             </p>
           </div>
         )}

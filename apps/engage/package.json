@@ -2,12 +2,12 @@
   "name": "engage",
   "version": "0.1.0",
   "private": true,
-  "description": "Local-only engagement control room. Never deployed \u2014 see README.",
+  "description": "Local-only engagement control room. Never deployed — see README.",
   "scripts": {
     "dev": "next dev -p 7777",
     "build": "next build",
     "start": "next start -p 7777",
-    "selfcheck": "npx -y tsx src/lib/detect.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/footprint.selfcheck.ts && npx -y tsx src/lib/standing.selfcheck.ts && npx -y tsx src/lib/nba.selfcheck.ts && npx -y tsx src/lib/yield.selfcheck.ts && npx -y tsx src/lib/prs-update.selfcheck.ts && npx -y tsx src/lib/ago.selfcheck.ts && npx -y tsx src/lib/impact-score.selfcheck.ts && npx -y tsx src/lib/league.selfcheck.ts && npx -y tsx src/lib/levers.selfcheck.ts && npx -y tsx src/lib/ties.selfcheck.ts && node scripts/control-bands.check.mjs && npx -y tsx --conditions=react-server src/lib/series.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/alerts.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/network.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/inbox.selfcheck.ts",
+    "selfcheck": "npx -y tsx src/lib/detect.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/footprint.selfcheck.ts && npx -y tsx src/lib/standing.selfcheck.ts && npx -y tsx src/lib/nba.selfcheck.ts && npx -y tsx src/lib/yield.selfcheck.ts && npx -y tsx src/lib/prs-update.selfcheck.ts && npx -y tsx src/lib/ago.selfcheck.ts && npx -y tsx src/lib/impact-score.selfcheck.ts && npx -y tsx src/lib/league.selfcheck.ts && npx -y tsx src/lib/levers.selfcheck.ts && npx -y tsx src/lib/ties.selfcheck.ts && npx -y tsx src/lib/radar.selfcheck.ts && npx -y tsx src/lib/decay.selfcheck.ts && npx -y tsx src/lib/predict.selfcheck.ts && node scripts/control-bands.check.mjs && npx -y tsx --conditions=react-server src/lib/series.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/alerts.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/network.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/inbox.selfcheck.ts",
     "smoke": "node scripts/smoke.mjs",
     "test": "node scripts/smoke.mjs"
   },
