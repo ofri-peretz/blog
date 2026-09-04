@@ -1,0 +1,10 @@
+{
+  "$comment": "Stage 6 control bands for the engagement stack — see docs/sdlc/intents/2026-09-04-engage-control-bands. A band is a series id from /api/series with a stable baseline. Detection is deterministic (scripts/control-bands.mjs, Western Electric rules 1-4); a model is never in the path that decides a breach. Only rates and gauges are banded — a cumulative series trends forever.",
+  "bands": [
+    { "id": "devto.daily_views", "description": "dev.to views per day", "window": 28, "minPoints": 14, "worse": "lower" },
+    { "id": "devto.read_time_avg_s", "description": "average read time per view, seconds", "window": 28, "minPoints": 14, "worse": "lower" },
+    { "id": "devto.daily_comments", "description": "dev.to comments per day", "window": 28, "minPoints": 14, "worse": "lower" },
+    { "id": "standing.replies_waiting", "description": "replies waiting in the inbox", "window": 28, "minPoints": 8, "worse": "higher" },
+    { "id": "impact.score", "description": "Author Impact Score", "window": 28, "minPoints": 8, "worse": "lower" }
+  ]
+}
