@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-03-engage-freshness
 opened: 2026-09-03
-status: open
+status: shipped
 ---
 
 # Intent: every number on screen says when its source was read, and a stale build cannot pass as healthy

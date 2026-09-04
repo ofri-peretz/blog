@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-03-engage-own-the-data
 opened: 2026-09-03
-status: open
+status: shipped
 ---
 
 # Intent: own every number dev.to has about us — daily, per article, per person — and read the profile off that, not off the follower count

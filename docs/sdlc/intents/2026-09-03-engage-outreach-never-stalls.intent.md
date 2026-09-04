@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-03-engage-outreach-never-stalls
 opened: 2026-09-03
-status: open
+status: shipped
 ---
 
 # Intent: no outreach PR waits on us — whose move it is, on screen, with the safe move one click away

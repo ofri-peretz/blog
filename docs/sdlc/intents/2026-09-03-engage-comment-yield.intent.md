@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-03-engage-comment-yield
 opened: 2026-09-03
-status: open
+status: shipped
 ---
 
 # Intent: articles that get comments — measure first-14-day yield, and calibrate the reviewer on it
