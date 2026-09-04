@@ -166,6 +166,7 @@ export default function Page() {
   /** The Author Impact Score — one definition, five pillars, fourteen metrics. */
   const [impact, setImpact] = useState<any>(null);
   const [levers, setLevers] = useState<any>(null);
+  const [predictions, setPredictions] = useState<any>(null);
   const [bands, setBands] = useState<any>(null);
   /** What DEV's founders are building — the daily brief, read from the file the batch writes. */
   const [founders, setFounders] = useState<any>(null);
@@ -285,6 +286,9 @@ export default function Page() {
     );
     pull("levers", "/api/levers", (v: any) => setLevers(v)).catch(() =>
       setLevers(null),
+    );
+    pull("predict", "/api/predict", (v: any) => setPredictions(v)).catch(() =>
+      setPredictions(null),
     );
     pull("bands", "/api/bands", (v: any) => setBands(v)).catch(() =>
       setBands(null),
@@ -1491,6 +1495,124 @@ export default function Page() {
             <p className="text-[12px] text-[var(--muted-foreground)] md:col-span-3">
               {levers.caveat} {levers.withSnapshots} of {levers.articles}{" "}
               articles have 14-day windows.
+            </p>
+          </div>
+        )}
+      </Collapse>
+
+      {/* ── Before you publish ───────────────────────────────────────────────
+          The levers applied to every draft on disk without a dev.to id: where
+          its shape lands among our own articles, and the two edits that would
+          move it. lib/predict.ts. */}
+      <Collapse
+        id="s28"
+        head={
+          <>
+            <span>
+              Before you publish
+              {predictions?.drafts?.length
+                ? ` · ${predictions.drafts.length} drafts`
+                : ""}
+            </span>
+            <Refresh
+              onClick={() =>
+                pull(
+                  "predict",
+                  "/api/predict",
+                  (v: any) => setPredictions(v),
+                  true,
+                )
+              }
+              at={at.predict ?? null}
+              busy={!!busy.predict}
+              source={predictions?.cachedAt ?? null}
+            />
+          </>
+        }
+      >
+        {!predictions ? (
+          <Skel rows={3} />
+        ) : (
+          <div className="flex flex-col gap-2 text-[12px]">
+            {predictions.drafts.length === 0 ? (
+              <div className="text-[var(--muted-foreground)]">
+                no drafts on disk without a dev.to id
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                <table className="w-full">
+                  <thead>
+                    <tr className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                      <th className="px-2 py-1.5 text-left">draft</th>
+                      <th className="px-2 py-1.5 text-right">views, 14d</th>
+                      <th className="px-2 py-1.5 text-right">comments, 14d</th>
+                      <th className="px-2 py-1.5 text-left">do these first</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...predictions.drafts]
+                      .sort(
+                        (a: any, b: any) =>
+                          (b.outcomes.comments14?.percentile ?? 0) -
+                          (a.outcomes.comments14?.percentile ?? 0),
+                      )
+                      .map((d: any) => (
+                        <tr
+                          key={d.slug}
+                          className="border-t border-[var(--border)] align-top"
+                        >
+                          <td
+                            className="max-w-[28ch] truncate px-2 py-1"
+                            title={d.title}
+                          >
+                            {d.title || d.slug}
+                          </td>
+                          {(["views14", "comments14"] as const).map((o) => (
+                            <td
+                              key={o}
+                              className="px-2 py-1 text-right font-mono tabular-nums"
+                            >
+                              {d.outcomes[o] ? (
+                                <>top {100 - d.outcomes[o].percentile}%</>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          ))}
+                          <td className="px-2 py-1">
+                            {d.suggestions.length ? (
+                              d.suggestions.map((sg: any) => (
+                                <div key={sg.feature}>
+                                  {sg.edit}{" "}
+                                  <span className="font-mono text-[10px] text-[var(--success)]">
+                                    +{sg.gain}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[var(--muted-foreground)]">
+                                nothing the levers would change
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="text-[var(--muted-foreground)]">
+              {predictions.caveat} Percentile among our {predictions.corpus}{" "}
+              published articles; weekday assumed from the publisher&apos;s next
+              fire, {String(predictions.publishAt).slice(0, 10)}. Levers in
+              play:{" "}
+              {predictions.levers
+                .map(
+                  (l: any) =>
+                    `${l.outcome} (${l.weights.join(", ") || "none"})`,
+                )
+                .join(" · ")}
+              .
             </p>
           </div>
         )}
