@@ -932,7 +932,7 @@ export default function Page() {
               ) : null}
             </div>
             <details className="text-[12px]">
-              <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">the {founders.posts?.length ?? 0} staff posts behind this, {founders.days} days</summary>
+              <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">the {founders.posts?.length ?? 0} staff posts behind this{founders.days ? `, ${founders.days} days` : ""}</summary>
               <ul className="mt-2 flex flex-col gap-0.5">{(founders.posts ?? []).map((p: any) => (
                 <li key={p.id} className="flex items-baseline gap-2"><span className="w-20 shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">{p.kind}</span><span className="w-32 shrink-0 font-mono text-[11px]">@{p.author}</span><span className="w-20 shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">{String(p.published_at).slice(0, 10)}</span><a href={p.url} target="_blank" rel="noopener" className="min-w-0 flex-1 truncate hover:text-[var(--primary)]">{p.title}</a><span className="shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">{p.reactions} rx</span></li>
               ))}</ul>
