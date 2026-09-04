@@ -27,4 +27,14 @@ console.log("league.selfcheck: ok");
   assert.equal(c.plan.ourRxPerArticle, 3);
   assert.equal(c.plan.articlesAtOurRate, 2, "5 more reactions at 3 per article = 2 articles");
 }
+// Absent from a small sample: the next level is the widest one the sample has a bar for, never a level with no bar.
+{
+  const A = (u: string, id: number, rx: number) => ({ id, user: { username: u }, public_reactions_count: rx, comments_count: 0, tag_list: [] });
+  const absent = mergeLeague([[A("a", 1, 100), A("b", 2, 90), A("c", 3, 80), A("d", 4, 70), A("e", 5, 60), A("f", 6, 50)]], "me");
+  assert.equal(absent.rank, null); assert.equal(absent.level, null);
+  assert.deepEqual(absent.next, { level: 5, reactionsNeeded: 61 }, "six authors: top 5 is the widest level with a bar (60); 61 reactions enters it");
+  assert.equal(absent.thresholds[10], null);
+  const tiny = mergeLeague([[A("a", 1, 100)]], "me");
+  assert.equal(tiny.next, null, "one author: no level has a bar, so nothing is next");
+}
 console.log("league.selfcheck: climb ok");

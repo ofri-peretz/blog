@@ -95,8 +95,12 @@ export function mergeLeague(samples: { user?: { username?: string }; id: number;
   const thresholds: Record<number, number | null> = {};
   for (const L of LEVELS) thresholds[L] = ranked[L - 1]?.reactions ?? null;
   const level = rank === null ? null : (LEVELS.find((L) => rank <= L) ?? null);
-  const nextLevel = rank === null ? 500 : (LEVELS.filter((L) => L < rank).slice(-1)[0] ?? null);
-  const need = nextLevel === null ? null : Math.max(0, (thresholds[nextLevel] ?? 0) + 1 - (ours?.reactions ?? 0));
+  // The next level is the largest one below our rank whose bar the sample can
+  // actually see. Absent from the sample, that is the widest level with a
+  // threshold; a level beyond the sample has no bar and cannot be "next".
+  const candidates = rank === null ? [...LEVELS] : LEVELS.filter((L) => L < rank);
+  const nextLevel = [...candidates].reverse().find((L) => thresholds[L] !== null) ?? null;
+  const need = nextLevel === null ? null : Math.max(0, (thresholds[nextLevel] as number) + 1 - (ours?.reactions ?? 0));
   const top10 = ranked.slice(0, 10);
   const top10Rate = top10.length ? top10.reduce((s, l) => s + l.reactions / Math.max(1, l.articles), 0) / top10.length : 0;
   const ourRate = ours && ours.articles ? ours.reactions / ours.articles : 0;
