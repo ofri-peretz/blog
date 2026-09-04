@@ -20,5 +20,6 @@ import "@/lib/series-standing";
 import "@/lib/series-yield";
 import "@/lib/series-devto";
 import "@/lib/series-impact";
+import "@/lib/series-league";
 
 export * from "@/lib/series";

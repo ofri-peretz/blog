@@ -530,6 +530,9 @@ export default function Page() {
           <Link href="/rules" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             rules →
           </Link>
+          <Link href="/league" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
+            the climb →
+          </Link>
           <Link href="/customers" className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]">
             customers →
           </Link>
@@ -863,6 +866,12 @@ export default function Page() {
                 </tbody>
               </table>
             </div>
+            {impact.climb ? (
+              <div className="text-[12px]">
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">the climb · </span>
+                rank <b>{impact.climb.rank ?? "—"}</b> of {impact.climb.authors}{impact.climb.next ? ` · +${impact.climb.next.reactionsNeeded} reactions to top ${impact.climb.next.level} (${impact.climb.plan.articlesAtTop10Rate ?? "—"} articles at the top-10 rate)` : ""} · <Link href="/league" className="text-[var(--primary)]">the climb →</Link>
+              </div>
+            ) : null}
             {impact.league?.length ? (
               <div className="text-[12px] text-[var(--muted-foreground)]">
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em]">arena, 30-day top-300 by tag · </span>

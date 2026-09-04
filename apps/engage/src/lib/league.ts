@@ -55,3 +55,61 @@ export function arenaSummary(tables: TagTable[]): { percentile: number; present:
     present: tables.filter((t) => t.rank !== null).length,
   };
 }
+
+/* ── The climb: one merged league over every sample, with thresholds and gaps ── */
+
+export const LEVELS = [5, 10, 20, 50, 100, 200, 500] as const;
+
+export interface Climb {
+  authors: number;
+  articles: number;
+  ours: Line | null;
+  rank: number | null;
+  /** Reactions needed to hold each level's last place, from the sorted list. */
+  thresholds: Record<number, number | null>;
+  level: number | null;
+  next: { level: number; reactionsNeeded: number } | null;
+  nextUp: (Line & { rank: number; gap: number })[];
+  top: (Line & { rank: number; rxPerArticle: number; tags: string[] })[];
+  /** How many more articles the gap to the next level is, at two rates. */
+  plan: { ourRxPerArticle: number; top10RxPerArticle: number; articlesAtOurRate: number | null; articlesAtTop10Rate: number | null };
+}
+
+export function mergeLeague(samples: { user?: { username?: string }; id: number; public_reactions_count?: number; comments_count?: number; tag_list?: string[] }[][], me: string): Climb {
+  const seen = new Set<number>();
+  const by = new Map<string, Line & { tagCounts: Map<string, number> }>();
+  let articles = 0;
+  for (const arts of samples) for (const a of arts) {
+    if (seen.has(a.id)) continue;
+    seen.add(a.id); articles++;
+    const u = a.user?.username; if (!u) continue;
+    const l = by.get(u) ?? { author: u, articles: 0, reactions: 0, comments: 0, tagCounts: new Map() };
+    l.articles++; l.reactions += a.public_reactions_count ?? 0; l.comments += a.comments_count ?? 0;
+    for (const t of a.tag_list ?? []) l.tagCounts.set(t, (l.tagCounts.get(t) ?? 0) + 1);
+    by.set(u, l);
+  }
+  const ranked = [...by.values()].sort((x, y) => y.reactions - x.reactions || y.comments - x.comments || x.author.localeCompare(y.author));
+  const idx = ranked.findIndex((l) => l.author === me);
+  const ours = idx === -1 ? null : ranked[idx];
+  const rank = idx === -1 ? null : idx + 1;
+  const thresholds: Record<number, number | null> = {};
+  for (const L of LEVELS) thresholds[L] = ranked[L - 1]?.reactions ?? null;
+  const level = rank === null ? null : (LEVELS.find((L) => rank <= L) ?? null);
+  // The next level is the largest one below our rank whose bar the sample can
+  // actually see. Absent from the sample, that is the widest level with a
+  // threshold; a level beyond the sample has no bar and cannot be "next".
+  const candidates = rank === null ? [...LEVELS] : LEVELS.filter((L) => L < rank);
+  const nextLevel = [...candidates].reverse().find((L) => thresholds[L] !== null) ?? null;
+  const need = nextLevel === null ? null : Math.max(0, (thresholds[nextLevel] as number) + 1 - (ours?.reactions ?? 0));
+  const top10 = ranked.slice(0, 10);
+  const top10Rate = top10.length ? top10.reduce((s, l) => s + l.reactions / Math.max(1, l.articles), 0) / top10.length : 0;
+  const ourRate = ours && ours.articles ? ours.reactions / ours.articles : 0;
+  const strip = (l: Line & { tagCounts: Map<string, number> }, r: number) => ({ author: l.author, articles: l.articles, reactions: l.reactions, comments: l.comments, rank: r, rxPerArticle: Math.round((10 * l.reactions) / Math.max(1, l.articles)) / 10, tags: [...l.tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t) });
+  return {
+    authors: ranked.length, articles, ours: ours ? { author: ours.author, articles: ours.articles, reactions: ours.reactions, comments: ours.comments } : null, rank, thresholds, level,
+    next: nextLevel === null || need === null ? null : { level: nextLevel, reactionsNeeded: need },
+    nextUp: idx === -1 ? [] : ranked.slice(Math.max(0, idx - 5), idx).map((l, i) => ({ author: l.author, articles: l.articles, reactions: l.reactions, comments: l.comments, rank: Math.max(0, idx - 5) + i + 1, gap: l.reactions - (ours?.reactions ?? 0) })),
+    top: ranked.slice(0, 25).map((l, i) => strip(l, i + 1)),
+    plan: { ourRxPerArticle: Math.round(ourRate * 10) / 10, top10RxPerArticle: Math.round(top10Rate * 10) / 10, articlesAtOurRate: need === null ? null : ourRate > 0 ? Math.ceil(need / ourRate) : null, articlesAtTop10Rate: need === null ? null : top10Rate > 0 ? Math.ceil(need / top10Rate) : null },
+  };
+}
