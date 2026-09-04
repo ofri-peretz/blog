@@ -66,7 +66,7 @@ const young = decay(
   Date.parse(day(65)),
 );
 assert.equal(young.kind, "too young");
-assert.equal(young.early, 0.2);
+assert.equal(young.early, 0.21);
 const sum = summarize([feed, search, mixed, late, young]);
 assert.deepEqual(
   [sum.feed, sum.search, sum.mixed, sum.tooYoung, sum.noWindow],
