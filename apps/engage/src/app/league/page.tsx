@@ -45,7 +45,7 @@ export default function League() {
             <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]">The bar at each level, in reactions this month</h2>
             <div className="mt-2 flex flex-wrap gap-2 font-mono text-[12px]">
               {Object.entries(c.thresholds).map(([L, v]) => (
-                <span key={L} className={`rounded border px-2 py-1 ${c.level === Number(L) ? "border-[var(--primary)] text-[var(--primary)]" : "border-[var(--border)] text-[var(--muted-foreground)]"}`}>top {L}: {v ?? "—"}</span>
+                <span key={L} className={`rounded border px-2 py-1 ${c.level === Number(L) ? "border-[var(--primary)] text-[var(--primary)]" : "border-[var(--border)] text-[var(--muted-foreground)]"}`}>top {L}: {String(v ?? "—")}</span>
               ))}
             </div>
           </section>
