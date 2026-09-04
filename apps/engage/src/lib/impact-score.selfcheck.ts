@@ -22,9 +22,12 @@ assert.equal(scoreMetric(by("mutual_ties"), null), 0, "unmeasured is zero, never
   assert.equal(none.score, 0);
   assert.equal(none.measured, 0);
   assert.equal(none.total, CATALOG.length);
+  // The target is the optimum end for BOTH directions (24 h is the "down" target), so every metric at its target is 1.
   const all: Record<string, number> = {};
-  for (const m of CATALOG) all[m.id] = m.direction === "up" ? m.target : m.target; // target hits 1 either way
+  for (const m of CATALOG) all[m.id] = m.target;
   const full = scoreImpact(all);
+  // A backwards catalog entry throws rather than scoring in reverse.
+  assert.throws(() => scoreMetric({ ...by("reply_latency_h"), floor: 24, target: 168 }, 50), /floor 24 and target 168/);
   assert.equal(full.score, 100, "every metric at target is exactly 100");
   assert.ok(full.pillars.every((p) => p.points === 20));
 }

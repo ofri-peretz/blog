@@ -77,9 +77,13 @@ export function scoreMetric(def: MetricDef, value: number | null | undefined): n
   // Unmeasured is zero, never a guess: a pillar with a missing input reads low,
   // which is the truth about our instrumentation, not about the author.
   if (value == null || !Number.isFinite(value)) return 0;
-  const span = def.target - def.floor;
-  const raw = def.direction === "up" ? (value - def.floor) / span : (def.floor - value) / (def.floor - def.target);
-  return Math.max(0, Math.min(1, raw));
+  // A "down" metric's floor is the BAD end (168 h) and its target the good one
+  // (24 h); an "up" metric's floor is below its target. A catalog entry that
+  // gets this backwards would score silently in reverse, so it throws instead.
+  const span = def.direction === "up" ? def.target - def.floor : def.floor - def.target;
+  if (!(span > 0)) throw new Error(`impact catalog: ${def.id} has floor ${def.floor} and target ${def.target} for direction "${def.direction}"`);
+  const distance = def.direction === "up" ? value - def.floor : def.floor - value;
+  return Math.max(0, Math.min(1, distance / span));
 }
 
 export function scoreImpact(inputs: Inputs): ImpactScore {
