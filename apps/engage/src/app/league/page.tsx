@@ -32,12 +32,7 @@ export default function League() {
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              ["Rank", c.rank ? `${c.rank} / ${c.authors}` : "absent", `${c.articles} articles sampled`],
-              ["Level", c.level ? `top ${c.level}` : "outside the top 500", c.next ? `next: top ${c.next.level}` : "the top"],
-              ["To the next level", c.next ? `+${c.next.reactionsNeeded} reactions` : "—", c.ours ? `we have ${c.ours.reactions} from ${c.ours.articles} articles` : ""],
-              ["In articles", c.plan.articlesAtOurRate != null ? `${c.plan.articlesAtOurRate} at our ${c.plan.ourRxPerArticle}/article` : "—", c.plan.articlesAtTop10Rate != null ? `or ${c.plan.articlesAtTop10Rate} at the top-10 rate of ${c.plan.top10RxPerArticle}` : ""],
-            ].map(([k, v, s]: [string, string, string]) => (
+            {tiles(c).map(([k, v, s]) => (
               <div key={k} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
                 <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{k}</div>
                 <div className="mt-1 text-xl font-semibold tabular-nums">{v}</div>
@@ -80,6 +75,15 @@ export default function League() {
       )}
     </main>
   );
+}
+
+function tiles(c: any): [string, string, string][] {
+  return [
+    ["Rank", c.rank ? `${c.rank} / ${c.authors}` : "absent", `${c.articles} articles sampled`],
+    ["Level", c.level ? `top ${c.level}` : "outside the top 500", c.next ? `next: top ${c.next.level}` : "the top"],
+    ["To the next level", c.next ? `+${c.next.reactionsNeeded} reactions` : "—", c.ours ? `we have ${c.ours.reactions} from ${c.ours.articles} articles` : ""],
+    ["In articles", c.plan.articlesAtOurRate != null ? `${c.plan.articlesAtOurRate} at our ${c.plan.ourRxPerArticle}/article` : "—", c.plan.articlesAtTop10Rate != null ? `or ${c.plan.articlesAtTop10Rate} at the top-10 rate of ${c.plan.top10RxPerArticle}` : ""],
+  ];
 }
 
 function Table({ rows, gap = false }: { rows: any[]; gap?: boolean }) {
