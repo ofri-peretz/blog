@@ -23,6 +23,10 @@ Intent: [`2026-09-03-engage-own-the-data.intent.md`](./2026-09-03-engage-own-the
 | What the ingest stores from dev.to today | one `creator_daily_metrics` row: followers, posts, totals | `impact-ingest/scripts/daily-ingest.ts` | 2026-09-03 |
 | Existing tables | 25 in `public`, incl. `creator_daily_metrics`, `article_daily_snapshots` (per-article daily, 5,177 rows), `engagement_outcomes` (0 rows, outbound with quality scoring), `article_commenters` (8 rows, enriched inbound) | Supabase `list_tables`, `information_schema` | 2026-09-03 |
 | Where the ingest runs | `ofri-peretz/impact-ingest`, cron 05:00 UTC, `workflow_dispatch` | repo | 2026-09-03 |
+| Back-fill result | 183 analytics days, 20 referrer domains, 1,884 followers, 38 inbound comments (25 answered by us), 20 distinct commenters | `npm run devto:backfill`, then `select count(*)` per table | 2026-09-03 |
+| Account ages resolved before dev.to throttled `/users/{id}` | 403 of 1,884; **399 of those 403 were same-day accounts** | `devto_followers` | 2026-09-03 |
+| Commenters who also follow | 2 of 20 | join `devto_comments` × `devto_followers` | 2026-09-03 |
+| First scorecard reading | 56 views/day, 52 s read time (7 d); 1.3 reactions and 0.9 comments per 100 views (30 d); 35 follows/day | `/api/profile` | 2026-09-03 |
 
 ## Approach
 
