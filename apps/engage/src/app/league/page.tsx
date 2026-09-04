@@ -178,6 +178,12 @@ function forecastTile(f: any): [string, string, string] {
       `top ${f.nextLevel} by ${f.etaNext}`,
       `${f.slopePerDay} places a day over ${f.days} days`,
     ];
+  if (f.nextLevel == null)
+    return [
+      "Forecast",
+      "at the top",
+      `${f.slopePerDay ?? 0} places a day over ${f.days} days`,
+    ];
   return [
     "Forecast",
     "not climbing",
