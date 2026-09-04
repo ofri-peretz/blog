@@ -166,6 +166,7 @@ export default function Page() {
   /** The Author Impact Score — one definition, five pillars, fourteen metrics. */
   const [impact, setImpact] = useState<any>(null);
   const [levers, setLevers] = useState<any>(null);
+  const [radar, setRadar] = useState<any>(null);
   const [predictions, setPredictions] = useState<any>(null);
   const [bands, setBands] = useState<any>(null);
   /** What DEV's founders are building — the daily brief, read from the file the batch writes. */
@@ -286,6 +287,9 @@ export default function Page() {
     );
     pull("levers", "/api/levers", (v: any) => setLevers(v)).catch(() =>
       setLevers(null),
+    );
+    pull("radar", "/api/radar", (v: any) => setRadar(v)).catch(() =>
+      setRadar(null),
     );
     pull("predict", "/api/predict", (v: any) => setPredictions(v)).catch(() =>
       setPredictions(null),
@@ -959,6 +963,118 @@ export default function Page() {
       </Collapse>
 
       {/* ── Platform metrics ─────────────────────────────────────────────── */}
+      {/* ── Rising now ──────────────────────────────────────────────────────
+          Posts in our tags under a day old, ranked by reactions per hour times
+          subject overlap. An early comment on a post that will rise is the
+          cheapest visibility we have. lib/radar.ts. Nothing here posts. */}
+      <Collapse
+        id="s29"
+        head={
+          <>
+            <span>
+              Rising now
+              {radar?.rows?.length
+                ? ` · ${radar.rows.length} posts under 24 h`
+                : ""}
+            </span>
+            <Refresh
+              onClick={() =>
+                pull("radar", "/api/radar", (v: any) => setRadar(v), true)
+              }
+              at={at.radar ?? null}
+              busy={!!busy.radar}
+              source={radar?.cachedAt ?? null}
+            />
+          </>
+        }
+      >
+        {!radar ? (
+          <Skel rows={3} />
+        ) : (
+          <div className="flex flex-col gap-2 text-[12px]">
+            <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+              <table className="w-full">
+                <thead>
+                  <tr className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                    <th className="px-2 py-1.5 text-left">post</th>
+                    <th className="px-2 py-1.5 text-right">age</th>
+                    <th className="px-2 py-1.5 text-right">rx</th>
+                    <th className="px-2 py-1.5 text-right">cm</th>
+                    <th className="px-2 py-1.5 text-right">rx/h</th>
+                    <th className="px-2 py-1.5 text-left">why us</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {radar.rows.map((r: any) => (
+                    <tr
+                      key={r.id}
+                      className={`border-t border-[var(--border)] ${r.commented ? "opacity-60" : ""}`}
+                    >
+                      <td
+                        className="max-w-[36ch] truncate px-2 py-1"
+                        title={r.title}
+                      >
+                        <a
+                          href={r.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[var(--primary)]"
+                        >
+                          {r.title}
+                        </a>
+                        <span className="text-[var(--muted-foreground)]">
+                          {" "}
+                          · @{r.author}
+                        </span>
+                        {r.commented ? (
+                          <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
+                            {" "}
+                            · commented
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono tabular-nums">
+                        {r.ageH}h
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono tabular-nums">
+                        {r.reactions}
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono tabular-nums">
+                        {r.comments}
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono tabular-nums">
+                        {r.velocity}
+                      </td>
+                      <td className="px-2 py-1 font-mono text-[10px] text-[var(--muted-foreground)]">
+                        {r.hits.join(" ") || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                  {radar.rows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-2 py-2 text-[var(--muted-foreground)]"
+                      >
+                        nothing under 24 hours in {radar.tags?.join(", ")}
+                        {radar.errors?.length
+                          ? ` · ${radar.errors.join("; ")}`
+                          : ""}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[var(--muted-foreground)]">
+              {radar.caveat} {radar.pulled} posts pulled from #
+              {radar.tags?.join(", #")}; the curator and the anti-bot rules
+              decide.
+            </p>
+          </div>
+        )}
+      </Collapse>
+
       {/* ── Impact score ────────────────────────────────────────────────────
           One definition of "more impactful author": five pillars of 20, each
           the mean of metrics scored linearly floor→target. The catalog and the
