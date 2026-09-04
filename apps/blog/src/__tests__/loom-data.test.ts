@@ -87,7 +87,10 @@ describe("weeklyTotals", () => {
 });
 
 describe("indexTo100", () => {
-  it("bases at the first non-null, non-zero point", () => {
+  it("bases at the first non-null, non-zero point AND starts there", () => {
+    // The leading zero is dropped rather than drawn as index 0. The control
+    // promises "start = 100"; a line that begins at 0 breaks that promise,
+    // and the zeros carry no ratio information — every one is 0/base.
     expect(
       indexTo100([
         { t: "a", v: 0 },
@@ -95,26 +98,78 @@ describe("indexTo100", () => {
         { t: "c", v: 75 },
       ]),
     ).toEqual([
-      { t: "a", v: 0 },
       { t: "b", v: 100 },
       { t: "c", v: 150 },
     ]);
   });
 
+  it("every indexed series starts at exactly 100", () => {
+    // The invariant the label states. Asserted over shapes that used to
+    // violate it: a long zero prefix, and a null prefix.
+    for (const input of [
+      [
+        { t: "a", v: 0 },
+        { t: "b", v: 0 },
+        { t: "c", v: 1 },
+        { t: "d", v: 19 },
+      ],
+      [
+        { t: "a", v: null },
+        { t: "b", v: 4 },
+        { t: "c", v: 6 },
+      ],
+      [
+        { t: "a", v: 7 },
+        { t: "b", v: 7 },
+      ],
+    ]) {
+      const out = indexTo100(input);
+      expect(out[0].v, `first point of ${JSON.stringify(input)}`).toBe(100);
+    }
+  });
+
+  it("the GitHub stars shape no longer reads as a count from zero", () => {
+    // The reported bug, as data: months at zero, then a first star, then 19.
+    // It drew 0 -> 1,900 on a chart captioned "GitHub stars".
+    const stars = [
+      { t: "2025-12-01", v: 0 },
+      { t: "2026-01-01", v: 0 },
+      { t: "2026-02-01", v: 1 },
+      { t: "2026-09-04", v: 19 },
+    ];
+    const out = indexTo100(stars);
+    expect(out.map((p) => p.t)).toEqual(["2026-02-01", "2026-09-04"]);
+    expect(out[0].v).toBe(100);
+    expect(out.some((p) => p.v === 0)).toBe(false);
+  });
+
   it("preserves nulls — a gap is not a zero", () => {
-    expect(indexTo100([{ t: "a", v: 10 }, { t: "b", v: null }])).toEqual([
+    expect(
+      indexTo100([
+        { t: "a", v: 10 },
+        { t: "b", v: null },
+      ]),
+    ).toEqual([
       { t: "a", v: 100 },
       { t: "b", v: null },
     ]);
   });
 
   it("returns an untouched copy when no base exists", () => {
-    const input = [{ t: "a", v: 0 }, { t: "b", v: null }];
+    const input = [
+      { t: "a", v: 0 },
+      { t: "b", v: null },
+    ];
     expect(indexTo100(input)).toEqual(input);
   });
 
   it("rounds to one decimal — readouts, not physics", () => {
-    expect(indexTo100([{ t: "a", v: 3 }, { t: "b", v: 4 }])[1].v).toBe(133.3);
+    expect(
+      indexTo100([
+        { t: "a", v: 3 },
+        { t: "b", v: 4 },
+      ])[1].v,
+    ).toBe(133.3);
   });
 });
 
