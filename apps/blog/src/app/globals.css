@@ -53,6 +53,12 @@
   --viz-grid: var(--border);
   --viz-axis: var(--muted-foreground);
   --viz-crosshair: var(--muted-foreground);
+  /* Direction tones for the TimeSeries two-point comparison, indirected
+     through --success / --destructive so the dark overrides below reach them
+     without a second definition. Matches the DS theme. */
+  --viz-positive: var(--success);
+  --viz-negative: var(--destructive);
+  --viz-neutral: var(--muted-foreground);
   --viz-annotation-publish: var(--brand-orange);
   --viz-annotation-release: var(--chart-3);
   --viz-annotation-action: var(--chart-4);
@@ -217,6 +223,9 @@
   --color-viz-grid: var(--viz-grid);
   --color-viz-axis: var(--viz-axis);
   --color-viz-crosshair: var(--viz-crosshair);
+  --color-viz-positive: var(--viz-positive);
+  --color-viz-negative: var(--viz-negative);
+  --color-viz-neutral: var(--viz-neutral);
   --color-viz-annotation-publish: var(--viz-annotation-publish);
   --color-viz-annotation-release: var(--viz-annotation-release);
   --color-viz-annotation-action: var(--viz-annotation-action);
