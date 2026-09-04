@@ -165,6 +165,8 @@ export default function Page() {
   const [impact, setImpact] = useState<any>(null);
   const [levers, setLevers] = useState<any>(null);
   const [bands, setBands] = useState<any>(null);
+  /** What DEV's founders are building — the daily brief, read from the file the batch writes. */
+  const [founders, setFounders] = useState<any>(null);
 
 
   /** at[section] = when that section's data was last read. */
@@ -249,6 +251,7 @@ export default function Page() {
     pull("impact", "/api/impact", (v: any) => setImpact(v)).catch(() => setImpact(null));
     pull("levers", "/api/levers", (v: any) => setLevers(v)).catch(() => setLevers(null));
     pull("bands", "/api/bands", (v: any) => setBands(v)).catch(() => setBands(null));
+    pull("founders", "/api/founders", (v: any) => setFounders(v)).catch(() => setFounders(null));
 
     // Deep link: /?u=<author> opens that author's drill-down on load, so a link
     // to a person survives being pasted into a note or a second session.
@@ -881,6 +884,60 @@ export default function Page() {
             <p className="text-[12px] text-[var(--muted-foreground)]">
               {impact.measured} of {impact.total} metrics measured. Unmeasured scores zero on purpose: it is a fact about our instrumentation, not about the author. Followers, lifetime totals and badges are excluded.
             </p>
+          </div>
+        )}
+      </Collapse>
+
+      {/* ── What the founders are building ──────────────────────────────────
+          A brief, not a feed. The model reads the staff's recent posts in the
+          morning batch and writes what each one is, why it matters to an
+          author here, and the one move it suggests. This renders the file. */}
+      <Collapse id="s27" head={<><span>
+          What the founders are building{founders?.brief?.building?.length ? ` · ${founders.brief.building.length}` : ""}
+        </span><Refresh onClick={() => pull("founders", "/api/founders", (v: any) => setFounders(v), true)} at={at.founders ?? null} busy={!!busy.founders} source={founders?.asOf ?? null} /></>}>
+        {!founders ? <Skel rows={3} /> : !founders.brief ? (
+          <Callout tone="warn" title="No brief yet">{founders.hint ?? founders.error ?? "The loop writes it once a day."}</Callout>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <p className="text-[15px] leading-snug">{founders.brief.headline}</p>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {(founders.brief.building ?? []).map((b: any) => (
+                <article key={b.url ?? b.title} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                  <div className="flex flex-wrap items-baseline gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]"><span>@{b.author}</span><span>{b.date}</span></div>
+                  <a href={b.url} target="_blank" rel="noopener" className="mt-1 block text-[14px] font-semibold leading-snug hover:text-[var(--primary)]">{b.title}</a>
+                  <p className="mt-2 text-[13px]">{b.what}</p>
+                  <p className="mt-1.5 text-[12.5px] text-[var(--muted-foreground)]"><span className="font-mono text-[10px] uppercase tracking-[0.08em]">why it matters · </span>{b.why_it_matters}</p>
+                  {b.our_move && b.our_move.toLowerCase() !== "none" && (
+                    <p className="mt-1.5 rounded border border-[var(--primary)]/40 px-2 py-1 text-[12.5px]"><span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--primary)]">our move · </span>{b.our_move}</p>
+                  )}
+                </article>
+              ))}
+            </div>
+            {founders.brief.programs?.length ? (
+              <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                <table className="w-full text-[12px]">
+                  <thead><tr className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]"><th className="px-2 py-1.5 text-left">program</th><th className="px-2 py-1.5 text-left">status</th><th className="px-2 py-1.5 text-left">dates</th><th className="px-2 py-1.5 text-left">what it rewards</th><th className="px-2 py-1.5 text-left">our move</th></tr></thead>
+                  <tbody>{founders.brief.programs.map((p: any) => (
+                    <tr key={p.name} className="border-t border-[var(--border)] align-top"><td className="px-2 py-1 font-medium">{p.name}</td><td className="px-2 py-1 font-mono text-[11px]">{p.status}</td><td className="px-2 py-1 text-[var(--muted-foreground)]">{p.dates}</td><td className="px-2 py-1">{p.what_it_rewards}</td><td className="px-2 py-1">{p.our_move && p.our_move.toLowerCase() !== "none" ? p.our_move : <span className="text-[var(--muted-foreground)]">—</span>}</td></tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ) : null}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {founders.brief.what_they_reward?.length ? (
+                <div><div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">what they reward</div><ul className="mt-1 list-disc pl-4 text-[13px]">{founders.brief.what_they_reward.map((x: string) => <li key={x}>{x}</li>)}</ul></div>
+              ) : null}
+              {founders.brief.watch?.length ? (
+                <div><div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">watch next week</div><ul className="mt-1 list-disc pl-4 text-[13px]">{founders.brief.watch.map((x: string) => <li key={x}>{x}</li>)}</ul></div>
+              ) : null}
+            </div>
+            <details className="text-[12px]">
+              <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">the {founders.posts?.length ?? 0} staff posts behind this, {founders.days} days</summary>
+              <ul className="mt-2 flex flex-col gap-0.5">{(founders.posts ?? []).map((p: any) => (
+                <li key={p.id} className="flex items-baseline gap-2"><span className="w-20 shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">{p.kind}</span><span className="w-32 shrink-0 font-mono text-[11px]">@{p.author}</span><span className="w-20 shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">{String(p.published_at).slice(0, 10)}</span><a href={p.url} target="_blank" rel="noopener" className="min-w-0 flex-1 truncate hover:text-[var(--primary)]">{p.title}</a><span className="shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">{p.reactions} rx</span></li>
+              ))}</ul>
+            </details>
+            <p className="text-[12px] text-[var(--muted-foreground)]">Written by the morning batch from the staff's own public posts; the model never runs on this page. Sources are linked; nothing here is a program you have to enter.</p>
           </div>
         )}
       </Collapse>
