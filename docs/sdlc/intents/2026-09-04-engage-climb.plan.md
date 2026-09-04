@@ -12,7 +12,7 @@ Intent: [`2026-09-04-engage-climb.intent.md`](./2026-09-04-engage-climb.intent.m
 
 | Claim | Value | Source | Read on |
 | --- | --- | --- | --- |
-| Sample | 1,280 articles, 788 authors: platform `top=30` pages 1–5 plus `tag=security\|javascript\|node\|ai` pages 1–3 | dev.to articles API | 2026-09-04 |
+| Sample | 1,280 articles, 788 authors: platform `top=30` pages 1–5 plus tag pages 1–3 for security, javascript, node and ai | dev.to articles API | 2026-09-04 |
 | Our line | rank 151; 15 reactions, 4 comments, 4 articles; 3.8 rx/article | same | 2026-09-04 |
 | Thresholds | top 5: 338 · 10: 252 · 20: 170 · 50: 59 · 100: 25 · 200: 8 | same | 2026-09-04 |
 | Top 10 | sylwia-lask 659 (4 articles), francistrdev 489 (4), debashish_ghosal 416 (20), kenielzep97 392 (14), xulingfeng 338 (5); top-10 mean 61.6 rx/article | same | 2026-09-04 |
