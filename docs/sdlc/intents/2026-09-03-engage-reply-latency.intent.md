@@ -2,7 +2,7 @@
 kind: intent
 slug: 2026-09-03-engage-reply-latency
 opened: 2026-09-03
-status: open
+status: shipped
 ---
 
 # Intent: every inbound comment is answered within 24 hours, measured on dev.to
