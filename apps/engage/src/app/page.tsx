@@ -166,6 +166,7 @@ export default function Page() {
   /** The Author Impact Score — one definition, five pillars, fourteen metrics. */
   const [impact, setImpact] = useState<any>(null);
   const [levers, setLevers] = useState<any>(null);
+  const [aging, setAging] = useState<any>(null);
   const [ties, setTies] = useState<any>(null);
   const [radar, setRadar] = useState<any>(null);
   const [predictions, setPredictions] = useState<any>(null);
@@ -288,6 +289,9 @@ export default function Page() {
     );
     pull("levers", "/api/levers", (v: any) => setLevers(v)).catch(() =>
       setLevers(null),
+    );
+    pull("decay", "/api/decay", (v: any) => setAging(v)).catch(() =>
+      setAging(null),
     );
     pull("ties", "/api/ties", (v: any) => setTies(v)).catch(() =>
       setTies(null),
@@ -627,6 +631,13 @@ export default function Page() {
             className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]"
           >
             the climb →
+          </Link>
+
+          <Link
+            href="/attention"
+            className="font-mono text-[11px] uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)]"
+          >
+            attention →
           </Link>
           <Link
             href="/customers"
@@ -1180,6 +1191,111 @@ export default function Page() {
               </div>
             </div>
             <p className="text-[var(--muted-foreground)]">{ties.caveat}</p>
+          </div>
+        )}
+      </Collapse>
+
+      {/* ── How articles age ────────────────────────────────────────────────
+          Three points on each view curve: feed pieces take their views in
+          three days and stop, search pieces keep a daily rate for months.
+          lib/decay.ts. */}
+      <Collapse
+        id="s31"
+        head={
+          <>
+            <span>
+              How articles age
+              {aging?.summary
+                ? ` · ${aging.summary.search} search · ${aging.summary.feed} feed · ${aging.summary.mixed} mixed`
+                : ""}
+            </span>
+            <Refresh
+              onClick={() =>
+                pull("decay", "/api/decay", (v: any) => setAging(v), true)
+              }
+              at={at.decay ?? null}
+              busy={!!busy.decay}
+              source={aging?.cachedAt ?? null}
+            />
+          </>
+        }
+      >
+        {!aging ? (
+          <Skel rows={3} />
+        ) : (
+          <div className="flex flex-col gap-3 text-[12px]">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              {(
+                [
+                  [
+                    "search-carried",
+                    aging.summary.search,
+                    "40% of views after day 14",
+                  ],
+                  ["feed pieces", aging.summary.feed, "70% of views by day 3"],
+                  ["mixed", aging.summary.mixed, "neither shape"],
+                  [
+                    "views from search pieces",
+                    aging.summary.viewsFromSearch == null
+                      ? "—"
+                      : `${aging.summary.viewsFromSearch}%`,
+                    `of tracked views · ${aging.summary.tooYoung} too young · ${aging.summary.noWindow} without a window`,
+                  ],
+                ] as [string, string | number, string][]
+              ).map(([k, v, s]) => (
+                <div
+                  key={k}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3"
+                >
+                  <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+                    {k}
+                  </div>
+                  <div className="mt-1 text-xl font-semibold tabular-nums">
+                    {v}
+                  </div>
+                  <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+                    {s}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+              <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+                still being read · views per day over the last two weeks
+              </div>
+              <ul className="mt-2 flex flex-col gap-1">
+                {aging.summary.evergreen.map((r: any) => (
+                  <li key={r.slug} className="flex items-baseline gap-2">
+                    <span className="w-12 shrink-0 text-right font-mono tabular-nums">
+                      {r.rate}/d
+                    </span>
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-[var(--primary)]"
+                      title={r.title}
+                    >
+                      {r.title}
+                    </a>
+                    <span className="shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">
+                      {r.kind} · {r.ageDays}d ·{" "}
+                      {r.tail != null
+                        ? `${Math.round(r.tail * 100)}% after day 14`
+                        : ""}
+                    </span>
+                  </li>
+                ))}
+                {aging.summary.evergreen.length === 0 ? (
+                  <li className="text-[var(--muted-foreground)]">
+                    nothing classed yet
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+            <p className="text-[var(--muted-foreground)]">
+              {aging.caveat} {aging.articles} articles read.
+            </p>
           </div>
         )}
       </Collapse>
