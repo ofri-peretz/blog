@@ -136,8 +136,9 @@ const nextConfig: NextConfig = {
       // eslint-disable-next-line browser-security/no-unsafe-inline-csp
       "style-src 'self' 'unsafe-inline'",
       // data: for inlined SVG/blur placeholders; dev.to hosts the covers;
-      // img.shields.io serves the download badges embedded in four article
-      // bodies, which this policy silently blocked in production until the
+      // img.shields.io serves the download badges — four of them across three
+      // article bodies, two sharing a line — which this policy silently blocked
+      // in production until the
       // 2026-09-04 layout audit happened to catch one mid-load. Hosts are
       // listed one by one on purpose — never a wildcard.
       "img-src 'self' data: blob: https://media2.dev.to https://media.dev.to https://dev-to-uploads.s3.amazonaws.com https://dev-to-uploads.s3.us-east-2.amazonaws.com https://img.shields.io",
