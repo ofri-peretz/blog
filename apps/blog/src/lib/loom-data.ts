@@ -71,11 +71,25 @@ export function weeklyTotals(
  * Index a series to 100 at its first non-null, non-zero point — the
  * normalization that lets threads with different units weave in one
  * plot without a second y axis (which TimeSeries deliberately refuses).
+ *
+ * **The leading zeros are dropped, and that is the whole point.** The control
+ * promises "Indexed (start = 100)". A metric that spent its first months at
+ * zero — GitHub stars did — used to be rebased on a later day while the
+ * drawn line still began at 0, so the series did not start at 100 and the
+ * label was simply false. Worse, the values it produced were count-shaped:
+ * 19 stars against a base of 1 drew a line running to 1,900, on a chart
+ * captioned "GitHub stars". It was read as 1,900 stars, which is exactly what
+ * it looks like.
+ *
+ * Those leading points carry no ratio information anyway — every one of them
+ * is 0/base. Dropping them makes the line begin where the metric began, which
+ * is the only day an index can honestly be based on.
  */
 export function indexTo100(points: readonly Point[]): Point[] {
-  const base = points.find((p) => p.v != null && p.v !== 0)?.v;
-  if (base == null) return [...points];
-  return points.map((p) => ({
+  const baseAt = points.findIndex((p) => p.v != null && p.v !== 0);
+  if (baseAt === -1) return [...points];
+  const base = points[baseAt].v as number;
+  return points.slice(baseAt).map((p) => ({
     t: p.t,
     v: p.v == null ? null : Math.round((p.v / base) * 1000) / 10,
   }));

@@ -150,14 +150,15 @@ export function LoomComposer({
     const windowed = windowPoints(s.points, cutoff);
     return {
       series: s,
-      points:
-        state.normalize === "idx" ? indexTo100(windowed) : windowed,
-      unit: state.normalize === "idx" ? "indexed" : s.unit,
+      points: state.normalize === "idx" ? indexTo100(windowed) : windowed,
+      // "1,900 indexed" skims as "1,900" — and on a stars series that reads
+      // as a count, which is how a reader reported 19 stars as ~1,600. Naming
+      // the baseline makes the number impossible to mistake for one.
+      unit: state.normalize === "idx" ? "index (start = 100)" : s.unit,
     };
   });
   const mixedUnits =
-    state.normalize === "abs" &&
-    new Set(active.map((s) => s.unit)).size > 1;
+    state.normalize === "abs" && new Set(active.map((s) => s.unit)).size > 1;
 
   // No chart key, on purpose: the DS owns transition identity now
   // (interlace#77). TimeSeries/RadialWeave replay their weave-reveal
@@ -234,8 +235,7 @@ export function LoomComposer({
           const below = group === "npm" ? threads.slice(NPM_ABOVE_FOLD) : [];
           const chip = (s: LoomSeries) => {
             const isActive = state.series.includes(s.id);
-            const capped =
-              !isActive && state.series.length >= MAX_THREADS;
+            const capped = !isActive && state.series.length >= MAX_THREADS;
             return (
               <Toggle
                 key={s.id}
@@ -294,9 +294,32 @@ export function LoomComposer({
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         {(
           [
-            ["Form", "form", [["weave", "One weave"], ["grid", "Small multiples"], ["radial", "Radial"]]],
-            ["Window", "window", [["90d", "90 days"], ["1y", "1 year"], ["all", "All time"]]],
-            ["Scale", "normalize", [["abs", "Absolute"], ["idx", "Indexed (start = 100)"]]],
+            [
+              "Form",
+              "form",
+              [
+                ["weave", "One weave"],
+                ["grid", "Small multiples"],
+                ["radial", "Radial"],
+              ],
+            ],
+            [
+              "Window",
+              "window",
+              [
+                ["90d", "90 days"],
+                ["1y", "1 year"],
+                ["all", "All time"],
+              ],
+            ],
+            [
+              "Scale",
+              "normalize",
+              [
+                ["abs", "Absolute"],
+                ["idx", "Indexed (start = 100)"],
+              ],
+            ],
           ] as const
         ).map(([label, key, options]) => (
           <div
@@ -347,8 +370,8 @@ export function LoomComposer({
 
       {mixedUnits && (
         <p className="text-sm text-muted-foreground">
-          These threads have different units, and one honest y-axis can
-          hold only one of them at native scale.{" "}
+          These threads have different units, and one honest y-axis can hold
+          only one of them at native scale.{" "}
           <button
             type="button"
             className="underline hover:text-foreground"
@@ -421,9 +444,9 @@ export function LoomComposer({
           ))}
         </ul>
         <p className="mt-2">
-          Observed through {corpus.observedThrough} · corpus assembled at
-          most twice a day — playing with it costs nothing and touches no
-          upstream API.{" "}
+          Observed through {corpus.observedThrough} · corpus assembled at most
+          twice a day — playing with it costs nothing and touches no upstream
+          API.{" "}
           <a href="/scorecard" className="underline hover:text-foreground">
             How these numbers are made →
           </a>
