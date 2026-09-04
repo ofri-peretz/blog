@@ -239,7 +239,12 @@ describe("pickDestination", () => {
     };
     // A prototype key must not read an inherited Object.prototype value and
     // return it as the destination — it has no OWN entry, so fall through.
-    for (const evil of ["__proto__", "constructor", "toString", "hasOwnProperty"]) {
+    for (const evil of [
+      "__proto__",
+      "constructor",
+      "toString",
+      "hasOwnProperty",
+    ]) {
       expect(pickDestination({ ...base, row, utmSource: evil })).toBe(
         `${BLOG}/articles/my-slug`,
       );
@@ -662,25 +667,53 @@ describe("GET /go/[...key] (route wrapper)", () => {
 
 describe("anonymousVisitorId", () => {
   it("is stable for the same visitor on the same day", async () => {
-    const a = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
-    const b = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
+    const a = await anonymousVisitorId(
+      "203.0.113.7",
+      "Mozilla/5.0",
+      "2026-08-22",
+    );
+    const b = await anonymousVisitorId(
+      "203.0.113.7",
+      "Mozilla/5.0",
+      "2026-08-22",
+    );
     expect(a).toBe(b);
   });
 
   it("rotates across days, so it cannot follow anyone", async () => {
-    const day1 = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
-    const day2 = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-23");
+    const day1 = await anonymousVisitorId(
+      "203.0.113.7",
+      "Mozilla/5.0",
+      "2026-08-22",
+    );
+    const day2 = await anonymousVisitorId(
+      "203.0.113.7",
+      "Mozilla/5.0",
+      "2026-08-23",
+    );
     expect(day1).not.toBe(day2);
   });
 
   it("separates different visitors", async () => {
-    const one = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0", "2026-08-22");
-    const two = await anonymousVisitorId("198.51.100.4", "Mozilla/5.0", "2026-08-22");
+    const one = await anonymousVisitorId(
+      "203.0.113.7",
+      "Mozilla/5.0",
+      "2026-08-22",
+    );
+    const two = await anonymousVisitorId(
+      "198.51.100.4",
+      "Mozilla/5.0",
+      "2026-08-22",
+    );
     expect(one).not.toBe(two);
   });
 
   it("never leaks the inputs", async () => {
-    const id = await anonymousVisitorId("203.0.113.7", "Mozilla/5.0 (secret-agent)", "2026-08-22");
+    const id = await anonymousVisitorId(
+      "203.0.113.7",
+      "Mozilla/5.0 (secret-agent)",
+      "2026-08-22",
+    );
     expect(id).not.toContain("203.0.113.7");
     expect(id).not.toContain("secret-agent");
     expect(id).toMatch(/^[0-9a-f]{32}$/);
@@ -706,13 +739,23 @@ describe("buildClickEventBody — distinct_id", () => {
     expect(body.distinct_id).toBe("a".repeat(32));
   });
 
+  it("carries the visitor user agent as $raw_user_agent, and omits it when absent", () => {
+    const ua = "Mozilla/5.0 (Macintosh) Safari/605";
+    const withUa = buildClickEventBody(props, null, undefined, undefined, ua);
+    expect(withUa.properties.$raw_user_agent).toBe(ua);
+    const without = buildClickEventBody(props, null);
+    expect("$raw_user_agent" in without.properties).toBe(false);
+  });
+
   it("keeps person profiles off regardless of the id", () => {
     const body = buildClickEventBody(props, null, undefined, "b".repeat(32));
     expect(body.properties.$process_person_profile).toBe(false);
   });
 
   it("falls back to the synthetic id when no anonymous id is given", () => {
-    expect(buildClickEventBody(props, null).distinct_id).toBe(SERVER_FALLBACK_ID);
+    expect(buildClickEventBody(props, null).distinct_id).toBe(
+      SERVER_FALLBACK_ID,
+    );
   });
 });
 

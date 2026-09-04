@@ -334,6 +334,14 @@ export function buildClickEventBody(
    * 18,050 clicks, one "person", no way to tell a campaign from a loop.
    */
   anonymousId: string = SERVER_FALLBACK_ID,
+  /**
+   * The visitor's User-Agent, passed through as `$raw_user_agent` — the
+   * property PostHog's bot detection reads. Without it every server-sent
+   * click is classified a bot: measured 2026-09-04, 1,192 of 1,192 clicks
+   * from dev.to in 30 days. The client SDK already sends this header for
+   * every pageview under the same no-profile flag.
+   */
+  userAgent: string | null = null,
 ): {
   event: "short_link_click";
   distinct_id: string;
@@ -354,6 +362,7 @@ export function buildClickEventBody(
       // events must carry it explicitly (one shared PostHog project).
       app: "blog",
       $process_person_profile: false,
+      ...(userAgent ? { $raw_user_agent: userAgent } : {}),
     },
     timestamp,
   };
