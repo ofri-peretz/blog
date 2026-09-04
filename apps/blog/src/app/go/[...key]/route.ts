@@ -67,7 +67,13 @@ function captureShortLinkClick(
       );
       const body = {
         api_key: apiKey,
-        ...buildClickEventBody(capture, refererOrigin, undefined, distinctId),
+        ...buildClickEventBody(
+          capture,
+          refererOrigin,
+          undefined,
+          distinctId,
+          request.headers.get("user-agent"),
+        ),
       };
       await fetch(`${host}/i/v0/e/`, {
         method: "POST",
