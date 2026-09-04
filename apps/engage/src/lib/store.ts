@@ -90,6 +90,12 @@ export function open(): DatabaseSync {
       at            TEXT NOT NULL
     );
 
+    -- The league: our rank among the month's authors, one row per day. See lib/league.ts.
+    CREATE TABLE IF NOT EXISTS league_daily (
+      day TEXT PRIMARY KEY, rank INTEGER, authors INTEGER, reactions INTEGER, comments INTEGER, articles INTEGER,
+      t5 INTEGER, t10 INTEGER, t20 INTEGER, t50 INTEGER, t100 INTEGER, t200 INTEGER, t500 INTEGER, at TEXT NOT NULL
+    );
+
     -- The Author Impact Score, one row per day. See lib/impact-score.ts.
     CREATE TABLE IF NOT EXISTS impact_score (
       day        TEXT PRIMARY KEY,
@@ -106,6 +112,12 @@ export function open(): DatabaseSync {
       at             TEXT NOT NULL
     );
   `);
+  // Additive columns for tables that already existed before a column did.
+  // SQLite has no ADD COLUMN IF NOT EXISTS; a duplicate-column error is the
+  // "already there" answer and is ignored on purpose.
+  for (const ddl of ["ALTER TABLE league_daily ADD COLUMN t200 INTEGER", "ALTER TABLE league_daily ADD COLUMN t500 INTEGER"]) {
+    try { db.exec(ddl); } catch { /* column exists */ }
+  }
   return db;
 }
 
@@ -122,6 +134,21 @@ export function writeYield(day: string, s: import("./yield").YieldSummary) {
 }
 export function yieldHistory(days = 400) {
   return (open().prepare(`SELECT * FROM comment_yield ORDER BY day DESC LIMIT ?`).all(days) as Record<string, number | string | null>[]).reverse();
+}
+
+export function writeLeague(day: string, c: import("./league").Climb) {
+  open()
+    .prepare(
+      `INSERT INTO league_daily (day, rank, authors, reactions, comments, articles, t5, t10, t20, t50, t100, t200, t500, at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(day) DO UPDATE SET rank=excluded.rank, authors=excluded.authors, reactions=excluded.reactions, comments=excluded.comments,
+         articles=excluded.articles, t5=excluded.t5, t10=excluded.t10, t20=excluded.t20, t50=excluded.t50, t100=excluded.t100,
+         t200=excluded.t200, t500=excluded.t500, at=excluded.at`,
+    )
+    .run(day, c.rank, c.authors, c.ours?.reactions ?? null, c.ours?.comments ?? null, c.ours?.articles ?? null, c.thresholds[5], c.thresholds[10], c.thresholds[20], c.thresholds[50], c.thresholds[100], c.thresholds[200], c.thresholds[500], new Date().toISOString());
+}
+export function leagueHistory(days = 400) {
+  return (open().prepare(`SELECT * FROM league_daily ORDER BY day DESC LIMIT ?`).all(days) as Record<string, number | string | null>[]).reverse();
 }
 
 export function writeImpact(day: string, r: import("./impact-score").ImpactScore) {
