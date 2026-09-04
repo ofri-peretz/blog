@@ -90,6 +90,15 @@ export function open(): DatabaseSync {
       at            TEXT NOT NULL
     );
 
+    -- The Author Impact Score, one row per day. See lib/impact-score.ts.
+    CREATE TABLE IF NOT EXISTS impact_score (
+      day        TEXT PRIMARY KEY,
+      score      REAL NOT NULL,
+      readers    REAL, resonance REAL, standing REAL, arena REAL, downstream REAL,
+      measured   INTEGER, total INTEGER,
+      at         TEXT NOT NULL
+    );
+
     -- Outreach PRs waiting on us, one row per day. See /api/prs.
     CREATE TABLE IF NOT EXISTS outreach (
       day            TEXT PRIMARY KEY,
@@ -113,6 +122,22 @@ export function writeYield(day: string, s: import("./yield").YieldSummary) {
 }
 export function yieldHistory(days = 400) {
   return (open().prepare(`SELECT * FROM comment_yield ORDER BY day DESC LIMIT ?`).all(days) as Record<string, number | string | null>[]).reverse();
+}
+
+export function writeImpact(day: string, r: import("./impact-score").ImpactScore) {
+  const p = (id: string) => r.pillars.find((x) => x.id === id)?.points ?? null;
+  open()
+    .prepare(
+      `INSERT INTO impact_score (day, score, readers, resonance, standing, arena, downstream, measured, total, at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(day) DO UPDATE SET score=excluded.score, readers=excluded.readers, resonance=excluded.resonance,
+         standing=excluded.standing, arena=excluded.arena, downstream=excluded.downstream,
+         measured=excluded.measured, total=excluded.total, at=excluded.at`,
+    )
+    .run(day, r.score, p("readers"), p("resonance"), p("standing"), p("arena"), p("downstream"), r.measured, r.total, new Date().toISOString());
+}
+export function impactHistory(days = 400) {
+  return (open().prepare(`SELECT * FROM impact_score ORDER BY day DESC LIMIT ?`).all(days) as Record<string, number | string | null>[]).reverse();
 }
 
 export function writeOutreach(day: string, r: { open: number; ourMove: number; blocked: number; behindBase: number; conflicts: number }) {

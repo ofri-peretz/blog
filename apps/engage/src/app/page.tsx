@@ -161,6 +161,8 @@ export default function Page() {
   const [standing, setStanding] = useState<any>(null);
   /** The profile scorecard — readers, resonance, followers-who-read. */
   const [profile, setProfile] = useState<any>(null);
+  /** The Author Impact Score — one definition, five pillars, fourteen metrics. */
+  const [impact, setImpact] = useState<any>(null);
 
 
   /** at[section] = when that section's data was last read. */
@@ -242,6 +244,7 @@ export default function Page() {
     pull("bench", "/api/benchmark", (v: any) => setBench(v)).catch(() => setBench(null));
     pull("standing", "/api/standing", (v: any) => setStanding(v)).catch(() => setStanding({ today: null, history: [], error: "unreachable" }));
     pull("profile", "/api/profile", (v: any) => setProfile(v)).catch(() => setProfile({ hint: "unreachable" }));
+    pull("impact", "/api/impact", (v: any) => setImpact(v)).catch(() => setImpact(null));
 
     // Deep link: /?u=<author> opens that author's drill-down on load, so a link
     // to a person survives being pasted into a note or a second session.
@@ -811,6 +814,58 @@ export default function Page() {
       </Collapse>
 
       {/* ── Platform metrics ─────────────────────────────────────────────── */}
+      {/* ── Impact score ────────────────────────────────────────────────────
+          One definition of "more impactful author": five pillars of 20, each
+          the mean of metrics scored linearly floor→target. The catalog and the
+          targets live in lib/impact-score.ts and nowhere else. */}
+      <Collapse id="s25" head={<><span>
+          Impact score{impact?.score != null ? ` · ${impact.score} / 100` : ""}
+        </span><Refresh onClick={() => pull("impact", "/api/impact", (v: any) => setImpact(v), true)} at={at.impact ?? null} busy={!!busy.impact} source={impact?.day ?? null} /></>}>
+        {!impact ? (
+          <Skel rows={3} />
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+              {impact.pillars.map((p: any) => (
+                <div key={p.id} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{p.label}</div>
+                  <div className="mt-1 text-xl font-semibold tabular-nums">{p.points}<span className="text-[12px] font-normal text-[var(--muted-foreground)]"> / {p.max}</span></div>
+                  <div className="mt-2 h-1.5 w-full rounded bg-[var(--border)]"><div className="h-1.5 rounded bg-[var(--primary)]" style={{ width: `${Math.round((100 * p.points) / p.max)}%` }} /></div>
+                  <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">{p.question}</div>
+                </div>
+              ))}
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+              <table className="w-full text-[12px]">
+                <thead><tr className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                  <th className="px-2 py-1.5 text-left">metric</th><th className="px-2 py-1.5 text-right">value</th><th className="px-2 py-1.5 text-right">floor → target</th><th className="px-2 py-1.5 text-right">points</th><th className="px-2 py-1.5 text-left">source</th>
+                </tr></thead>
+                <tbody>
+                  {impact.pillars.flatMap((p: any) => p.metrics.map((m: any) => (
+                    <tr key={m.id} className="border-t border-[var(--border)]">
+                      <td className="px-2 py-1"><span className="font-mono text-[10px] text-[var(--muted-foreground)]">{p.label} · </span>{m.label}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{m.value == null ? <span className="text-[var(--warning)]">unmeasured</span> : `${m.value}${m.unit}`}</td>
+                      <td className="px-2 py-1 text-right font-mono text-[11px] text-[var(--muted-foreground)]">{m.floor} → {m.target}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{Math.round(m.unitScore * 100)}%</td>
+                      <td className="px-2 py-1 font-mono text-[10px] text-[var(--muted-foreground)]">{m.source}</td>
+                    </tr>
+                  )))}
+                </tbody>
+              </table>
+            </div>
+            {impact.league?.length ? (
+              <div className="text-[12px] text-[var(--muted-foreground)]">
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em]">arena, 30-day top-300 by tag · </span>
+                {impact.league.map((t: any) => `#${t.tag} ${t.rank ? `${t.rank}/${t.authors}` : "absent"}${t.above?.length ? ` (next up: ${t.above.slice(-2).map((l: any) => `@${l.author} ${l.reactions}rx`).join(", ")})` : ""}`).join(" · ")}
+              </div>
+            ) : null}
+            <p className="text-[12px] text-[var(--muted-foreground)]">
+              {impact.measured} of {impact.total} metrics measured. Unmeasured scores zero on purpose: it is a fact about our instrumentation, not about the author. Followers, lifetime totals and badges are excluded.
+            </p>
+          </div>
+        )}
+      </Collapse>
+
       {/* ── Profile ─────────────────────────────────────────────────────────
           How the profile is doing, off the dev.to warehouse rather than the
           follower count. The follower tile prints the share that arrived as
