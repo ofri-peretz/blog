@@ -24,7 +24,10 @@ export interface Decay {
   url?: string;
   publishedOn: string;
   ageDays: number;
+  /** Cumulative views as dev.to counts them, including any before snapshots began. */
   views: number;
+  /** Views that arrived while snapshots were running: the denominator of both shares. */
+  tracked: number;
   /** Share of views by day three; null when the window has no start. */
   early: number | null;
   /** Share of views after day fourteen; null before the article is 28 days old. */
@@ -52,6 +55,7 @@ export function decay(a: ArticleIn, snaps: Snap[], now = Date.now()): Decay {
     publishedOn: pub,
     ageDays,
     views: rows.at(-1)?.views ?? 0,
+    tracked: 0,
     early: null,
     tail: null,
     rate: null,
@@ -74,10 +78,22 @@ export function decay(a: ArticleIn, snaps: Snap[], now = Date.now()): Decay {
         (s) => s.observed_on <= iso(Date.parse(latest.observed_on) - 14 * DAY),
       )
       .at(-1) ?? null;
+  // Divide by the days the two snapshots actually span, not by 14: a gap
+  // straddling the boundary would otherwise overstate the rate.
+  const span = back14
+    ? Math.max(
+        1,
+        Math.round(
+          (Date.parse(latest.observed_on) - Date.parse(back14.observed_on)) /
+            DAY,
+        ),
+      )
+    : 0;
   const rate = back14
-    ? Math.round((10 * Math.max(0, latest.views - back14.views)) / 14) / 10
+    ? Math.round((10 * Math.max(0, latest.views - back14.views)) / span) / 10
     : null;
-  if (ageDays < 28 || !d14) return { ...base, early, rate, kind: "too young" };
+  if (ageDays < 28 || !d14)
+    return { ...base, tracked: total, early, rate, kind: "too young" };
   const tail =
     total > 0
       ? Math.round((100 * Math.max(0, latest.views - d14.views)) / total) / 100
@@ -88,7 +104,7 @@ export function decay(a: ArticleIn, snaps: Snap[], now = Date.now()): Decay {
       : tail != null && tail >= SEARCH_SHARE
         ? "search"
         : "mixed";
-  return { ...base, early, tail, rate, kind };
+  return { ...base, tracked: total, early, tail, rate, kind };
 }
 
 export function summarize(rows: Decay[]) {
@@ -96,7 +112,9 @@ export function summarize(rows: Decay[]) {
   const classed = rows.filter(
     (r) => r.kind === "feed" || r.kind === "search" || r.kind === "mixed",
   );
-  const views = (xs: Decay[]) => xs.reduce((s, r) => s + r.views, 0);
+  // Tracked views only: an article with 50k views before snapshots began must
+  // not carry them into the split.
+  const views = (xs: Decay[]) => xs.reduce((s, r) => s + r.tracked, 0);
   return {
     feed: by("feed").length,
     search: by("search").length,

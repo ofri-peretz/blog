@@ -67,10 +67,30 @@ const young = decay(
 );
 assert.equal(young.kind, "too young");
 assert.equal(young.early, 0.21);
+const gappy = decay(
+  { slug: "g", title: "Gap", published_at: "2026-07-01" },
+  series("g", (d) => 5 * d).filter(
+    (r) => r.observed_on < day(44) || r.observed_on > day(46),
+  ),
+  NOW,
+);
+assert.equal(
+  gappy.rate,
+  5,
+  "a snapshot gap at the boundary does not inflate the rate",
+);
 const sum = summarize([feed, search, mixed, late, young]);
 assert.deepEqual(
   [sum.feed, sum.search, sum.mixed, sum.tooYoung, sum.noWindow],
   [1, 1, 1, 1, 1],
 );
+// The headline: tracked views of the search article over all classed tracked views.
+assert.equal(
+  sum.viewsFromSearch,
+  Math.round(
+    (100 * search.tracked) / (feed.tracked + search.tracked + mixed.tracked),
+  ),
+);
+assert.equal(search.tracked, 295);
 assert.equal(sum.evergreen[0].slug, "s");
 console.log("decay.selfcheck: ok");
