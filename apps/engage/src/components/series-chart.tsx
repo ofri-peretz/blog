@@ -15,7 +15,7 @@ export interface ChartMarker {
   /** Same bucket-key vocabulary the series use. */
   t: string;
   label: string;
-  kind: "publish" | "adoption" | "engagement";
+  kind: "publish" | "adoption" | "engagement" | "attention";
   weight: 1 | 2 | 3;
 }
 
@@ -52,10 +52,13 @@ function toTime(key: string): UTCTimestamp {
     // ISO week 1 contains Jan 4th; step back to that week's Monday, then add.
     const jan4 = Date.UTC(year, 0, 4);
     const dow = (new Date(jan4).getUTCDay() + 6) % 7;
-    return ((jan4 - dow * 86_400_000 + (w - 1) * 7 * 86_400_000) / 1000) as UTCTimestamp;
+    return ((jan4 - dow * 86_400_000 + (w - 1) * 7 * 86_400_000) /
+      1000) as UTCTimestamp;
   }
   const month = /^(\d{4})-(\d{2})$/.exec(key);
-  if (month) return (Date.UTC(Number(month[1]), Number(month[2]) - 1, 1) / 1000) as UTCTimestamp;
+  if (month)
+    return (Date.UTC(Number(month[1]), Number(month[2]) - 1, 1) /
+      1000) as UTCTimestamp;
   return (Date.parse(key + "T00:00:00Z") / 1000) as UTCTimestamp;
 }
 
@@ -65,12 +68,22 @@ function toTime(key: string): UTCTimestamp {
  * Not the brand accent for everything: on a comparison chart the colour IS the
  * legend, so two series that read as the same colour make the chart unusable.
  */
-export const PALETTE = ["#f4794a", "#0d9460", "#5b8def", "#c9a227", "#a259c4", "#39b8b0"];
+export const PALETTE = [
+  "#f4794a",
+  "#0d9460",
+  "#5b8def",
+  "#c9a227",
+  "#a259c4",
+  "#39b8b0",
+];
 
 const MARKER_COLOUR: Record<string, string> = {
   publish: "#5b8def",
   adoption: "#0d9460",
   engagement: "#8b847a",
+  // Someone outside dev.to sent readers, or a star burst: the causes the
+  // follower and view steps were missing.
+  attention: "#c9a227",
 };
 
 export function SeriesChart({
@@ -101,7 +114,8 @@ export function SeriesChart({
 
   useEffect(() => {
     if (!box.current) return;
-    const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+    const dark =
+      window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
     const ink = dark ? "#a9a29a" : "#57524b";
     const line = dark ? "#262320" : "#e6e2dd";
 
@@ -110,8 +124,7 @@ export function SeriesChart({
       layout: {
         background: { color: "transparent" },
         textColor: ink,
-        fontFamily:
-          "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
         fontSize: 11,
       },
       grid: { vertLines: { color: line }, horzLines: { color: line } },
@@ -172,7 +185,8 @@ export function SeriesChart({
       pts.reduce((m, p) => Math.max(m, Math.abs(p.v)), 0);
     const biggest = Math.max(...series.map((s) => peak(s.points)), 0);
     const needsLeft = series.some(
-      (s) => biggest > 0 && peak(s.points) > 0 && peak(s.points) < biggest / 100,
+      (s) =>
+        biggest > 0 && peak(s.points) > 0 && peak(s.points) < biggest / 100,
     );
     // Set every draw, not only when it becomes true: turning it on and never
     // off leaves an empty left axis floating after the small-magnitude series
@@ -182,11 +196,20 @@ export function SeriesChart({
     series.forEach((s, i) => {
       const colour = PALETTE[i % PALETTE.length];
       const mine = peak(s.points);
-      const scaleId = biggest > 0 && mine > 0 && mine < biggest / 100 ? "left" : "right";
-      const opts = { color: colour, priceLineVisible: false, priceScaleId: scaleId };
+      const scaleId =
+        biggest > 0 && mine > 0 && mine < biggest / 100 ? "left" : "right";
+      const opts = {
+        color: colour,
+        priceLineVisible: false,
+        priceScaleId: scaleId,
+      };
       const api = s.asBars
         ? c.addSeries(HistogramSeries, opts)
-        : c.addSeries(LineSeries, { ...opts, lineWidth: 2, lastValueVisible: true });
+        : c.addSeries(LineSeries, {
+            ...opts,
+            lineWidth: 2,
+            lastValueVisible: true,
+          });
 
       // Sort and de-duplicate: lightweight-charts throws on unordered or
       // repeated timestamps, and a month bucket can repeat a key if the window
@@ -232,7 +255,10 @@ export function SeriesChart({
         [...byTime.entries()]
           .sort((a, b) => a[0] - b[0])
           .map(([time, group]) => {
-            const top = group.reduce((m, g) => (g.weight > m.weight ? g : m), group[0]);
+            const top = group.reduce(
+              (m, g) => (g.weight > m.weight ? g : m),
+              group[0],
+            );
             const worthLabelling = top.weight >= 3 || sparse;
             return {
               time: time as UTCTimestamp,
