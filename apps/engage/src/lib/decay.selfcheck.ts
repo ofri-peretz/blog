@@ -39,13 +39,18 @@ assert.equal(search.kind, "search");
 assert.equal(search.early, 0.05);
 assert.ok(search.tail! > 0.7);
 assert.equal(search.rate, 5);
-// Mixed: half in three days, then a slow trickle that stays under the tail threshold.
+// Mixed: 60% in three days, a trickle to day fourteen, one a day after: neither threshold.
 const mixed = decay(
   { slug: "m", title: "Mixed", published_at: "2026-07-01" },
-  series("m", (d) => Math.min(d, 3) * 100 + d),
+  series(
+    "m",
+    (d) => Math.min(d, 3) * 40 + Math.min(d, 14) * 4 + Math.max(0, d - 14),
+  ),
   NOW,
 );
 assert.equal(mixed.kind, "mixed");
+assert.equal(mixed.early, 0.6);
+assert.equal(mixed.rate, 1);
 // A first snapshot three days late is not a start.
 const late = decay(
   { slug: "l", title: "Late", published_at: "2026-07-01" },
