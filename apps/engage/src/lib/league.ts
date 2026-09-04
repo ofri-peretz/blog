@@ -213,16 +213,14 @@ export function mergeLeague(
     nextUp:
       idx === -1
         ? []
-        : ranked
-            .slice(Math.max(0, idx - 5), idx)
-            .map((l, i) => ({
-              author: l.author,
-              articles: l.articles,
-              reactions: l.reactions,
-              comments: l.comments,
-              rank: Math.max(0, idx - 5) + i + 1,
-              gap: l.reactions - (ours?.reactions ?? 0),
-            })),
+        : ranked.slice(Math.max(0, idx - 5), idx).map((l, i) => ({
+            author: l.author,
+            articles: l.articles,
+            reactions: l.reactions,
+            comments: l.comments,
+            rank: Math.max(0, idx - 5) + i + 1,
+            gap: l.reactions - (ours?.reactions ?? 0),
+          })),
     top: ranked.slice(0, 25).map((l, i) => strip(l, i + 1)),
     plan: {
       ourRxPerArticle: Math.round(ourRate * 10) / 10,
@@ -272,14 +270,15 @@ export function forecast(
     nextLevel,
     etaNext: null,
   };
-  if (pts.length < FORECAST_MIN_DAYS || nextLevel == null) return base;
+  if (pts.length < FORECAST_MIN_DAYS) return base;
   const mx = pts.reduce((s, p) => s + p.x, 0) / pts.length,
     my = pts.reduce((s, p) => s + p.y, 0) / pts.length;
   const den = pts.reduce((s, p) => s + (p.x - mx) ** 2, 0);
   if (!den) return base;
   const slope = pts.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0) / den;
   const rank = pts.at(-1)!.y;
-  if (slope >= 0 || rank <= nextLevel)
+  // The slope is always reported; a date needs a next level and a climb.
+  if (nextLevel == null || slope >= 0 || rank <= nextLevel)
     return { ...base, slopePerDay: Math.round(slope * 100) / 100 };
   const daysToNext = Math.ceil((rank - nextLevel) / -slope);
   return {

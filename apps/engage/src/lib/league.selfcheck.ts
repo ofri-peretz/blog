@@ -151,4 +151,11 @@ assert.equal(
   ).daysToNext,
   null,
 );
+// At the top there is no next level: the slope still prints, no date.
+const atTop = forecast(
+  Array.from({ length: 7 }, (_, i) => ({ day: dayN(i), rank: 150 - 2 * i })),
+  null,
+);
+assert.equal(atTop.slopePerDay, -2);
+assert.equal(atTop.etaNext, null);
 console.log("league.selfcheck: forecast ok");
