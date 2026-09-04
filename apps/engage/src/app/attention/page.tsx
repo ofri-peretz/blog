@@ -13,6 +13,8 @@ export default function Attention() {
     "/api/attention",
     () => null,
   );
+  // The route hands back arrays, but a missing view would hand back nothing;
+  // every list guards so one absent table cannot blank the page.
   const d = data;
   const day = (s: string) => String(s ?? "").slice(0, 10);
   return (
@@ -72,7 +74,7 @@ export default function Attention() {
                 ["stars, 120 days", String(d.stars), "across the three repos"],
                 [
                   "promotion events, 120 days",
-                  String(d.events.length),
+                  String((d.events ?? []).length),
                   "referrer jumps and star bursts",
                 ],
               ] as [string, string, string][]
@@ -164,8 +166,9 @@ export default function Attention() {
                 promotion events · 120 days
               </h2>
               <ul className="mt-2 flex flex-col gap-1 text-[12px]">
-                {d.events.map((e: any) => (
+                {(d.events ?? []).map((e: any) => (
                   <li
+                    // (observed_on, kind, source) is the table's primary key: unique by construction.
                     key={`${e.observed_on}-${e.kind}-${e.source}`}
                     className="flex items-baseline gap-2"
                   >
@@ -184,7 +187,7 @@ export default function Attention() {
                     ) : null}
                   </li>
                 ))}
-                {d.events.length === 0 ? (
+                {(d.events ?? []).length === 0 ? (
                   <li className="text-[var(--muted-foreground)]">
                     none yet; referrer deltas need two days of rows, star bursts
                     need more than three in a day
