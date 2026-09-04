@@ -168,6 +168,31 @@ export default function Page() {
   const [levers, setLevers] = useState<any>(null);
   const [aging, setAging] = useState<any>(null);
   const [ties, setTies] = useState<any>(null);
+  const [kind, setKind] = useState<
+    Record<string, { busy?: boolean; text?: string; error?: string }>
+  >({});
+  /** Draft a reply in kind to the latest comment someone left on us. The sub-agent writes; the curator sends. */
+  async function draftInKind(t: any) {
+    setKind((k) => ({ ...k, [t.who]: { busy: true } }));
+    try {
+      const r = await fetch("/api/draft", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          author: t.who,
+          theirComment: t.last?.excerpt ?? "",
+          articleTitle: "",
+        }),
+      });
+      const j = await r.json();
+      setKind((k) => ({
+        ...k,
+        [t.who]: j.ok ? { text: j.text } : { error: j.error ?? "no draft" },
+      }));
+    } catch (e) {
+      setKind((k) => ({ ...k, [t.who]: { error: String(e) } }));
+    }
+  }
   const [radar, setRadar] = useState<any>(null);
   const [predictions, setPredictions] = useState<any>(null);
   const [bands, setBands] = useState<any>(null);
@@ -1141,7 +1166,10 @@ export default function Page() {
                   </div>
                   <ul className="mt-2 flex flex-col gap-1">
                     {list.map((t: any) => (
-                      <li key={t.who} className="flex items-baseline gap-2">
+                      <li
+                        key={t.who}
+                        className="flex flex-wrap items-baseline gap-2"
+                      >
                         <span
                           className={`w-16 shrink-0 font-mono text-[10px] ${t.state === "cold" ? "text-[var(--warning)]" : t.state === "warm" ? "text-[var(--success)]" : "text-[var(--muted-foreground)]"}`}
                         >
@@ -1158,6 +1186,45 @@ export default function Page() {
                         <span className="shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">
                           {t.in} in · {t.out} out
                         </span>
+                        {t.last?.excerpt ? (
+                          <button
+                            type="button"
+                            onClick={() => draftInKind(t)}
+                            disabled={!!kind[t.who]?.busy}
+                            className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-[var(--primary)] disabled:opacity-50"
+                            title={t.last.excerpt}
+                          >
+                            {kind[t.who]?.busy
+                              ? "drafting…"
+                              : kind[t.who]?.text
+                                ? "redraft"
+                                : "reply in kind"}
+                          </button>
+                        ) : null}
+                        {kind[t.who]?.text ? (
+                          <span className="basis-full text-[11px]">
+                            <span className="text-[var(--muted-foreground)]">
+                              {kind[t.who].text}
+                            </span>{" "}
+                            <a
+                              href={`https://dev.to/${encodeURIComponent(t.who)}/comment/${t.last?.commentId ?? ""}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[var(--primary)]"
+                              onClick={() =>
+                                navigator.clipboard?.writeText(
+                                  kind[t.who]?.text ?? "",
+                                )
+                              }
+                            >
+                              copy &amp; open →
+                            </a>
+                          </span>
+                        ) : kind[t.who]?.error ? (
+                          <span className="basis-full text-[11px] text-[var(--warning)]">
+                            {kind[t.who].error}
+                          </span>
+                        ) : null}
                       </li>
                     ))}
                     {list.length === 0 ? (

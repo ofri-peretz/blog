@@ -41,6 +41,9 @@ const rows: CommentRow[] = [
     article_author: "ofri-peretz",
     direction: "in",
     created_at: ago(20),
+    comment_id: "c1",
+    body_excerpt: "Great piece",
+    article_id: 7,
   }, // owed, cooling
   {
     author: "dan",
@@ -103,4 +106,10 @@ assert.deepEqual(
   ]),
   { total: 4, prior: 1, sameDay: 2, unresolved: 1 },
 );
+// The latest inbound comment travels with the tie, so a reply in kind has something to answer.
+assert.deepEqual(ties.find((t) => t.who === "cat")!.last, {
+  commentId: "c1",
+  excerpt: "Great piece",
+  articleId: 7,
+});
 console.log("ties.selfcheck: ok");

@@ -4,7 +4,13 @@ import { devtoReach } from "@/lib/sources";
 import { cachedAsync } from "@/lib/cache";
 import { todayCST } from "@/lib/footprint";
 import { scoreImpact, type Inputs } from "@/lib/impact-score";
-import { writeImpact, impactHistory, writeLeague } from "@/lib/store";
+import {
+  writeImpact,
+  impactHistory,
+  writeLeague,
+  leagueHistory,
+} from "@/lib/store";
+import { forecast } from "@/lib/league";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
@@ -131,6 +137,14 @@ async function build() {
         ours: t.ours,
       })) ?? [],
     history: impactHistory(),
+    // The climb page reads this: the league chunk cannot load node:sqlite.
+    forecast: forecast(
+      leagueHistory().map((r) => ({
+        day: String(r.day),
+        rank: r.rank == null ? null : Number(r.rank),
+      })),
+      league?.climb?.next?.level ?? null,
+    ),
   };
 }
 

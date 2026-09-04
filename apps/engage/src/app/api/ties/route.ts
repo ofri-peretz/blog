@@ -17,7 +17,7 @@ export const maxDuration = 60;
 async function build() {
   const [comments, followers] = await Promise.all([
     sbPaged(
-      "devto_comments?select=author,article_author,direction,created_at&order=created_at.asc",
+      "devto_comments?select=comment_id,article_id,author,article_author,direction,created_at,body_excerpt&order=created_at.asc",
     ) as Promise<CommentRow[]>,
     sbPaged("devto_followers?select=onboarding&order=user_id.asc") as Promise<
       FollowerRow[]
