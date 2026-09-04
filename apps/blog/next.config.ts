@@ -135,8 +135,13 @@ const nextConfig: NextConfig = {
       // Next exposes a nonce for injected <style> tags.
       // eslint-disable-next-line browser-security/no-unsafe-inline-csp
       "style-src 'self' 'unsafe-inline'",
-      // data: for inlined SVG/blur placeholders; dev.to hosts the covers.
-      "img-src 'self' data: blob: https://media2.dev.to https://media.dev.to https://dev-to-uploads.s3.amazonaws.com https://dev-to-uploads.s3.us-east-2.amazonaws.com",
+      // data: for inlined SVG/blur placeholders; dev.to hosts the covers;
+      // img.shields.io serves the download badges — four of them across three
+      // article bodies, two sharing a line — which this policy silently blocked
+      // in production until the
+      // 2026-09-04 layout audit happened to catch one mid-load. Hosts are
+      // listed one by one on purpose — never a wildcard.
+      "img-src 'self' data: blob: https://media2.dev.to https://media.dev.to https://dev-to-uploads.s3.amazonaws.com https://dev-to-uploads.s3.us-east-2.amazonaws.com https://img.shields.io",
       "font-src 'self' data:",
       "connect-src 'self' https://us.i.posthog.com https://us-assets.i.posthog.com",
       "frame-ancestors 'none'",
@@ -172,7 +177,8 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+            value:
+              "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
           { key: "Content-Security-Policy", value: csp },
         ],
@@ -211,7 +217,10 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "media2.dev.to" },
       { protocol: "https", hostname: "media.dev.to" },
       { protocol: "https", hostname: "dev-to-uploads.s3.amazonaws.com" },
-      { protocol: "https", hostname: "dev-to-uploads.s3.us-east-2.amazonaws.com" },
+      {
+        protocol: "https",
+        hostname: "dev-to-uploads.s3.us-east-2.amazonaws.com",
+      },
     ],
   },
   experimental: {
@@ -312,7 +321,8 @@ const nextConfig: NextConfig = {
       // the devto_id, so its filename-derived slug is canonical.
       {
         source: "/articles/the-ai-hydra-problem",
-        destination: "/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more",
+        destination:
+          "/articles/the-ai-hydra-problem-fix-one-ai-bug-get-two-more",
         permanent: true,
       },
       // AI-security Part 1: the title + body say "80 functions" (4 models ×
