@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { writeOutreach } from "@/lib/store";
+import { todayCST } from "@/lib/footprint";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readFileSync, existsSync } from "node:fs";
@@ -188,6 +190,11 @@ async function sweep() {
         idleDays: idle,
         merged: Boolean(detail.merged),
         mergeableState: detail.mergeable_state ?? null,
+        // Our fork branch behind an upstream that moved: the one move that is
+        // always safe, and the update-branch button's precondition.
+        behindBase: detail.mergeable_state === "behind",
+        owner: slug.split("/")[0],
+        repo: slug.split("/")[1],
         draft: Boolean(detail.draft),
         additions: detail.additions ?? null,
         deletions: detail.deletions ?? null,
@@ -261,6 +268,8 @@ async function sweep() {
       stalled: prs.filter((p) => p.phase === "stalled").length,
       silent: prs.filter((p) => p.phase === "awaiting first response").length,
       approved: prs.filter((p) => p.approved).length,
+      behindBase: prs.filter((p) => p.behindBase).length,
+      conflicts: prs.filter((p) => p.mergeableState === "dirty").length,
     },
   };
 }
@@ -274,6 +283,14 @@ export async function GET(req: Request) {
   // sweep again, and the page was the slowest thing in the control room.
   const force = new URL(req.url).searchParams.get("refresh") === "1";
   const hit = await cachedAsync("prs", 15 * 60_000, force, sweep);
+  // A fresh sweep is a measurement: record the day's "waiting on us" counts
+  // so the terminal has a series (outreach-never-stalls intent).
+  if (hit.fresh) {
+    try {
+      const t = hit.value.totals;
+      writeOutreach(todayCST(), { open: t.open, ourMove: t.ourMove, blocked: t.blocked, behindBase: t.behindBase, conflicts: t.conflicts });
+    } catch { /* bookkeeping must not fail the page */ }
+  }
   return NextResponse.json({
     ...hit.value,
     cachedAt: hit.at,

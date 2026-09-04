@@ -40,21 +40,26 @@ export async function GET(req: Request) {
   // is what makes that mark trustworthy; until it runs, this is the honest
   // floor and the row says so through `reply_latency_h` being a median over
   // marks, not over observed replies.
+  // Waiting = what dev.to says is unanswered (minus explicit skips and gone
+  // authors). Answered = threads where OUR reply exists on dev.to, with both
+  // timestamps from the platform — never from a local mark, 28 of which were
+  // pressed at the same second on 2026-08-10. Latency is a median over the
+  // answers of the last 30 days.
   const drafts = new Map(replyDrafts().map((d) => [d.commentId, d]));
   let inboxError: string | null = null;
   let threads: { at: string; answeredAt: string | null }[] = [];
+  let answeredWindow = 0;
   try {
     const inbox = await cachedAsync("inbox", 12 * 3_600_000, force, buildInbox);
-    threads = inbox.value.threads
+    const cutoff = Date.now() - 30 * 86_400_000;
+    const waiting = inbox.value.threads
       .filter((t) => drafts.get(t.commentId)?.status !== "skipped" && !t.authorGone)
-      .map((t) => {
-        // No `as any`: `handledAt` is on ReplyDraft now, so the compiler
-        // checks this rather than trusting it. The cast is what let the field
-        // be written in one route and read in another with nothing verifying
-        // the two agreed. (Review.)
-        const d = drafts.get(t.commentId);
-        return { at: t.at, answeredAt: d?.status === "sent" && d.handledAt ? d.handledAt : null };
-      });
+      .map((t) => ({ at: t.at, answeredAt: null }));
+    const answered = (inbox.value.answered ?? [])
+      .filter((t) => Date.parse(t.at) >= cutoff)
+      .map((t) => ({ at: t.at, answeredAt: t.repliedAt }));
+    answeredWindow = answered.length;
+    threads = [...waiting, ...answered];
   } catch (e) {
     inboxError = String(e instanceof Error ? e.message : e);
   }
@@ -67,6 +72,7 @@ export async function GET(req: Request) {
     today: row,
     graphFetchedAt: graph.fetchedAt ?? null,
     inboxError,
+    answeredWindow,
     history: standingHistory(),
   });
 }

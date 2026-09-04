@@ -131,10 +131,15 @@ export async function GET(req: Request) {
   const undrafted = actionable.filter((t) => !t.drafted).length;
   const stale = actionable.filter((t) => t.ageDays > 30).length;
   const failed = actionable.filter((t) => t.sendFailed).length;
+  const oldestWaitingDays = actionable.reduce((m, t) => Math.max(m, t.ageDays ?? 0), 0);
   return NextResponse.json({
     threads,
     undrafted,
     actionable: actionable.length,
+    // Measurement, not work: how many threads we answered (observed on dev.to)
+    // and how long the oldest open one has waited.
+    answered: (inbox.value.answered ?? []).length,
+    oldestWaitingDays,
     authorsGone: gone,
     // Non-zero means the count below is a FLOOR, not a total.
     articlesFailed: inbox.value.articlesFailed ?? 0,

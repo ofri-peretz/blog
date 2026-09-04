@@ -63,6 +63,7 @@ interface State {
   totals: { open: number; everActed: number; everDrafted: number };
 }
 interface Insights {
+  asOf?: string | null;
   metrics: Record<string, number | null>;
   metricsError: string | null;
   authors: {
@@ -154,8 +155,12 @@ export default function Page() {
    * comment queue now: batch writes, app reads.
    */
   const [threadHint, setThreadHint] = useState<string | null>(null);
+  /** When the inbox crawl actually read dev.to — the source time behind the threads header. */
+  const [threadsAsOf, setThreadsAsOf] = useState<string | null>(null);
   /** Today's standing row + history — see lib/standing.ts. */
   const [standing, setStanding] = useState<any>(null);
+  /** The profile scorecard — readers, resonance, followers-who-read. */
+  const [profile, setProfile] = useState<any>(null);
 
 
   /** at[section] = when that section's data was last read. */
@@ -199,6 +204,7 @@ export default function Page() {
         (v: any) => {
           setThreads(v.threads ?? []);
           setThreadHint(v.hint ?? null);
+          setThreadsAsOf(v.asOf ?? null);
           setRi(0);
         },
         force,
@@ -235,6 +241,7 @@ export default function Page() {
     pull(`trends:day`, "/api/trends?grain=day", (v: any) => setTrends(v)).catch(() => setTrends(null));
     pull("bench", "/api/benchmark", (v: any) => setBench(v)).catch(() => setBench(null));
     pull("standing", "/api/standing", (v: any) => setStanding(v)).catch(() => setStanding({ today: null, history: [], error: "unreachable" }));
+    pull("profile", "/api/profile", (v: any) => setProfile(v)).catch(() => setProfile({ hint: "unreachable" }));
 
     // Deep link: /?u=<author> opens that author's drill-down on load, so a link
     // to a person survives being pasted into a note or a second session.
@@ -804,9 +811,45 @@ export default function Page() {
       </Collapse>
 
       {/* ── Platform metrics ─────────────────────────────────────────────── */}
+      {/* ── Profile ─────────────────────────────────────────────────────────
+          How the profile is doing, off the dev.to warehouse rather than the
+          follower count. The follower tile prints the share that arrived as
+          same-day accounts (onboarding suggestions) and how many followers
+          ever commented — the one honest proxy for "followers who read". */}
+      <Collapse id="s24" head={<><span>
+          Profile{profile?.readers?.viewsPerDay7 != null ? ` · ${profile.readers.viewsPerDay7} views/day` : ""}
+        </span><Refresh onClick={() => pull("profile", "/api/profile", (v: any) => setProfile(v), true)} at={at.profile ?? null} busy={!!busy.profile} source={profile?.asOf ?? null} /></>}>
+        <StatStrip
+          cols={4}
+          loading={!profile}
+          state={{ error: profile?.hint }}
+          announce={{ noun: "profile metrics" }}
+          items={[
+            { key: "views7", label: "Views / day", value: profile?.readers?.viewsPerDay7 ?? null, note: "7-day mean, dev.to analytics" },
+            { key: "read7", label: "Read time", value: profile?.readers?.readTimeAvgS7 ?? null, unit: "s", note: "average per view, 7 days" },
+            { key: "rx100", label: "Reactions / 100 views", value: profile?.resonance?.reactionsPer100Views30 ?? null, note: "30 days" },
+            { key: "cm100", label: "Comments / 100 views", value: profile?.resonance?.commentsPer100Views30 ?? null, note: "30 days" },
+            { key: "fol7", label: "Follows / day", value: profile?.followers?.followsPerDay7 ?? null, note: "7-day mean, all sources" },
+            { key: "onb", label: "Onboarding share", value: profile?.followers?.onboardingShare30 ?? null, unit: "%", note: "follows from same-day accounts, 30 days" },
+            { key: "fread", label: "Followers who commented", value: profile?.followers?.commentersWhoFollow ?? null, note: `of ${profile?.followers?.total ?? "—"} followers` },
+            { key: "onbt", label: "Onboarding followers", value: profile?.followers?.onboardingTotal ?? null, note: "accounts created the day they followed" },
+          ]}
+        />
+        {profile?.referrers?.length ? (
+          <p className="mt-3 font-mono text-[11px] text-[var(--muted-foreground)]">
+            referrers · {profile.referrers.map((r: any) => `${r.domain} ${r.views.toLocaleString()}`).join(" · ")}
+          </p>
+        ) : null}
+        <p className="mt-2 text-[12.5px] text-[var(--muted-foreground)]">
+          Followers are not readers: dev.to suggests authors to every new account, and those follows arrive
+          on days with fewer views than follows. Read time and comments per view are the numbers that move
+          only when someone actually read.
+        </p>
+      </Collapse>
+
       <Collapse id="s2" head={<><span>
           Reach
-        </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v), true)} at={at.insights ?? null} busy={!!busy.insights} /></>}>
+        </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v), true)} at={at.insights ?? null} source={insights?.asOf ?? null} busy={!!busy.insights} /></>}>
         <StatStrip
           cols={5}
           loading={!insights}
@@ -840,7 +883,7 @@ export default function Page() {
           edges, see lib/standing.ts. Sample-bound, and the strip says so. */}
       <Collapse id="s22" head={<><span>
           Standing{standing?.today?.rank_nonstaff ? ` · #${standing.today.rank_nonstaff} among non-staff` : ""}
-        </span><Refresh onClick={() => pull("standing", "/api/standing", (v: any) => setStanding(v), true)} at={at.standing ?? null} busy={!!busy.standing} /></>}>
+        </span><Refresh onClick={() => pull("standing", "/api/standing", (v: any) => setStanding(v), true)} at={at.standing ?? null} source={standing?.graphFetchedAt ?? null} busy={!!busy.standing} /></>}>
         <StatStrip
           cols={4}
           loading={!standing}
@@ -876,7 +919,7 @@ export default function Page() {
       {/* ── DEV community network ────────────────────────────────────────── */}
       <Collapse id="s3" head={<><span>
           DEV community network
-        </span><Refresh onClick={() => pull("network", "/api/network", (v: any) => setGraph(v), true)} at={at.network ?? null} busy={!!busy.network} /></>}>
+        </span><Refresh onClick={() => pull("network", "/api/network", (v: any) => setGraph(v), true)} at={at.network ?? null} source={graph?.fetchedAt ?? null} busy={!!busy.network} /></>}>
         {graph ? (
           <NetworkGraph graph={graph} onOpenPerson={openPerson} />
         ) : (
@@ -909,7 +952,7 @@ export default function Page() {
       {/* ── Partnerships ─────────────────────────────────────────────────── */}
       <Collapse id="s5" head={<><span>
           Author partnerships
-        </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v), true)} at={at.insights ?? null} busy={!!busy.insights} /></>}>
+        </span><Refresh onClick={() => pull("insights", "/api/insights", (v: any) => setInsights(v), true)} at={at.insights ?? null} source={insights?.asOf ?? null} busy={!!busy.insights} /></>}>
         {/*
           The conversion bar was a `<span>`-in-`<span>` with an inline width —
           no role, no value, invisible to anything that is not an eye. `<Meter>`
@@ -1025,7 +1068,7 @@ export default function Page() {
               card under it is worse than either number alone. */}
           Replies waiting{" "}
           {threads && threads.length - ri > 0 ? `· ${threads.length - ri}` : ""}
-        </span><Refresh onClick={() => refreshThreads()} at={at.threads ?? null} busy={!!busy.threads} /></>}>
+        </span><Refresh onClick={() => refreshThreads()} at={at.threads ?? null} source={threadsAsOf} busy={!!busy.threads} /></>}>
         {threadHint && <Callout tone="warn">{threadHint}</Callout>}
         {threads ? (
           <Threads
@@ -1056,7 +1099,7 @@ export default function Page() {
       {/* ── Impact ───────────────────────────────────────────────────────── */}
       <Collapse id="s7" head={<><span>
           Impact
-        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} busy={!!busy.sources} /></>}>
+        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} source={sources?.asOf ?? null} busy={!!busy.sources} /></>}>
         {sources ? (
           sources.impact?.error ? (
             <p className="text-[13px] text-[var(--warning)]">
@@ -1077,12 +1120,12 @@ export default function Page() {
       {/* ── Promotion ────────────────────────────────────────────────────── */}
       <Collapse id="s8" head={<><span>
           Plugin promotion {sources?.promotion?.prs?.length ? `· ${sources.promotion.prs.length} PRs` : ""}
-        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} busy={!!busy.sources} /></>}>
+        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} source={sources?.asOf ?? null} busy={!!busy.sources} /></>}>
         {sources ? <Promotion prs={sources.promotion?.prs ?? []} /> : <Skel rows={4} />}
       </Collapse>
 
       {/* ── Benchmark ────────────────────────────────────────────────────── */}
-      <Collapse id="s21" head={<><span>Beating the index?{bench?.daysCollected ? ` · ${bench.daysCollected}d sampled` : ""}</span><Refresh onClick={() => pull("bench", "/api/benchmark", (v: any) => setBench(v), true)} at={at.bench ?? null} busy={!!busy.bench} /></>}>
+      <Collapse id="s21" head={<><span>Beating the index?{bench?.daysCollected ? ` · ${bench.daysCollected}d sampled` : ""}</span><Refresh onClick={() => pull("bench", "/api/benchmark", (v: any) => setBench(v), true)} at={at.bench ?? null} source={bench?.day ?? null} busy={!!busy.bench} /></>}>
         <Benchmark data={bench} />
       </Collapse>
 
@@ -1099,7 +1142,7 @@ export default function Page() {
       </Collapse>
 
       {/* ── Google AI roster ─────────────────────────────────────────────── */}
-      <Collapse id="s19" head={<><span>Google AI org{people?.roster?.length ? ` · ${people.roster.length}` : ""}</span><Refresh onClick={() => pull("people", "/api/people", (v: any) => setPeople(v), true)} at={at.people ?? null} busy={!!busy.people} /></>}>
+      <Collapse id="s19" head={<><span>Google AI org{people?.roster?.length ? ` · ${people.roster.length}` : ""}</span><Refresh onClick={() => pull("people", "/api/people", (v: any) => setPeople(v), true)} at={at.people ?? null} source={people?.cachedAt ?? null} busy={!!busy.people} /></>}>
         <Roster roster={people?.roster ?? []} />
       </Collapse>
 
@@ -1118,7 +1161,7 @@ export default function Page() {
       {/* ── Plugin FP/FN ─────────────────────────────────────────────────── */}
       <Collapse id="s10" head={<><span>
           Plugin findings {sources?.plugins?.findings?.length ? `· ${sources.plugins.findings.length}` : ""}
-        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} busy={!!busy.sources} /></>}>
+        </span><Refresh onClick={() => pull("sources", "/api/sources", (v: any) => setSources(v), true)} at={at.sources ?? null} source={sources?.asOf ?? null} busy={!!busy.sources} /></>}>
         {sources ? <Plugins findings={sources.plugins?.findings ?? []} /> : <Skel rows={5} />}
       </Collapse>
 
@@ -1135,11 +1178,11 @@ export default function Page() {
           <Skel rows={5} />
         )}
       </Collapse>
-      <Collapse id="s12" head={<><span>Founders &amp; Google AI{people?.people?.length ? ` · ${people.people.filter((p: any) => p.latest?.reactable).length} reactable` : ""}</span><Refresh onClick={() => pull("people", "/api/people", (v: any) => setPeople(v), true)} at={at.people ?? null} busy={!!busy.people} /></>}>
+      <Collapse id="s12" head={<><span>Founders &amp; Google AI{people?.people?.length ? ` · ${people.people.filter((p: any) => p.latest?.reactable).length} reactable` : ""}</span><Refresh onClick={() => pull("people", "/api/people", (v: any) => setPeople(v), true)} at={at.people ?? null} source={people?.cachedAt ?? null} busy={!!busy.people} /></>}>
         {people ? <People people={people.people ?? []} /> : <Skel rows={5} />}
       </Collapse>
 
-      <Collapse id="s13" head={<><span>PR board{board?.prs?.length ? ` · ${board.prs.filter((p: any) => p.actionRequired).length} need you` : ""}</span><Refresh onClick={() => pull("board", "/api/board", (v: any) => setBoard(v), true)} at={at.board ?? null} busy={!!busy.board} /></>}>
+      <Collapse id="s13" head={<><span>PR board{board?.prs?.length ? ` · ${board.prs.filter((p: any) => p.actionRequired).length} need you` : ""}</span><Refresh onClick={() => pull("board", "/api/board", (v: any) => setBoard(v), true)} at={at.board ?? null} source={board?.cachedAt ?? null} busy={!!busy.board} /></>}>
         {board ? <Board prs={board.prs ?? []} /> : <Skel rows={5} />}
       </Collapse>
 
