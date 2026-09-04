@@ -24,7 +24,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = join(HERE, "..");
@@ -76,18 +76,23 @@ async function main() {
     const branch = `intent/control-band-${r.id.replace(/\./g, "-")}-${day}`;
     const wt = join("/tmp", `blog-${branch.replace(/\//g, "-")}`);
     try {
-      execSync(`git -C "${APP}" worktree add -q -B ${branch} "${wt}" origin/main`, { stdio: "pipe" });
+      // Argument arrays, never a shell string: ids and tiers are ours, but a
+      // command line built by interpolation is a CWE-78 waiting for a stranger.
+      const git = (cwd, ...a) => execFileSync("git", ["-C", cwd, ...a], { stdio: "pipe" });
+      git(APP, "worktree", "add", "-q", "-B", branch, wt, "origin/main");
       const f = join(wt, "docs", "sdlc", "intents", `${slug}.intent.md`);
       if (!existsSync(f)) {
         writeFileSync(f, `---\nkind: intent\nslug: ${slug}\nopened: ${day}\nstatus: open\n---\n\n# Intent: control band \`${r.id}\` breached at ${r.tier}\n\n## What\n\nBring \`${r.id}\` back inside its band, or accept the new level with a documented reason.\n\n## Why now\n\nWritten by \`scripts/control-bands.mjs\` on ${day}: rule ${r.rule}, last value ${r.last} against a baseline of ${r.mean} ± ${r.sd} over ${r.n} points; ${r.worse} is worse. Recent: ${r.recent.join(", ")}. No model decided this.\n\n## Constraints\n\nDiagnose before changing anything the band reads. A 2σ tier permits read-only diagnosis; only a human accepts a fix.\n\n## How we will know it worked\n\n| Signal | Now | Target |\n| --- | --- | --- |\n| \`${r.id}\` | ${r.last} | inside ${r.mean} ± 2σ for 7 consecutive days |\n\n## Not doing\n\nMoving the band's baseline to make the breach disappear.\n`);
-        execSync(`git -C "${wt}" add docs/sdlc/intents && git -C "${wt}" commit -q -m "docs(sdlc): control band ${r.id} breached at ${r.tier} — intent written by the watcher" && git -C "${wt}" push -q -u origin ${branch}`, { stdio: "pipe" });
-        execSync(`gh -R ofri-peretz/blog pr create --base main --head ${branch} --title "docs(sdlc): control band ${r.id} breached at ${r.tier}" --body "Written by scripts/control-bands.mjs. Rule ${r.rule}; last ${r.last} vs ${r.mean} ± ${r.sd}. A human accepts this intent."`, { stdio: "pipe" });
+        git(wt, "add", "docs/sdlc/intents");
+        git(wt, "commit", "-q", "-m", `docs(sdlc): control band ${r.id} breached at ${r.tier} — intent written by the watcher`);
+        git(wt, "push", "-q", "-u", "origin", branch);
+        execFileSync("gh", ["-R", "ofri-peretz/blog", "pr", "create", "--base", "main", "--head", branch, "--title", `docs(sdlc): control band ${r.id} breached at ${r.tier}`, "--body", `Written by scripts/control-bands.mjs. Rule ${r.rule}; last ${r.last} vs ${r.mean} ± ${r.sd}. A human accepts this intent.`], { stdio: "pipe" });
         console.log(`intent PR opened for ${r.id}`);
       }
     } catch (e) {
       console.error(`could not open the intent PR for ${r.id}: ${String(e?.message ?? e).slice(0, 200)}`);
     } finally {
-      try { execSync(`git -C "${APP}" worktree remove --force "${wt}"`, { stdio: "pipe" }); } catch { /* best effort */ }
+      try { execFileSync("git", ["-C", APP, "worktree", "remove", "--force", wt], { stdio: "pipe" }); } catch { /* best effort */ }
     }
   }
 }

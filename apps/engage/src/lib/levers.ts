@@ -42,7 +42,8 @@ export function features(a: ArticleIn): Features {
     tag_webdev: tags.has("webdev"),
     reading_minutes: a.reading_time_minutes ?? 0,
     body_words: body.split(/\s+/).filter(Boolean).length,
-    code_blocks: (body.match(/```/g) ?? []).length / 2,
+    // An unclosed fence would give a half block; floor makes the count honest.
+    code_blocks: Math.floor((body.match(/```/g) ?? []).length / 2),
     images: (body.match(/!\[/g) ?? []).length,
     publish_weekday: cst.getDay(),
     publish_is_weekend: cst.getDay() === 0 || cst.getDay() === 6,

@@ -3,7 +3,7 @@ import { cachedAsync } from "@/lib/cache";
 import { sbPaged } from "@/lib/series";
 import { fetchJson } from "@/lib/throttle";
 import { devtoKey } from "@/lib/footprint";
-import { levers, type ArticleIn, type Snap } from "@/lib/levers";
+import { levers, outcome14, type ArticleIn, type Snap } from "@/lib/levers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -20,7 +20,8 @@ async function build() {
   }
   const snaps = (await sbPaged("article_daily_snapshots?select=external_id,observed_on,views,comments&source=eq.devto&order=observed_on.asc")) as Snap[];
   const all = levers(articles, snaps);
-  const windows = articles.filter((a) => snaps.some((s) => s.external_id === a.slug)).length;
+  // Closed 14-day windows, not "has any snapshot": outcome14 is the judge.
+  const windows = articles.filter((a) => outcome14(a, snaps).views14 !== null).length;
   return {
     articles: articles.length,
     withSnapshots: windows,

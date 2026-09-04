@@ -16,6 +16,18 @@ const snaps = [
 ];
 assert.deepEqual(outcome14(a, snaps), { views14: 80, comments14: 3 }, "day-14 minus day-0, not lifetime");
 assert.deepEqual(outcome14({ ...a, published_at: "2026-05-01T00:00:00Z" }, snaps), { views14: null, comments14: null }, "coverage that starts a month after publish is not a window");
-const L = levers([a, { ...a, id: 2, slug: "t", title: "plain", page_views_count: 100, public_reactions_count: 5 }], snaps);
-assert.ok(Array.isArray(L));
+// A fixture where code blocks perfectly rank 14-day views: the lever must come out at r = 1 with n = 25.
+{
+  const arts = [] as any[]; const sn = [] as any[];
+  for (let i = 0; i < 25; i++) {
+    const slug = `f${i}`;
+    arts.push({ id: 100 + i, slug, title: `t${i}`, published_at: "2026-06-01T12:00:00Z", body_markdown: "```x```\n".repeat(i), page_views_count: 0 });
+    sn.push({ external_id: slug, observed_on: "2026-06-01", views: 0, comments: 0 }, { external_id: slug, observed_on: "2026-06-15", views: i * 10, comments: 0 });
+  }
+  const lever = levers(arts, sn).find((l) => l.feature === "code_blocks" && l.outcome === "views14");
+  assert.ok(lever, "the code_blocks × views14 lever exists");
+  assert.equal(lever!.n, 25);
+  assert.equal(lever!.r, 1, "perfect monotone fixture scores r = 1");
+}
+assert.equal(features({ ...a, body_markdown: "```open" }).code_blocks, 0, "an unclosed fence is not half a block");
 console.log("levers.selfcheck: ok");
