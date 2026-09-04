@@ -163,6 +163,8 @@ export default function Page() {
   const [profile, setProfile] = useState<any>(null);
   /** The Author Impact Score — one definition, five pillars, fourteen metrics. */
   const [impact, setImpact] = useState<any>(null);
+  const [levers, setLevers] = useState<any>(null);
+  const [bands, setBands] = useState<any>(null);
 
 
   /** at[section] = when that section's data was last read. */
@@ -245,6 +247,8 @@ export default function Page() {
     pull("standing", "/api/standing", (v: any) => setStanding(v)).catch(() => setStanding({ today: null, history: [], error: "unreachable" }));
     pull("profile", "/api/profile", (v: any) => setProfile(v)).catch(() => setProfile({ hint: "unreachable" }));
     pull("impact", "/api/impact", (v: any) => setImpact(v)).catch(() => setImpact(null));
+    pull("levers", "/api/levers", (v: any) => setLevers(v)).catch(() => setLevers(null));
+    pull("bands", "/api/bands", (v: any) => setBands(v)).catch(() => setBands(null));
 
     // Deep link: /?u=<author> opens that author's drill-down on load, so a link
     // to a person survives being pasted into a note or a second session.
@@ -640,6 +644,12 @@ export default function Page() {
         )}
       </Collapse>
 
+      {bands?.results?.length ? (
+        <p className="-mt-4 font-mono text-[11px] text-[var(--muted-foreground)]">
+          control bands · {bands.results.map((r: any) => `${r.id} ${r.tier ?? "ok"}`).join(" · ")} · as of {String(bands.at).slice(0, 10)}
+        </p>
+      ) : null}
+
       {/* ── Do these first ──────────────────────────────────────────────── */}
       {nba.length > 0 && (
         <Collapse id="s23" head={<><span>Do these first · {nba.length}</span></>}>
@@ -862,6 +872,35 @@ export default function Page() {
             <p className="text-[12px] text-[var(--muted-foreground)]">
               {impact.measured} of {impact.total} metrics measured. Unmeasured scores zero on purpose: it is a fact about our instrumentation, not about the author. Followers, lifetime totals and badges are excluded.
             </p>
+          </div>
+        )}
+      </Collapse>
+
+      {/* ── What drives what ─────────────────────────────────────────────────
+          Rank correlation between article shape and outcome over our own
+          articles. Correlation, labelled; n on every row; nothing under the
+          threshold prints. lib/levers.ts. */}
+      <Collapse id="s26" head={<><span>
+          What drives what{levers?.levers?.length ? ` · ${levers.levers.length} levers` : ""}
+        </span><Refresh onClick={() => pull("levers", "/api/levers", (v: any) => setLevers(v), true)} at={at.levers ?? null} busy={!!busy.levers} source={levers?.cachedAt ?? null} /></>}>
+        {!levers ? <Skel rows={3} /> : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {(["views14", "comments14", "reactions_per_100_views"] as const).map((o) => (
+              <div key={o} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{o === "views14" ? "views, first 14 days" : o === "comments14" ? "comments, first 14 days" : "reactions per 100 views"}</div>
+                <ul className="mt-2 flex flex-col gap-1 text-[12px]">
+                  {levers.levers.filter((l: any) => l.outcome === o).slice(0, 8).map((l: any) => (
+                    <li key={l.feature} className="flex items-baseline gap-2" title={l.note}>
+                      <span className={`w-12 shrink-0 text-right font-mono tabular-nums ${l.r > 0 ? "text-[var(--success)]" : "text-[var(--warning)]"}`}>{l.r > 0 ? "+" : ""}{l.r}</span>
+                      <span className="min-w-0 flex-1 truncate">{l.feature.replace(/_/g, " ")}</span>
+                      <span className="shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">n={l.n}</span>
+                    </li>
+                  ))}
+                  {levers.levers.filter((l: any) => l.outcome === o).length === 0 && <li className="text-[var(--muted-foreground)]">nothing above the threshold (n ≥ 20, |r| ≥ 0.2)</li>}
+                </ul>
+              </div>
+            ))}
+            <p className="text-[12px] text-[var(--muted-foreground)] md:col-span-3">{levers.caveat} {levers.withSnapshots} of {levers.articles} articles have 14-day windows.</p>
           </div>
         )}
       </Collapse>

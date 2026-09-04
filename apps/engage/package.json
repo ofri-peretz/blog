@@ -7,7 +7,7 @@
     "dev": "next dev -p 7777",
     "build": "next build",
     "start": "next start -p 7777",
-    "selfcheck": "npx -y tsx src/lib/detect.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/footprint.selfcheck.ts && npx -y tsx src/lib/standing.selfcheck.ts && npx -y tsx src/lib/nba.selfcheck.ts && npx -y tsx src/lib/yield.selfcheck.ts && npx -y tsx src/lib/prs-update.selfcheck.ts && npx -y tsx src/lib/ago.selfcheck.ts && npx -y tsx src/lib/impact-score.selfcheck.ts && npx -y tsx src/lib/league.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/series.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/alerts.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/network.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/inbox.selfcheck.ts",
+    "selfcheck": "npx -y tsx src/lib/detect.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/footprint.selfcheck.ts && npx -y tsx src/lib/standing.selfcheck.ts && npx -y tsx src/lib/nba.selfcheck.ts && npx -y tsx src/lib/yield.selfcheck.ts && npx -y tsx src/lib/prs-update.selfcheck.ts && npx -y tsx src/lib/ago.selfcheck.ts && npx -y tsx src/lib/impact-score.selfcheck.ts && npx -y tsx src/lib/league.selfcheck.ts && npx -y tsx src/lib/levers.selfcheck.ts && node scripts/control-bands.check.mjs && npx -y tsx --conditions=react-server src/lib/series.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/alerts.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/network.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/inbox.selfcheck.ts",
     "smoke": "node scripts/smoke.mjs",
     "test": "node scripts/smoke.mjs"
   },
