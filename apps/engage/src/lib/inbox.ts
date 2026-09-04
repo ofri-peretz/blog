@@ -155,7 +155,6 @@ async function devto<T>(url: string, attempts = 4): Promise<T> {
   throw new Error(`dev.to ${lastStatus} for ${url}`);
 }
 
-/** Does this subtree contain a reply from us anywhere below the node? */
 /**
  * When did WE answer this thread, by dev.to's clock?
  *
@@ -174,6 +173,7 @@ export function ourReplyAt(children: RawComment[] = []): string | null {
   return earliest;
 }
 
+/** Does this subtree contain a reply from us anywhere below the node? */
 function answeredByUs(children: RawComment[] = []): boolean {
   for (const c of children) {
     if (c.user?.username === ME) return true;
