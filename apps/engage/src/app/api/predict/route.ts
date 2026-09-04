@@ -6,38 +6,13 @@ import { sbPaged } from "@/lib/series";
 import { fetchJson } from "@/lib/throttle";
 import { devtoKey } from "@/lib/footprint";
 import { levers, type ArticleIn, type Snap } from "@/lib/levers";
-import { model, predict } from "@/lib/predict";
+import { model, parseDraft, predict } from "@/lib/predict";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 /** The blog's article directory: this app lives beside it in the monorepo. */
 const ARTICLES = join(process.cwd(), "..", "blog", "content", "articles");
-
-/** Minimal frontmatter: the four fields the feature extractor reads. */
-function parseDraft(slug: string, raw: string): ArticleIn | null {
-  const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw);
-  if (!m) return null;
-  const fm = m[1];
-  if (/^devto_id:\s*\S/m.test(fm)) return null; // published: the fact, not the graph
-  const str = (k: string) =>
-    fm.match(new RegExp(`^${k}:\\s*"?(.*?)"?\\s*$`, "m"))?.[1] ?? "";
-  const tagBlock = fm.match(/^tags:\n((?:\s+-\s+.*\n?)+)/m)?.[1] ?? "";
-  const tags = [...tagBlock.matchAll(/-\s+"?([^"\n]+)"?/g)].map((t) =>
-    t[1].trim(),
-  );
-  return {
-    id: 0,
-    slug,
-    title: str("title"),
-    published_at: "",
-    reading_time_minutes:
-      Number(str("reading_time_minutes")) ||
-      Math.max(1, Math.round(m[2].split(/\s+/).length / 200)),
-    tag_list: tags,
-    body_markdown: m[2],
-  };
-}
 
 async function build() {
   const key = devtoKey();

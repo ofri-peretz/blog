@@ -1573,7 +1573,10 @@ export default function Page() {
                               className="px-2 py-1 text-right font-mono tabular-nums"
                             >
                               {d.outcomes[o] ? (
-                                <>top {100 - d.outcomes[o].percentile}%</>
+                                <>
+                                  top{" "}
+                                  {Math.max(1, 100 - d.outcomes[o].percentile)}%
+                                </>
                               ) : (
                                 "—"
                               )}
@@ -1602,10 +1605,10 @@ export default function Page() {
               </div>
             )}
             <p className="text-[var(--muted-foreground)]">
-              {predictions.caveat} Percentile among our {predictions.corpus}{" "}
-              published articles; weekday assumed from the publisher&apos;s next
-              fire, {String(predictions.publishAt).slice(0, 10)}. Levers in
-              play:{" "}
+              {predictions.caveat} Top 1% is best, top 99% is last; among our{" "}
+              {predictions.corpus} published articles; weekday assumed from the
+              publisher&apos;s next fire,{" "}
+              {String(predictions.publishAt).slice(0, 10)}. Levers in play:{" "}
               {predictions.levers
                 .map(
                   (l: any) =>

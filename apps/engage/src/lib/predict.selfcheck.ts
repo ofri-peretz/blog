@@ -4,7 +4,15 @@
  * suggestion is the edit the levers point at. Synthetic corpus, no network.
  */
 import assert from "node:assert/strict";
-import { model, percentile, predict, score, suggest, VISIBLE } from "./predict";
+import {
+  model,
+  parseDraft,
+  percentile,
+  predict,
+  score,
+  suggest,
+  VISIBLE,
+} from "./predict";
 import { features, type ArticleIn, type Lever } from "./levers";
 
 const art = (i: number, code: number, ai = false): ArticleIn => ({
@@ -100,5 +108,41 @@ assert.equal(p.outcomes.comments14.levers, 2);
 assert.ok(
   p.outcomes.comments14.percentile >= 0 &&
     p.outcomes.comments14.percentile <= 100,
+);
+
+// parseDraft is the only layer between files on disk and the model input.
+const raw = `---
+title: "The \"real\" deal: a title with quotes inside"
+slug: "the-real-deal"
+reading_time_minutes: 4
+tags:
+  - "ai"
+  - security
+  - "eslint"
+series: null
+---
+
+Body text with a fence.
+
+\`\`\`js
+x
+\`\`\`
+`;
+const d = parseDraft("the-real-deal", raw)!;
+assert.equal(d.title, 'The \"real\" deal: a title with quotes inside');
+assert.deepEqual(d.tag_list, ["ai", "security", "eslint"]);
+assert.equal(d.reading_time_minutes, 4);
+assert.ok((d.body_markdown ?? "").includes("```js"));
+assert.equal(
+  parseDraft("x", raw.replace("slug:", "devto_id: 123\nslug:")),
+  null,
+  "a devto_id is publication",
+);
+assert.equal(parseDraft("x", "no frontmatter"), null);
+// Missing reading time: estimated from the body at 200 words a minute.
+assert.equal(
+  parseDraft("x", "---\ntitle: t\n---\n" + "word ".repeat(450))!
+    .reading_time_minutes,
+  2,
 );
 console.log("predict.selfcheck: ok");

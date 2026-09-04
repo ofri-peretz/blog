@@ -185,3 +185,40 @@ export function predict(
     suggestions: sm ? suggest(sm, f) : [],
   };
 }
+
+/**
+ * Minimal frontmatter: the fields the feature extractor reads. Returns null
+ * for a file with a `devto_id`, which is the fact of publication.
+ *
+ * Only surrounding quotes are stripped, so a title with a quoted word inside
+ * survives whole.
+ */
+export function parseDraft(slug: string, raw: string): ArticleIn | null {
+  const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw);
+  if (!m) return null;
+  const fm = m[1];
+  if (/^devto_id:\s*\S/m.test(fm)) return null;
+  const str = (k: string) => {
+    const v = (
+      fm.match(new RegExp(`^${k}:[ \\t]*(.*)$`, "m"))?.[1] ?? ""
+    ).trim();
+    const q = /^"(.*)"$/.exec(v) ?? /^'(.*)'$/.exec(v);
+    return q ? q[1] : v;
+  };
+  const tagBlock = fm.match(/^tags:\n((?:[ \t]+-[ \t]+.*\n?)+)/m)?.[1] ?? "";
+  const tags = [...tagBlock.matchAll(/-[ \t]+"?([^"\n]+?)"?[ \t]*$/gm)].map(
+    (t) => t[1].trim(),
+  );
+  const body = m[2];
+  return {
+    id: 0,
+    slug,
+    title: str("title"),
+    published_at: "",
+    reading_time_minutes:
+      Number(str("reading_time_minutes")) ||
+      Math.max(1, Math.round(body.split(/\s+/).filter(Boolean).length / 200)),
+    tag_list: tags,
+    body_markdown: body,
+  };
+}
