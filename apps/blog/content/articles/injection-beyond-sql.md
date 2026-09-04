@@ -15,6 +15,16 @@ tags:
   - "node"
 series: null
 author:
+quality:
+  panel_version: "1.0.0"
+  reviewed: "2026-09-04"
+  spec: sdlc/spec/injection-beyond-sql.md
+  lenses:
+    growth_hook: 9.6
+    security_correctness: 9.8
+    structure_framing_voice: 9.7
+    compatibility: 9.5
+    reproducibility: 9.6
 ---
 
 Ask a developer to find injection in a codebase and they grep for string concatenation near a database call. They will find the SQL. They will walk past eight other interpreters on the way.
@@ -23,22 +33,22 @@ An interpreter nobody remembers is still an interpreter. Build a string, hand it
 
 ## The shape, not the syntax {#shape}
 
-The taxonomy already knew this. [CWE-943](https://cwe.mitre.org/data/definitions/943.html) is "improper neutralisation of special elements in data query logic" — the parent class that SQL injection is merely the famous child of. Its siblings are the same defect aimed at different parsers.
+The taxonomy already knew this. [CWE-943](https://cwe.mitre.org/data/definitions/943.html) is "Improper Neutralization of Special Elements in Data Query Logic" — the parent class that SQL injection is merely the famous child of. Its siblings are the same defect aimed at different parsers.
 
-| Injection | CWE | The interpreter you forgot |
-|---|---|---|
-| GraphQL | [CWE-943](https://cwe.mitre.org/data/definitions/943.html) | the query resolver |
-| LDAP | [CWE-90](https://cwe.mitre.org/data/definitions/90.html) | the directory filter |
-| XPath | [CWE-643](https://cwe.mitre.org/data/definitions/643.html) | the XML path engine |
-| XXE | [CWE-611](https://cwe.mitre.org/data/definitions/611.html) | the XML entity resolver |
-| Template | [CWE-94](https://cwe.mitre.org/data/definitions/94.html) | the template compiler |
-| Directive | [CWE-96](https://cwe.mitre.org/data/definitions/96.html) | the server-side include |
-| Format string | [CWE-134](https://cwe.mitre.org/data/definitions/134.html) | the format specifier parser |
+| Injection          | CWE                                                        | The interpreter you forgot   |
+| ------------------ | ---------------------------------------------------------- | ---------------------------- |
+| GraphQL            | [CWE-943](https://cwe.mitre.org/data/definitions/943.html) | the query resolver           |
+| LDAP               | [CWE-90](https://cwe.mitre.org/data/definitions/90.html)   | the directory filter         |
+| XPath              | [CWE-643](https://cwe.mitre.org/data/definitions/643.html) | the XML path engine          |
+| XXE                | [CWE-611](https://cwe.mitre.org/data/definitions/611.html) | the XML entity resolver      |
+| Template           | [CWE-94](https://cwe.mitre.org/data/definitions/94.html)   | the template compiler        |
+| Directive          | [CWE-96](https://cwe.mitre.org/data/definitions/96.html)   | the server-side include      |
+| Format string      | [CWE-134](https://cwe.mitre.org/data/definitions/134.html) | the format specifier parser  |
 | Object / prototype | [CWE-915](https://cwe.mitre.org/data/definitions/915.html) | the JavaScript engine itself |
 
-Be precise about what that parent covers, because the honest version is narrower than the tidy one. MITRE lists exactly four children under CWE-943, all of them query languages: [SQL](/articles/sql-injection-node-postgres-pattern) (CWE-89), LDAP (CWE-90), XPath (CWE-643) and XQuery ([CWE-652](https://cwe.mitre.org/data/definitions/652.html)).
+Be precise about what that parent covers, because the honest version is narrower than the tidy one. MITRE lists exactly four children under CWE-943 — check it yourself in the Research Concepts view (View-1000) on that page — and all four are query languages: [SQL](/articles/sql-injection-node-postgres-pattern) (CWE-89), LDAP (CWE-90), XPath (CWE-643) and XQuery ([CWE-652](https://cwe.mitre.org/data/definitions/652.html)).
 
-Everything else in the table is *commonly mapped* there rather than formally filed under it. GraphQL has no dedicated CWE at all; neither do the [NoSQL operator injections](/articles/getting-started-eslint-plugin-mongodb-security). And XXE, format string and prototype pollution are not siblings in any sense — they are separate defects that happen to share a blind spot, not a parent.
+Everything else in the table is _commonly mapped_ there rather than formally filed under it. GraphQL has no dedicated CWE at all; neither do the [NoSQL operator injections](/articles/getting-started-eslint-plugin-mongodb-security). And XXE, format string and prototype pollution are not siblings in any sense — they are separate defects that happen to share a blind spot, not a parent.
 
 Eight interpreters plus SQL, and two distinct shapes between them — data-query injection (the CWE-943 family) and code/context injection (everything else in the table). SQL got the name people recognise. The parser inside your LDAP filter did not, and that is the entire reason it goes unaudited.
 
@@ -54,18 +64,22 @@ GraphQL is the odd one, because injection is only half of it. A query the client
 
 ## Why grep finds SQL and misses the rest {#why}
 
-[OWASP](https://owasp.org/Top10/A03_2021-Injection/) folds this whole family into A03. Most tooling does not, because a pattern matcher looks for a *sink it has been taught* — a `query(`, an `execute(`. Nobody teaches it `XPathEvaluator`, `libxmljs`, an LDAP `filter:`, a `compile(`.
+[OWASP](https://owasp.org/Top10/A03_2021-Injection/) folds this whole family into A03. Most tooling does not, because a pattern matcher looks for a _sink it has been taught_ — a `query(`, an `execute(`. Nobody teaches it `XPathEvaluator`, `libxmljs`, an LDAP `filter:`, a `compile(`.
 
 That is also the honest limit of pattern matching generally. Seeing a `+` flowing into a sink does not prove the value came from a request, and it goes quiet when the concatenation happens one helper away. That gap between "looks dangerous" and "is reachable" is the whole subject of [taint analysis](/articles/taint-vs-heuristic-detection), and it is why a rule count is a poor proxy for coverage.
 
 ## What to actually do {#do}
 
-Do not start from a checklist. Grep your own code for the *constructors*: `XPathEvaluator`, `libxmljs`, an LDAP `filter:`, a template `compile(`, any `%s` you assemble by hand. For each, ask one question — can user input reach this string?
+Do not start from a checklist. Grep your own code for the _constructors_: `XPathEvaluator`, `libxmljs`, an LDAP `filter:`, a template `compile(`, any `%s` you assemble by hand. For each, ask one question — can user input reach this string?
 
-Grep is the triage list, not the verdict: it tells you *where to look*, taint tells you *whether it reaches*.
+Grep is the triage list, not the verdict: it tells you _where to look_, taint tells you _whether it reaches_.
 
 If the answer is "probably not, but I would have to check", that is exactly the answer most people give about SQL right before they find the other eight.
 
 Which interpreter is live in your stack right now that you have never grepped for? My money is on GraphQL.
 
 More on how these classes get named and ranked: [the CWE taxonomy](/articles/cwe-taxonomy-explained) and [the OWASP Top 10](/articles/owasp-top-10-explained). I write these at [dev.to/ofri-peretz](https://dev.to/ofri-peretz).
+
+::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
+⭐ Star the repo if you would rather your linter knew about the other eight interpreters too.
+::
