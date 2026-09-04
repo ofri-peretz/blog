@@ -77,6 +77,7 @@ assert.deepEqual(
 assert.equal(ties.find((t) => t.who === "bob")!.state, "warm");
 assert.equal(state(14), "warm");
 assert.equal(state(15), "cooling");
+assert.equal(state(45), "cooling");
 assert.equal(state(46), "cold");
 assert.deepEqual(
   goingCold(ties).map((t) => t.who),
@@ -85,6 +86,13 @@ assert.deepEqual(
 assert.deepEqual(
   owed(ties).map((t) => t.who),
   ["dan", "cat"],
+);
+// We went first and nobody answered: in the ledger, in neither list.
+const eve = ties.find((t) => t.who === "eve")!;
+assert.deepEqual([eve.in, eve.out, eve.mutual], [0, 1, false]);
+assert.ok(
+  !goingCold(ties).some((t) => t.who === "eve") &&
+    !owed(ties).some((t) => t.who === "eve"),
 );
 assert.deepEqual(
   followerSplit([
