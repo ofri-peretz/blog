@@ -291,6 +291,7 @@ export default function Page() {
     );
     pull("ties", "/api/ties", (v: any) => setTies(v)).catch(() =>
       setTies(null),
+    );
     pull("radar", "/api/radar", (v: any) => setRadar(v)).catch(() =>
       setRadar(null),
     );
@@ -966,25 +967,6 @@ export default function Page() {
       </Collapse>
 
       {/* ── Platform metrics ─────────────────────────────────────────────── */}
-      {/* ── Ties ────────────────────────────────────────────────────────────
-          The comment ledger folded by person: mutual ties going cold, people
-          who came to us and never heard back, and followers split into
-          people and onboarding. lib/ties.ts. Nothing here posts. */}
-      <Collapse
-        id="s30"
-        head={
-          <>
-            <span>
-              Ties
-              {ties ? ` · ${ties.mutual} mutual of ${ties.ties}` : ""}
-            </span>
-            <Refresh
-              onClick={() =>
-                pull("ties", "/api/ties", (v: any) => setTies(v), true)
-              }
-              at={at.ties ?? null}
-              busy={!!busy.ties}
-              source={ties?.cachedAt ?? null}
       {/* ── Rising now ──────────────────────────────────────────────────────
           Posts in our tags under a day old, ranked by reactions per hour times
           subject overlap. An early comment on a post that will rise is the
@@ -1010,84 +992,6 @@ export default function Page() {
           </>
         }
       >
-        {!ties ? (
-          <Skel rows={3} />
-        ) : (
-          <div className="flex flex-col gap-3 text-[12px]">
-            <div className="grid gap-3 md:grid-cols-3">
-              {(
-                [
-                  [
-                    "going cold · mutual, quietest first",
-                    ties.goingCold,
-                    "no mutual ties yet",
-                  ],
-                  [
-                    "owed · they came to us, we never went back",
-                    ties.owed,
-                    "nobody unanswered in kind",
-                  ],
-                ] as [string, any[], string][]
-              ).map(([label, list, empty]) => (
-                <div
-                  key={label}
-                  className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3"
-                >
-                  <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
-                    {label}
-                  </div>
-                  <ul className="mt-2 flex flex-col gap-1">
-                    {list.map((t: any) => (
-                      <li key={t.who} className="flex items-baseline gap-2">
-                        <span
-                          className={`w-16 shrink-0 font-mono text-[10px] ${t.state === "cold" ? "text-[var(--warning)]" : t.state === "warm" ? "text-[var(--success)]" : "text-[var(--muted-foreground)]"}`}
-                        >
-                          {t.state} · {t.days}d
-                        </span>
-                        <a
-                          href={`https://dev.to/${encodeURIComponent(t.who)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="truncate text-[var(--primary)]"
-                        >
-                          @{t.who}
-                        </a>
-                        <span className="shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">
-                          {t.in} in · {t.out} out
-                        </span>
-                      </li>
-                    ))}
-                    {list.length === 0 ? (
-                      <li className="text-[var(--muted-foreground)]">
-                        {empty}
-                      </li>
-                    ) : null}
-                  </ul>
-                </div>
-              ))}
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-                <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
-                  followers · people or onboarding
-                </div>
-                <div className="mt-1 text-xl font-semibold tabular-nums">
-                  {ties.followers.prior}
-                  <span className="text-[12px] font-normal text-[var(--muted-foreground)]">
-                    {" "}
-                    existed before they followed
-                  </span>
-                </div>
-                <div className="tabular-nums">
-                  {ties.followers.sameDay} followed on their first day ·{" "}
-                  {ties.followers.unresolved} not yet resolved ·{" "}
-                  {ties.followers.total} total
-                </div>
-                <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
-                  Resolution runs at 150 accounts a day under dev.to&apos;s
-                  throttle; the unresolved number falls by that much daily.
-                </div>
-              </div>
-            </div>
-            <p className="text-[var(--muted-foreground)]">{ties.caveat}</p>
         {!radar ? (
           <Skel rows={3} />
         ) : (
@@ -1171,6 +1075,111 @@ export default function Page() {
               {radar.tags?.join(", #")}; the curator and the anti-bot rules
               decide.
             </p>
+          </div>
+        )}
+      </Collapse>
+
+      {/* ── Ties ────────────────────────────────────────────────────────────
+          The comment ledger folded by person: mutual ties going cold, people
+          who came to us and never heard back, and followers split into
+          people and onboarding. lib/ties.ts. Nothing here posts. */}
+      <Collapse
+        id="s30"
+        head={
+          <>
+            <span>
+              Ties
+              {ties ? ` · ${ties.mutual} mutual of ${ties.ties}` : ""}
+            </span>
+            <Refresh
+              onClick={() =>
+                pull("ties", "/api/ties", (v: any) => setTies(v), true)
+              }
+              at={at.ties ?? null}
+              busy={!!busy.ties}
+              source={ties?.cachedAt ?? null}
+            />
+          </>
+        }
+      >
+        {!ties ? (
+          <Skel rows={3} />
+        ) : (
+          <div className="flex flex-col gap-3 text-[12px]">
+            <div className="grid gap-3 md:grid-cols-3">
+              {(
+                [
+                  [
+                    "going cold · mutual, quietest first",
+                    ties.goingCold,
+                    "no mutual ties yet",
+                  ],
+                  [
+                    "owed · they came to us, we never went back",
+                    ties.owed,
+                    "nobody unanswered in kind",
+                  ],
+                ] as [string, any[], string][]
+              ).map(([label, list, empty]) => (
+                <div
+                  key={label}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3"
+                >
+                  <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+                    {label}
+                  </div>
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {list.map((t: any) => (
+                      <li key={t.who} className="flex items-baseline gap-2">
+                        <span
+                          className={`w-16 shrink-0 font-mono text-[10px] ${t.state === "cold" ? "text-[var(--warning)]" : t.state === "warm" ? "text-[var(--success)]" : "text-[var(--muted-foreground)]"}`}
+                        >
+                          {t.state} · {t.days}d
+                        </span>
+                        <a
+                          href={`https://dev.to/${encodeURIComponent(t.who)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="truncate text-[var(--primary)]"
+                        >
+                          @{t.who}
+                        </a>
+                        <span className="shrink-0 font-mono text-[10px] text-[var(--muted-foreground)]">
+                          {t.in} in · {t.out} out
+                        </span>
+                      </li>
+                    ))}
+                    {list.length === 0 ? (
+                      <li className="text-[var(--muted-foreground)]">
+                        {empty}
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
+              ))}
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+                <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+                  followers · people or onboarding
+                </div>
+                <div className="mt-1 text-xl font-semibold tabular-nums">
+                  {ties.followers.prior}
+                  <span className="text-[12px] font-normal text-[var(--muted-foreground)]">
+                    {" "}
+                    existed before they followed
+                  </span>
+                </div>
+                <div className="tabular-nums">
+                  {ties.followers.sameDay} followed on their first day ·{" "}
+                  {ties.followers.unresolved} not yet resolved ·{" "}
+                  {ties.followers.total} total
+                </div>
+                <div className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+                  Resolution runs at 150 accounts a day under dev.to&apos;s
+                  throttle; the unresolved number falls by that much daily.
+                </div>
+              </div>
+            </div>
+            <p className="text-[var(--muted-foreground)]">{ties.caveat}</p>
           </div>
         )}
       </Collapse>
