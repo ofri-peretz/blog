@@ -1,0 +1,44 @@
+{
+  "slug": "eslint-plugin-dependency-weight",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/eslint-plugin-dependency-weight.md",
+  "reviewed": "2026-09-04",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "framing: 'If dependency weight is your only axis, promise wins' tripped the banned-vocabulary check. The concession is the best sentence in the article and had to survive intact, so it is now 'promise is the leaner choice' — same admission, no contest metaphor.",
+    "reproducibility, additive rather than corrective: the article ends by telling the reader to re-run its four lines rather than cite its numbers. They were re-run, and the result is now in the article, because 'nothing moved in three weeks' is a finding rather than an absence of one."
+  ],
+  "checked_and_found_correct": [
+    "All fourteen figures re-resolved identically on 2026-09-04: baseline 69; import 205, react 204, jsx-a11y 194, unicorn 110, sonarjs 83, n 80, promise 70; security 3; react-features 71, modernization 71, browser-security 71, import-next 97; combined 228.",
+    "Every 'adds' figure is exactly tree minus baseline — 205-69=136, 204-69=135, 194-69=125, 110-69=41, 83-69=14, 80-69=11, 70-69=1, 71-69=2, 97-69=28.",
+    "The dedupe claim holds and is what validates the whole subtract-the-baseline method: 69+135+125+136 is 465, and the measured union is 228."
+  ],
+  "not_re_verified": [
+    "The `direct deps` column was read from each manifest in August and not re-fetched. It carries no weight in the argument beyond failing to track the tree column, which the tree figures establish on their own."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "The title is the article in nine words — a number everyone has seen quoted, immediately undercut by the number nobody subtracts. It opens by conceding that its own headline figure is 'true and almost useless', which buys the rest of the piece a great deal of credit very cheaply. Ends by sending the reader to their own config with a command that takes about a second."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "Read as measurement correctness, and this is the most thoroughly verified article in the queue: fourteen for fourteen, re-resolved three weeks later, identical. The method is stated in full, costs nothing to repeat, and is the same method every row used. The one inference that could have been sloppy — that a single baseline may be subtracted from every plugin — is the one the article proves separately with the combined install, since 228 against a summed 465 is only possible if the trees genuinely overlap."
+    },
+    "structure_framing_voice": {
+      "score": 9.7,
+      "why": "Four sections in strict order of what the reader needs, and the last two are where it earns its keep. 'Where mine land' prints our own row beside the peers and states outright that eslint-plugin-promise adds one package against our two. Then it refuses the easy conclusion in the other direction too: the smallest tree on the page belongs to a package the article argues elsewhere is unmaintained, and 'a small tree is not a proxy for a healthy package. It can just mean the package stopped changing.' Both concessions cost something and both are load-bearing."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "Nothing is installed on the reader's behalf, so pass 3's package-manager and ESLint-major matrix does not bind — the `npm i -D` line is an illustration of a setup being measured, not an instruction. The surface the article does own is the four-line method block, and it works as written: `--package-lock-only` resolves without downloading, which is what makes the whole thing repeatable in seconds. Held at the floor because the method is npm-only in a piece whose entire subject is resolution, and yarn or pnpm would produce different trees for the same input."
+    },
+    "reproducibility": {
+      "score": 9.8,
+      "why": "The highest score in the queued set, and it is earned rather than assumed. Every figure was re-derived from scratch using the article's own published method, and every one matched. The article had already flagged that the numbers would drift and told readers to prefer their own run; that they did not drift is now stated with its date. Nothing here rests on a measurement the reader cannot repeat in about a minute."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear"
+}
