@@ -116,9 +116,11 @@ Measured against **3.1.2**, whose peer range is `^8.40.0 || ^9.0.0 || ^10.0.0` �
 
 All four at `error` from day one is safe _for these findings_, but be precise about why. In 3.1.2 only `prefer-at` and `prefer-template-literal` carry a fixer; `no-instanceof-array` and `prefer-event-target` report without one. Every one of my 55 findings came from the two fixable rules, which is why `--fix` emptied the list — not because the plugin is 100% auto-fixable. If the other two ever fire on your code, they are ordinary findings and you will triage them by hand. Check it yourself:
 
-````bash
+```bash
 npx eslint --print-config path/to/file.ts    # or read meta.fixable on the rule
-``` [Rule docs](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-modernization/docs/rules) · [npm](https://www.npmjs.com/package/eslint-plugin-modernization).
+```
+
+[Rule docs](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-modernization/docs/rules) · [npm](https://www.npmjs.com/package/eslint-plugin-modernization).
 
 ---
 
@@ -129,4 +131,3 @@ Re-run on 2026-09-04 over the 189 `.ts`/`.tsx` files in this blog's `apps/blog/s
 Two guards on that number, because a count means nothing without them. The harness reports `unmatched: 0`, so every one of the 189 files was actually configured — an earlier run of mine returned a confident **0** that turned out to be 189 files silently matching no config at all. And on the same tree the same day, `react-features/react-no-inline-functions` — the rule I called noise above — returns **110**. Eight versus 110 on identical input is the whole point: yield is not quality.
 
 _What's the oldest idiom still alive in your codebase — and is it there because it's correct, or because nothing ever flagged it?_
-````
