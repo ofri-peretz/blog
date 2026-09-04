@@ -151,6 +151,11 @@ export function LoomComposer({
     const windowed = windowPoints(s.points, cutoff);
     return {
       series: s,
+      // Kept so an empty result can be attributed. `indexTo100` returns []
+      // both for "no points at all" and for "base too small", and telling a
+      // reader their empty series "starts too small" is a false explanation
+      // they can disprove in one click by switching to absolute. (Review.)
+      windowedCount: windowed.length,
       points: state.normalize === "idx" ? indexTo100(windowed) : windowed,
       // "1,900 indexed" skims as "1,900" — and on a stars series that reads
       // as a count, which is how a reader reported 19 stars as ~1,600. Naming
@@ -164,7 +169,9 @@ export function LoomComposer({
   const woven = all.filter((w) => w.points.length > 0);
   const unindexable =
     state.normalize === "idx"
-      ? all.filter((w) => w.points.length === 0).map((w) => w.series.label)
+      ? all
+          .filter((w) => w.points.length === 0 && w.windowedCount > 0)
+          .map((w) => w.series.label)
       : [];
   const mixedUnits =
     state.normalize === "abs" && new Set(active.map((s) => s.unit)).size > 1;

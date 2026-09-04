@@ -168,6 +168,14 @@ describe("indexTo100", () => {
     expect(at(MIN_INDEX_BASE)).toEqual([{ t: "a", v: 100 }]);
   });
 
+  it("returns nothing for an empty series, which is NOT the same reason", () => {
+    // Same empty result, different cause: no points at all vs a base too
+    // small. The composer has to tell them apart — labelling an empty series
+    // "starts too small for an index" is a false explanation the reader can
+    // disprove in one click. (Review.)
+    expect(indexTo100([])).toEqual([]);
+  });
+
   it("rounds to one decimal — readouts, not physics", () => {
     expect(
       indexTo100([
