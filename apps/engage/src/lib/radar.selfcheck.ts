@@ -79,4 +79,10 @@ assert.equal(
   ).length,
   0,
 );
+// Dependency injection is a NestJS topic, not an attack: no "injection" hit.
+assert.deepEqual(
+  relevance(post(6, 1, 0, "NestJS Dependency Injection Explained", ["node"]))
+    .hits,
+  ["node", "nestjs", "#node"],
+);
 console.log("radar.selfcheck: ok");

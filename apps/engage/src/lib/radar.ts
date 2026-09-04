@@ -86,8 +86,12 @@ export function velocity(a: RadarIn, now = Date.now()): number {
 }
 
 /** Keyword hits in title and tags, plus home-tag overlap; the hits are returned for the panel. */
+/** Keyword hits in title and tags, plus home-tag overlap; the hits are returned for the panel. */
 export function relevance(a: RadarIn): { relevance: number; hits: string[] } {
-  const hay = `${a.title} ${tags(a).join(" ")}`.toLowerCase();
+  // "Dependency injection" is a framework topic, not ours; strip it before matching.
+  const hay = `${a.title} ${tags(a).join(" ")}`
+    .toLowerCase()
+    .replace(/dependency injection/g, "");
   // "lint" inside "eslint" is one hit, not two: drop a hit contained in another.
   const raw = KEYWORDS.filter((k) => hay.includes(k));
   const hits = raw.filter((k) => !raw.some((o) => o !== k && o.includes(k)));
