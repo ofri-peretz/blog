@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addDays,
+  MIN_INDEX_BASE,
   indexTo100,
   mondayOf,
   weeklyTotals,
@@ -104,43 +105,25 @@ describe("indexTo100", () => {
   });
 
   it("every indexed series starts at exactly 100", () => {
-    // The invariant the label states. Asserted over shapes that used to
-    // violate it: a long zero prefix, and a null prefix.
     for (const input of [
       [
         { t: "a", v: 0 },
         { t: "b", v: 0 },
-        { t: "c", v: 1 },
+        { t: "c", v: 12 },
         { t: "d", v: 19 },
       ],
       [
         { t: "a", v: null },
-        { t: "b", v: 4 },
-        { t: "c", v: 6 },
+        { t: "b", v: 40 },
+        { t: "c", v: 60 },
       ],
       [
-        { t: "a", v: 7 },
-        { t: "b", v: 7 },
+        { t: "a", v: 70 },
+        { t: "b", v: 70 },
       ],
     ]) {
-      const out = indexTo100(input);
-      expect(out[0].v, `first point of ${JSON.stringify(input)}`).toBe(100);
+      expect(indexTo100(input)[0]?.v, JSON.stringify(input)).toBe(100);
     }
-  });
-
-  it("the GitHub stars shape no longer reads as a count from zero", () => {
-    // The reported bug, as data: months at zero, then a first star, then 19.
-    // It drew 0 -> 1,900 on a chart captioned "GitHub stars".
-    const stars = [
-      { t: "2025-12-01", v: 0 },
-      { t: "2026-01-01", v: 0 },
-      { t: "2026-02-01", v: 1 },
-      { t: "2026-09-04", v: 19 },
-    ];
-    const out = indexTo100(stars);
-    expect(out.map((p) => p.t)).toEqual(["2026-02-01", "2026-09-04"]);
-    expect(out[0].v).toBe(100);
-    expect(out.some((p) => p.v === 0)).toBe(false);
   });
 
   it("preserves nulls — a gap is not a zero", () => {
@@ -155,19 +138,41 @@ describe("indexTo100", () => {
     ]);
   });
 
-  it("returns an untouched copy when no base exists", () => {
-    const input = [
-      { t: "a", v: 0 },
-      { t: "b", v: null },
+  it("returns nothing when no base exists", () => {
+    expect(
+      indexTo100([
+        { t: "a", v: 0 },
+        { t: "b", v: null },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("refuses a base too small to carry a ratio", () => {
+    // THE REPORTED BUG. 19 GitHub stars against a base of 1 drew a line to
+    // 1,900 on a chart captioned "GitHub stars", and was read as 1,900 stars
+    // — which is exactly what it looked like. A base of 1 is not a scale, it
+    // is a 100x multiplier.
+    const stars = [
+      { t: "2025-12-01", v: 0 },
+      { t: "2025-12-13", v: 1 },
+      { t: "2026-09-04", v: 19 },
     ];
-    expect(indexTo100(input)).toEqual(input);
+    expect(indexTo100(stars)).toEqual([]);
+  });
+
+  it("draws nothing anywhere near the floor, and everything at it", () => {
+    // The boundary stated twice, so a change to MIN_INDEX_BASE cannot quietly
+    // move it in one direction only.
+    const at = (base: number) => indexTo100([{ t: "a", v: base }]);
+    expect(at(MIN_INDEX_BASE - 1)).toEqual([]);
+    expect(at(MIN_INDEX_BASE)).toEqual([{ t: "a", v: 100 }]);
   });
 
   it("rounds to one decimal — readouts, not physics", () => {
     expect(
       indexTo100([
-        { t: "a", v: 3 },
-        { t: "b", v: 4 },
+        { t: "a", v: 30 },
+        { t: "b", v: 40 },
       ])[1].v,
     ).toBe(133.3);
   });

@@ -34,6 +34,7 @@ import { Toggle, toggleVariants } from "@/components/ui/toggle";
 import { track } from "@/lib/analytics";
 import { downloadSvg } from "@/lib/svg-export";
 import {
+  MIN_INDEX_BASE,
   indexTo100,
   windowPoints,
   type LoomCorpus,
@@ -146,7 +147,7 @@ export function LoomComposer({
     .map((id) => byId.get(id))
     .filter((s): s is LoomSeries => s != null);
   const cutoff = windowCutoff(state.window, corpus.observedThrough);
-  const woven = active.map((s) => {
+  const all = active.map((s) => {
     const windowed = windowPoints(s.points, cutoff);
     return {
       series: s,
@@ -157,6 +158,14 @@ export function LoomComposer({
       unit: state.normalize === "idx" ? "index (start = 100)" : s.unit,
     };
   });
+  // A thread whose base is too small to carry a ratio comes back empty rather
+  // than as a 100x multiplier. Drop it from the weave and name it below —
+  // drawing nothing without saying so would be its own small lie.
+  const woven = all.filter((w) => w.points.length > 0);
+  const unindexable =
+    state.normalize === "idx"
+      ? all.filter((w) => w.points.length === 0).map((w) => w.series.label)
+      : [];
   const mixedUnits =
     state.normalize === "abs" && new Set(active.map((s) => s.unit)).size > 1;
 
@@ -367,6 +376,25 @@ export function LoomComposer({
           </button>
         )}
       </div>
+
+      {unindexable.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {unindexable.join(", ")} {unindexable.length === 1 ? "is" : "are"} not
+          drawn here: over this window{" "}
+          {unindexable.length === 1 ? "it starts" : "they start"} too small for
+          an index to mean anything. Against a base under {MIN_INDEX_BASE}, one
+          more unit moves the line by {100 / MIN_INDEX_BASE} points or more, so
+          the chart would be reporting counting, not growth.{" "}
+          <button
+            type="button"
+            className="underline hover:text-foreground"
+            onClick={() => apply({ ...state, normalize: "abs" })}
+          >
+            Show absolute values
+          </button>{" "}
+          to read {unindexable.length === 1 ? "it" : "them"} as counts.
+        </p>
+      )}
 
       {mixedUnits && (
         <p className="text-sm text-muted-foreground">
