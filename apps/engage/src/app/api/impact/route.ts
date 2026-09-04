@@ -3,7 +3,7 @@ import { sb } from "@/lib/series";
 import { cachedAsync } from "@/lib/cache";
 import { todayCST } from "@/lib/footprint";
 import { scoreImpact, type Inputs } from "@/lib/impact-score";
-import { writeImpact, impactHistory } from "@/lib/store";
+import { writeImpact, impactHistory, writeLeague } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
@@ -47,6 +47,7 @@ async function build() {
   const result = scoreImpact(inputs);
   const day = todayCST();
   writeImpact(day, result);
+  if (league?.climb) try { writeLeague(day, league.climb); } catch { /* the series is a convenience */ }
   return { day, ...result, climb: league?.climb ? { rank: league.climb.rank, authors: league.climb.authors, next: league.climb.next, plan: league.climb.plan } : null, league: league?.tables?.map((t: any) => ({ tag: t.tag, rank: t.rank, authors: t.authors, above: t.above, ours: t.ours })) ?? [], history: impactHistory() };
 }
 

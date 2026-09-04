@@ -3,8 +3,6 @@ import { cachedAsync } from "@/lib/cache";
 import { fetchJson } from "@/lib/throttle";
 import { ME } from "@/lib/me";
 import { HOME_TAGS, PAGES, aggregate, arenaSummary, mergeLeague, type TagTable, type Climb } from "@/lib/league";
-import { writeLeague } from "@/lib/store";
-import { todayCST } from "@/lib/footprint";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -39,8 +37,9 @@ async function crawl(): Promise<{ tables: TagTable[]; climb: Climb; fetchedAt: s
     tables.push(aggregate(tag, arts, ME));
     samples.push(arts);
   }
+  // The daily league row is written by /api/impact, which already owns the
+  // daily rows and loads the store; this chunk cannot load node:sqlite.
   const climb = mergeLeague(samples, ME);
-  try { writeLeague(todayCST(), climb); } catch { /* the series is a convenience; the page must not fail on it */ }
   return { tables, climb, fetchedAt: new Date().toISOString() };
 }
 
