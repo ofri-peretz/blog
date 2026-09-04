@@ -34,8 +34,13 @@ function referencedTokens(): Map<string, string[]> {
   const byToken = new Map<string, string[]>();
   for (const file of readdirSync(UI).filter((f) => f.endsWith(".tsx"))) {
     const text = readFileSync(join(UI, file), "utf-8");
+    // Every Tailwind prefix that can consume a colour token. The first
+    // version listed only the five in use today, which would have let a future
+    // re-vendor introduce `ring-viz-*` and bypass the scan entirely — passing
+    // this lock while exhibiting the exact silent-wrong-colour failure its
+    // header describes. (Review.)
     for (const m of text.matchAll(
-      /\b(?:text|bg|fill|stroke|border)-(viz-[a-z-]+)\b/g,
+      /\b(?:text|bg|fill|stroke|border|ring|outline|divide|accent|caret|shadow|from|via|to)-(viz-[a-z-]+)\b/g,
     )) {
       byToken.set(m[1], [...(byToken.get(m[1]) ?? []), file]);
     }
