@@ -1,0 +1,39 @@
+{
+  "slug": "eslint-in-the-browser-live-lint-playground",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/eslint-in-the-browser-live-lint-playground.md",
+  "reviewed": "2026-09-03",
+  "round": 1,
+  "note": "Round 1 because it is the first panel to be COMMITTED. An informal pass ran on this branch before publication and produced two article commits; it was never written to a file, and by this repo's own rule a review that lives in a chat log did not happen. It also passed an article whose headline number was wrong, which is the strongest argument available for writing them down.",
+  "findings_fixed_this_round": [
+    "reproducibility: the Reproduce block ran `node scripts/build-lint-worker.mjs`, a path that does not exist. The real path is apps/blog/scripts/. Every command now carries the repo-root prefix and was re-run from it.",
+    "compatibility: the article named no floor for `eslint/universal`. The export first appears in ESLint 9.11.0 and is absent from 9.10 and from every ESLint 8, so the recipe fails at build time on older majors rather than degrading. Now stated, with the Node range the build step inherits.",
+    "structure_framing_voice: 'Nothing you type leaves the page, a sentence in the UI too, because...' did not parse. Rewritten.",
+    "claim integrity: 'At 3 MB you write a blog post about the rule' was a rhetorical figure with no measurement behind it, and pass 1 blocks a number in the article with no spec row even when it is correct. Replaced with 'several megabytes'."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "Title is on the validated formula — named target (ESLint), concrete number (459 KB), provocative claim (my blog posts lint your code) — and the first paragraph names a frustration the target reader has actually had. Two funnel links to live playgrounds plus the star CTA. Held below 9.8 by one permanent blemish: the dev.to permalink still reads 362-kb and cannot be renamed without 404ing every inbound link, so search results show a URL that disagrees with the title. Accepted debt, disclosed in the spec."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "Every security claim is checkable and was checked. 'Nothing you type leaves the page' is backed by an evidence row: the worker contains no fetch, XMLHttpRequest, WebSocket or importScripts. Plugins are a closed record, not a dynamic import. The artifact runs the published tarballs, not a fork. The failure path is the strongest part and is correctly reasoned: nulling the worker singleton, and rendering 'unknown, not clean' rather than an empty list, is fail-closed reporting for an analyzer — 'no findings' and 'the analyzer is dead' must not render identically."
+    },
+    "structure_framing_voice": {
+      "score": 9.6,
+      "why": "Six sections in four minutes, none of them padding. Framing is exemplary rather than merely compliant: it names the ESLint and typescript-eslint playgrounds as excellent prior art, states outright that browser-hosted linting is not new, and claims placement rather than superiority. The voice owns the author's own error in the same paragraph that corrects it. The one prose defect found this round is fixed."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "The lowest of the five, and the honest reason is stated rather than scored around. REVIEW.md pass 3 requires the full package-manager and ESLint-major matrix for installation snippets; this article ships no installation snippet, only a build recipe, so the matrix does not bind. What does bind is the version floor a reader hits when they follow it, and that is now exact: `eslint/universal` from 9.11.0, absent in 9.10 and in all of ESLint 8, plus the Node range the build inherits. Oxlint is addressed by exclusion — `eslint/universal` is ESLint's own export and has no Oxlint analogue, which the article now says instead of leaving unsaid."
+    },
+    "reproducibility": {
+      "score": 9.8,
+      "why": "The strongest lens, and the one the whole correction turns on. Three byte figures, four pinned package versions, a Node version, a measurement date, and an explicit warning that the bytes drift. Every command was re-run from the repo root on the reviewed date and reproduced to the byte: 1764382 raw, 370746 at brotli -q 11, 470563 served. The article now teaches the distinction that caused the original error — a local compressor is a ceiling, the CDN is the measurement — instead of only fixing the number."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear"
+}
