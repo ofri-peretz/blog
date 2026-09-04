@@ -85,7 +85,10 @@ export interface Finding {
  * This is the dogfooding loop made visible: it already caught a real CWE-400 in
  * this app's own request handler.
  */
-export function pluginFindings(): { findings: Finding[]; error: string | null } {
+export function pluginFindings(): {
+  findings: Finding[];
+  error: string | null;
+} {
   const agents = join(FOOTPRINT, "..");
   if (!existsSync(join(agents, "eslint.config.mjs")))
     return { findings: [], error: "no eslint config" };
@@ -93,7 +96,12 @@ export function pluginFindings(): { findings: Finding[]; error: string | null } 
     const out = execFileSync(
       "npx",
       ["eslint", "footprint/scripts", "--format", "json"],
-      { cwd: agents, encoding: "utf8", timeout: 180_000, maxBuffer: 32 * 1024 * 1024 },
+      {
+        cwd: agents,
+        encoding: "utf8",
+        timeout: 180_000,
+        maxBuffer: 32 * 1024 * 1024,
+      },
     );
     return { findings: parseEslint(out), error: null };
   } catch (e: any) {
@@ -389,8 +397,9 @@ export async function audienceClock(): Promise<{
       people: Number(people ?? 0),
     });
   }
-  const hours = Array.from({ length: 24 }, (_, h) =>
-    byHour.get(h) ?? { utcHour: h, views: 0, people: 0 },
+  const hours = Array.from(
+    { length: 24 },
+    (_, h) => byHour.get(h) ?? { utcHour: h, views: 0, people: 0 },
   );
 
   return {
@@ -478,7 +487,9 @@ export async function ecosystem(): Promise<{
       sb("coverage_snapshots?select=*&order=observed_on.desc&limit=60").catch(
         () => [],
       ),
-      sb("npm_alltime_downloads?select=alltime_total,measured_on").catch(() => []),
+      sb("npm_alltime_downloads?select=alltime_total,measured_on").catch(
+        () => [],
+      ),
     ]);
 
     // All-time downloads come from `npm_alltime_downloads`, NOT from
@@ -552,7 +563,10 @@ export interface Board {
  * just open/closed — a conflicted PR and a PR awaiting maintainer review look
  * identical in a plain list and demand completely different things.
  */
-export async function prBoard(): Promise<{ prs: Board[]; error: string | null }> {
+export async function prBoard(): Promise<{
+  prs: Board[];
+  error: string | null;
+}> {
   const token = secret("GITHUB_TOKEN");
   if (!token) return { prs: [], error: "no GITHUB_TOKEN" };
   const gh = async (u: string) => {
@@ -647,7 +661,13 @@ export type RuleEntry = {
     vulnerable: number | null;
     missed: string[];
     falsePositives: string[];
-    competitors: { name: string; tp: number; fp: number; fn: number; f1: number | null }[];
+    competitors: {
+      name: string;
+      tp: number;
+      fp: number;
+      fn: number;
+      f1: number | null;
+    }[];
   } | null;
 };
 
@@ -670,13 +690,24 @@ export async function rules(): Promise<{
   error: string | null;
 }> {
   const repo = join(process.env.HOME ?? "", "repos/ofriperetz.dev/eslint");
-  const empty = { generatedAt: null, totals: null, rules: [], error: null as string | null };
-  if (!existsSync(repo)) return { ...empty, error: "eslint checkout not found" };
+  const empty = {
+    generatedAt: null,
+    totals: null,
+    rules: [],
+    error: null as string | null,
+  };
+  if (!existsSync(repo))
+    return { ...empty, error: "eslint checkout not found" };
   try {
     const raw = execFileSync(
       "git",
       ["show", "origin/main:apps/docs/src/data/rules-manifest.json"],
-      { cwd: repo, encoding: "utf8", timeout: 20_000, maxBuffer: 16 * 1024 * 1024 },
+      {
+        cwd: repo,
+        encoding: "utf8",
+        timeout: 20_000,
+        maxBuffer: 16 * 1024 * 1024,
+      },
     );
     const parsed = JSON.parse(raw) as {
       generatedAt?: string;
@@ -690,6 +721,61 @@ export async function rules(): Promise<{
       error: null,
     };
   } catch (e) {
-    return { ...empty, error: e instanceof Error ? e.message : "unreadable manifest" };
+    return {
+      ...empty,
+      error: e instanceof Error ? e.message : "unreadable manifest",
+    };
   }
+}
+
+export interface DevtoReach {
+  /** Distinct human sessions in 30 days that arrived tagged devto or referred by dev.to. */
+  sessions: number | null;
+  /** Short-link clicks from dev.to in 30 days, by PostHog's bot verdict. */
+  clicks: { humans: number; bots: number } | null;
+  error: string | null;
+}
+
+/**
+ * How many people dev.to actually sends us, over 30 days.
+ *
+ * dev.to strips referrers, so the referrer alone under-counts; the `/go/`
+ * links carry `utm_source=devto` and the resolver forwards it to the landing
+ * page. Both signals are counted, once per session. Clicks are the server
+ * event from `/go/`; until 2026-09-04 that event carried no user agent and
+ * PostHog flagged every one a bot (1,192 of 1,192), so the human count reads
+ * low for the 30 days after that fix and the panel says so.
+ */
+export async function devtoReach(): Promise<DevtoReach> {
+  const [sessions, clicks] = await Promise.all([
+    hogql(`
+      SELECT count(DISTINCT properties.$session_id)
+      FROM events
+      WHERE event = '$pageview'
+        AND timestamp > now() - INTERVAL 30 DAY
+        AND properties.$virt_is_bot != true
+        AND properties.$session_id IS NOT NULL
+        AND (properties.utm_source = 'devto'
+          OR properties.$referring_domain LIKE '%dev.to%'
+          OR properties.$current_url LIKE '%utm_source=devto%')
+    `),
+    hogql(`
+      SELECT countIf(properties.$virt_is_bot != true) AS humans,
+             countIf(properties.$virt_is_bot = true) AS bots
+      FROM events
+      WHERE event = 'short_link_click'
+        AND timestamp > now() - INTERVAL 30 DAY
+        AND properties.utm_source = 'devto'
+    `),
+  ]);
+  return {
+    sessions: sessions.error ? null : Number(sessions.rows[0]?.[0] ?? 0),
+    clicks: clicks.error
+      ? null
+      : {
+          humans: Number(clicks.rows[0]?.[0] ?? 0),
+          bots: Number(clicks.rows[0]?.[1] ?? 0),
+        },
+    error: sessions.error ?? clicks.error,
+  };
 }
