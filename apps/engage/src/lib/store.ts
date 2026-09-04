@@ -90,6 +90,12 @@ export function open(): DatabaseSync {
       at            TEXT NOT NULL
     );
 
+    -- The league: our rank among the month's authors, one row per day. See lib/league.ts.
+    CREATE TABLE IF NOT EXISTS league_daily (
+      day TEXT PRIMARY KEY, rank INTEGER, authors INTEGER, reactions INTEGER, comments INTEGER, articles INTEGER,
+      t5 INTEGER, t10 INTEGER, t20 INTEGER, t50 INTEGER, t100 INTEGER, at TEXT NOT NULL
+    );
+
     -- The Author Impact Score, one row per day. See lib/impact-score.ts.
     CREATE TABLE IF NOT EXISTS impact_score (
       day        TEXT PRIMARY KEY,
@@ -122,6 +128,20 @@ export function writeYield(day: string, s: import("./yield").YieldSummary) {
 }
 export function yieldHistory(days = 400) {
   return (open().prepare(`SELECT * FROM comment_yield ORDER BY day DESC LIMIT ?`).all(days) as Record<string, number | string | null>[]).reverse();
+}
+
+export function writeLeague(day: string, c: import("./league").Climb) {
+  open()
+    .prepare(
+      `INSERT INTO league_daily (day, rank, authors, reactions, comments, articles, t5, t10, t20, t50, t100, at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(day) DO UPDATE SET rank=excluded.rank, authors=excluded.authors, reactions=excluded.reactions, comments=excluded.comments,
+         articles=excluded.articles, t5=excluded.t5, t10=excluded.t10, t20=excluded.t20, t50=excluded.t50, t100=excluded.t100, at=excluded.at`,
+    )
+    .run(day, c.rank, c.authors, c.ours?.reactions ?? null, c.ours?.comments ?? null, c.ours?.articles ?? null, c.thresholds[5], c.thresholds[10], c.thresholds[20], c.thresholds[50], c.thresholds[100], new Date().toISOString());
+}
+export function leagueHistory(days = 400) {
+  return (open().prepare(`SELECT * FROM league_daily ORDER BY day DESC LIMIT ?`).all(days) as Record<string, number | string | null>[]).reverse();
 }
 
 export function writeImpact(day: string, r: import("./impact-score").ImpactScore) {

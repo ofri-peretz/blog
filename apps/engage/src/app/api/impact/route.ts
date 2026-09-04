@@ -47,7 +47,7 @@ async function build() {
   const result = scoreImpact(inputs);
   const day = todayCST();
   writeImpact(day, result);
-  return { day, ...result, league: league?.tables?.map((t: any) => ({ tag: t.tag, rank: t.rank, authors: t.authors, above: t.above, ours: t.ours })) ?? [], history: impactHistory() };
+  return { day, ...result, climb: league?.climb ? { rank: league.climb.rank, authors: league.climb.authors, next: league.climb.next, plan: league.climb.plan } : null, league: league?.tables?.map((t: any) => ({ tag: t.tag, rank: t.rank, authors: t.authors, above: t.above, ours: t.ours })) ?? [], history: impactHistory() };
 }
 
 export async function GET(req: Request) {
