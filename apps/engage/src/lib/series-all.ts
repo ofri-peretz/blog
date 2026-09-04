@@ -19,5 +19,6 @@ import "@/lib/series-adoption";
 import "@/lib/series-standing";
 import "@/lib/series-yield";
 import "@/lib/series-devto";
+import "@/lib/series-impact";
 
 export * from "@/lib/series";
