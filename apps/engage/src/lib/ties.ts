@@ -7,6 +7,9 @@ export interface CommentRow {
   article_author: string | null;
   direction: "in" | "out";
   created_at: string;
+  comment_id?: string;
+  body_excerpt?: string | null;
+  article_id?: number;
 }
 
 export interface Tie {
@@ -19,6 +22,8 @@ export interface Tie {
   days: number;
   mutual: boolean;
   state: "warm" | "cooling" | "cold";
+  /** Their latest comment on us: what a reply in kind would answer. */
+  last?: { commentId: string; excerpt: string; articleId: number | null };
 }
 
 export const WARM_DAYS = 14;
@@ -50,6 +55,12 @@ export function fold(rows: CommentRow[], now = Date.now()): Tie[] {
     };
     if (r.direction === "in") {
       t.in += 1;
+      if (t.lastIn == null || day(r.created_at) >= t.lastIn)
+        t.last = {
+          commentId: r.comment_id ?? "",
+          excerpt: r.body_excerpt ?? "",
+          articleId: r.article_id ?? null,
+        };
       t.lastIn = later(t.lastIn, day(r.created_at));
     } else {
       t.out += 1;
