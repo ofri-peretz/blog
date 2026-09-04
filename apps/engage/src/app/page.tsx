@@ -290,6 +290,7 @@ export default function Page() {
     );
     pull("radar", "/api/radar", (v: any) => setRadar(v)).catch(() =>
       setRadar(null),
+    );
     pull("predict", "/api/predict", (v: any) => setPredictions(v)).catch(() =>
       setPredictions(null),
     );
