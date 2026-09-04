@@ -66,7 +66,7 @@ export default function League() {
             {(data.tables ?? []).map((t: any) => (
               <div key={t.tag} className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
                 <div className="flex items-baseline gap-2"><span className="font-mono text-[11px] uppercase tracking-[0.1em]">#{t.tag}</span><span className="text-[12px] text-[var(--muted-foreground)]">{t.rank ? `we are ${t.rank} of ${t.authors}` : `absent from ${t.authors} authors`}</span></div>
-                <ul className="mt-2 text-[12px]">{t.top.slice(0, 5).map((l: any, i: number) => <li key={l.author} className="flex gap-2"><span className="w-4 font-mono text-[var(--muted-foreground)]">{i + 1}</span><a className="font-mono" href={`https://dev.to/${l.author}`} target="_blank" rel="noopener">@{l.author}</a><span className="ml-auto tabular-nums">{l.reactions} rx · {l.comments} cm · {l.articles} art</span></li>)}</ul>
+                <ul className="mt-2 text-[12px]">{t.top.slice(0, 5).map((l: any, i: number) => <li key={l.author} className="flex gap-2"><span className="w-4 font-mono text-[var(--muted-foreground)]">{i + 1}</span><a className="font-mono" href={`https://dev.to/${encodeURIComponent(l.author)}`} target="_blank" rel="noopener">@{l.author}</a><span className="ml-auto tabular-nums">{l.reactions} rx · {l.comments} cm · {l.articles} art</span></li>)}</ul>
               </div>
             ))}
           </section>
@@ -94,7 +94,7 @@ function Table({ rows, gap = false }: { rows: any[]; gap?: boolean }) {
         <tbody>{rows.map((l) => (
           <tr key={l.author} className="border-t border-[var(--border)]">
             <td className="px-2 py-1 text-right font-mono tabular-nums text-[var(--muted-foreground)]">{l.rank}</td>
-            <td className="px-2 py-1"><a className="font-mono" href={`https://dev.to/${l.author}`} target="_blank" rel="noopener">@{l.author}</a></td>
+            <td className="px-2 py-1"><a className="font-mono" href={`https://dev.to/${encodeURIComponent(l.author)}`} target="_blank" rel="noopener">@{l.author}</a></td>
             <td className="px-2 py-1 text-right tabular-nums">{l.reactions}</td><td className="px-2 py-1 text-right tabular-nums">{l.comments}</td><td className="px-2 py-1 text-right tabular-nums">{l.articles}</td>
             <td className="px-2 py-1 text-right tabular-nums">{gap ? `+${l.gap}` : l.rxPerArticle}</td>
             <td className="px-2 py-1 text-[11px] text-[var(--muted-foreground)]">{gap ? "" : (l.tags ?? []).map((t: string) => `#${t}`).join(" ")}</td>
