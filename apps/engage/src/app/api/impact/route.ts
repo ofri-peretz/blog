@@ -93,13 +93,15 @@ async function build() {
   const downstream = {
     lifts: lifts.slice(0, 12),
     liftsInWindow: recent.length,
-    reach: reach
-      ? {
-          sessions: reach.sessions,
-          clicks: reach.clicks,
-          classifiedSince: "2026-09-04",
-        }
-      : null,
+    reach:
+      // devtoReach() never throws; both queries failing is the "unreachable" case.
+      reach && (reach.sessions != null || reach.clicks)
+        ? {
+            sessions: reach.sessions,
+            clicks: reach.clicks,
+            classifiedSince: "2026-09-04",
+          }
+        : null,
     followers: profile?.followers
       ? {
           commented: profile.followers.commentersWhoFollow ?? null,

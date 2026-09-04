@@ -745,6 +745,10 @@ export interface DevtoReach {
  * event from `/go/`; until 2026-09-04 that event carried no user agent and
  * PostHog flagged every one a bot (1,192 of 1,192), so the human count reads
  * low for the 30 days after that fix and the panel says so.
+ *
+ * `ifNull` on the human side: in ClickHouse `NULL != true` is NULL, which
+ * countIf treats as false, so an event with no verdict would land in neither
+ * bucket and humans + bots would not add up to the clicks.
  */
 export async function devtoReach(): Promise<DevtoReach> {
   const [sessions, clicks] = await Promise.all([
@@ -760,7 +764,7 @@ export async function devtoReach(): Promise<DevtoReach> {
           OR properties.$current_url LIKE '%utm_source=devto%')
     `),
     hogql(`
-      SELECT countIf(properties.$virt_is_bot != true) AS humans,
+      SELECT countIf(ifNull(properties.$virt_is_bot, false) != true) AS humans,
              countIf(properties.$virt_is_bot = true) AS bots
       FROM events
       WHERE event = 'short_link_click'
