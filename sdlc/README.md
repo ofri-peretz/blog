@@ -24,7 +24,7 @@ proposed it — by someone who was not in the room.
 | 2   | Design   | `sdlc/spec/<slug>.md`                   | Completeness; escalating evidence that kills the claim | Gathering ground truth from source, never memory       |
 | 3   | Build    | `sdlc/plan/<slug>.md` + the article     | Interrogating the outline; voice                       | Writing strictly against the spec                      |
 | 4   | Test     | `sdlc/review/<slug>.json` + frontmatter | New lenses; adjudicating an unfair score               | Running the panel until all five lenses clear          |
-| 5   | Deploy   | `REVIEW.md` + the PR thread             | Approving and merging — the only publish route         | Reviewing, fixing its own findings; never approving    |
+| 5   | Deploy   | `REVIEW.md` + the PR thread             | Approving, merging, and dispatching the publish run    | Reviewing, fixing its own findings; never approving    |
 | 6   | Maintain | `sdlc/incident/<date>-<slug>.md`        | Triage: rewrite, retire, or ignore                     | Detecting on schedule; opening an intent with evidence |
 
 ## The rules that are enforced, not asserted
