@@ -39,6 +39,8 @@ default is not evidence; the compiled artefact is.
 | plugin's declared ESLint range                 | `^8.0.0 \|\| ^9.0.0 \|\| ^10.0.0`                                     | `node -p "require('./package.json').peerDependencies.eslint"` in the plugin package   | plugin 1.3.6 | 2026-09-06 |
 | plugin's declared Node minimum                 | `>=18.0.0`                                                            | `node -p "require('./package.json').engines.node"` in the plugin package              | plugin 1.3.6 | 2026-09-06 |
 | an oxlint entry point exists                   | `./oxlint` subpath exporting the whole plugin object                  | read `src/oxlint.ts`; `exports` map in the plugin's `package.json`                    | plugin 1.3.6 | 2026-09-06 |
+| `jsPlugins` is a real oxlint config key        | present in oxlint's own JSON schema, with a worked example            | `node -p "Object.keys(require('oxlint/configuration_schema.json').properties)"`       | oxlint 1.74.0 | 2026-09-06 |
+| JS plugins are alpha, not semver-bound         | "JS plugins are in alpha and not subject to semver"                   | read the `jsPlugins` `description` in that same schema file                            | oxlint 1.74.0 | 2026-09-06 |
 
 ## What this changes in the article
 
@@ -51,6 +53,16 @@ telling an ESLint 8 reader nothing is worse than telling them no.
 
 **The step-count aside.** It survives unchanged, and that is the point of
 recording it. It was the one sentence that could have been correct by luck.
+
+**The token ceiling.** The draft said `maxOutputTokens: 4096`. There is no
+measurement behind 4096 and there could not be — the right ceiling is a
+property of the caller's workload, not of the SDK. A specific number with no
+row under it is a fabricated recommendation wearing the costume of a default,
+so the prose now names the *criterion* instead of a value.
+
+**The oxlint line.** `jsPlugins` checks out against oxlint's own schema, but
+the same schema says JS plugins are alpha and outside semver. Printing the key
+without that caveat would have been true and still misleading.
 
 ## Known limits of this spec
 

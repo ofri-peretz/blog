@@ -38,7 +38,7 @@ await generateText({ model, prompt }); // no maxOutputTokens
 
 **Why it survives review:** output length reads as a *quality* knob, not a resource bound. But this is billed per token. An unbounded output is an unbounded invoice, and nothing in the diff looks like money.
 
-Fix: `maxOutputTokens: 4096`. Note the rename — this was `maxTokens` in v4. Guidance written against v4 still *reads* correct in review and bounds nothing.
+Fix: set `maxOutputTokens` to the longest answer you would actually pay for — there is no correct number, only the difference between a ceiling and none. Note the rename: this was `maxTokens` in v4. Guidance written against v4 still *reads* correct in review and bounds nothing.
 
 ---
 
@@ -130,7 +130,7 @@ export default [
 }
 ```
 
-On oxlint, add `"jsPlugins": ["eslint-plugin-vercel-ai-security/oxlint"]`.
+On oxlint, add `"jsPlugins": ["eslint-plugin-vercel-ai-security/oxlint"]` — alpha, and not under semver.
 
 Rule docs: [require-max-tokens](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-max-tokens.md) · [require-request-timeout](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-request-timeout.md) · [require-abort-signal](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-abort-signal.md)
 
