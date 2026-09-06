@@ -63,7 +63,8 @@ would cost more credibility than it buys attention.
 2. Five-reviewer panel via the Workflow tool, structured output per lens.
 3. Revise; re-run until every lens is ≥9.5. One to three rounds is typical.
 4. Cover image — Ofri's step.
-5. PR. Merge publishes to Dev.to.
+5. PR and merge. Publishing to Dev.to is a separate manual
+   `publish-devto.yml` dispatch.
 
 ## Gates
 

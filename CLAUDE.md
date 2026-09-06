@@ -1,7 +1,8 @@
 # CLAUDE.md — agent context for ofri-peretz/blog
 
-This repo is the **canonical, public** home of the blog. Articles here
-auto-publish to dev.to. Two other checkouts contain article-shaped files and
+This repo is the **canonical, public** home of the blog. Articles here are the
+source of truth for the dev.to copies, which are published by manual dispatch
+(see [Shipping](#shipping)). Two other checkouts contain article-shaped files and
 are **legacy — never edit articles there**: `agents/apps/blog/` (private
 monorepo, publish workflows disabled) and the archived `ofriperetz-dev` repo.
 
@@ -107,10 +108,20 @@ one is half-done.
 
 ## Shipping
 
-`main` is protected; required check is `build-test-lint`. Branch → commit →
-push → PR → wait for green → squash-merge. Merging `main` with a change under
-`apps/blog/content/articles/**.md` fires `publish-devto.yml`, which PUTs to
-dev.to using each article's `devto_id`.
+`main` is protected; required checks are `build-test`, `eslint` and `oxlint`.
+Branch → commit → push → PR → wait for green → squash-merge.
+**Merging publishes nothing.**
+
+Dev.to publishing is a manual `workflow_dispatch` on `publish-devto.yml`,
+which PUTs to dev.to using each article's `devto_id`. Two inputs: `dry_run`
+defaults to **true** (preview without calling the Dev.to API), and the
+optional `article` slug scopes the run to one article — leaving it empty
+targets the whole corpus.
+
+The push trigger was removed 2026-07-19 after the Capsule-0 incident: merging
+PR #62 auto-fired a live bulk publish of the whole corpus, cancelled at 6
+articles (see `agents/footprint/incident-ledger.md`). Publishing follows the
+controlled-capsule model — fire the workflow by hand, one capsule at a time.
 
 Commit subject is `<type>(<scope>): <subject>`. Never `--no-verify`.
 

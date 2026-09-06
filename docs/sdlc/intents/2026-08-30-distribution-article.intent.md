@@ -38,7 +38,8 @@ show screenshots of findings could show the finding instead.
   are destinations you navigate to. The claim is about the linter running
   inline on the rule the paragraph is arguing, not that nobody thought of this.
 - The slug freezes at publish, so no number goes in it.
-- Publishing is Ofri's call; merging is what pushes to Dev.to.
+- Publishing is Ofri's call: a manual `publish-devto.yml` dispatch, separate
+  from the merge.
 
 ## How we will know it worked
 
