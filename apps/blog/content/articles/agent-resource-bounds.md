@@ -94,10 +94,15 @@ This is OWASP LLM10, Unbounded Consumption — [the full top-10 mapping for this
 
 ```bash
 npm install -D eslint-plugin-vercel-ai-security
+yarn add -D eslint-plugin-vercel-ai-security
+pnpm add -D eslint-plugin-vercel-ai-security
+bun add -d eslint-plugin-vercel-ai-security
 ```
 
+Node 18+. The peer range is ESLint 8 ∥ 9 ∥ 10, so both config formats work.
+
 ```js
-// eslint.config.mjs
+// eslint.config.mjs — ESLint 9 · 10
 import vercelAi from 'eslint-plugin-vercel-ai-security';
 
 export default [
@@ -112,6 +117,20 @@ export default [
   },
 ];
 ```
+
+```json
+// .eslintrc.json — ESLint 8
+{
+  "plugins": ["vercel-ai-security"],
+  "rules": {
+    "vercel-ai-security/require-max-tokens": "error",
+    "vercel-ai-security/require-request-timeout": "warn",
+    "vercel-ai-security/require-abort-signal": "warn"
+  }
+}
+```
+
+On oxlint, add `"jsPlugins": ["eslint-plugin-vercel-ai-security/oxlint"]`.
 
 Rule docs: [require-max-tokens](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-max-tokens.md) · [require-request-timeout](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-request-timeout.md) · [require-abort-signal](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-abort-signal.md)
 
