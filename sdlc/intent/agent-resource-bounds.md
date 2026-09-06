@@ -50,7 +50,7 @@ us a fourth rule to sell and is the reason the other three are credible.
 All four were checked against installed artefacts rather than documentation.
 See [the spec](../spec/agent-resource-bounds.md) for the commands.
 
-## What would falsify this
+## Kill criterion
 
 A future SDK minor that gives `stopWhen` a different default, or that restores
 `maxTokens` as an alias, breaks a specific sentence rather than the thesis. The
