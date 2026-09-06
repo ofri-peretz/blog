@@ -22,7 +22,7 @@ series: null
 
 `generateText` with a model and a prompt and nothing else is a valid call. TypeScript is satisfied. The type system has no opinion about how many tokens come back, how long it takes, or who pays for the answer nobody reads.
 
-Three rules in `eslint-plugin-vercel-ai-security` fire on a call written that way, and they map to three *different* CWEs — 770, 400 and 404. (A CWE is a label, not a verdict — [what the taxonomy actually claims](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — and counting them is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics).) Same missing config object. Three separate ways to lose.
+Three rules in `eslint-plugin-vercel-ai-security` fire on a call written that way, and they map to three *different* CWEs — 770, 400 and 404. (A CWE is a label, not a verdict — [what the taxonomy actually claims](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — and counting CWEs is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics).) Same missing config object. Three separate ways to lose.
 
 A note on the bound people expect to see here: step count. The SDK already defaults `stopWhen` to `stepCountIs(1)`, so a tool-calling loop does not run away on its own — that hole gets opened deliberately, by raising the ceiling, not by forgetting it. The three below are the ones that are genuinely unbounded when you say nothing.
 
@@ -86,7 +86,7 @@ I don't trust an allocation whose ceiling I can't see — the same instinct that
 
 Classic resource-exhaustion review asks whether an attacker can make something loop forever. For an LLM call, the answer is worse — you don't need an attacker. A verbose model and one retry will do it, and the meter runs the entire time.
 
-This is [OWASP LLM10](https://ofriperetz.dev/articles/owasp-top-10-explained), Unbounded Consumption — [the full top-10 mapping for this SDK](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) covers the other nine. That is why these are security rules and not style rules. CWE-770, 400 and 404 are the same sentence in three grammars — the same move as [injection across nine interpreters](https://ofriperetz.dev/articles/injection-beyond-sql). For governance rather than linting, that is [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework) territory.
+This is [OWASP LLM10](https://ofriperetz.dev/articles/owasp-top-10-explained), Unbounded Consumption — [the full top-10 mapping for this SDK](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) covers the other nine, and for governance rather than linting, [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework) is the place to look. That is why these are security rules and not style rules. It is the move [injection across nine interpreters](https://ofriperetz.dev/articles/injection-beyond-sql) makes too: CWE-770, 400 and 404 are the same sentence in three grammars.
 
 ---
 
