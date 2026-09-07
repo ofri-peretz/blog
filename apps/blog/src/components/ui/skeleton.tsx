@@ -5,12 +5,11 @@
 // packages/ui/src/primitives/skeleton.tsx — replaces the old shadcn
 // copy; the vendored code-block consumes variant="code-block").
 // Copy-with-provenance until the registry install path replaces it.
-// Local deltas: the `cn` import path,
-// `./skeleton-variants.js` → `./skeleton-variants` (both references), and
-// `max-w-full` on the base class — see below. That last one is a real fix,
-// not a port detail, and belongs upstream in the DS: sent as
-// ofri-peretz/interlace#83. Once that lands, re-vendor and this delta
-// disappears.
+// Local deltas: the `cn` import path, and
+// `./skeleton-variants.js` → `./skeleton-variants` (both references).
+// The `max-w-full` reflow cap is no longer a delta: it went upstream as
+// ofri-peretz/interlace#83 and canonical now carries it at BOTH call sites,
+// which is why the second one is capped here too.
 // ⟨/vendored⟩
  * @interlace/ui — Skeleton
  *
@@ -232,7 +231,9 @@ function CompositeSkeleton({
       aria-busy="true"
       aria-live="polite"
       className={cn(
-        "animate-pulse bg-muted",
+        // Same reflow cap as the base above — a `w-80` skeleton at text 200%
+        // is 640px on a 320px viewport, which scrolls the document.
+        "max-w-full animate-pulse bg-muted",
         SKELETON_VARIANT_CLASSES[variant],
         "flex flex-col",
         className,
