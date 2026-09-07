@@ -109,6 +109,8 @@ one is half-done.
 ## Shipping
 
 `main` is protected; required checks are `build-test`, `eslint` and `oxlint`.
+`ci.yml` also runs `browser-audit`, which is deliberately NOT gating — it reports
+and does not block, so do not add it to the list above.
 Branch → commit → push → PR → wait for green → squash-merge.
 **Merging publishes nothing.**
 
