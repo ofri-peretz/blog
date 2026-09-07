@@ -305,8 +305,7 @@ All three plugins ship the same contract:
 - 🔍 [I inherited a NestJS codebase — the first lint run found 6 vulnerabilities](https://ofriperetz.dev/articles/i-inherited-a-nestjs-codebase-the-first-lint-run-found-6-vulnerabilities)
 
 ::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-secure-coding"}
-📦 `npm i -D eslint-plugin-secure-coding` — the one install that turns the
-30-minute audit into a gate that runs on every commit after it.
+📦 `npm i -D eslint-plugin-secure-coding` — the one install that turns the 30-minute audit into a gate that runs on every commit after it.
 ::
 
 **Then run the four commands on the worst service you've inherited and tell me the
