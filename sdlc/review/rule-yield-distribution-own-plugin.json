@@ -1,0 +1,51 @@
+{
+  "slug": "rule-yield-distribution-own-plugin",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/rule-yield-distribution-own-plugin.md",
+  "reviewed": "2026-09-07",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "instrument, before a word was written: the first harness reported 0 findings on 100 files with all fourteen rules zero-yield. Two stacked defects, both failing toward 'nothing to report'. `lintFiles` with a glob matched nothing where `find` located 100 files, and with `cwd` left at the plugin repo ESLint ignored every file as 'outside of base path' — an explanation carried in messages the loop was discarding because their `ruleId` was null. Fixed by passing an explicit file list, setting `cwd` to the target, and printing null-ruleId messages instead of skipping them.",
+    "method, added rather than corrected: a canary component that must trip at least two rules. It reported zero under the broken harness, which is what exposed the defect. No corpus figure was recorded until the canary reported six findings. The canary is now part of the article rather than a footnote to it."
+  ],
+  "checked_and_found_correct": [
+    "Every figure in the article re-derived from a single harness run on 2026-09-07: 100 files scanned, 54 with findings, 308 total. Per-rule counts and file counts as tabled — react-no-inline-functions 113/38, react-render-optimization 71/27, hooks-exhaustive-deps 42/15, require-data-slot 35/14, no-unnecessary-rerenders 32/12, no-inline-style 9/1, no-raw-color-literal 4/2, no-arbitrary-token-class 2/2.",
+    "Arithmetic checked independently of the harness: 113+71 = 184, 184/308 = 59.7%; top four 261/308 = 84.7%; mean 308/14 = 22.0; top rule 113 is 5.1x the mean. The article's '59.7%', '84.7%', 'mean is 22' and 'five times it' all hold.",
+    "The 14-rule set is the bare rule names of eslint-plugin-react-features minus those of eslint-plugin-react. The plugin also exports `react/`-prefixed aliases of the shared rules; a naive set difference returns 75 and is wrong. The count is 14, not the 10 recorded in the August planning note — the plugin gained four rules since.",
+    "The intent's kill criterion was run against the evidence rather than assumed. Flatness: top rule 113 against a 44.0 threshold (twice the mean) — survives. Single-file artifact: the top two rules fire across 38 and 27 distinct files — survives. Recorded in the spec.",
+    "The zero-yield claim is checked in both directions. All six silent rules ship invalid-case fixtures (3 to 15 each), so each one demonstrably can fire; 'waiting, not dead' is measured, not asserted."
+  ],
+  "not_re_verified": [
+    "The August 2026 figures — 1,279 findings over 401 .tsx across four private repos — were deliberately NOT re-derived and are not quoted anywhere in the article. Different corpus, and a different rule count. Mixing them with these numbers would be the error the article warns about.",
+    "Whether this concentration generalises beyond one public tree. The article calls it a shape rather than a rate and sends the reader to their own corpus; no claim of generality is made or supported."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "The title carries the whole finding in nine words and a number that is surprising in the right direction — against the author's own product. The opening refuses the flattering read immediately: a README's rule count is set against what the rules actually did. The strongest move is that the unflattering half is the subject rather than a disclosure buried near the end."
+    },
+    "security_correctness": {
+      "score": 9.6,
+      "why": "Read as measurement correctness. The concentration is checked against the two readings that would make it false — one file counted many times, and a flat distribution — and both checks are shown, not claimed. The article then applies the same scepticism against itself in the opposite direction by flagging that no-inline-style's 9 findings ARE a single file and must not be read as codebase-wide. Short of the top only because a single corpus cannot establish the generality the framing occasionally reaches toward."
+    },
+    "structure_framing_voice": {
+      "score": 9.5,
+      "why": "Table first, then the three questions a sceptic asks in the order they occur: is the total the right number, is the concentration real, and what does a zero mean. 'That is not a rule list. That is a power curve with a rule list printed over it' is the quotable line and it earns its place by being the thesis rather than an ornament. Held at the floor because the method section carries a second, nearly independent argument about instrument failure that pulls focus from the distribution in the final third."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "The harness is plain ESLint 9 flat-config API with no bespoke tooling, and the two lines that actually break for other people — `cwd` and the explicit file list — are called out inline with the reason. Held at the floor because the snippet is ESLint-9-shaped and the article does not state the ESLint range it was run under, so a reader on 8 with eslintrc has to adapt it without being told."
+    },
+    "reproducibility": {
+      "score": 9.8,
+      "why": "The highest score here and the reason the article exists in this form. The corpus was deliberately switched from four private repos to one public tree so a reader can clone it and re-run. The harness is printed. Both instrument defects are published with the wrong answer they produced, which is the rare form of reproducibility that lets someone else recognise the same failure. The canary makes the whole thing falsifiable in four lines."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear",
+  "publish_conditions": [
+    "BLOCKING: no cover image at apps/blog/public/cdn/blog-cover-image/rule-yield-distribution-own-plugin.jpg. publish-gate requires one.",
+    "BLOCKING: the independent nine-reviewer prose gate (scripts/devto-review.ts) has NOT been run — the reviewer backend was returning USAGE LIMIT at the time of writing. The five lenses above are the SDLC chain's own review and are not a substitute for it. Do not promote to `ready` until devto-review returns a gate score with zero blockers."
+  ]
+}

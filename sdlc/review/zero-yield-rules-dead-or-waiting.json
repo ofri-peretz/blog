@@ -1,0 +1,50 @@
+{
+  "slug": "zero-yield-rules-dead-or-waiting",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/zero-yield-rules-dead-or-waiting.md",
+  "reviewed": "2026-09-07",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "cover hook, twice, both caught by the mechanical gates rather than by reading it. The first hook lit 5 of 6 blocks on the survivor strip and validate-hooks flagged it as reading inverted — a strip that is almost entirely lit says 'nearly all survived', the opposite of the finding. Reframed onto the one rule that could not fire: 1 of 6. The replacement then drew a hedging note on 'could never fire'; the underlying fact is not hedged, so the wording is now the definite 'cannot fire at all'. Final gate: 0 errors, 0 warnings."
+  ],
+  "checked_and_found_correct": [
+    "All six rules were run individually through ESLint.lintText on a one-line fixture drawn from that rule's own `invalid` test block, at error, with no other rule enabled. Five fired: react-class-to-hooks, no-default-test-id, no-is-prefix-prop, no-kind-prop-discriminator, no-wrapper-sub-component. Verified 2026-09-07.",
+    "required-attributes did NOT fire on `<Button />` bare. Its own test fixture supplies options: [{ attributes: [{ attribute: 'type' }] }]. Re-running the identical fixture with those options produces one error. Both states measured, not inferred — the bare run and the configured run were separate executions.",
+    "The taxonomy in the article matches the measurement exactly: 5 waiting, 1 unconfigured, 0 dead. The article does not claim any rule is dead, which is correct — none was.",
+    "The six rules are the zero-yield set from the companion measurement in sdlc/spec/rule-yield-distribution-own-plugin.md, not a separately chosen list. Same run, same corpus.",
+    "Every fixture printed in the article's table is the one actually executed, transcribed from the rule's test file rather than paraphrased."
+  ],
+  "not_re_verified": [
+    "Whether any rule in the wider 122-rule plugin is genuinely dead. The article's 'none dead' is scoped to these six and says so; it is not a claim about the plugin.",
+    "Whether required-attributes is the only options-gated rule in the plugin. Not surveyed. The article presents it as one instance of a category, not as unique."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.5,
+      "why": "The title states a result that cannot be guessed from the premise — six found nothing, five were waiting — and the gap between six and five is the whole article. It opens by naming the reader's actual instinct (switch the six off) and then says how often that instinct is wrong, which buys the taxonomy a reason to exist before the taxonomy arrives. Held at the floor because the subject is inherently a maintenance chore rather than an outage; the hook is as strong as the material allows, not stronger."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "Read as measurement correctness, and the discipline here is the point. Each of the six was executed, not reasoned about, and the one anomaly was chased to its cause in the rule's own test file rather than written up as a defect. The article is careful to say required-attributes' behaviour is correct — the rule has nothing to enforce until configured — and locates the real problem in what the report cannot distinguish. It also refuses to overclaim: none of the six was dead, and the piece does not manufacture one."
+    },
+    "structure_framing_voice": {
+      "score": 9.5,
+      "why": "Taxonomy, then method, then results, then the anomaly — each section answering the question the previous one raises. 'A bug gets noticed' is the load-bearing line and it earns the section it closes, because it names precisely why an options-gated rule at error is worse than a broken one. Held at the floor because the closing habit section reaches one level up to harness-level false zeros, which is a real connection but arrives as a second thesis in the last two paragraphs."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "The snippet is plain ESLint flat-config API with no bespoke tooling, and the one line that silently breaks for other people — cwd, without which every result is 'outside of base path' — is called out inline with the reason rather than left to be discovered. Held at the floor for the same reason as its companion: the example is ESLint-9-shaped and the article does not state the range it was run under."
+    },
+    "reproducibility": {
+      "score": 9.7,
+      "why": "Every fixture in the table is the exact string executed, so a reader can paste any row and get the same answer in seconds — which is the article's own recommended method applied to itself. The anomaly is reproducible in both directions: bare produces silence, configured produces one error, and both runs are recorded in the spec. Short of the top only because the six-rule set depends on the companion article's corpus run rather than standing alone."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear",
+  "publish_conditions": [
+    "Links rule-yield-distribution-own-plugin, which is queued and unpublished. Must publish AFTER it, or the link 404s. Same sequencing class as agent-resource-bounds.",
+    "The independent nine-reviewer prose gate has been dispatched but had not returned at the time this artifact was written. Do not promote to `ready` until devto-review returns a gate score with zero blockers."
+  ]
+}
