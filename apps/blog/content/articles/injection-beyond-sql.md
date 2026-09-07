@@ -46,11 +46,11 @@ The taxonomy already knew this. [CWE-943](https://cwe.mitre.org/data/definitions
 | Format string      | [CWE-134](https://cwe.mitre.org/data/definitions/134.html) | the format specifier parser  |
 | Object / prototype | [CWE-915](https://cwe.mitre.org/data/definitions/915.html) | the JavaScript engine itself |
 
-Be precise about what that parent covers, because the honest version is narrower than the tidy one. MITRE lists exactly four children under CWE-943 — check it yourself in the Research Concepts view (View-1000) on that page — and all four are query languages: [SQL](/articles/sql-injection-node-postgres-pattern) (CWE-89), LDAP (CWE-90), XPath (CWE-643) and XQuery ([CWE-652](https://cwe.mitre.org/data/definitions/652.html)).
+Be precise about what that parent covers: the honest version is narrower than the tidy one. MITRE lists exactly four children under CWE-943 — check the Research Concepts view (View-1000) on that page — and all four are query languages: [SQL](/articles/sql-injection-node-postgres-pattern) (CWE-89), LDAP (CWE-90), XPath (CWE-643) and XQuery ([CWE-652](https://cwe.mitre.org/data/definitions/652.html)).
 
-Everything else in the table is _commonly mapped_ there rather than formally filed under it. GraphQL has no dedicated CWE at all; neither do the [NoSQL operator injections](/articles/getting-started-eslint-plugin-mongodb-security). And XXE, format string and prototype pollution are not siblings in any sense — they are separate defects that happen to share a blind spot, not a parent.
+Everything else in the table is _commonly mapped_ there, not formally filed under it. GraphQL has no dedicated CWE at all; neither do the [NoSQL operator injections](/articles/getting-started-eslint-plugin-mongodb-security). And XXE, format string and prototype pollution are not siblings — they are separate defects that happen to share a blind spot, not a parent.
 
-Eight interpreters plus SQL, and two distinct shapes between them — data-query injection (the CWE-943 family) and code/context injection (everything else in the table). SQL got the name people recognise. The parser inside your LDAP filter did not, and that is the entire reason it goes unaudited.
+Eight interpreters plus SQL, in two distinct shapes — data-query injection (the CWE-943 family) and code/context injection (everything else in the table). SQL got the name people recognise. The parser inside your LDAP filter did not, and that is the entire reason it goes unaudited.
 
 ## Three that fail in ways SQL does not {#three}
 
@@ -60,13 +60,13 @@ Eight interpreters plus SQL, and two distinct shapes between them — data-query
 
 **Template injection escalates further than SQL.** [PortSwigger's server-side template injection research](https://portswigger.net/research/server-side-template-injection) showed a template engine will hand over remote code execution as readily as a database hands over rows. A templating call is not a formatting convenience; it is an evaluator.
 
-GraphQL is the odd one, because injection is only half of it. A query the client shapes is also a cost problem — the caller, not you, decides how many nested resolvers run. That is resource exhaustion ([CWE-400](https://cwe.mitre.org/data/definitions/400.html)) wearing a query's clothes, and it is why a depth or cost limit is a security control rather than a performance tweak.
+GraphQL is the odd one, because injection is only half of it. A query the client shapes is also a cost problem — the caller, not you, decides how many nested resolvers run. That is resource exhaustion ([CWE-400](https://cwe.mitre.org/data/definitions/400.html)) wearing a query's clothes, and why a depth limit is a security control, not a performance tweak.
 
 ## Why grep finds SQL and misses the rest {#why}
 
 [OWASP](https://owasp.org/Top10/A03_2021-Injection/) folds this whole family into A03. Most tooling does not, because a pattern matcher looks for a _sink it has been taught_ — a `query(`, an `execute(`. Nobody teaches it `XPathEvaluator`, `libxmljs`, an LDAP `filter:`, a `compile(`.
 
-That is also the honest limit of pattern matching generally. Seeing a `+` flowing into a sink does not prove the value came from a request, and it goes quiet when the concatenation happens one helper away. That gap between "looks dangerous" and "is reachable" is the whole subject of [taint analysis](/articles/taint-vs-heuristic-detection), and it is why a rule count is a poor proxy for coverage.
+That is also the honest limit of pattern matching. Seeing a `+` flowing into a sink does not prove the value came from a request, and it goes quiet when the concatenation happens one helper away. That gap between "looks dangerous" and "is reachable" is the whole subject of [taint analysis](/articles/taint-vs-heuristic-detection).
 
 ## What to actually do {#do}
 
