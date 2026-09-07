@@ -1,11 +1,21 @@
-'use client';
+"use client";
 
 // ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/dialog.tsx — the gold-standard R1–R26
 // reference). Copy-with-provenance until the registry install path
 // replaces it — fix bugs upstream first, then re-vendor. Local
-// deltas: the `cn` import path only.
+// deltas: the `cn` import path, and the popup's desktop width cap
+// is `--container-dialog` (65ch) rather than canonical's
+// `--container-prose`. That second one is deliberate and stays:
+// this app narrowed prose to 52ch for reading measure, and the
+// dialog consumed the same token, which silently narrowed every
+// dialog at sm+ — including the command palette, where a shorter
+// box truncates the titles and paths it exists to list. A reading
+// measure is for reading. The token is defined in globals.css with
+// the same reasoning; declared here so the weekly drift check
+// reads it as a delta rather than reporting it every week
+// (ofri-peretz/blog#272).
 // ⟨/vendored⟩
 
 /**
@@ -51,9 +61,9 @@
  * Consumer-side, this file is the answer to "what does a state-of-the-art primitive look like?"
  */
 
-import * as React from 'react';
-import { Dialog as BaseDialog } from '@base-ui/react/dialog';
-import { XIcon } from 'lucide-react';
+import * as React from "react";
+import { Dialog as BaseDialog } from "@base-ui/react/dialog";
+import { XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -69,9 +79,7 @@ function Dialog(props: React.ComponentProps<typeof BaseDialog.Root>) {
   return <BaseDialog.Root data-slot="dialog" {...props} />;
 }
 
-function DialogTrigger(
-  props: React.ComponentProps<typeof BaseDialog.Trigger>,
-) {
+function DialogTrigger(props: React.ComponentProps<typeof BaseDialog.Trigger>) {
   return <BaseDialog.Trigger data-slot="dialog-trigger" {...props} />;
 }
 
@@ -94,7 +102,7 @@ function DialogOverlay({
         // `bg-black/50` is intentional and NOT a token miss: a scrim must
         // darken the page in BOTH themes. A theme-paired token would invert
         // in dark mode and wash the surface out instead of dimming it.
-        'data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 fixed inset-0 z-50 bg-black/50',
+        "data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
         className,
       )}
       {...props}
@@ -117,7 +125,7 @@ function DialogContent({
         data-slot="dialog-content"
         data-min-viewport={String(MIN_VIEWPORT)}
         className={cn(
-          'bg-background data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-(--container-dialog)',
+          "bg-background data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-(--container-dialog)",
           className,
         )}
         {...props}
@@ -137,22 +145,22 @@ function DialogContent({
   );
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
+function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn('flex flex-col gap-2 text-center sm:text-left', className)}
+      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
       {...props}
     />
   );
 }
 
-function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
+function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
+        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}
@@ -167,7 +175,7 @@ function DialogTitle({
   return (
     <BaseDialog.Title
       data-slot="dialog-title"
-      className={cn('text-lg leading-none font-semibold', className)}
+      className={cn("text-lg leading-none font-semibold", className)}
       {...props}
     />
   );
@@ -180,7 +188,7 @@ function DialogDescription({
   return (
     <BaseDialog.Description
       data-slot="dialog-description"
-      className={cn('text-muted-foreground text-sm', className)}
+      className={cn("text-muted-foreground text-sm", className)}
       {...props}
     />
   );
