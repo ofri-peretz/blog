@@ -26,7 +26,7 @@ who maintain a plugin and quote its rule count in a README.
 
 Because the honest version of this article requires pointing the measurement at
 your own plugin and publishing the unflattering half. Anyone can measure a
-competitor's distribution; almost nobody publishes their own, because the
+someone else's distribution; almost nobody publishes their own, because the
 result is that most of your rules did nothing. We have the plugin, the corpus,
 and an existing published position that rule counts are a poor proxy — this is
 that argument with the receipts attached.

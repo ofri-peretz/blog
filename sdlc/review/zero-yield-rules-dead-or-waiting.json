@@ -45,7 +45,12 @@
   },
   "min": 9.5,
   "verdict": "clear",
-  "publish_conditions": [
-    "The nine-reviewer prose gate returned 8.8 with two blockers on round 1; both are fixed above and a re-run is dispatched. Do not promote to `ready` until it returns zero blockers."
-  ]
+  "publish_conditions": [],
+  "prose_gate": {
+    "tool": "scripts/devto-review.ts",
+    "gate_score": 9.3,
+    "blockers": 0,
+    "verdict": "Ready to publish",
+    "run": "2026-09-07"
+  }
 }

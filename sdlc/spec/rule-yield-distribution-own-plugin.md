@@ -25,20 +25,20 @@ prints any message with a null `ruleId` instead of skipping it. Both choices are
 corrections to defects in the first version of this measurement; see Instrument
 defects below.
 
-| Claim | Value | Command | Verified |
-| --- | --- | --- | --- |
-| rules unique to react-features (no eslint-plugin-react counterpart) | 14 | bare rule names of `eslint-plugin-react-features` minus rule names of `eslint-plugin-react` | 2026-09-07 |
-| files scanned | 100 `.tsx` | `find apps/blog/src -name '*.tsx'` | 2026-09-07 |
-| files with at least one finding | 54 | harness output | 2026-09-07 |
-| total findings | 308 | harness output | 2026-09-07 |
-| top rule | `react-no-inline-functions`, 113 findings across 38 files | harness output | 2026-09-07 |
-| second rule | `react-render-optimization`, 71 across 27 files | harness output | 2026-09-07 |
-| remaining non-zero | hooks-exhaustive-deps 42/15, require-data-slot 35/14, no-unnecessary-rerenders 32/12, no-inline-style 9/1, no-raw-color-literal 4/2, no-arbitrary-token-class 2/2 | harness output | 2026-09-07 |
-| zero-yield rules | 6 of 14 (42.9%): required-attributes, react-class-to-hooks, no-default-test-id, no-is-prefix-prop, no-kind-prop-discriminator, no-wrapper-sub-component | harness output | 2026-09-07 |
-| top-1 share | 36.7% | 113/308 | 2026-09-07 |
-| top-2 share | 59.7% | 184/308 | 2026-09-07 |
-| top-4 share | 84.7% | 261/308 | 2026-09-07 |
-| mean findings per rule | 22.0 | 308/14 | 2026-09-07 |
+| Claim | Value | Command | Version | Verified |
+| --- | --- | --- | --- | --- |
+| rules unique to react-features (no eslint-plugin-react counterpart) | 14 | bare rule names of `eslint-plugin-react-features` minus rule names of `eslint-plugin-react` | react-features 2.1.0 (workspace) | 2026-09-07 |
+| files scanned | 100 `.tsx` | `find apps/blog/src -name '*.tsx'` | react-features 2.1.0 (workspace) | 2026-09-07 |
+| files with at least one finding | 54 | harness output | react-features 2.1.0 (workspace) | 2026-09-07 |
+| total findings | 308 | harness output | react-features 2.1.0 (workspace) | 2026-09-07 |
+| top rule | `react-no-inline-functions`, 113 findings across 38 files | harness output | react-features 2.1.0 (workspace) | 2026-09-07 |
+| second rule | `react-render-optimization`, 71 across 27 files | harness output | react-features 2.1.0 (workspace) | 2026-09-07 |
+| remaining non-zero | hooks-exhaustive-deps 42/15, require-data-slot 35/14, no-unnecessary-rerenders 32/12, no-inline-style 9/1, no-raw-color-literal 4/2, no-arbitrary-token-class 2/2 | harness output | react-features 2.1.0 (workspace) | 2026-09-07 |
+| zero-yield rules | 6 of 14 (42.9%): required-attributes, react-class-to-hooks, no-default-test-id, no-is-prefix-prop, no-kind-prop-discriminator, no-wrapper-sub-component | harness output | react-features 2.1.0 (workspace) | 2026-09-07 |
+| top-1 share | 36.7% | 113/308 | react-features 2.1.0 (workspace) | 2026-09-07 |
+| top-2 share | 59.7% | 184/308 | react-features 2.1.0 (workspace) | 2026-09-07 |
+| top-4 share | 84.7% | 261/308 | react-features 2.1.0 (workspace) | 2026-09-07 |
+| mean findings per rule | 22.0 | 308/14 | react-features 2.1.0 (workspace) | 2026-09-07 |
 
 ## Kill criterion, tested
 

@@ -45,7 +45,13 @@
   "min": 9.5,
   "verdict": "clear",
   "publish_conditions": [
-    "BLOCKING: no cover image at apps/blog/public/cdn/blog-cover-image/rule-yield-distribution-own-plugin.jpg. publish-gate requires one.",
-    "BLOCKING: the independent nine-reviewer prose gate (scripts/devto-review.ts) has NOT been run — the reviewer backend was returning USAGE LIMIT at the time of writing. The five lenses above are the SDLC chain's own review and are not a substitute for it. Do not promote to `ready` until devto-review returns a gate score with zero blockers."
-  ]
+    "BLOCKING: no cover image at apps/blog/public/cdn/blog-cover-image/rule-yield-distribution-own-plugin.jpg. publish-gate requires one."
+  ],
+  "prose_gate": {
+    "tool": "scripts/devto-review.ts",
+    "gate_score": 9.3,
+    "blockers": 0,
+    "verdict": "Ready to publish",
+    "run": "2026-09-07"
+  }
 }
