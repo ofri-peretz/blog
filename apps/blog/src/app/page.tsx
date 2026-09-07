@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Agenda } from "@/components/landing/agenda";
 import { FeaturedProject } from "@/components/landing/featured-project";
+import { AlsoBuilding } from "@/components/landing/also-building";
 import { WorkExperience } from "@/components/landing/work-experience";
 import { DevToArticles } from "@/components/landing/devto-articles";
 import { ImpactMetricsBlock } from "@/components/landing/impact-metrics-block";
@@ -21,6 +22,7 @@ const TOC_ITEMS = [
   { id: "impact", label: "Impact" },
   { id: "agenda", label: "Agenda" },
   { id: "featured", label: "Featured" },
+  { id: "also-building", label: "Also building" },
   { id: "writing", label: "Writing" },
   { id: "experience", label: "Experience" },
 ];
@@ -141,8 +143,9 @@ export default async function HomePage() {
         stars={stats?.github.totalStars}
         downloads={stats?.npm.totalDownloads}
       />
-      <DevToArticles id="writing" index={4} articles={getAllArticles().slice(0, 6)} />
-      <WorkExperience id="experience" index={5} />
+      <AlsoBuilding id="also-building" index={4} />
+      <DevToArticles id="writing" index={5} articles={getAllArticles().slice(0, 6)} />
+      <WorkExperience id="experience" index={6} />
     </main>
   );
 }
