@@ -8,7 +8,7 @@ import { SectionIndex } from "../components/ui/section-index";
 
 /**
  * Numbered-sections locks — the homepage reads as a sequence ("01 IMPACT
- * … 05 CAREER"): the page owns the numbering, every landing section
+ * … 06 CAREER"): the page owns the numbering, every landing section
  * renders the vendored SectionIndex, and the numeral's AAA orange comes
  * from the measured DS ladder via the data-slot hook (the vendored
  * source stays byte-identical to canonical).
@@ -36,22 +36,24 @@ describe("consumption contract", () => {
     expect(CSS).toContain("--brand-orange-text: #fbb99a;");
   });
 
-  it("the page owns the sequence: 1..5 in section order", () => {
+  it("the page owns the sequence: 1..6 in section order", () => {
     const PAGE = read("app", "page.tsx");
-    // Anchored to the five landing components (review): a future
+    // Anchored to the six landing components (review): a future
     // unrelated `index={n}` prop on the page must not corrupt this lock.
+    // AlsoBuilding joined at 4 on 2026-09-07, pushing Writing/Career to 5/6.
     const order = [
       ...PAGE.matchAll(
-        /<(?:ImpactMetricsBlock|Agenda|FeaturedProject|DevToArticles|WorkExperience)[\s\S]{0,120}?index=\{(\d)\}/g,
+        /<(?:ImpactMetricsBlock|Agenda|FeaturedProject|AlsoBuilding|DevToArticles|WorkExperience)[\s\S]{0,120}?index=\{(\d)\}/g,
       ),
     ].map((m) => Number(m[1]));
-    expect(order).toEqual([1, 2, 3, 4, 5]);
+    expect(order).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   it("every landing section renders its numbered eyebrow", () => {
     for (const name of [
       "agenda",
       "featured-project",
+      "also-building",
       "impact-metrics-block",
       "devto-articles",
       "work-experience",
