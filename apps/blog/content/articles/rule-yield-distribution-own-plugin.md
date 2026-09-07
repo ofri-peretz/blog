@@ -68,6 +68,11 @@ about inline functions in JSX. Decide once about render optimisation. You have
 now addressed 184 findings without opening 184 files, and what remains is small
 enough to be honest about.
 
+This is the same failure as [an aggregate benchmark score](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain),
+one level down: a total computed over a distribution nobody inspected, which is
+also [what a leaderboard throws away](https://ofriperetz.dev/articles/ranking-vs-measuring)
+when it collapses a measurement into a rank.
+
 The [same trap runs the other way for rule counts](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis):
 fourteen rules sounds like fourteen kinds of coverage. On this corpus it was
 eight, and effectively two.
