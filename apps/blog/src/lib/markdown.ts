@@ -8,7 +8,22 @@
 const INSTALL_RE =
   /^::install-command\{package="([^"]+)"(?: dev)?\}[ \t]*\n::/gm;
 
-const CTA_RE = /^::dev-to-cta\{url="([^"]+)"\}[ \t]*\n([^\n]+)\n::/gm;
+/*
+ * The label may span several lines.
+ *
+ * This was `([^\n]+)`, which matches exactly ONE line before the closing
+ * `::`. Four published articles hard-wrap their CTA label across two or three
+ * lines, so the pattern never matched and the raw directive text —
+ * `::dev-to-cta{url="…"}` and all — shipped verbatim onto the live page.
+ * Nothing failed; the replace simply found nothing to replace, which is the
+ * quietest way for a renderer to break.
+ *
+ * `[\s\S]*?` is lazy and anchored on `\n::`, so it still stops at the first
+ * terminator and cannot run past one block into the next. The label is joined
+ * to a single line below, because a Markdown link's text cannot contain a
+ * newline — the wrapping is source formatting, never content.
+ */
+const CTA_RE = /^::dev-to-cta\{url="([^"]+)"\}[ \t]*\n([\s\S]*?)\n::/gm;
 
 /**
  * `::playground-cta` is the ONLY directive that renders differently per
@@ -40,6 +55,10 @@ export function preprocessMarkdown(input: string): string {
       INSTALL_RE,
       (_m, pkg) => `\`\`\`bash\nnpm install --save-dev ${pkg}\n\`\`\``,
     )
-    .replace(CTA_RE, (_m, url, label) => `**[${label.trim()}](${url})**`)
+    .replace(
+      CTA_RE,
+      (_m, url, label) =>
+        `**[${label.trim().replace(/\s*\n\s*/g, " ")}](${url})**`,
+    )
     .replace(PLAYGROUND_CTA_RE, "");
 }
