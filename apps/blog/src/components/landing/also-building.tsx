@@ -83,16 +83,27 @@ export function AlsoBuilding({
             second interface to keep in sync.
           </p>
 
+          {/* buttonVariants sets `whitespace-nowrap`, so at 320px with text at
+              200% these labels cannot wrap and push the document sideways —
+              a WCAG 1.4.10 reflow failure the layout audit catches. Allowing
+              the label to wrap inside a width-bounded button fixes it without
+              shortening the copy or special-casing a breakpoint. */}
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="https://github.com/ofri-peretz/burgee"
-              className={buttonVariants({ variant: "default" })}
+              className={cn(
+                buttonVariants({ variant: "default" }),
+                "h-auto max-w-full whitespace-normal text-center",
+              )}
             >
               ★ Star on GitHub
             </Link>
             <Link
               href="https://www.npmjs.com/package/burgee"
-              className={buttonVariants({ variant: "outline" })}
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "h-auto max-w-full whitespace-normal text-center",
+              )}
             >
               View on npm
             </Link>
