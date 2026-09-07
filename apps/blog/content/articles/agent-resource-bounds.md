@@ -16,7 +16,7 @@ quality:
     growth_hook: 9.5
     security_correctness: 9.7
     structure_framing_voice: 9.5
-    compatibility: 9.5
+    compatibility: 9.6
     reproducibility: 9.6
 tags:
   - "ai"
@@ -62,7 +62,7 @@ Fix: set `maxOutputTokens` to the longest answer you would actually pay for — 
 await generateText({ model, prompt, timeout: { totalMs: 30_000 } });
 ```
 
-`timeout` is first-class on the 7.x line and also takes `stepMs`, `chunkMs`, `toolMs`. Older guidance hand-rolls an `AbortController`; that still works and the rule accepts either, but reach for the parameter first.
+`timeout` has been first-class since **6.0.14** and also takes `stepMs`, `chunkMs`, `toolMs`. Below that, hand-roll an `AbortController`; the rule accepts either, but reach for the parameter first.
 
 ---
 

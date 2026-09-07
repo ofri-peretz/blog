@@ -4,7 +4,7 @@
   "panel_version": "1.0.0",
   "spec": "sdlc/spec/agent-resource-bounds.md",
   "reviewed": "2026-09-07",
-  "round": 1,
+  "round": 2,
   "findings_fixed_this_round": [
     "correctness, and the one that mattered: the article told readers to hand-roll an AbortController plus a setTimeout for the CWE-400 case. That guidance predates the SDK. `ai@7.0.31` ships a first-class `timeout` parameter — `timeout?: TimeoutConfiguration` appears at five call-signature sites in the public types, taking `totalMs`, `stepMs`, `chunkMs` and `toolMs`. The fix block now uses the parameter and keeps the AbortController as the older path. This is exactly the failure the spec predicted about itself: guidance that is true when written and stale two minors later.",
     "taxonomy: the anchor text 'OWASP LLM10' linked to the web Top 10 canonical, which is a different list and has no LLM10 entry. The web Top 10 link is a required graph edge so it stays, relabelled, and the article now states outright that the two lists are separate taxonomies — which is on-subject for a piece about CWE precision."
@@ -32,8 +32,8 @@
       "why": "Three parallel sections resolving into one named defect — an allocation with no ceiling — is the right shape, and 'tokens, wall-clock, lifetime' earns the synthesis. Altitude discipline is clean: CWE, proxy metric and OWASP are each one clause and a link down, never re-taught. Marked at the floor for one real inconsistency the fix did not remove: sections 1 and 3 open with the bad call, section 2 opens with prose and never shows the unbounded version, so the parallelism the article depends on breaks in the middle panel."
     },
     "compatibility": {
-      "score": 9.5,
-      "why": "Both config formats are given, the ESLint 8/9/10 range and Node floor match the plugin manifest as installed, and the oxlint surface is labelled alpha rather than presented as supported. The version-sensitivity is handled explicitly where it bites: the maxTokens to maxOutputTokens rename is called out with the note that v4 guidance still reads correct in review and bounds nothing. Held at the floor because the article now depends on a `timeout` parameter whose availability it dates to 'the 7.x line' without pinning the minor it landed in."
+      "score": 9.6,
+      "why": "Both config formats are given, the ESLint 8/9/10 range and Node floor match the plugin manifest as installed, and the oxlint surface is labelled alpha rather than presented as supported. The version-sensitivity is handled explicitly where it bites: the maxTokens to maxOutputTokens rename is called out with the note that v4 guidance still reads correct in review and bounds nothing. Raised from 9.5 in round 2 — the `timeout` parameter is now pinned to the minor that introduced it, 6.0.14 (`feat(ai): add timeout option to generateText, streamText, and Agent`, located by reading the nearest `##` heading above that entry in CHANGELOG.md), so a reader on 6.0.x knows exactly which side of the line they are on rather than being told 'the 7.x line'."
     },
     "reproducibility": {
       "score": 9.6,
