@@ -25,9 +25,11 @@ status: approved
   in step 2.
 - **Frozen identifier drift** — mitigated by skipping those keys, asserted in
   step 2, and blocked by the hook regardless.
-- **Blast radius**: 29 live articles. Merging republishes all of them to
-  dev.to, so the merge is the publish and stays Ofri's call — which is the
-  chain's stage-5 gate working as designed, not an exception to it.
+- **Blast radius**: 29 live articles. Merging changes nothing on dev.to;
+  republishing them is a separate manual `publish-devto.yml` dispatch with
+  `article` left empty — which is exactly the whole-corpus fire behind the
+  Capsule-0 incident. Dry-run first, and the live dispatch stays Ofri's call:
+  the chain's stage-5 gate working as designed, not an exception to it.
 
 ## Proof of success
 

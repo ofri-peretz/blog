@@ -57,7 +57,8 @@ Independent of the analytics repair, except for reading the result.
   behaviourally rather than by grep.
 - The Dev.to half is asserted textually: `publish-to-devto.mjs` runs `main()`
   at import, so importing it in a test would attempt a real publish.
-- Merging is Ofri's call; merge is what updates the live Dev.to copies.
+- Merging is Ofri's call. Merging does not touch dev.to; updating the live
+  Dev.to copies is a separate manual `publish-devto.yml` dispatch.
 
 ## Risks
 

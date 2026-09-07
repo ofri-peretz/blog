@@ -62,7 +62,11 @@ Two layers, and they are not interchangeable:
 ## 5. Deploy
 
 Branch, PR, required checks green, squash merge. Branch protection is the
-approval gate and is not bypassed. Merging to `main` auto-publishes.
+approval gate and is not bypassed. Merging to `main` publishes nothing —
+Dev.to publishing is a separate manual `workflow_dispatch` on
+`publish-devto.yml` (`dry_run` defaults to true). The push trigger was removed
+2026-07-19 after the Capsule-0 incident, when a merge auto-fired a live bulk
+publish of the whole corpus. See CLAUDE.md → Shipping.
 
 ## 6. Maintain — the phase we skipped
 
