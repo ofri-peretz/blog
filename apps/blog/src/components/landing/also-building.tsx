@@ -98,15 +98,6 @@ export function AlsoBuilding({
             >
               ★ Star on GitHub
             </Link>
-            <Link
-              href="https://www.npmjs.com/package/burgee"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "h-auto max-w-full whitespace-normal text-center",
-              )}
-            >
-              View on npm
-            </Link>
           </div>
         </div>
       </Container>
