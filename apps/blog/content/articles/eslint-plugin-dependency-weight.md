@@ -101,9 +101,7 @@ Re-run on 2026-09-04, all fourteen numbers on this page came back **identical** 
 _Run it on your config — what's the gap between the packages you asked for and the packages you got?_
 
 ::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-react-features"}
-📦 `npm i -D eslint-plugin-react-features` — two packages, and you can check that
-number with the four lines above before you install it. If it earns its place in
-your CI, ⭐ [star the repo](https://github.com/ofri-peretz/eslint).
+📦 `npm i -D eslint-plugin-react-features` — two packages, and you can check that number with the four lines above before you install it. If it earns its place in your CI, ⭐ [star the repo](https://github.com/ofri-peretz/eslint).
 ::
 
 _[eslint-plugin-react-features](https://www.npmjs.com/package/eslint-plugin-react-features) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools) — every tree in the table above is measurable the same way. Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
