@@ -32,7 +32,7 @@ series: null
 
 `generateText` with a model and a prompt and nothing else is a valid call. TypeScript is satisfied. The type system has no opinion about how many tokens come back, how long it takes, or who pays for the answer nobody reads.
 
-Three rules in `eslint-plugin-vercel-ai-security` fire on a call written that way, and they map to three *different* CWEs — 770, 400 and 404. (A CWE is a label, not a verdict — [what the taxonomy actually claims](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — and counting CWEs is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics).) Same missing config object. Three separate ways to lose.
+Three rules in `eslint-plugin-vercel-ai-security` fire on a call written that way, and they map to three _different_ CWEs — 770, 400 and 404. (A CWE is a label, not a verdict — [what the taxonomy actually claims](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — and counting CWEs is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics).) Same missing config object. Three separate ways to lose.
 
 A note on the bound people expect here: step count. The SDK defaults `stopWhen` to `stepCountIs(1)`, so a tool-calling loop does not run away on its own — that hole gets opened deliberately, by raising the ceiling, not by forgetting it. The three below are genuinely unbounded when you say nothing.
 
@@ -46,13 +46,17 @@ await generateText({ model, prompt }); // no maxOutputTokens
 
 **Why it gets written:** the parameter is optional, and the happy path never needs it.
 
-**Why it survives review:** output length reads as a *quality* knob, not a resource bound. But this is billed per token. An unbounded output is an unbounded invoice, and nothing in the diff looks like money.
+**Why it survives review:** output length reads as a _quality_ knob, not a resource bound. But this is billed per token. An unbounded output is an unbounded invoice, and nothing in the diff looks like money.
 
-Fix: set `maxOutputTokens` to the longest answer you would actually pay for — there is no correct number, only the difference between a ceiling and none. Note the rename: this was `maxTokens` in v4. Guidance written against v4 still *reads* correct in review and bounds nothing.
+Fix: set `maxOutputTokens` to the longest answer you would actually pay for — there is no correct number, only the difference between a ceiling and none. Note the rename: this was `maxTokens` in v4. Guidance written against v4 still _reads_ correct in review and bounds nothing.
 
 ---
 
 ## 2. The request that never returns — CWE-400 {#cwe-400-request-timeout}
+
+```ts
+await generateText({ model, prompt }); // no timeout
+```
 
 **Why it gets written:** `fetch`-shaped APIs feel like they time out. This one doesn't — `timeout` is optional and the SDK sets no default.
 
@@ -74,11 +78,11 @@ const stream = streamText({ model, prompt }); // no abortSignal
 
 You will want to file this one under polish. Here is why that is wrong: the client is gone, and the server keeps generating — and keeps billing — for a reader who will never see a token of it.
 
-Why *shutdown* (CWE-404) rather than consumption (400)? The resource was acquired correctly and then never released — the handle outlives the request that justified it. A release bug, not an acquisition bug.
+Why _shutdown_ (CWE-404) rather than consumption (400)? The resource was acquired correctly and then never released — the handle outlives the request that justified it. A release bug, not an acquisition bug.
 
 ```ts
 const ac = new AbortController();
-req.signal.addEventListener('abort', () => ac.abort()); // client disconnected
+req.signal.addEventListener("abort", () => ac.abort()); // client disconnected
 const stream = streamText({ model, prompt, abortSignal: ac.signal });
 ```
 
@@ -105,16 +109,16 @@ Node 18+. The peer range is ESLint 8 ∥ 9 ∥ 10, so both config formats work.
 
 ```js
 // eslint.config.mjs — ESLint 9 · 10
-import vercelAi from 'eslint-plugin-vercel-ai-security';
+import vercelAi from "eslint-plugin-vercel-ai-security";
 
 export default [
   {
-    files: ['**/*.ts'],
-    plugins: { 'vercel-ai-security': vercelAi },
+    files: ["**/*.ts"],
+    plugins: { "vercel-ai-security": vercelAi },
     rules: {
-      'vercel-ai-security/require-max-tokens': 'error',
-      'vercel-ai-security/require-request-timeout': 'warn',
-      'vercel-ai-security/require-abort-signal': 'warn',
+      "vercel-ai-security/require-max-tokens": "error",
+      "vercel-ai-security/require-request-timeout": "warn",
+      "vercel-ai-security/require-abort-signal": "warn",
     },
   },
 ];
@@ -145,6 +149,7 @@ _Has an LLM call ever run longer in production than you expected — and what to
 ---
 
 **Related:**
+
 - [Securing AI Agents in the Vercel AI SDK](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk)
 - [Getting Started with eslint-plugin-vercel-ai-security](https://ofriperetz.dev/articles/getting-started-eslint-plugin-vercel-ai-security)
 - [The CWE Taxonomy, Explained](https://ofriperetz.dev/articles/cwe-taxonomy-explained)
