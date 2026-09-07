@@ -99,3 +99,9 @@ Every figure above was resolved on 2026-08-12 and will drift as these packages r
 Re-run on 2026-09-04, all fourteen numbers on this page came back **identical** — the 69-package baseline, every plugin tree, and the 228-package combined install. Three weeks of ecosystem churn moved none of them, which is itself the finding: these trees are stable because the packages at the top of the table are not releasing.
 
 _Run it on your config — what's the gap between the packages you asked for and the packages you got?_
+
+::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-react-features"}
+📦 `npm i -D eslint-plugin-react-features` — two packages, and you can check that number with the four lines above before you install it. If it earns its place in your CI, ⭐ [star the repo](https://github.com/ofri-peretz/eslint).
+::
+
+_[eslint-plugin-react-features](https://www.npmjs.com/package/eslint-plugin-react-features) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools) — every tree in the table above is measurable the same way. Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

@@ -86,7 +86,7 @@ I don't trust an allocation whose ceiling I can't see — the same instinct that
 
 Classic resource-exhaustion review asks whether an attacker can make something loop forever. For an LLM call, the answer is worse — you don't need an attacker. A verbose model and one retry will do it, and the meter runs the entire time.
 
-This is [OWASP LLM10](https://ofriperetz.dev/articles/owasp-top-10-explained), Unbounded Consumption — [the full top-10 mapping for this SDK](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) covers the other nine, and for governance rather than linting, [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework) is the place to look. That is why these are security rules and not style rules. It is the move [injection across nine interpreters](https://ofriperetz.dev/articles/injection-beyond-sql) makes too: CWE-770, 400 and 404 are the same sentence in three grammars.
+This is OWASP LLM10, Unbounded Consumption — [the full top-10 mapping for this SDK](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) covers the other nine. That list is a separate taxonomy from [the web Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) — LLM10 has no A-number. For governance rather than linting, [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework) is the place to look. That is why these are security rules and not style rules. It is the move [injection across nine interpreters](https://ofriperetz.dev/articles/injection-beyond-sql) makes too: CWE-770, 400 and 404 are the same sentence in three grammars.
 
 ---
 
