@@ -460,8 +460,7 @@ integration — and is your linter catching it?** Tell me the prompt-injection h
 - 💻 [Source on GitHub](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-vercel-ai-security)
 
 ::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-vercel-ai-security"}
-📦 `npm i -D eslint-plugin-vercel-ai-security` — if `prompt: userInput` is
-anywhere in your codebase, the rule finds it before your users do.
+📦 `npm i -D eslint-plugin-vercel-ai-security` — if `prompt: userInput` is anywhere in your codebase, the rule finds it before your users do.
 ::
 
 ---

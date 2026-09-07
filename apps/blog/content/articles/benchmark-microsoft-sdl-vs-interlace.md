@@ -520,8 +520,7 @@ Two short references carry the measurement vocabulary this benchmark leans on: [
 - [Source on GitHub](https://github.com/ofri-peretz/eslint)
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-Star on GitHub if your Node backend — and the code your AI assistant writes for
-it — needs more than a frontend security linter.
+Star on GitHub if your Node backend — and the code your AI assistant writes for it — needs more than a frontend security linter.
 ::
 
 ---

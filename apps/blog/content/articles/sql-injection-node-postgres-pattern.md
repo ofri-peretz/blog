@@ -460,9 +460,7 @@ list to close for good, and not one of the four needs a security team to close
 it — each needs a rule that stays awake after the reviewer stops reading.
 
 ::dev-to-cta{url="https://www.npmjs.com/package/eslint-plugin-postgresql-security"}
-📦 `npm i -D eslint-plugin-postgresql-security` — four rules for the four ways a node-postgres
-data layer fails. Point them at your `db/` folder and see which one is already
-live in your codebase.
+📦 `npm i -D eslint-plugin-postgresql-security` — four rules for the four ways a node-postgres data layer fails. Point them at your `db/` folder and see which one is already live in your codebase.
 ::
 
 ---
