@@ -1,6 +1,6 @@
 ---
 id: I-AUTO-20260907
-slug: fix-stale-claim-agent-resource-bounds
+slug: fix-unverifiable-spec-commands-2026-09-07
 stage: intent
 status: proposed
 visibility: public
@@ -11,7 +11,15 @@ approved_by:
 
 ## Claim
 
-80 committed claim(s) no longer match the command that produced them.
+80 committed claims no longer match the command that produced them — but 71 of
+those commands **did not run at all**, so the claims are unverifiable rather
+than false. Roughly 4 are genuine drift. The split, and why it changes the
+remediation, is in the incident's Class section.
+
+The slug says `unverifiable-spec-commands`, not `stale-claim-agent-resource-bounds`,
+because the first slug named one article out of nine and pointed triage at the
+one whose findings are ALL command failures — there may be nothing wrong with
+that article's prose at all.
 
 ## Audience
 

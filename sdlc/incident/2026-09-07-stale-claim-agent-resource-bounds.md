@@ -3,8 +3,19 @@ stage: incident
 detected: 2026-09-07
 detector: stale-claim
 severity: 3sigma
-articles: ["agent-resource-bounds", "ai-agents-rebranded-my-oss-ecosystem-two-pipelines-were-dead", "eslint-in-the-browser-live-lint-playground", "eslint-plugin-cold-start-optimization", "eslint-plugin-dependency-weight", "eslint-plugin-maintenance-signals", "injection-beyond-sql", "migrate-renamed-plugin-packages", "modernization-lint-as-codemod"]
-intent: 
+articles:
+  [
+    "agent-resource-bounds",
+    "ai-agents-rebranded-my-oss-ecosystem-two-pipelines-were-dead",
+    "eslint-in-the-browser-live-lint-playground",
+    "eslint-plugin-cold-start-optimization",
+    "eslint-plugin-dependency-weight",
+    "eslint-plugin-maintenance-signals",
+    "injection-beyond-sql",
+    "migrate-renamed-plugin-packages",
+    "modernization-lint-as-codemod",
+  ]
+intent: sdlc/intent/fix-unverifiable-spec-commands-2026-09-07.md
 status: open
 ---
 
@@ -506,7 +517,25 @@ modernization-lint-as-codemod — HISTORICAL react-no-inline-functions
 
 ## Class
 
-A claim that was true when written and is false now. No review pass can catch this class — nothing in the article changed. If this recurs for the same spec, the spec's command is not specific enough, and that is an eval gap rather than an author mistake.
+**Two populations, and only the smaller one is what the detector's headline says.**
+
+Classifying all 80 rows by their `now` value:
+
+| count | what the `now` value actually is                                                                                                             | what it means                                                                          |
+| ----: | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+|    71 | a shell or runtime error — `/bin/sh: 1: Syntax error`, `<token>: not found`, `No such file or directory`, `node:internal/modules/cjs/loader` | the spec's command **did not run**. The claim is UNVERIFIABLE, not false               |
+|    ~5 | a whole-file or whole-JSON dump (`name: Deploy production`, a bare `{`), or a compiler error                                                 | the command ran but the spec selects the wrong thing, so the comparison is meaningless |
+|    ~4 | a different value of the right shape (`2.3.5` where `2.3.2` was claimed)                                                                     | genuine DRIFT — a claim that was true when written and is false now                    |
+
+The original text of this section described only the last row. Reported as "80 stale claims" it says our published articles have gone false at scale; what it mostly measures is that **the detector's own commands are broken** — unmatched backticks, unescaped pipes, a bare `\` reaching the shell, and commands run from a directory where `node_modules` does not exist.
+
+That distinction decides the remediation, and the two do not overlap:
+
+- **71 broken commands** — fix the spec commands. No article prose is wrong; nothing to rewrite. Until they run, these specs assert nothing, which is worse than a stale claim because it looks like coverage.
+- **~5 over-broad commands** — narrow the selector (see the `deploy.yml` case: dumping 190 lines to compare one version string).
+- **~4 genuine drift** — rewrite or retire the claim, the class this document was originally written for.
+
+If this recurs for the same spec, the spec's command is not specific enough, and that is an eval gap rather than an author mistake.
 
 ## Triage
 
