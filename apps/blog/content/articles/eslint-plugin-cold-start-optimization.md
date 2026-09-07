@@ -70,7 +70,7 @@ Somewhere in the 8.x line `utils` picked up its own **non-optional** `typescript
 
 **What stops landing in `node_modules`.** The cuts below keep ~30MB off every consumer of one plugin — `typescript` 24MB, `utils` 4.5MB, `oxc-resolver` 1.5MB.
 
-**What ships inside the tarballs.** Measured from the registry at both ends, same instrument, 20 packages: **5,432 KB → 3,037 KB**, −44.1%. None of the three cuts caused it — a package's own `unpackedSize` excludes its dependencies. That drop is dead bytes: source maps, `AGENTS.md`, JSDoc in emitted `.js`.
+**What ships inside the tarballs.** From the registry at both ends, same instrument, 20 packages: **5,432 KB → 3,037 KB**, −44.1%. None of the three cuts caused it — a package's own `unpackedSize` excludes its dependencies. That drop is dead bytes: source maps, `AGENTS.md`, JSDoc in emitted `.js`.
 
 Two gains, two axes. Conflating them is the mistake I nearly published.
 
@@ -108,17 +108,17 @@ The load path moved too, timed at the pinned commit: devkit cold `require` **242
 
 ## The part I got wrong {#wrong}
 
-I assumed tree-shaking would help. It cannot: ESLint plugins are CommonJS and nothing bundles them — no build step sits between my `dist/` and your `node_modules`. The lever is not bundle size, it is **what evaluates at require time**. An optional peer never installed costs zero; a 24MB one costs you every lint run.
+I assumed tree-shaking would help. It cannot: ESLint plugins are CommonJS and nothing bundles them — no build step sits between my `dist/` and your `node_modules`. The lever is not bundle size, it is **what evaluates at require time**.
 
 The devkit's own unpacked size even went _up_, 339KB → 377KB, while what you install collapsed. Optimising the npm-page number would have optimised the wrong one — [any proxy metric](/articles/proxy-metrics).
 
-One trap: `removeComments` strips your `.d.ts` docs too, silently killing editor hover for consumers. Emit to a scratch directory and copy back only the `.js`.
+One trap: `removeComments` strips `.d.ts` docs too, silently killing editor hover. Emit to a scratch directory and copy back only the `.js`.
 
-Still on the floor: about **49% of rule modules load unused** under `recommended`, because every plugin eagerly requires every rule and the config then picks a subset. Lazy loading measured −70ms on one plugin, unshipped.
+Still on the floor: about **49% of rule modules load unused** under `recommended`, because every plugin eagerly requires every rule and the config picks a subset. Lazy loading measured −70ms on one plugin, unshipped.
 
 ---
 
-Check your own tree. `npm ls typescript` in a project that only installs a linter is an uncomfortable command to run.
+Check your own tree. `npm ls typescript` in a project that only installs a linter is an uncomfortable command.
 
 ::install-command{package="@interlace/eslint-devkit" dev}
 ::

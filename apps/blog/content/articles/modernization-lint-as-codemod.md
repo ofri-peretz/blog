@@ -71,13 +71,13 @@ String(res.stderr || res.stdout || `claude exited ${res.status}`);
 
 `no-instanceof-array` and `prefer-event-target` returned **0 findings across all 389 files**.
 
-I report that because the number is the point. A rule that never fires is not broken and not useless — it is a rule for a pattern you do not have. `instanceof Array` breaks across realms; if you have never hit it, silence is the correct output. The failure mode to fear is the opposite, a rule that fires on everything: I have one elsewhere that flags every `.map()` in JSX, 476 findings of noise. **Yield tells you nothing about quality on its own** — which is the same trap as [counting rules instead of measuring them](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis).
+A rule that never fires is not broken and not useless — it is a rule for a pattern you do not have. `instanceof Array` breaks across realms; if you have never hit it, silence is the correct output. The failure mode to fear is the opposite: I have a rule elsewhere that flags every `.map()` in JSX, 476 findings of noise. **Yield tells you nothing about quality on its own** — the same trap as [counting rules instead of measuring them](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis).
 
 ## Lint as codemod, not as style {#codemod}
 
 Most lint rules ask you to _decide_ something. These ask you to _apply_ something — the rewrite is mechanical, the semantics are identical, and the fixer is exact.
 
-That changes the adoption path. You do not triage 55 findings — you run the fixer once, read the diff as a single commit, and the rule then holds the line so the old idiom cannot come back. A one-time migration plus a ratchet, the same shape as [an autofix turning a hardcoded secret into a one-command repair](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
+That changes the adoption path. You do not triage 55 findings — you run the fixer once, read the diff as one commit, and the rule holds the line so the old idiom cannot come back. A migration plus a ratchet, the same shape as [an autofix turning a hardcoded secret into a one-command repair](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
 
 Check the diff, though. "Auto-fixable" means exact, not invisible: `.at(-1)` is ES2022, so it needs a runtime that has it. Node 18+ and any 2023+ browser are fine; on an older target, check your polyfill first.
 
@@ -110,22 +110,29 @@ bun  add     --dev      eslint-plugin-modernization   # bun
 npx eslint . --fix
 ```
 
-Measured against **3.1.2**, peer range `^8.40.0 || ^9.0.0 || ^10.0.0`, Node 18+. `prefer-template-literal` does not exist before 3.x, so an older install rejects the config rather than silently skipping the rule. ESLint only; no Oxlint port.
+Measured against **3.1.2**, peer range `^8.40.0 || ^9.0.0 || ^10.0.0`, Node 18+. `prefer-template-literal` does not exist before 3.x, so an older install rejects the config rather than skipping the rule. ESLint only.
 
-All four at `error` is safe _for these findings_, but be precise about why: in 3.1.2 only `prefer-at` and `prefer-template-literal` carry a fixer. All 55 of my findings came from those two, which is why `--fix` emptied the list — not because the plugin is 100% auto-fixable. Check it yourself:
+All four at `error` is safe _for these findings_, but be precise why: in 3.1.2 only `prefer-at` and `prefer-template-literal` carry a fixer. All 55 findings came from those two, which is why `--fix` emptied the list — not because the plugin is 100% auto-fixable:
 
 ```bash
-npx eslint --print-config path/to/file.ts    # or read meta.fixable on the rule
+node -p "Object.entries(require('eslint-plugin-modernization').rules)
+  .map(([k,r]) => k + ': ' + (r.meta.fixable || 'no fixer')).join('\n')"
+# no-instanceof-array: no fixer
+# prefer-at: code
+# prefer-event-target: no fixer
+# prefer-template-literal: code
 ```
+
+Run it against the published package, not a workspace checkout: a monorepo symlink resolves to unreleased source and answers a different question. `prefer-event-target` gains a fixer after 3.1.2.
 
 [Rule docs](https://github.com/ofri-peretz/eslint/tree/main/packages/eslint-plugin-modernization/docs/rules) · [npm](https://www.npmjs.com/package/eslint-plugin-modernization).
 
 ---
 
-Numbers measured 2026-08-12 against four repos I own — my code, not a public corpus, so treat 55 as a shape, not a rate.
+Numbers measured 2026-08-12 against four repos I own — my code, not a public corpus, so treat 55 as a shape.
 
-Re-run 2026-09-04 over the 189 `.ts`/`.tsx` files in this blog's public `apps/blog/src`, plugin at 3.1.2: **8 findings in 6 files** — six `prefer-at`, two `prefer-template-literal`, the other two rules still silent. Three weeks after the codemod, the old idiom had crept back eight times. That is the argument for leaving the rules at `error` instead of treating this as a one-time migration.
+Re-run 2026-09-04 over the 189 `.ts`/`.tsx` files in this blog's public `apps/blog/src`, plugin at 3.1.2: **8 findings in 6 files** — six `prefer-at`, two `prefer-template-literal`, the other two silent. Three weeks after the codemod, the old idiom had crept back eight times. That is the argument for leaving the rules at `error`.
 
-Two guards on that number. The harness reports `unmatched: 0`, so all 189 files were actually configured — an earlier run returned a confident **0** that was 189 files silently matching no config. And on the same tree that day, the noisy rule above returns **110**. Eight versus 110 on identical input: yield is not quality.
+Two guards on that number. The harness reports `unmatched: 0`, so all 189 files were configured — an earlier run returned a confident **0** that was 189 files silently matching no config. And on that tree the same day, the noisy rule above returns **110**. Eight versus 110 on identical input: yield is not quality.
 
 _What's the oldest idiom still alive in your codebase — and is it there because it's correct, or because nothing ever flagged it?_

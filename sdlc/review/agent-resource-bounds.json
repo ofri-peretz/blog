@@ -1,0 +1,48 @@
+{
+  "slug": "agent-resource-bounds",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/agent-resource-bounds.md",
+  "reviewed": "2026-09-07",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "correctness, and the one that mattered: the article told readers to hand-roll an AbortController plus a setTimeout for the CWE-400 case. That guidance predates the SDK. `ai@7.0.31` ships a first-class `timeout` parameter — `timeout?: TimeoutConfiguration` appears at five call-signature sites in the public types, taking `totalMs`, `stepMs`, `chunkMs` and `toolMs`. The fix block now uses the parameter and keeps the AbortController as the older path. This is exactly the failure the spec predicted about itself: guidance that is true when written and stale two minors later.",
+    "taxonomy: the anchor text 'OWASP LLM10' linked to the web Top 10 canonical, which is a different list and has no LLM10 entry. The web Top 10 link is a required graph edge so it stays, relabelled, and the article now states outright that the two lists are separate taxonomies — which is on-subject for a piece about CWE precision."
+  ],
+  "checked_and_found_correct": [
+    "All nine ground-truth rows in the spec re-verified 2026-09-07 against the installed package, not the docs. `ai` 7.0.31. `stopWhen = isStepCount(1)` at lines 4992 and 8439 of dist/index.js — two call sites, as claimed. `isStepCount as stepCountIs` present in the export list at 17232. `maxOutputTokens` present in the public types; `maxTokens` returns zero occurrences, so the rename is complete. The rename is recorded in CHANGELOG.md under 5.0.0.",
+    "All three rules exist and are named as the article writes them: require-max-tokens, require-request-timeout, require-abort-signal. Plugin 1.3.6 declares eslint `^8.0.0 || ^9.0.0 || ^10.0.0` and engines.node `>=18.0.0`, which is what the config section claims.",
+    "The load-bearing premise of section 2 — that the SDK applies no default timeout — holds. `timeout` is optional at every call signature and no default assignment exists in dist/index.js. The claim survived the check that invalidated its recommended fix.",
+    "require-request-timeout accepts the native `timeout` property: its timeoutProperties set is {timeout, abortSignal, signal, timeoutMs, requestTimeout}. So the updated guidance does not put readers in conflict with the rule the article is selling."
+  ],
+  "not_re_verified": [
+    "The oxlint jsPlugins line is reproduced from the plugin README and was not run. The article labels it alpha and outside semver, which is the correct hedge for a surface not exercised here."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.5,
+      "why": "The opening is the whole argument in three sentences: a call that compiles, a type system with no opinion, and an invoice. It names the reader's own habit rather than a strawman, and the closing question — whether the logs or the bill told you first — is the kind a practitioner answers out loud. Held at the floor rather than above it because the hook is structural rather than numeric; there is no counter-intuitive measured figure of the kind that carries the strongest pieces in this corpus."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "The strongest lens here. Three CWEs are distinguished on mechanism, not vibes, and the article does the thing most writing on this topic will not: it justifies 404 over 400 on the grounds that the resource was acquired correctly and never released. It also refuses the easy scare — it explicitly removes step count from the list because `stopWhen` already defaults to a one-step ceiling, which is a claim it verified against the compiled bundle rather than the docs. Nine ground-truth rows, nine confirmed today."
+    },
+    "structure_framing_voice": {
+      "score": 9.5,
+      "why": "Three parallel sections resolving into one named defect — an allocation with no ceiling — is the right shape, and 'tokens, wall-clock, lifetime' earns the synthesis. Altitude discipline is clean: CWE, proxy metric and OWASP are each one clause and a link down, never re-taught. Marked at the floor for one real inconsistency the fix did not remove: sections 1 and 3 open with the bad call, section 2 opens with prose and never shows the unbounded version, so the parallelism the article depends on breaks in the middle panel."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "Both config formats are given, the ESLint 8/9/10 range and Node floor match the plugin manifest as installed, and the oxlint surface is labelled alpha rather than presented as supported. The version-sensitivity is handled explicitly where it bites: the maxTokens to maxOutputTokens rename is called out with the note that v4 guidance still reads correct in review and bounds nothing. Held at the floor because the article now depends on a `timeout` parameter whose availability it dates to 'the 7.x line' without pinning the minor it landed in."
+    },
+    "reproducibility": {
+      "score": 9.6,
+      "why": "Every factual claim traces to a command in the spec against a pinned package version, and all nine were re-run today from a clean read rather than trusted. The two claims that could have quietly rotted — the stopWhen default and the absence of a default timeout — are precisely the two that were re-derived from dist/index.js instead of documentation. Short of the top only because the commands live in the spec rather than the article, so a reader repeating the check has to be handed them."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear",
+  "publish_conditions": [
+    "BLOCKING UNTIL SEQUENCED: the article links injection-beyond-sql as though it were live. That slug is queued and unpublished, so the link 404s today. It must publish after injection-beyond-sql, not before. This is a sequencing constraint, not a content defect."
+  ]
+}

@@ -8,6 +8,16 @@ published_at: null
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/agent-resource-bounds.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/agent-resource-bounds-og.jpg"
 reading_time_minutes: 4
+quality:
+  panel_version: "1.0.0"
+  reviewed: "2026-09-07"
+  spec: sdlc/spec/agent-resource-bounds.md
+  lenses:
+    growth_hook: 9.5
+    security_correctness: 9.7
+    structure_framing_voice: 9.5
+    compatibility: 9.5
+    reproducibility: 9.6
 tags:
   - "ai"
   - "webdev"
@@ -24,7 +34,7 @@ series: null
 
 Three rules in `eslint-plugin-vercel-ai-security` fire on a call written that way, and they map to three *different* CWEs — 770, 400 and 404. (A CWE is a label, not a verdict — [what the taxonomy actually claims](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — and counting CWEs is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics).) Same missing config object. Three separate ways to lose.
 
-A note on the bound people expect to see here: step count. The SDK already defaults `stopWhen` to `stepCountIs(1)`, so a tool-calling loop does not run away on its own — that hole gets opened deliberately, by raising the ceiling, not by forgetting it. The three below are the ones that are genuinely unbounded when you say nothing.
+A note on the bound people expect here: step count. The SDK defaults `stopWhen` to `stepCountIs(1)`, so a tool-calling loop does not run away on its own — that hole gets opened deliberately, by raising the ceiling, not by forgetting it. The three below are genuinely unbounded when you say nothing.
 
 ---
 
@@ -44,19 +54,15 @@ Fix: set `maxOutputTokens` to the longest answer you would actually pay for — 
 
 ## 2. The request that never returns — CWE-400 {#cwe-400-request-timeout}
 
-**Why it gets written:** `fetch`-shaped APIs feel like they time out. This one doesn't, by default.
+**Why it gets written:** `fetch`-shaped APIs feel like they time out. This one doesn't — `timeout` is optional and the SDK sets no default.
 
 **Why it survives review:** staging latency is fine, so nobody asks what happens when the provider hangs instead of failing.
 
 ```ts
-const ac = new AbortController();
-const timer = setTimeout(() => ac.abort(), 30_000);
-try {
-  await generateText({ model, prompt, abortSignal: ac.signal });
-} finally {
-  clearTimeout(timer);
-}
+await generateText({ model, prompt, timeout: { totalMs: 30_000 } });
 ```
+
+`timeout` is first-class on the 7.x line and also takes `stepMs`, `chunkMs`, `toolMs`. Older guidance hand-rolls an `AbortController`; that still works and the rule accepts either, but reach for the parameter first.
 
 ---
 
@@ -68,7 +74,7 @@ const stream = streamText({ model, prompt }); // no abortSignal
 
 You will want to file this one under polish. Here is why that is wrong: the client is gone, and the server keeps generating — and keeps billing — for a reader who will never see a token of it.
 
-Why *shutdown* (CWE-404) rather than plain consumption (400)? Because the resource was acquired correctly and then never released. The handle outlives the request that justified it. That is a release bug, not an acquisition bug.
+Why *shutdown* (CWE-404) rather than consumption (400)? The resource was acquired correctly and then never released — the handle outlives the request that justified it. A release bug, not an acquisition bug.
 
 ```ts
 const ac = new AbortController();
@@ -92,12 +98,8 @@ This is OWASP LLM10, Unbounded Consumption — [the full top-10 mapping for this
 
 ## The config
 
-```bash
-npm install -D eslint-plugin-vercel-ai-security
-yarn add -D eslint-plugin-vercel-ai-security
-pnpm add -D eslint-plugin-vercel-ai-security
-bun add -d eslint-plugin-vercel-ai-security
-```
+::install-command{package="eslint-plugin-vercel-ai-security" dev}
+::
 
 Node 18+. The peer range is ESLint 8 ∥ 9 ∥ 10, so both config formats work.
 
