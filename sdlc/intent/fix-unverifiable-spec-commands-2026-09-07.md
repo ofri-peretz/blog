@@ -13,7 +13,9 @@ approved_by:
 
 80 committed claims no longer match the command that produced them — but 71 of
 those commands **did not run at all**, so the claims are unverifiable rather
-than false. Roughly 4 are genuine drift. The split, and why it changes the
+than false. **2** are genuine drift; ~2 more are detector false positives
+where the output confirms the claimed value and only its shape differs. The
+split, and why it changes the
 remediation, is in the incident's Class section.
 
 The slug says `unverifiable-spec-commands`, not `stale-claim-agent-resource-bounds`,

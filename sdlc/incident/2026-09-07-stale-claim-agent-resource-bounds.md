@@ -521,11 +521,12 @@ modernization-lint-as-codemod — HISTORICAL react-no-inline-functions
 
 Classifying all 80 rows by their `now` value:
 
-| count | what the `now` value actually is                                                                                                             | what it means                                                                          |
-| ----: | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-|    71 | a shell or runtime error — `/bin/sh: 1: Syntax error`, `<token>: not found`, `No such file or directory`, `node:internal/modules/cjs/loader` | the spec's command **did not run**. The claim is UNVERIFIABLE, not false               |
-|    ~5 | a whole-file or whole-JSON dump (`name: Deploy production`, a bare `{`), or a compiler error                                                 | the command ran but the spec selects the wrong thing, so the comparison is meaningless |
-|    ~4 | a different value of the right shape (`2.3.5` where `2.3.2` was claimed)                                                                     | genuine DRIFT — a claim that was true when written and is false now                    |
+| count | what the `now` value actually is                                                                                                                                                          | what it means                                                                          |
+| ----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+|    71 | a shell or runtime error — `/bin/sh: 1: Syntax error`, `<token>: not found`, `No such file or directory`, `node:internal/modules/cjs/loader`                                              | the spec's command **did not run**. The claim is UNVERIFIABLE, not false               |
+|    ~5 | a whole-file or whole-JSON dump (`name: Deploy production`, a bare `{`), or a compiler error                                                                                              | the command ran but the spec selects the wrong thing, so the comparison is meaningless |
+|    ~2 | output that CONFIRMS the claim but does not look like it — `absent in 8.57.1` against the exports JSON that indeed has no `./universal`; a prose expectation against a `dist-tags` object | detector FALSE POSITIVE. The fact holds; the comparison is prose-against-JSON          |
+| **2** | a different value of the right shape — postgresql-security `2.3.5` where `2.2.1` was claimed, jwt-security `3.2.2` where `3.0.3` was                                                      | genuine DRIFT — a claim that was true when written and is false now                    |
 
 The original text of this section described only the last row. Reported as "80 stale claims" it says our published articles have gone false at scale; what it mostly measures is that **the detector's own commands are broken** — unmatched backticks, unescaped pipes, a bare `\` reaching the shell, and commands run from a directory where `node_modules` does not exist.
 
@@ -533,7 +534,12 @@ That distinction decides the remediation, and the two do not overlap:
 
 - **71 broken commands** — fix the spec commands. No article prose is wrong; nothing to rewrite. Until they run, these specs assert nothing, which is worse than a stale claim because it looks like coverage.
 - **~5 over-broad commands** — narrow the selector (see the `deploy.yml` case: dumping 190 lines to compare one version string).
-- **~4 genuine drift** — rewrite or retire the claim, the class this document was originally written for.
+- **~2 false positives** — the claim is fine and so is the article; the spec
+  compares a sentence to a JSON blob. Same remediation as the row above:
+  narrow the selector, or state the expectation in the shape the command
+  actually returns.
+- **2 genuine drift** — rewrite or retire the claim, the class this document
+  was originally written for. Two of eighty.
 
 If this recurs for the same spec, the spec's command is not specific enough, and that is an eval gap rather than an author mistake.
 
