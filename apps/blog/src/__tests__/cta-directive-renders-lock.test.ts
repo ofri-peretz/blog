@@ -61,6 +61,16 @@ describe("the CTA directive survives its own line wrapping", () => {
     expect(out).toContain("Body text.");
   });
 
+  it("leaves an empty label alone rather than rendering an empty link", () => {
+    // `[\s\S]*?` would match zero characters here and produce `**[](url)**`:
+    // valid Markdown, invisible on the page, and caught by nothing. Leaving
+    // the directive raw is the louder failure, and the corpus sweep below
+    // catches that one.
+    const src = '::dev-to-cta{url="https://example.com"}\n\n::';
+    expect(preprocessMarkdown(src)).toContain("::dev-to-cta{");
+    expect(preprocessMarkdown(src)).not.toContain("**[](");
+  });
+
   it("leaves no raw directive in any published article", () => {
     // The sweep. Asserts on the RENDERED output, so it cannot pass by
     // pointing at the wrong thing or by counting a directive it never read.

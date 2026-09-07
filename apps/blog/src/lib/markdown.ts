@@ -18,12 +18,26 @@ const INSTALL_RE =
  * Nothing failed; the replace simply found nothing to replace, which is the
  * quietest way for a renderer to break.
  *
- * `[\s\S]*?` is lazy and anchored on `\n::`, so it still stops at the first
+ * `[\s\S]+?` is lazy and anchored on `\n::`, so it still stops at the first
  * terminator and cannot run past one block into the next. The label is joined
  * to a single line below, because a Markdown link's text cannot contain a
  * newline — the wrapping is source formatting, never content.
+ *
+ * `+?` not `*?`: a zero-length label would match and render `**[](url)**`, a
+ * valid but empty Markdown link. That is a WORSE failure than the one being
+ * fixed — the raw-directive case is caught by the corpus sweep, an empty link
+ * renders as nothing and passes every check. `([^\n]+)` had this floor and it
+ * is kept.
+ *
+ * A `::dev-to-cta` with NO terminator of its own, immediately followed by
+ * another directive, ends on the first two colons it finds — the opener of
+ * the next block. Anchoring the terminator to end-of-line does not fix that;
+ * it relocates the damage, swallowing the whole next block into the label
+ * instead. Both are wrong, neither is reachable from well-formed input, and
+ * the old pattern behaved the same way. Left alone deliberately rather than
+ * traded for a different bad outcome.
  */
-const CTA_RE = /^::dev-to-cta\{url="([^"]+)"\}[ \t]*\n([\s\S]*?)\n::/gm;
+const CTA_RE = /^::dev-to-cta\{url="([^"]+)"\}[ \t]*\n([\s\S]+?)\n::/gm;
 
 /**
  * `::playground-cta` is the ONLY directive that renders differently per
