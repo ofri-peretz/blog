@@ -4,9 +4,11 @@
   "panel_version": "1.0.0",
   "spec": "sdlc/spec/zero-yield-rules-dead-or-waiting.md",
   "reviewed": "2026-09-07",
-  "round": 1,
+  "round": 2,
   "findings_fixed_this_round": [
-    "cover hook, twice, both caught by the mechanical gates rather than by reading it. The first hook lit 5 of 6 blocks on the survivor strip and validate-hooks flagged it as reading inverted — a strip that is almost entirely lit says 'nearly all survived', the opposite of the finding. Reframed onto the one rule that could not fire: 1 of 6. The replacement then drew a hedging note on 'could never fire'; the underlying fact is not hedged, so the wording is now the definite 'cannot fire at all'. Final gate: 0 errors, 0 warnings."
+    "cover hook, twice, both caught by the mechanical gates rather than by reading it. The first hook lit 5 of 6 blocks on the survivor strip and validate-hooks flagged it as reading inverted — a strip that is almost entirely lit says 'nearly all survived', the opposite of the finding. Reframed onto the one rule that could not fire: 1 of 6. The replacement then drew a hedging note on 'could never fire'; the underlying fact is not hedged, so the wording is now the definite 'cannot fire at all'. Final gate: 0 errors, 0 warnings.",
+    "code defect in the published snippet, caught by the reviewer gate and correct: the flagship ESLint config omitted languageOptions.parser. Three of the five table fixtures are TypeScript interface declarations, which the default parser cannot read — the shown check would have produced a fatal parse error with a null ruleId, not the rule's verdict, on the exact cases it was demonstrating. The real harness used a parser; the snippet had elided it, which is not shorthand but a wrong config. Parser line added, with a sentence on why it is not optional and a pointer back to printing null-ruleId messages.",
+    "linkability: the article's only article-to-article exit pointed at rule-yield-distribution-own-plugin, which is unpublished, and phrased it in the past tense as though it were live. Repointed at two published pieces (precision-recall-f1-for-static-analysis, aggregate-benchmarks-lie) and the anecdote reworded to stand on its own. The article no longer depends on any unpublished slug."
   ],
   "checked_and_found_correct": [
     "All six rules were run individually through ESLint.lintText on a one-line fixture drawn from that rule's own `invalid` test block, at error, with no other rule enabled. Five fired: react-class-to-hooks, no-default-test-id, no-is-prefix-prop, no-kind-prop-discriminator, no-wrapper-sub-component. Verified 2026-09-07.",
@@ -33,8 +35,8 @@
       "why": "Taxonomy, then method, then results, then the anomaly — each section answering the question the previous one raises. 'A bug gets noticed' is the load-bearing line and it earns the section it closes, because it names precisely why an options-gated rule at error is worse than a broken one. Held at the floor because the closing habit section reaches one level up to harness-level false zeros, which is a real connection but arrives as a second thesis in the last two paragraphs."
     },
     "compatibility": {
-      "score": 9.5,
-      "why": "The snippet is plain ESLint flat-config API with no bespoke tooling, and the one line that silently breaks for other people — cwd, without which every result is 'outside of base path' — is called out inline with the reason rather than left to be discovered. Held at the floor for the same reason as its companion: the example is ESLint-9-shaped and the article does not state the range it was run under."
+      "score": 9.6,
+      "why": "Raised from 9.5 in round 2. The snippet is plain ESLint flat-config API, and the two lines that silently break for other people are now both present and explained: cwd, without which every result is 'outside of base path', and languageOptions.parser, without which the TypeScript fixtures throw instead of firing. The second was missing in round 1 and is exactly the defect this lens exists to catch. Held below the top because the example is still ESLint-9-shaped and the article does not state the range it was run under."
     },
     "reproducibility": {
       "score": 9.7,
@@ -44,7 +46,6 @@
   "min": 9.5,
   "verdict": "clear",
   "publish_conditions": [
-    "Links rule-yield-distribution-own-plugin, which is queued and unpublished. Must publish AFTER it, or the link 404s. Same sequencing class as agent-resource-bounds.",
-    "The independent nine-reviewer prose gate has been dispatched but had not returned at the time this artifact was written. Do not promote to `ready` until devto-review returns a gate score with zero blockers."
+    "The nine-reviewer prose gate returned 8.8 with two blockers on round 1; both are fixed above and a re-run is dispatched. Do not promote to `ready` until it returns zero blockers."
   ]
 }

@@ -23,7 +23,7 @@ quality:
     growth_hook: 9.5
     security_correctness: 9.7
     structure_framing_voice: 9.5
-    compatibility: 9.5
+    compatibility: 9.6
     reproducibility: 9.7
 ---
 
@@ -62,6 +62,7 @@ const eslint = new ESLint({
   overrideConfigFile: true,
   cwd: '/tmp',                                   // else: "outside of base path"
   overrideConfig: [{ files: ['**/*.tsx'],
+    languageOptions: { parser: tsParser },       // @typescript-eslint/parser
     plugins: { 'react-features': plugin },
     rules: { 'react-features/no-is-prefix-prop': 'error' } }],
 });
@@ -71,6 +72,11 @@ const [res] = await eslint.lintText(
 );
 console.log(res.messages);
 ```
+
+The parser line is not optional. Most of the fixtures below are `interface`
+declarations, and the default parser cannot read them — you get a fatal parse
+error where you expected the rule's verdict, and a message whose `ruleId` is
+`null`. Print those; never skip them.
 
 Fires: the rule works, your code is clean, keep it. Silent: you have learned
 something the report could not tell you.
@@ -122,11 +128,12 @@ Before you delete a rule for being quiet, make it speak. If it will not, you
 have found something more interesting than a finding.
 
 The same instinct applies one level up: a lint run that reports zero is not
-evidence that a tool ran. [I have had a harness report 0 findings across 100
-files](https://ofriperetz.dev/articles/rule-yield-distribution-own-plugin)
-because every file was silently ignored — a perfectly believable number, and
-completely false. Zero is the one output that looks identical whether
-everything worked or nothing did.
+evidence that a tool ran. A harness of mine once reported 0 findings across 100
+files because every file was silently ignored — a perfectly believable number,
+and completely false. Zero is the one output that looks identical whether
+everything worked or nothing did, which is why
+[a count means nothing without the measurement behind it](https://ofriperetz.dev/articles/precision-recall-f1-for-static-analysis)
+and why [an aggregate hides the distribution that produced it](https://ofriperetz.dev/articles/aggregate-benchmarks-lie-heres-what-700-ai-functions-look-like-by-security-domain).
 
 ::install-command{package="eslint-plugin-react-features" dev}
 ::
