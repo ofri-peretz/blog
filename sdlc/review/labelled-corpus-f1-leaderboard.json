@@ -1,0 +1,59 @@
+{
+  "slug": "labelled-corpus-f1-leaderboard",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/labelled-corpus-f1-leaderboard.md",
+  "reviewed": "2026-09-07",
+  "round": 3,
+  "findings_fixed_this_round": [
+    "framing, decided before drafting rather than corrected after: the internal benchmark queue frames this material as a ranking to 'be the reference' on. Published that way it is a brochure with a conflict of interest buried in a caveat. The article leads with 'I wrote the fixtures' as the third sentence, above the table, and spends its second section on why the 100% row should be discounted. The ranking reading is refused outright in the closing section, which states the table is a scope map and a regression gate and not a basis for picking a plugin.",
+    "the honest-loss axis was found rather than asserted. The source table publishes only F1, where no-unsanitized is second from bottom at 10.8%. Splitting precision out of its own TP/FP shows it at 80% — the highest precision of any plugin measured, ours included on that axis alone. That figure appears nowhere in the internal record; it is derived here and it is the article's title.",
+    "reproducibility blocker, and the reviewer was right that it was fatal for this piece specifically: an article whose thesis is 'verify this yourself' shipped no pinned versions, no corpus link and no command. Added eslint-plugin-security@4.0.1, @microsoft/eslint-plugin-sdl@1.1.0, ESLint 10.8.1 and Node 24 to the opening, plus the repo path and the suite command. eslint-plugin-security's recall moves between releases, so an unpinned comparison table invites the reasonable objection that an old version was measured.",
+    "WRONG COMMAND CAUGHT BEFORE PUBLISHING: the first version of that fix cited `node benchmarks/suites/ilb-real-source/run.mjs`. That is the 20-project real-source suite; this table is B2b, produced by ilb-juliet. Corrected to `npx tsx benchmarks/suites/ilb-juliet/run.ts`, verified to exist. Publishing a reproduction command that reproduces a different measurement would have been precisely the defect this article warns about.",
+    "tag slot: #devsecops replaced with #webdev. Measured median zero reactions across its own top-40 on this corpus and the most common wrong call - one of four discovery slots thrown away.",
+    "linkability: the table named five plugins and linked none, while three of them have dedicated articles on this site. Rows now link benchmark-sonarjs-vs-interlace, benchmark-microsoft-sdl-vs-interlace and eslint-plugin-security-is-unmaintained; TP/FP/FN links the confusion-matrix canonical; the seventeen-plugin survey is linked as the uncompressed form. Three inline links became eight."
+  ],
+  "checked_and_found_correct": [
+    "All six published F1 values were recomputed independently from each row's own TP/FP/FN using 2*P*R/(P+R). Six of six match the published figure to within 0.1 percentage points. The article quotes no F1 it did not re-derive.",
+    "TP + FN = 69 on every row without exception. This is the check that the six rows describe one corpus rather than six differently-scoped runs; had it failed, the table would not be a comparison and the article would not exist.",
+    "Precision derived per row: Interlace 100%, no-unsanitized 80%, sonarjs 75%, sdl 75%, security 58.8%, security-node 57.1%. The claim that no-unsanitized is the most precise community plugin holds, and it is 4 TP against 1 FP as stated.",
+    "Version context carried from BENCHMARK-RESULTS.md B2b: eslint-plugin-security@4.0.1, ESLint 10.8.1, Node 24, corpus ilb-juliet.",
+    "The intent's kill criterion was run against the evidence. F1 values recompute: survives. TP+FN uniform at 69: survives. A community plugin reads better than ours on an available axis — no-unsanitized at 80% precision: survives. Had that third one failed the piece would have been a brochure and was to be abandoned."
+  ],
+  "not_re_verified": [
+    "The superset claim in the source record — that every vulnerable fixture any of the five detects, we also detect, verified fixture by fixture. That was not re-run here, and for that reason the article does not make the claim at all rather than making it on someone else's verification.",
+    "Real-source behaviour. This is a labelled-fixture instrument; the 20-project real-source run is separate and carries its own caveat that findings are volume rather than correctness. The article does not mix the two."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.5,
+      "why": "The title is a number that works against the author's own table — the most precise tool in the comparison is the one sitting second from bottom — and it is not recoverable from the source data without doing the arithmetic. The disclosure lands as the third sentence, before the table rather than after it, which converts the piece's biggest weakness into its opening move. Held at the floor because the subject is a comparison table, a shape readers are trained to skim."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "Every published figure was recomputed rather than quoted, including the author's own 100% row, and the structural check that matters — TP+FN constant across rows — is stated in the article rather than kept in the working notes. The piece is careful about what F1 on a self-authored corpus can and cannot mean, and names @microsoft/eslint-plugin-sdl explicitly as a well-made tool whose low score measures a scope mismatch rather than quality."
+    },
+    "structure_framing_voice": {
+      "score": 9.6,
+      "why": "Disclosure, table, the column the ranking hides, why the author's own row should be discounted, the check, and finally what the table is actually for. The order is the argument. 'A rule nobody runs has a recall of zero regardless of what the table says' is the quotable line and it is doing real work — it explains why the precision column deserves the title. Landscape framing throughout with no contest vocabulary; the closing move hands the reader the corpus and tells them their own re-run is the one worth having."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "Versions are pinned in the spec — eslint-plugin-security 4.0.1, ESLint 10.8.1, Node 24 — and the article makes no configuration claim a reader has to reproduce, so there is little surface to break. Held at the floor because the corpus itself is the dependency and the article points readers at it without stating how to obtain or extend it beyond 'add fixtures for the threats you care about'."
+    },
+    "reproducibility": {
+      "score": 9.6,
+      "why": "The arithmetic is fully reproducible from the printed table — every F1 and every precision figure can be re-derived from the TP/FP/FN in the article itself, which is the strongest form available for a piece whose subject is a table. The instruction to re-run with the reader's own fixtures is a real invitation rather than a rhetorical one. Short of the top because the corpus is named but not linked, so the re-run it recommends takes a step the article does not spell out."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear",
+  "publish_conditions": [],
+  "prose_gate": {
+    "tool": "scripts/devto-review.ts",
+    "gate_score": 9.2,
+    "blockers": 0,
+    "verdict": "Ready to publish",
+    "run": "2026-09-07"
+  }
+}

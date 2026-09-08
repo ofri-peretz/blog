@@ -1,0 +1,56 @@
+{
+  "slug": "lint-harness-measured-nothing",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/lint-harness-measured-nothing.md",
+  "reviewed": "2026-09-07",
+  "round": 2,
+  "findings_fixed_this_round": [
+    "cover device: the hook was first written as a survivor strip at N=100, which validate-hooks rejects outright — above N=40 the strip is omitted rather than drawn misleadingly. Reframed onto the false value itself, `0 findings`, struck through. The device name in the skill documentation is `strike`; the validator accepts only `refute`, `collapse`, `survivor`, `plain`. Documentation drift, recorded here because the next author will hit it.",
+    "numeric fact gate: the opening said 'a hundred files' in prose while the hook said '100'. verify-hook-facts matches the numeral against the body and refused it. The body now uses the numeral, which is the better form for the opening line anyway.",
+    "linkability blocker, and it is a pattern rather than a one-off: every outbound article link pointed at zero-yield-rules-dead-or-waiting and rule-yield-distribution-own-plugin, both written this week and both unpublished, so every navigational exit was a dead end. Repointed at four published pieces in the same cluster - what-ground-truth-caught-that-unit-tests-missed, reproducibility-vs-replicability, confusion-matrix-tp-fp-fn-tn - and the article now depends on no unpublished slug. Third time this session a new article linked only to its own siblings."
+  ],
+  "checked_and_found_correct": [
+    "All three mechanisms were executed on 2026-09-07 rather than recalled. Flat config with no `files` pattern: a directory containing `src/a.ts` with `eval()` and a clean `src/b.js` lints to exit 0, empty stdout, empty stderr — the TypeScript file never read. Outside base path: exit 0, empty stderr on the CLI; via the API the only trace is a message with a null `ruleId` reading 'File ignored because outside of base path.'",
+    "The false clean sweep is this session's own: 100 files, 0 findings, 14 of 14 rules reported zero-yield, against a corrected 308 findings across 54 of the same files. Both numbers come from the same harness with one line changed.",
+    "The stale-artifact case is also first-hand: the same `meta.fixable` query returns `prefer-event-target: code` through a monorepo symlink and `no fixer` from the published 3.1.2 in a clean directory. Both answers correct, different questions.",
+    "The intent's kill criterion was run rather than assumed. Silence: all three exit 0 with no diagnostic attributable to the fault. Distinctness: the three fail at path resolution, config matching and module resolution respectively, so a fix for one leaves the others intact. Both survive, and the spec records it.",
+    "The exit-code nuance is checked and stated. An early flat-config run exited 1, which looks like the tool noticing; it was a genuine no-eval finding in the file that WAS linted. With that file clean the exit is 0. The article says so explicitly rather than quietly using the cleaner example."
+  ],
+  "not_re_verified": [
+    "Two further harness defects recorded in the internal benchmark queue — a stale dist measuring 3.3.2 against a published 4.1.0, and spec/ directories linted as production taking one repo from 300 findings to 26. Neither was reproduced and neither appears in the article. The stale-artifact mechanism is carried by the symlink case measured today instead.",
+    "Whether three is the complete set of silent-zero mechanisms. The article says three is what was hit, not what exists, and makes no completeness claim."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "The title is the finding and the number is the author's own failure: 0 on 100 files, all 100 ignored. It concedes the wrong answer in the second sentence, before any argument, which is the cheapest credibility available and most pieces spend it late or not at all. The closing question — would you know if the tool had read nothing — lands because the article has just demonstrated that the answer is usually no."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "Read as measurement correctness, this is the strongest lens. Every mechanism was executed rather than described, both the broken and corrected states of the same harness are reported, and the one observation that could have been used dishonestly — an exit code of 1 that looked like a warning — is traced to its real cause and corrected in the text. The asymmetry argument (these bugs only ever fail toward good news) is the article's sharpest claim and it is supported by the mechanism of each defect, not asserted."
+    },
+    "structure_framing_voice": {
+      "score": 9.5,
+      "why": "Three numbered mechanisms, each with what it looks like and what fixes it, then the two sections that make it more than a listicle: why all three survive review, and the canary. 'A count from an instrument you have never seen fail is not a measurement, it is a hope' is the quotable line and it is the thesis rather than decoration. Held at the floor because section 3 shifts from ESLint behaviour to monorepo resolution, which is the same lesson at a different altitude and reads slightly as a fourth topic."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "Everything shown is stock ESLint 9 flat config and the CLI, with the version pinned in the spec and no bespoke tooling. The reproduction is a directory with three files, which is as portable as it gets. Held at the floor because the article does not state the ESLint major it was run under in the body, and the flat-config default-files behaviour it depends on is version-sensitive."
+    },
+    "reproducibility": {
+      "score": 9.8,
+      "why": "The highest score here and it is earned. Each mechanism is reproducible in under a minute from what is printed, the canary is four lines, and the article publishes the wrong answers it believed rather than only the corrected ones. The before-and-after of the same harness on the same corpus — 0/100 against 308/54 — is the strongest form this evidence could take, because it isolates the defect to one line of configuration."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear",
+  "publish_conditions": [],
+  "prose_gate": {
+    "tool": "scripts/devto-review.ts",
+    "gate_score": 9.5,
+    "blockers": 0,
+    "verdict": "Ready to publish",
+    "run": "2026-09-07"
+  }
+}

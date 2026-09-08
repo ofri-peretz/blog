@@ -1,0 +1,51 @@
+{
+  "slug": "rule-that-reads-variable-names",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/rule-that-reads-variable-names.md",
+  "reviewed": "2026-09-07",
+  "round": 1,
+  "findings_fixed_this_round": [
+    "linkability, fixed pre-emptively rather than after a gate failure: the draft linked zero-yield-rules-dead-or-waiting, which is queued as ready but unpublished, so it would have shipped as a 404. Three earlier articles this session failed the reviewer gate on exactly this — new pieces linking their own unpublished siblings — so the target was swapped for what-ground-truth-caught-that-unit-tests-missed before running the gate. Every outbound link now resolves today."
+  ],
+  "checked_and_found_correct": [
+    "Both defects were executed against the rule, not inferred from the record. `export const QueryValidateSchema = QueryInputSchema;` FIRES with only sc/no-xpath-injection enabled. `xpath.select(\"//user[@id='\" + id + \"']\", doc);` is SILENT under the same config.",
+    "The rename experiment was run in both directions and is the article's load-bearing evidence. `id` -> `userId` turns silence into a report; `QueryValidateSchema` -> `SchemaA` turns a report into silence. The code is otherwise byte-identical in each pair, so the identifier is demonstrably the deciding input.",
+    "A third name was tested to rule out a `userId`-specific special case: `queryX` also FIRES on the same injection. Consistent with the substring list, not with any narrower explanation.",
+    "Root cause read from source rather than guessed: no-xpath-injection/index.ts lines 362-367 lowercase the identifier and test it against ['req','request','query','params','input','user','search'] with String.includes. `queryinputschema` matches two of the seven; `id` matches none.",
+    "The sink is genuinely recognised, which is what makes the false negative a miss rather than an out-of-scope case: `select` is in the rule's default xpathFunctions list at index.ts:162, alongside evaluate, selectSingleNode, selectNodes and xpath.",
+    "The intent's kill criterion was tested. Single cause: both verdicts trace to the same predicate. Rename flips the verdict: proven in both directions. Both survive; had either failed the article would have been a maintenance note."
+  ],
+  "not_re_verified": [
+    "Whether the other rules on the repo's name-inference debt list fail the same way. Not surveyed, and the article makes no claim about them beyond noting this rule is on the list.",
+    "Whether the published release behaves identically to the workspace build. Everything here was measured against the workspace, and the article says so and tells readers on the registry version to re-run before assuming — a distinction that produced a near-miss correction earlier in the same session."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "The article opens with the evidence rather than a claim: four lines of code with their verdicts in trailing comments, where two identical vulnerabilities disagree and two identical statements disagree. A reader understands the defect before reading a sentence of prose. The title states the consequence in five words and is the rare security headline that is a reproducible instruction rather than a warning."
+    },
+    "security_correctness": {
+      "score": 9.8,
+      "why": "The strongest lens here and the highest score awarded in this batch. Every claim was executed against the rule today; the root cause is quoted from source with line numbers; the sink is confirmed present in the rule's own defaults, which is what distinguishes a miss from an out-of-scope input; and a third variable name was tested specifically to rule out a narrower explanation than the one advanced. The argument that this failure mode is worse than a noisy rule — errors correlating with naming convention rather than with risk, and failing toward silence precisely on short neutral identifiers — is reasoned from the mechanism rather than asserted."
+    },
+    "structure_framing_voice": {
+      "score": 9.5,
+      "why": "Evidence, mechanism, why one predicate produces both errors, why that is worse than ordinary noise, what it should read instead, and a check the reader can run in a minute. 'Not where the value came from - what it is spelled' is the quotable line and it is the thesis compressed. Held at the floor because the piece is about our own defect and could have said more plainly what happens next to the rule; it describes the class and the tracker without committing to a fix date."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "The reproduction is four lines of TypeScript and one rule enabled, with no configuration a reader must replicate, and the article is explicit that the measurement is against the workspace build rather than the published release. Held at the floor because it does not pin the plugin version in the body, which for a defect report is the figure a reader most needs in order to tell whether they are affected."
+    },
+    "reproducibility": {
+      "score": 9.8,
+      "why": "As reproducible as this genre gets: paste four lines, enable one rule, read four verdicts. The rename experiment is the falsifiable core and it runs in seconds in either direction. The closing check generalises the method to any rule the reader depends on — rename every identifier to a single letter and see whether the verdict moves — which turns a report about one defect into a technique that outlives it."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear",
+  "publish_conditions": [
+    "The nine-reviewer prose gate was dispatched but had not returned when this artifact was written. Do not promote to `ready` until it returns zero blockers.",
+    "This reports a live defect in a shipping rule. Consider whether the fix, or at least an issue, should land before or alongside publication — the article names the rule and gives a working reproduction."
+  ]
+}
