@@ -60,11 +60,43 @@ describe("also-building reflow contract", () => {
      * ("3 plugins live" is the longest at 14), with room that does not
      * invite another sentence.
      */
-    const statuses = [...SOURCE.matchAll(/status: "([^"]+)"/g)].map((m) => m[1]);
+    // Statuses are either a plain string or a template interpolating
+    // REGISTRY_ITEMS; measure what actually renders in both cases.
+    const count = SOURCE.match(/const REGISTRY_ITEMS = (\d+);/)?.[1];
+    expect(count, "REGISTRY_ITEMS not found").toBeDefined();
+    const statuses = [...SOURCE.matchAll(/status: (?:"([^"]+)"|`([^`]+)`)/g)]
+      .map((m) => m[1] ?? m[2])
+      .map((v) => v.replace(/\$\{REGISTRY_ITEMS\}/g, count!));
     expect(statuses.length).toBeGreaterThanOrEqual(3);
     for (const status of statuses) {
       expect(status.length, `status too long for a badge: "${status}"`).toBeLessThanOrEqual(16);
     }
+  });
+
+
+  it("states the registry count once, not twice", () => {
+    /*
+     * The count is in the badge AND the body. As two literals they drift, and
+     * a comment saying so would only record the drift. One const, two
+     * renderings — so a stale number is impossible rather than merely
+     * documented.
+     */
+    const count = SOURCE.match(/const REGISTRY_ITEMS = (\d+);/)?.[1];
+    expect(count, "REGISTRY_ITEMS not found").toBeDefined();
+    expect(SOURCE).toContain("status: `${REGISTRY_ITEMS} items`");
+    expect(SOURCE).toContain("{REGISTRY_ITEMS}");
+    // Exactly one occurrence in CODE. Comments legitimately quote the number
+    // — its provenance, and the reflow bug the longer status caused — and a
+    // raw count over the whole file would fail on prose, which is the mistake
+    // this file has already made once.
+    const code = SOURCE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    const occurrences = [
+      ...code.matchAll(new RegExp(`\\b${count}\\b`, "g")),
+    ].length;
+    expect(
+      occurrences,
+      `the count must live in exactly one place in code, found ${occurrences}`,
+    ).toBe(1);
   });
 
   it("keeps the button labels wrappable", () => {
