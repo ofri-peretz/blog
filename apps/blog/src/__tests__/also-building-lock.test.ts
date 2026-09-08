@@ -62,9 +62,12 @@ describe("also-building says what each product actually is", () => {
     // Asserted on the executable shape, not on prose: the comment in the
     // component names the file precisely to record why it is NOT used, and a
     // bare `not.toContain` would fail on that explanation.
+    // `toEqual` on the whole list, not `every`: `every` is true for an empty
+    // array, so deleting every mark — burgee's included, and that one is
+    // load-bearing for the brand — would have passed silently. Review caught
+    // it; it is the same vacuity this file exists to guard against.
     const marks = [...SOURCE.matchAll(/src:\s*"([^"]+)"/g)].map((m) => m[1]);
-    expect(marks).not.toContain("/serverless-logo.svg");
-    expect(marks.every((m) => m === "/burgee-flag.svg")).toBe(true);
+    expect(marks).toEqual(["/burgee-flag.svg"]);
   });
 
   it("links only to things that exist", () => {
