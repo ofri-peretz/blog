@@ -15,7 +15,7 @@ import {
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { FOOTPRINT } from "@/lib/footprint";
-import { goalFrom } from "@/lib/league";
+import { goalFrom, type PassLine } from "@/lib/league";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -73,13 +73,6 @@ async function crawl(): Promise<{
 const EXACT = join(FOOTPRINT, "engagement", "league.json");
 const EXACT_MAX_AGE_H = 36;
 const PASSES = join(FOOTPRINT, "engagement", "league-passes.jsonl");
-export interface PassLine {
-  day: string;
-  rank: number | null;
-  prevRank: number | null;
-  passed: string[];
-  overtakenBy: string[];
-}
 
 /** Last line per day from the loop's pass ledger. */
 function passLines(): PassLine[] {
@@ -136,13 +129,15 @@ function exact(): {
   );
   const climb = mergeLeague([arts], ME);
   const idx = members.findIndex((m) => m.author === ME);
-  const ladder = members
-    .slice(Math.max(0, idx - 30), idx + 31)
-    .map((m, i) => ({
-      author: m.author,
-      rank: Math.max(0, idx - 30) + i + 1,
-      reactions: m.reactions,
-    }));
+  // Absent from the file means no neighbours, not the top thirty.
+  const ladder =
+    idx === -1
+      ? []
+      : members.slice(Math.max(0, idx - 30), idx + 31).map((m, i) => ({
+          author: m.author,
+          rank: Math.max(0, idx - 30) + i + 1,
+          reactions: m.reactions,
+        }));
   const goal = goalFrom(
     passLines(),
     climb.rank,
