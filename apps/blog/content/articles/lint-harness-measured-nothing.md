@@ -57,8 +57,9 @@ Fix: set `cwd` to the tree you are measuring.
 
 ## 2. The `.ts` files were never eligible {#flat-config}
 
-Flat config matches files by pattern. Omit `files`, and the default covers
-`.js` and friends — **not** `.ts`, in an ecosystem that is mostly TypeScript.
+Flat config (ESLint 9.39.2 here) matches files by pattern. Omit `files`, and
+the default covers `.js` and friends — **not** `.ts`, in an ecosystem that is
+mostly TypeScript.
 
 ```js
 // eslint.config.mjs
