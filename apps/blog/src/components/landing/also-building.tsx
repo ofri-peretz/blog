@@ -55,6 +55,18 @@ interface Product {
   testId: string;
 }
 
+/**
+ * Registry item count, read from the live registry rather than counted by
+ * hand: `curl -s https://ds.interlace.tools/r/registry.json` → `items.length`
+ * (146 on 2026-09-08).
+ *
+ * Declared once and interpolated into BOTH the badge and the body. Review
+ * suggested a comment noting the two copies would drift; a comment documents
+ * the drift rather than removing it, and this is the same "one source, two
+ * renderings" the registry itself is built on.
+ */
+const REGISTRY_ITEMS = 146;
+
 const PRODUCTS: Product[] = [
   {
     name: "Interlace Serverless",
@@ -92,6 +104,49 @@ const PRODUCTS: Product[] = [
       },
     ],
     testId: "also-building-serverless",
+  },
+  {
+    name: "Interlace Design System",
+    tagline: "The components this site is built from",
+    /*
+     * Short, because `Badge` is `whitespace-nowrap shrink-0` by design — it
+     * is a label, not a sentence, and it will not wrap or shrink for anyone.
+     * "146 in the registry" pushed the document 43px sideways at 320px/200%
+     * and took the whole flex row with it. The count still gets said, in the
+     * body, where it can wrap.
+     */
+    status: `${REGISTRY_ITEMS} items`,
+    statusVariant: "outline",
+    /*
+     * No mark for the same reason as Serverless: the DS has no standalone
+     * mark of its own yet, and borrowing the Interlace wordmark used in the
+     * site chrome would read as the site's identity rather than this
+     * product's.
+     */
+    body: (
+      <>
+        Not an npm dependency — a shadcn-style registry of {REGISTRY_ITEMS}{" "}
+        items you install FROM, so the component lands in your tree and stays
+        yours to edit. This blog
+        consumes it that way (
+        <code className="font-mono text-sm">@interlace</code> →{" "}
+        <code className="font-mono text-sm">ds.interlace.tools</code>), which
+        is why every page here is also a working example of it.
+      </>
+    ),
+    actions: [
+      {
+        href: "https://interlace.tools",
+        label: "See the system",
+        variant: "default",
+      },
+      {
+        href: "https://storybook.interlace.tools",
+        label: "Browse Storybook",
+        variant: "outline",
+      },
+    ],
+    testId: "also-building-design-system",
   },
   {
     name: "burgee",
