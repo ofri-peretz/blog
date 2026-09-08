@@ -288,3 +288,51 @@ export function forecast(
     etaNext: new Date(now + daysToNext * 86_400_000).toISOString().slice(0, 10),
   };
 }
+
+/* ── The daily goal: pass at least one author a day until a level ─────────── */
+
+/** The climb's daily goal level. */
+export const GOAL_LEVEL = 100;
+
+export interface PassLine {
+  day: string;
+  rank: number | null;
+  prevRank: number | null;
+  passed: string[];
+  overtakenBy: string[];
+}
+
+/** Passed today, the streak of days with a pass, and the arithmetic to the goal at one a day. */
+export function goalFrom(
+  lines: PassLine[],
+  rank: number | null,
+  today: string,
+  level = GOAL_LEVEL,
+) {
+  const todayLine = lines.find((l) => l.day === today) ?? null;
+  // Streak: consecutive ledger days with a pass, ending today or on the last
+  // ledger day; a passless today does not break yesterday's streak yet.
+  let streak = 0;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const l = lines[i];
+    if (l.passed.length > 0) streak++;
+    else if (l.day !== today) break;
+  }
+  const toGo = rank == null ? null : Math.max(0, rank - level);
+  return {
+    level,
+    passedToday: todayLine?.passed ?? [],
+    overtakenToday: todayLine?.overtakenBy ?? [],
+    met: (todayLine?.passed.length ?? 0) >= 1,
+    streak,
+    authorsToGo: toGo,
+    etaAtOneADay:
+      toGo == null
+        ? null
+        : new Date(Date.parse(today) + toGo * 86_400_000)
+            .toISOString()
+            .slice(0, 10),
+    recent: lines.slice(-14).reverse(),
+    totalPassed: lines.reduce((s, l) => s + l.passed.length, 0),
+  };
+}
