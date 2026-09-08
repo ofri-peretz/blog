@@ -138,6 +138,14 @@ async function build() {
       })) ?? [],
     history: impactHistory(),
     // The climb page reads this: the league chunk cannot load node:sqlite.
+    leagueHistory: leagueHistory()
+      .slice(-14)
+      .map((r) => ({
+        day: r.day,
+        rank: r.rank,
+        reactions: r.reactions,
+        articles: r.articles,
+      })),
     forecast: forecast(
       leagueHistory().map((r) => ({
         day: String(r.day),
