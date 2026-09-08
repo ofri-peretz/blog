@@ -121,8 +121,6 @@ const eslintConfig = defineConfig([
       "secure-coding/no-improper-sanitization": "warn",
       // 12
       "browser-security/no-clickjacking": "warn",
-      // 8
-      "react-hooks/set-state-in-effect": "warn",
       /*
        * 5 — SUSPECTED FALSE POSITIVE, not a finding. Every one is a numeric
        * `reduce` accumulator: `pairs.reduce((s, p) => s + p[0], 0)` inside
@@ -208,6 +206,12 @@ const eslintConfig = defineConfig([
       "react-hooks/purity": "warn",
       "react-hooks/refs": "warn",
       "react-hooks/immutability": "warn",
+      // 8 — kept with its siblings rather than in the general block. It only
+      // worked there because eslint-config-next registers `react-hooks`
+      // globally; if Next ever narrows that to TSX, a rule referencing an
+      // unregistered namespace stops the whole config loading. Review caught
+      // it. Not worth depending on someone else's registration scope.
+      "react-hooks/set-state-in-effect": "warn",
       // Two apostrophes in copy.
       "react/no-unescaped-entities": "warn",
     },

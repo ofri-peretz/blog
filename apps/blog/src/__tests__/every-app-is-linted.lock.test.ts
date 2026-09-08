@@ -63,7 +63,31 @@ describe("every app is linted by the Interlace plugins", () => {
     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
     const required = [...UNIVERSAL, ...("react" in deps ? REACT : [])];
-    const missing = required.filter((p) => !cfg.includes(p));
+    /*
+     * Matched on an import STATEMENT, anchored to the start of a line — not
+     * on the package name appearing anywhere in the file.
+     *
+     * `cfg.includes("eslint-plugin-x")` is satisfied by a comment mentioning
+     * a plugin that was removed; review caught that. The obvious repair —
+     * strip comments, then match `from "…"` — is worse, and failed here:
+     * apps/blog's header contains the line
+     *
+     *     //   a11y:     react-a11y (scoped to **\/*.tsx)
+     *
+     * whose `/*` opens a block comment as far as a regex is concerned, so the
+     * stripper swallowed the next twenty lines INCLUDING every plugin import
+     * and reported all twelve as missing. A comment broke the comment
+     * stripper.
+     *
+     * An import cannot begin anywhere but the start of a line, and a comment
+     * line begins with `//` or `*`. No stripping needed.
+     */
+    const imported = new Set(
+      [...cfg.matchAll(/^\s*import\s[\s\S]*?from\s+["']([^"']+)["']/gm)].map(
+        (m) => m[1],
+      ),
+    );
+    const missing = required.filter((p) => !imported.has(p));
     expect(
       missing,
       `${app} is missing: ${missing.join(", ")}`,
