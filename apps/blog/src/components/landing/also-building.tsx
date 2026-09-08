@@ -179,10 +179,16 @@ export function AlsoBuilding({
                   />
                 ) : null}
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    {/* `overflow-wrap: anywhere`, not `break-words`: only
+                        `anywhere` reduces the element's min-content width, and
+                        min-content is what sizes a flex item. `break-words`
+                        looked like it worked at 375px and still scrolled the
+                        document by 43px at 320px — the audit's narrowest
+                        width. Same distinction as /foundations. */}
                     <h2
                       className={cn(
-                        "text-2xl font-semibold tracking-tight break-words sm:text-3xl",
+                        "text-2xl font-semibold tracking-tight [overflow-wrap:anywhere] sm:text-3xl",
                         product.mono && "font-mono",
                       )}
                     >
@@ -192,7 +198,7 @@ export function AlsoBuilding({
                       {product.status}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 text-sm text-muted-foreground [overflow-wrap:anywhere]">
                     {product.tagline}
                   </p>
                 </div>

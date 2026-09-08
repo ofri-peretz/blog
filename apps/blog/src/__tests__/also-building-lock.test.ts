@@ -28,10 +28,25 @@ describe("also-building reflow contract", () => {
     // Only the pair together lets a long name reflow instead of pushing.
     expect(SOURCE).toContain("flex min-w-0 flex-col items-start");
     expect(SOURCE).toContain('<div className="min-w-0">');
+    // The wrap row too — it is a flex item of the column above it.
+    expect(SOURCE).toContain("flex min-w-0 flex-wrap items-center");
   });
 
-  it("lets a long name break rather than overflow", () => {
-    expect(SOURCE).toMatch(/text-2xl font-semibold tracking-tight break-words/);
+  it("uses overflow-wrap:anywhere, which is the one that actually shrinks", () => {
+    /*
+     * `break-words` is NOT equivalent and was the first attempt. Only
+     * `anywhere` reduces an element's min-content width, and min-content is
+     * what sizes a flex item — so `break-words` looked correct at 375px and
+     * the layout audit still reported the document scrolling 43px sideways at
+     * 320px/200%, its narrowest width. Same distinction already recorded on
+     * /foundations.
+     */
+    expect(SOURCE).toContain("[overflow-wrap:anywhere]");
+    expect(SOURCE).not.toMatch(/tracking-tight break-words/);
+    // The heading AND the tagline: both were in the audit's overflow list.
+    expect(
+      [...SOURCE.matchAll(/\[overflow-wrap:anywhere\]/g)].length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("keeps the button labels wrappable", () => {
