@@ -49,6 +49,24 @@ describe("also-building reflow contract", () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
+  it("keeps every status short enough for a badge", () => {
+    /*
+     * `Badge` is `whitespace-nowrap shrink-0` by design — a label, not a
+     * sentence. It will not wrap or shrink for anyone, so a long status
+     * pushes the whole flex row and the document scrolls sideways. Measured:
+     * "146 in the registry" cost 43px at 320px/200%; "146 items" costs none.
+     *
+     * 16 characters is the budget the three shipped statuses fit inside
+     * ("3 plugins live" is the longest at 14), with room that does not
+     * invite another sentence.
+     */
+    const statuses = [...SOURCE.matchAll(/status: "([^"]+)"/g)].map((m) => m[1]);
+    expect(statuses.length).toBeGreaterThanOrEqual(3);
+    for (const status of statuses) {
+      expect(status.length, `status too long for a badge: "${status}"`).toBeLessThanOrEqual(16);
+    }
+  });
+
   it("keeps the button labels wrappable", () => {
     // Same failure mode, already fixed once for the CTAs: buttonVariants sets
     // `whitespace-nowrap`, which cannot reflow.
@@ -65,9 +83,16 @@ describe("also-building says what each product actually is", () => {
     expect(SOURCE).toContain('product.mono && "font-mono"');
   });
 
-  it("ships both products, each in its own card", () => {
-    expect(SOURCE).toContain('testId: "also-building-serverless"');
-    expect(SOURCE).toContain('testId: "also-building-burgee"');
+  it("ships every product, each in its own card", () => {
+    // Ordered by maturity, which is also the order they are declared.
+    const ids = [...SOURCE.matchAll(/testId: "(also-building-[a-z-]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(ids).toEqual([
+      "also-building-serverless",
+      "also-building-design-system",
+      "also-building-burgee",
+    ]);
   });
 
   it("does not put a third party's trademark on our own card", () => {
@@ -89,6 +114,11 @@ describe("also-building says what each product actually is", () => {
     // burgee has no npm page yet, so a star is the only honest ask; the
     // serverless plugins are published, so they link to what you can install.
     expect(SOURCE).toContain("https://serverless.interlace.tools");
+    expect(SOURCE).toContain("https://interlace.tools");
+    expect(SOURCE).toContain("https://storybook.interlace.tools");
+    // The DS is installed FROM a registry, not depended on: there is no
+    // @interlace/ui on npm, so an npm link here would 404.
+    expect(SOURCE).not.toMatch(/npmjs\.com\/package\/@interlace\/ui/);
     expect(SOURCE).toContain(
       "https://www.npmjs.com/package/@interlace/serverless-devkit",
     );
