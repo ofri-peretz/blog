@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import { useCachedSection } from "@/lib/client-cache";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ME } from "@/lib/me";
 
 /**
  * The climb — exact, interactive. Every member's window comes from their own
@@ -29,7 +30,6 @@ type Member = {
 };
 type SortKey = "reactions" | "comments" | "articles" | "rx";
 
-const ME = "ofri-peretz";
 const day = (s: string) => String(s ?? "").slice(0, 10);
 
 export default function League() {
@@ -133,14 +133,14 @@ export default function League() {
                   "Our rank",
                   ours ? `${ours.rank} / ${ranked.length}` : "absent",
                   yday?.rank != null && ours
-                    ? `yesterday ${yday.rank} · ${ours.rank < yday.rank ? `up ${yday.rank - ours.rank}` : ours.rank > yday.rank ? `down ${ours.rank - yday.rank}` : "unchanged"}`
+                    ? `${yday.day.slice(5)}: ${yday.rank} · ${ours.rank < yday.rank ? `up ${yday.rank - ours.rank}` : ours.rank > yday.rank ? `down ${ours.rank - yday.rank}` : "unchanged"}`
                     : "first reading",
                 ],
                 [
                   "Our reactions, 30 days",
                   ours ? String(ours.reactions) : "—",
                   ours
-                    ? `${ours.articles.length} articles · ${ours.rx} each${yday?.reactions != null ? ` · ${ours.reactions - yday.reactions >= 0 ? "+" : ""}${ours.reactions - yday.reactions} since yesterday` : ""}`
+                    ? `${ours.articles.length} articles · ${ours.rx} each${yday?.reactions != null ? ` · ${ours.reactions - yday.reactions >= 0 ? "+" : ""}${ours.reactions - yday.reactions} since ${yday.day.slice(5)}` : ""}`
                     : "",
                 ],
                 [

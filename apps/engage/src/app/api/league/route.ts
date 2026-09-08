@@ -128,23 +128,17 @@ function exact(): {
 
 export async function GET(req: Request) {
   const force = new URL(req.url).searchParams.get("refresh") === "1";
+  // The exact file wins whenever it exists, refresh or not: the loop rewrites
+  // it daily and a request-time crawl could only produce the poorer sample.
   const e = exact();
-  if (e && !force)
+  if (e)
     return NextResponse.json({
       ...e,
       arena: arenaSummary(e.tables),
       cachedAt: e.fetchedAt,
-      cached: true,
+      cached: !force,
     });
   const hit = await cachedAsync("league", 24 * 3_600_000, force, crawl);
-  const fresh = exact();
-  if (fresh)
-    return NextResponse.json({
-      ...fresh,
-      arena: arenaSummary(fresh.tables),
-      cachedAt: fresh.fetchedAt,
-      cached: false,
-    });
   return NextResponse.json({
     ...hit.value,
     source: "sample",
