@@ -1,0 +1,98 @@
+/*
+ * The "Also building" section argues for two products, and both have to
+ * survive a 375px viewport with text at 200%.
+ *
+ * A flex item does not shrink below its content's min-content width unless it
+ * is told it may. The card's padding is rem-based, so at 200% the content box
+ * on a 375px viewport is about 117px — and "Interlace Serverless" wanted 276,
+ * which pushed the DOCUMENT to 405px and scrolled the whole page sideways.
+ * That is WCAG 1.4.10 (Reflow). `burgee` never hit it, only because it is a
+ * short word: the section had the defect from the day it was written and
+ * nothing revealed it until a longer name moved in.
+ *
+ * Measured in a browser at 375px/200% before and after: 405px -> 375px, four
+ * overflowing elements -> zero.
+ */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const SOURCE = readFileSync(
+  join(process.cwd(), "src/components/landing/also-building.tsx"),
+  "utf8",
+);
+
+describe("also-building reflow contract", () => {
+  it("lets the name block shrink below its content width", () => {
+    // Both of these: the outer flex item AND the block holding the heading.
+    // Only the pair together lets a long name reflow instead of pushing.
+    expect(SOURCE).toContain("flex min-w-0 flex-col items-start");
+    expect(SOURCE).toContain('<div className="min-w-0">');
+    // The wrap row too — it is a flex item of the column above it.
+    expect(SOURCE).toContain("flex min-w-0 flex-wrap items-center");
+  });
+
+  it("uses overflow-wrap:anywhere, which is the one that actually shrinks", () => {
+    /*
+     * `break-words` is NOT equivalent and was the first attempt. Only
+     * `anywhere` reduces an element's min-content width, and min-content is
+     * what sizes a flex item — so `break-words` looked correct at 375px and
+     * the layout audit still reported the document scrolling 43px sideways at
+     * 320px/200%, its narrowest width. Same distinction already recorded on
+     * /foundations.
+     */
+    expect(SOURCE).toContain("[overflow-wrap:anywhere]");
+    expect(SOURCE).not.toMatch(/tracking-tight break-words/);
+    // The heading AND the tagline: both were in the audit's overflow list.
+    expect(
+      [...SOURCE.matchAll(/\[overflow-wrap:anywhere\]/g)].length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps the button labels wrappable", () => {
+    // Same failure mode, already fixed once for the CTAs: buttonVariants sets
+    // `whitespace-nowrap`, which cannot reflow.
+    expect(SOURCE).toContain('"h-auto max-w-full whitespace-normal text-center"');
+  });
+});
+
+describe("also-building says what each product actually is", () => {
+  it("sets the name in mono only for the one that is a command", () => {
+    // `burgee` is typed at a shell. "Interlace Serverless" is a product name,
+    // and mono is both wrong for it and much wider per character.
+    expect(SOURCE).toMatch(/name: "burgee",\s*\n\s*mono: true,/);
+    expect(SOURCE).not.toMatch(/name: "Interlace Serverless",\s*\n\s*mono: true,/);
+    expect(SOURCE).toContain('product.mono && "font-mono"');
+  });
+
+  it("ships both products, each in its own card", () => {
+    expect(SOURCE).toContain('testId: "also-building-serverless"');
+    expect(SOURCE).toContain('testId: "also-building-burgee"');
+  });
+
+  it("does not put a third party's trademark on our own card", () => {
+    // The obvious mark for the Serverless card is the Serverless Framework's
+    // own bolt, which is theirs. A reader scanning marks would read it as
+    // their logo on our product.
+    // Asserted on the executable shape, not on prose: the comment in the
+    // component names the file precisely to record why it is NOT used, and a
+    // bare `not.toContain` would fail on that explanation.
+    // `toEqual` on the whole list, not `every`: `every` is true for an empty
+    // array, so deleting every mark — burgee's included, and that one is
+    // load-bearing for the brand — would have passed silently. Review caught
+    // it; it is the same vacuity this file exists to guard against.
+    const marks = [...SOURCE.matchAll(/src:\s*"([^"]+)"/g)].map((m) => m[1]);
+    expect(marks).toEqual(["/burgee-flag.svg"]);
+  });
+
+  it("links only to things that exist", () => {
+    // burgee has no npm page yet, so a star is the only honest ask; the
+    // serverless plugins are published, so they link to what you can install.
+    expect(SOURCE).toContain("https://serverless.interlace.tools");
+    expect(SOURCE).toContain(
+      "https://www.npmjs.com/package/@interlace/serverless-devkit",
+    );
+    expect(SOURCE).toContain("https://github.com/ofri-peretz/burgee");
+    expect(SOURCE).not.toMatch(/npmjs\.com\/package\/burgee/);
+  });
+});
