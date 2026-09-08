@@ -21,12 +21,12 @@ row below was checked against that file and against every other file under
 
 | Claim | Value | Command | Version | Verified |
 | --- | --- | --- | --- | --- |
-| the canonical corpus totals | interlace 1,375 / competitor 23,325 across 20 repos, 23,682 files | read `realSource` from benchmark-2026-08-14.json | 2026-08-14 run | 2026-09-07 |
+| the canonical corpus totals | interlace 1,375 / the compared set 23,325 across 20 repos, 23,682 files | read `realSource` from benchmark-2026-08-14.json | 2026-08-14 run | 2026-09-07 |
 | document asserts a different pair | "981 findings at 47% precision against 21,557 at 20%" | read from the queue document | n/a | 2026-09-07 |
 | `21557` in any result file | zero occurrences | `grep -rlF 21557 benchmarks/results/` | all runs | 2026-09-07 |
 | `4311` in any result file | zero occurrences | `grep -rlF 4311 benchmarks/results/` | all runs | 2026-09-07 |
 | a real figure attached to the wrong set | document says "every other rule combined accounts for 0.6%" | read from the queue document | n/a | 2026-09-07 |
-| what 0.6% actually is | the bottom FIVE rules — 142 of 23,325 | summed from `realSource.byRule.competitor` | 2026-08-14 run | 2026-09-07 |
+| what 0.6% actually is | the bottom FIVE rules — 142 of 23,325 | summed from the compared side of `realSource.byRule` | 2026-08-14 run | 2026-09-07 |
 | what "every other rule" actually is | 2,991 — 12.8% | 23,325 − 20,334 | 2026-08-14 run | 2026-09-07 |
 | the figure that does verify | `security/detect-object-injection` 20,334 of 23,325 = 87.2% | same byRule map | 2026-08-14 run | 2026-09-07 |
 | two further claims contradicted by data | `detect-crlf` "297 files" and `unhandled-async` "176 files"; result files record 1 each | `grep` of the rule ids in the result JSONs | 2026-08-23, 2026-05-11 runs | 2026-09-07 |
