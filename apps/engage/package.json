@@ -2,14 +2,15 @@
   "name": "engage",
   "version": "0.1.0",
   "private": true,
-  "description": "Local-only engagement control room. Never deployed — see README.",
+  "description": "Local-only engagement control room. Never deployed \u2014 see README.",
   "scripts": {
     "dev": "next dev -p 7777",
     "build": "next build",
     "start": "next start -p 7777",
     "selfcheck": "npx -y tsx src/lib/detect.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/footprint.selfcheck.ts && npx -y tsx src/lib/standing.selfcheck.ts && npx -y tsx src/lib/nba.selfcheck.ts && npx -y tsx src/lib/yield.selfcheck.ts && npx -y tsx src/lib/prs-update.selfcheck.ts && npx -y tsx src/lib/ago.selfcheck.ts && npx -y tsx src/lib/impact-score.selfcheck.ts && npx -y tsx src/lib/league.selfcheck.ts && npx -y tsx src/lib/levers.selfcheck.ts && npx -y tsx src/lib/ties.selfcheck.ts && npx -y tsx src/lib/radar.selfcheck.ts && npx -y tsx src/lib/decay.selfcheck.ts && npx -y tsx src/lib/predict.selfcheck.ts && node scripts/control-bands.check.mjs && npx -y tsx --conditions=react-server src/lib/series.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/alerts.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/network.selfcheck.ts && npx -y tsx --conditions=react-server src/lib/inbox.selfcheck.ts",
     "smoke": "node scripts/smoke.mjs",
-    "test": "node scripts/smoke.mjs"
+    "test": "node scripts/smoke.mjs",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
@@ -29,6 +30,20 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "eslint-plugin-browser-security": "^1.2.3",
+    "eslint-plugin-conventions": "^4.1.0",
+    "eslint-plugin-import-next": "^2.3.6",
+    "eslint-plugin-maintainability": "^3.0.3",
+    "eslint-plugin-modernization": "^2.0.4",
+    "eslint-plugin-modularity": "^2.0.4",
+    "eslint-plugin-node-security": "5.2.3",
+    "eslint-plugin-operability": "^3.0.5",
+    "eslint-plugin-react-a11y": "^2.1.5",
+    "eslint-plugin-react-features": "1.1.4",
+    "eslint-plugin-reliability": "^3.1.3",
+    "eslint-plugin-secure-coding": "^3.2.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
   }
