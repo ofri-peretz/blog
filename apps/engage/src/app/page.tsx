@@ -166,6 +166,7 @@ export default function Page() {
   /** The Author Impact Score — one definition, five pillars, fourteen metrics. */
   const [impact, setImpact] = useState<any>(null);
   const [levers, setLevers] = useState<any>(null);
+  const [climb, setClimb] = useState<any>(null);
   const [aging, setAging] = useState<any>(null);
   const [ties, setTies] = useState<any>(null);
   const [kind, setKind] = useState<
@@ -314,6 +315,9 @@ export default function Page() {
     );
     pull("levers", "/api/levers", (v: any) => setLevers(v)).catch(() =>
       setLevers(null),
+    );
+    pull("climb", "/api/league?lite=1", (v: any) => setClimb(v)).catch(() =>
+      setClimb(null),
     );
     pull("decay", "/api/decay", (v: any) => setAging(v)).catch(() =>
       setAging(null),
@@ -526,10 +530,15 @@ export default function Page() {
         kind: it.kind,
       })),
       acted.map((a) => ({ author: a.author, at: a.at })),
+      Date.now(),
+      undefined,
+      // The ladder around us: their readers react in our tags, and passing
+      // one of them is the day's goal.
+      new Map((climb?.ladder ?? []).map((l: any) => [l.author, l.rank])),
     )
       .filter((r) => r.score > 0)
       .slice(0, 5);
-  }, [state, threads, graph, acted]);
+  }, [state, threads, graph, acted, climb]);
   const hardBlock = blocked(gs);
 
   async function act(action: "done" | "skip") {
@@ -798,7 +807,12 @@ export default function Page() {
           id="s23"
           head={
             <>
-              <span>Do these first · {nba.length}</span>
+              <span>
+                Do these first · {nba.length}
+                {climb?.goal
+                  ? ` · today's climb: ${climb.goal.met ? `passed ${climb.goal.passedToday.length} ✓` : "pass 1 author"}${climb.goal.streak ? ` · streak ${climb.goal.streak}d` : ""}${climb.climb?.next ? ` · +${climb.climb.next.reactionsNeeded} to top ${climb.climb.next.level}` : ""}`
+                  : ""}
+              </span>
             </>
           }
         >
