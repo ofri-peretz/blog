@@ -176,6 +176,22 @@ const eslintConfig = defineConfig([
        * the line rather than a repo-wide allowance, once someone confirms.
        */
       "@typescript-eslint/no-require-imports": "warn",
+      /*
+       * 8 — in the GENERAL block, not with the other react-hooks rules, and
+       * that asymmetry is deliberate.
+       *
+       * Review asked for it to move in with purity/refs/immutability, since
+       * those are TSX-scoped and this one leans on `eslint-config-next`
+       * registering `react-hooks` globally. I moved it, and two errors
+       * appeared: `src/hooks/use-theme.ts:192` and
+       * `src/lib/client-cache.ts:123`. Custom hooks live in `.ts`, so
+       * TSX-scoping this rule stops it seeing the files it most applies to.
+       *
+       * So the borrowed registration is load-bearing, not incidental. If Next
+       * ever narrows it, this line breaks loudly at config load — which is
+       * the failure mode you want, rather than the rule quietly going blind.
+       */
+      "react-hooks/set-state-in-effect": "warn",
     },
   },
 
@@ -206,12 +222,7 @@ const eslintConfig = defineConfig([
       "react-hooks/purity": "warn",
       "react-hooks/refs": "warn",
       "react-hooks/immutability": "warn",
-      // 8 — kept with its siblings rather than in the general block. It only
-      // worked there because eslint-config-next registers `react-hooks`
-      // globally; if Next ever narrows that to TSX, a rule referencing an
-      // unregistered namespace stops the whole config loading. Review caught
-      // it. Not worth depending on someone else's registration scope.
-      "react-hooks/set-state-in-effect": "warn",
+
       // Two apostrophes in copy.
       "react/no-unescaped-entities": "warn",
     },
