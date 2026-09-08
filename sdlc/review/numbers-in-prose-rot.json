@@ -1,0 +1,59 @@
+{
+  "slug": "numbers-in-prose-rot",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/numbers-in-prose-rot.md",
+  "reviewed": "2026-09-07",
+  "round": 2,
+  "findings_fixed_this_round": [
+    "the article's own arithmetic was wrong in its first draft, which in a piece about number drift is the one error that cannot ship. It said 'three of the twelve planned pieces are dropped' and 'the one that verified cleanly is now written'. Both understate: three were dropped for the drift the article describes, six more for unrelated reasons found during the same audit, and three survived and were written. Corrected to 'three of twelve survived' with the other six accounted for separately.",
+    "linkability, fixed before gating rather than after: an earlier draft would have linked the sibling articles written this week, all of which are queued and unpublished. Both links now point at published pieces - reproducibility-vs-replicability and proxy-metrics - so no exit is a dead end. This is the fourth time this session a new article defaulted to linking its own unpublished siblings."
+  ],
+  "checked_and_found_correct": [
+    "`21557` and `4311` return zero files from `grep -rlF` across the whole of benchmarks/results/, not merely the cited benchmark-2026-08-14.json. These are the two figures the article says exist nowhere.",
+    "The canonical pair for the corpus the document describes is interlace 1,375 / competitor 23,325, read directly from realSource in benchmark-2026-08-14.json. The document asserts 981 and 21,557 for the same comparison.",
+    "The 0.6% attribution error is arithmetic, not opinion. Summing realSource.byRule.competitor: the bottom five rules total 142 of 23,325, which is 0.6%. Every rule other than the dominant one totals 2,991, which is 12.8%. The document attaches the first figure to the second set.",
+    "The 87.2% headline that the same document gets right was verified in the same pass: security/detect-object-injection is 20,334 of 23,325. The article says so, which matters - a piece claiming a document is unreliable has to report the parts that hold.",
+    "The two rule-count claims (detect-crlf on 297 files, unhandled-async on 176) were checked against the result JSONs that contain those rule ids; both record 1. Reported in the article's table as 'contradicted by a later run' rather than as fabrication, since the earlier state is not recoverable.",
+    "The intent's kill criterion was tested rather than assumed. Not-unsearched: the two missing figures return nothing across every result file. Not-a-stale-citation: a stale citation would be internally consistent with some run, and 981/21,557 matches no run's totals while the document names the file whose totals are 1,375/23,325. Both survive."
+  ],
+  "not_re_verified": [
+    "Whether the figures were correct when first written. The audit establishes they do not hold now against available artifacts; it does not date the divergence, and the article explicitly declines to claim fabrication.",
+    "Whether other documents in the same repository carry comparable drift. Only the article queue was audited, and the article does not generalise beyond it."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.5,
+      "why": "The title is an admission with a number in it, about the author's own planning document, and the cost is stated plainly in the body: nine of twelve topics did not survive the check. The strongest structural choice is that the article reports the figure the document gets right alongside the ones it does not, which is what separates an audit from a confession."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "Read as measurement correctness. Every claim is a grep or a sum that a reader can repeat, the distinction between 'absent', 'contradicted' and 'misattributed' is maintained throughout rather than collapsed into 'wrong', and the piece refuses the available overreach: it does not allege fabrication, and says so, because the earlier state of the data is not recoverable. The four-mode table is the article's real contribution and each row is instantiated by a specific figure."
+    },
+    "structure_framing_voice": {
+      "score": 9.5,
+      "why": "Finding, then the subtle case, then the taxonomy, then the structural reason the document could not fail, then the cost, then two cheap habits. 'A number in prose is not a measurement, it is a memory of a measurement' is the thesis in one line. Held at the floor because the closing habit section states the remedy twice - once as a rule and once as a paragraph - where one would carry it."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "There is nothing to configure and nothing to install; the technique is grep against a results directory, which works anywhere. Held at the floor because the article's examples are drawn from one internal document whose structure the reader cannot see, so applying the four modes to their own materials takes a translation step the piece does not walk through."
+    },
+    "reproducibility": {
+      "score": 9.7,
+      "why": "The audit is one command and the article prints it. Every figure quoted is either present in a named artifact or demonstrably absent from all of them, and the absence claim is the falsifiable one - a reader who finds 21,557 in a result file refutes the piece immediately. That is a stronger position than most self-critical writing takes, because it hands over the exact test that would prove it wrong."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear",
+  "publish_conditions": [
+    "The article reports that an internal planning document is unreliable. Consider correcting BENCHMARK-ARTICLE-QUEUE.md itself before or alongside publication, so the piece describes a fixed problem rather than a live one."
+  ],
+  "prose_gate": {
+    "tool": "scripts/devto-review.ts",
+    "gate_score": 9.3,
+    "blockers": 0,
+    "verdict": "Ready to publish",
+    "run": "2026-09-07",
+    "note": "First run returned 8.3 with Technical and Linkability crashed and defaulted to 5.0. Re-run with no prose changes returned 9.3. Fourth occurrence of that tooling failure today."
+  }
+}
