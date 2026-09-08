@@ -15,6 +15,7 @@ import {
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { FOOTPRINT } from "@/lib/footprint";
+import { goalFrom } from "@/lib/league";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -71,12 +72,37 @@ async function crawl(): Promise<{
  */
 const EXACT = join(FOOTPRINT, "engagement", "league.json");
 const EXACT_MAX_AGE_H = 36;
+const PASSES = join(FOOTPRINT, "engagement", "league-passes.jsonl");
+export interface PassLine {
+  day: string;
+  rank: number | null;
+  prevRank: number | null;
+  passed: string[];
+  overtakenBy: string[];
+}
+
+/** Last line per day from the loop's pass ledger. */
+function passLines(): PassLine[] {
+  if (!existsSync(PASSES)) return [];
+  const byDay = new Map<string, PassLine>();
+  for (const line of readFileSync(PASSES, "utf8").split("\n").filter(Boolean)) {
+    try {
+      const p = JSON.parse(line) as PassLine;
+      byDay.set(p.day, p);
+    } catch {
+      /* a torn line is skipped, not fatal */
+    }
+  }
+  return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+}
 
 function exact(): {
   tables: TagTable[];
   climb: Climb;
   fetchedAt: string;
   members: any[];
+  ladder: any[];
+  goal: any;
   source: "exact";
 } | null {
   if (!existsSync(EXACT)) return null;
@@ -109,11 +135,26 @@ function exact(): {
     ),
   );
   const climb = mergeLeague([arts], ME);
+  const idx = members.findIndex((m) => m.author === ME);
+  const ladder = members
+    .slice(Math.max(0, idx - 30), idx + 31)
+    .map((m, i) => ({
+      author: m.author,
+      rank: Math.max(0, idx - 30) + i + 1,
+      reactions: m.reactions,
+    }));
+  const goal = goalFrom(
+    passLines(),
+    climb.rank,
+    new Date().toISOString().slice(0, 10),
+  );
   return {
     tables,
     climb,
     fetchedAt: file.fetchedAt,
     source: "exact",
+    ladder,
+    goal,
     members: members.map((m) => ({
       author: m.author,
       name: m.name,
@@ -127,13 +168,17 @@ function exact(): {
 }
 
 export async function GET(req: Request) {
-  const force = new URL(req.url).searchParams.get("refresh") === "1";
+  const url = new URL(req.url);
+  const force = url.searchParams.get("refresh") === "1";
+  // ?lite=1 strips the article lists: the home page needs the ladder and the goal, not 5,000 rows.
+  const lite = url.searchParams.get("lite") === "1";
   // The exact file wins whenever it exists, refresh or not: the loop rewrites
   // it daily and a request-time crawl could only produce the poorer sample.
   const e = exact();
   if (e)
     return NextResponse.json({
       ...e,
+      members: lite ? [] : e.members,
       arena: arenaSummary(e.tables),
       cachedAt: e.fetchedAt,
       cached: !force,

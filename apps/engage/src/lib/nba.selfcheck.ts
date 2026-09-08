@@ -22,12 +22,21 @@ const now = Date.parse("2026-09-03T00:00:00Z");
 // ── 1. A mutual-tie candidate outranks a random fresh pick and a core node ──
 {
   const rows = rankActions(
-    graph, "me",
+    graph,
+    "me",
     [{ index: 0, author: "talker", ageDays: 3, replyToUs: false }],
-    [{ index: 0, author: "hub", kind: "comment" }, { index: 1, author: "fresh", kind: "comment" }, { index: 2, author: "old", kind: "comment" }],
-    [], now,
+    [
+      { index: 0, author: "hub", kind: "comment" },
+      { index: 1, author: "fresh", kind: "comment" },
+      { index: 2, author: "old", kind: "comment" },
+    ],
+    [],
+    now,
   );
-  assert.deepEqual(rows.map((r) => r.author), ["talker", "hub", "fresh", "old"]);
+  assert.deepEqual(
+    rows.map((r) => r.author),
+    ["talker", "hub", "fresh", "old"],
+  );
   assert.match(rows[0].why, /mutual tie/);
   assert.match(rows[1].why, /core node/);
 }
@@ -35,9 +44,16 @@ const now = Date.parse("2026-09-03T00:00:00Z");
 // ── 2. Cooldown scores 0, staff never appear, reactions weigh half ──────────
 {
   const rows = rankActions(
-    graph, "me", [],
-    [{ index: 0, author: "fresh", kind: "comment" }, { index: 1, author: "fresh2", kind: "reaction" }, { index: 2, author: "sloan", kind: "comment" }],
-    [{ author: "fresh", at: now - 2 * day }], now,
+    graph,
+    "me",
+    [],
+    [
+      { index: 0, author: "fresh", kind: "comment" },
+      { index: 1, author: "fresh2", kind: "reaction" },
+      { index: 2, author: "sloan", kind: "comment" },
+    ],
+    [{ author: "fresh", at: now - 2 * day }],
+    now,
   );
   assert.equal(rows.find((r) => r.author === "fresh")!.score, 0);
   assert.ok(!rows.some((r) => r.author === "sloan"));
@@ -56,7 +72,11 @@ const now = Date.parse("2026-09-03T00:00:00Z");
   assert.deepEqual(r1, r2, "deterministic");
   assert.equal(r1[0].author, "a");
   assert.equal(r1[0].score, 1 + 2, "new author + 4 capped weeks × 0.5");
-  assert.equal(r1.find((r) => r.index === 1)!.score, 0.5, "second row for the same author is halved");
+  assert.equal(
+    r1.find((r) => r.index === 1)!.score,
+    0.5,
+    "second row for the same author is halved",
+  );
 }
 
 // ── 4. replyToUs is worth +2, and says so ──────────────────────────────────
@@ -91,3 +111,24 @@ const now = Date.parse("2026-09-03T00:00:00Z");
 }
 
 console.log("nba.selfcheck: ok");
+
+// A ladder neighbour outranks an equal stranger; the why names the rank.
+{
+  const rows = rankActions(
+    null,
+    "me",
+    [
+      { index: 0, author: "near" },
+      { index: 1, author: "far" },
+    ],
+    [],
+    [],
+    Date.now(),
+    40,
+    new Map([["near", 190]]),
+  );
+  assert.equal(rows[0].author, "near");
+  assert.ok(rows[0].why.includes("ladder neighbour, rank 190"));
+  assert.equal(rows[0].score - rows[1].score, 1.5);
+}
+console.log("nba.selfcheck: ladder ok");

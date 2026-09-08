@@ -43,6 +43,23 @@ export default function League() {
     "/api/impact",
     () => null,
   );
+  // The plan reads what the other panels already know; nothing here is a new fact.
+  const { data: profile } = useCachedSection<any>(
+    "profile",
+    "/api/profile",
+    () => null,
+  );
+  const { data: predictions } = useCachedSection<any>(
+    "predict",
+    "/api/predict",
+    () => null,
+  );
+  const { data: ties } = useCachedSection<any>("ties", "/api/ties", () => null);
+  const { data: radar } = useCachedSection<any>(
+    "radar",
+    "/api/radar",
+    () => null,
+  );
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [sort, setSort] = useState<SortKey>("reactions");
   const [q, setQ] = useState("");
@@ -125,6 +142,249 @@ export default function League() {
         <Skeleton variant="data-table" label="Loading the league" />
       ) : (
         <>
+          {/* ── today's goal, and the celebration ─────────────────────────── */}
+          {(() => {
+            const g = data?.goal;
+            const ourRate = ours ? ours.rx : 0;
+            const best = ours
+              ? Math.max(0, ...ours.articles.map((a: Art) => a.reactions))
+              : 0;
+            const need =
+              above && ours ? above.reactions - ours.reactions + 1 : null;
+            const rxPer100 = profile?.resonance?.reactionsPer100Views30 ?? null;
+            const viewsPerDay = profile?.readers?.viewsPerDay7 ?? null;
+            const drift =
+              rxPer100 != null && viewsPerDay != null
+                ? Math.round((10 * rxPer100 * viewsPerDay) / 100) / 10
+                : null;
+            const passedBy = (gain: number) =>
+              ours
+                ? ranked.filter(
+                    (m) =>
+                      m.rank < ours.rank && m.reactions < ours.reactions + gain,
+                  ).length
+                : 0;
+            const topDraft = predictions?.drafts
+              ? [...predictions.drafts].sort(
+                  (a: any, b: any) =>
+                    (b.outcomes?.comments14?.percentile ?? 0) -
+                    (a.outcomes?.comments14?.percentile ?? 0),
+                )[0]
+              : null;
+            const owed = (ties?.owed ?? []).slice(0, 3);
+            const rising = (radar?.rows ?? [])
+              .filter((r: any) => !r.commented)
+              .slice(0, 2);
+            return (
+              <>
+                <section
+                  className={`rounded-lg border p-4 ${g?.met ? "border-[var(--success)]" : "border-[var(--primary)]"} bg-[var(--card)]`}
+                >
+                  <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                    Today&rsquo;s goal · pass at least one author, every day,
+                    until top {g?.level ?? 100}
+                  </h2>
+                  <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <div>
+                      <div className="text-2xl font-semibold">
+                        {g
+                          ? g.met
+                            ? `🏁 ${g.passedToday.length} passed`
+                            : "not yet"
+                          : "—"}
+                      </div>
+                      <div className="text-[11px] text-[var(--muted-foreground)]">
+                        {g?.met
+                          ? g.passedToday.map((w: string) => `@${w}`).join(", ")
+                          : "today's crawl is the judge; it runs once a day"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-semibold tabular-nums">
+                        {g?.streak ?? 0}
+                        <span className="text-[12px] font-normal text-[var(--muted-foreground)]">
+                          {" "}
+                          day streak
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[var(--muted-foreground)]">
+                        {g?.totalPassed ?? 0} passed since the ledger began
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-semibold tabular-nums">
+                        {g?.authorsToGo ?? "—"}
+                        <span className="text-[12px] font-normal text-[var(--muted-foreground)]">
+                          {" "}
+                          to go
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[var(--muted-foreground)]">
+                        authors between us and top {g?.level ?? 100}
+                        {g?.etaAtOneADay
+                          ? ` · at one a day, ${g.etaAtOneADay}`
+                          : ""}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-semibold tabular-nums">
+                        {g?.overtakenToday?.length ?? 0}
+                        <span className="text-[12px] font-normal text-[var(--muted-foreground)]">
+                          {" "}
+                          overtook us today
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[var(--muted-foreground)]">
+                        {g?.overtakenToday?.length
+                          ? g.overtakenToday
+                              .map((w: string) => `@${w}`)
+                              .join(", ")
+                          : "nobody"}
+                      </div>
+                    </div>
+                  </div>
+                  {g?.recent?.length ? (
+                    <div className="mt-3 text-[12px]">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+                        the ledger ·{" "}
+                      </span>
+                      {g.recent
+                        .slice(0, 7)
+                        .map(
+                          (l: any) =>
+                            `${l.day.slice(5)}: ${l.passed.length ? `🏁 ${l.passed.map((w: string) => "@" + w).join(" ")}` : "—"}${l.overtakenBy.length ? ` (overtaken by ${l.overtakenBy.length})` : ""} · rank ${l.prevRank ?? "—"}→${l.rank ?? "—"}`,
+                        )
+                        .join("   ")}
+                    </div>
+                  ) : (
+                    <div className="mt-3 text-[12px] text-[var(--muted-foreground)]">
+                      The ledger starts with tomorrow&rsquo;s crawl;
+                      today&rsquo;s ladder is the first snapshot.
+                    </div>
+                  )}
+                </section>
+
+                {ours && above ? (
+                  <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+                    <h2 className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                      What it takes to pass @{above.author} · +{need} reaction
+                      {need === 1 ? "" : "s"} on any article in our window
+                    </h2>
+                    <ol className="mt-2 flex flex-col gap-2 text-[13px]">
+                      <li>
+                        <b>Do nothing:</b>{" "}
+                        {drift != null ? (
+                          <>
+                            reactions arrive at about <b>{drift}/day</b> at our
+                            traffic ({viewsPerDay} views/day × {rxPer100} per
+                            100), so +{need} takes about{" "}
+                            <b>
+                              {drift > 0 ? Math.ceil(need! / drift) : "∞"} day
+                              {drift > 0 && Math.ceil(need! / drift) === 1
+                                ? ""
+                                : "s"}
+                            </b>{" "}
+                            on its own, and @{above.author} is moving too.
+                          </>
+                        ) : (
+                          "the profile panel has no traffic reading yet."
+                        )}
+                      </li>
+                      <li>
+                        <b>Publish:</b>{" "}
+                        {topDraft ? (
+                          <>
+                            the top draft is{" "}
+                            <b>{topDraft.title || topDraft.slug}</b> (top{" "}
+                            {Math.max(
+                              1,
+                              100 -
+                                (topDraft.outcomes?.comments14?.percentile ??
+                                  0),
+                            )}
+                            % of ours for comments). A new article earns{" "}
+                            <b>{ourRate}</b> at our rate and <b>{best}</b> at
+                            our best in this window, which passes{" "}
+                            <b>{passedBy(ourRate)}</b> to{" "}
+                            <b>{passedBy(best)}</b> authors. Edits first:{" "}
+                            {(topDraft.suggestions ?? [])
+                              .map((x: any) => x.edit)
+                              .join(", ") || "none the levers would change"}
+                            .
+                          </>
+                        ) : (
+                          "no draft on disk without a dev.to id."
+                        )}
+                      </li>
+                      <li>
+                        <b>Reply in kind:</b>{" "}
+                        {owed.length ? (
+                          <>
+                            {owed
+                              .map(
+                                (t: any) =>
+                                  `@${t.who} (${t.days}d, ${t.state})`,
+                              )
+                              .join(", ")}{" "}
+                            came to us and never heard back; a reply puts us
+                            back in their feed. From the{" "}
+                            <Link
+                              href="/#s30"
+                              className="text-[var(--primary)]"
+                            >
+                              ties panel
+                            </Link>
+                            .
+                          </>
+                        ) : (
+                          "nobody owed."
+                        )}
+                      </li>
+                      <li>
+                        <b>Comment early:</b>{" "}
+                        {rising.length ? (
+                          <>
+                            {rising.map((r: any) => (
+                              <span key={r.id}>
+                                <a
+                                  href={r.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[var(--primary)]"
+                                >
+                                  {r.title}
+                                </a>{" "}
+                                (@{r.author}, {r.ageH}h, {r.velocity} rx/h){" "}
+                              </span>
+                            ))}{" "}
+                            are rising in our tags now; the first comments on a
+                            post that rises are the ones its readers see.
+                          </>
+                        ) : (
+                          "nothing rising in our tags under 24 hours."
+                        )}
+                      </li>
+                      <li>
+                        <b>The ladder:</b> the queue now ranks people within 30
+                        places of us higher; their readers react in our tags.
+                        Open{" "}
+                        <Link href="/#s23" className="text-[var(--primary)]">
+                          Do these first
+                        </Link>
+                        .
+                      </li>
+                    </ol>
+                    <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">
+                      Reactions are what dev.to ranks by. Nothing here posts;
+                      every move is yours, and tomorrow&rsquo;s crawl records
+                      whether it passed anyone.
+                    </p>
+                  </section>
+                ) : null}
+              </>
+            );
+          })()}
+
           {/* ── our line, and the one to pass ─────────────────────────────── */}
           <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {(

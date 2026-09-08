@@ -6,6 +6,7 @@ import {
   mergeLeague,
   forecast,
   FORECAST_MIN_DAYS,
+  goalFrom,
 } from "./league";
 const a = (u: string, rx: number, cm = 0) => ({
   user: { username: u },
@@ -159,3 +160,36 @@ const atTop = forecast(
 assert.equal(atTop.slopePerDay, -2);
 assert.equal(atTop.etaNext, null);
 console.log("league.selfcheck: forecast ok");
+
+// The goal: met when today has a pass; the streak counts consecutive days with one;
+// a passless today does not end yesterday's streak; the ETA is one author a day.
+{
+  const L = (day: string, passed: string[]) => ({
+    day,
+    rank: 190,
+    prevRank: 191,
+    passed,
+    overtakenBy: [],
+  });
+  const g = goalFrom(
+    [L("2026-09-06", ["a"]), L("2026-09-07", ["b", "c"]), L("2026-09-08", [])],
+    194,
+    "2026-09-08",
+  );
+  assert.equal(g.met, false);
+  assert.equal(g.streak, 2);
+  assert.equal(g.authorsToGo, 94);
+  assert.equal(g.etaAtOneADay, "2026-12-11");
+  assert.equal(g.totalPassed, 3);
+  assert.equal(
+    goalFrom([L("2026-09-06", ["a"]), L("2026-09-07", [])], 150, "2026-09-08")
+      .streak,
+    0,
+  );
+  assert.equal(goalFrom([], null, "2026-09-08").authorsToGo, null);
+  assert.equal(
+    goalFrom([L("2026-09-08", ["z"])], 99, "2026-09-08").authorsToGo,
+    0,
+  );
+}
+console.log("league.selfcheck: goal ok");
