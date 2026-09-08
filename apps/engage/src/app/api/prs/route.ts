@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { writeOutreach } from "@/lib/store";
-import { todayCST } from "@/lib/footprint";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { FOOTPRINT } from "@/lib/footprint";
+import { FOOTPRINT, todayCST } from "@/lib/footprint";
 import { cachedAsync } from "@/lib/cache";
 
 const execFileAsync = promisify(execFile);
