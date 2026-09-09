@@ -4,13 +4,26 @@ detected: 2026-09-08
 detector: stale-claim
 severity: 3sigma
 articles: ["agent-resource-bounds", "ai-agents-rebranded-my-oss-ecosystem-two-pipelines-were-dead", "eslint-in-the-browser-live-lint-playground", "eslint-plugin-cold-start-optimization", "eslint-plugin-dependency-weight", "eslint-plugin-maintenance-signals", "injection-beyond-sql", "labelled-corpus-f1-leaderboard", "lint-harness-measured-nothing", "migrate-renamed-plugin-packages", "modernization-lint-as-codemod", "multiple-comparisons-in-benchmarks", "numbers-in-prose-rot", "rule-yield-distribution-own-plugin"]
-intent: 
+intent: sdlc/intent/fix-stale-claim-agent-resource-bounds.md
 status: open
 ---
 
 ## What the detector saw
 
-124 committed claim(s) no longer match the command that produced them.
+124 committed claim(s) no longer match the command that produced them — but that
+count is the detector's, not a finding. Classified by what the `now` column
+actually holds:
+
+|   | what came back | reading |
+| ---: | --- | --- |
+| **5** | a different value | the claim drifted — this is the class the detector is for |
+| 99 | `/bin/sh: … unexpected EOF` / `command not found` | the runner's shell could not parse the command |
+| 7 | a non-zero exit (`clang: error`, `Command failed`) | the command ran and failed |
+| 6 | `No such file or directory` | the path is not in this checkout |
+| 4 | `ERR_MODULE_NOT_FOUND` | node could not resolve the module |
+| 3 | raw file content, or nothing | the detector captured unparsed output |
+
+**5 of 124 are claim drift. The other 119 are the detector failing to measure.**
 
 ```
 agent-resource-bounds — installed SDK version under test
@@ -738,8 +751,52 @@ rule-yield-distribution-own-plugin — mean findings per rule
 
 ## Class
 
-A claim that was true when written and is false now. No review pass can catch this class — nothing in the article changed. If this recurs for the same spec, the spec's command is not specific enough, and that is an eval gap rather than an author mistake.
+Two classes, and conflating them is what produced the 124.
+
+**Claim drift (5).** A claim that was true when written and is false now. No
+review pass catches this — nothing in the article changed:
+
+| article | was | now |
+| --- | --- | --- |
+| `agent-resource-bounds` | AI SDK `7.0.31` | `5.0.118` |
+| `migrate-renamed-plugin-packages` | postgresql-security `2.2.1` | `2.3.5` |
+| `migrate-renamed-plugin-packages` | jwt-security `3.0.3` | `3.2.2` |
+| `eslint-plugin-cold-start-optimization` | — | `apps/blog/src/app/articles/loading.tsx` |
+| one row returned empty | — | — |
+
+**Eval gap (119).** The detector could not execute its own command, so it
+learned nothing about the claim. A backtick that broke under the runner's
+shell is a bug in the check, not a stale article. Reporting these as drift
+does not just inflate a number — it inverts the signal, because a spec whose
+command never runs looks identical to one whose claim held.
+
+The 99 shell failures share one cause: commands were stored with the Markdown
+backticks that quoted them in prose, and `/bin/sh -c` sees an unterminated
+command substitution. That is one fix, not 99.
 
 ## Triage
 
-_Pending. Rewrite | retire | ignore — and why._
+**Rewrite (3).** The three version drifts are real and the articles state a
+version that is no longer installed. `agent-resource-bounds`,
+`migrate-renamed-plugin-packages` ×2.
+
+**Verify, then decide (2).** The `loading.tsx` row and the row that came back
+empty need a hand-run before anyone edits an article — an empty `now` is
+indistinguishable from a command that printed nothing.
+
+**Ignore as article findings; fix as detector bugs (119).** None of these say
+anything about their article. Three separate gaps:
+
+1. **Command quoting (99).** Strip the prose backticks before handing the
+   command to the shell, or run it through an argv array rather than `sh -c`.
+2. **Cross-repo checkout (10).** Commands reaching into `../eslint` or
+   `node_modules/` cannot run in a checkout that has neither. Either provision
+   them or mark the spec row as needing a sibling checkout and skip it.
+3. **Output extraction (3+).** `git show origin/main:.github/workflows/deploy.yml`
+   returns the whole file, so the `now` for the vercel pin is lines 45–281 of
+   YAML. The check wants the `VERCEL_CLI_VERSION:` line. Until it extracts
+   that, it cannot tell whether `vercel@56.3.2` still holds — the article's
+   claim may well be accurate.
+
+The detector's next run should be gated on (1), since 99 of 124 findings
+disappear with it and everything after is measured on noise.
