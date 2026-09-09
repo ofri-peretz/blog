@@ -1,0 +1,57 @@
+{
+  "slug": "significance-from-a-lookup-table",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/significance-from-a-lookup-table.md",
+  "reviewed": "2026-09-07",
+  "round": 5,
+  "findings_fixed_this_round": [
+    "BLOCKING, claim integrity: the article said 'Twelve run files, three of them carrying a chi-squared verdict'. `git ls-tree --name-only 08dfad0b9 -- benchmarks/results/ilb-ai/ | grep -c '.json$'` returns 11, as it does on origin/main and on the fix branch. 12 appears only at b40bc6781 and in a local working tree, where 2026-02-05-enriched-example.json sits at top level instead of in backups/ — and it carries no chiSquared key, so it could never have been one of the three. Numerator and 'exactly one in the gap' were right; only the denominator was wrong. Corrected to eleven, and every count in the spec is now pinned to a named commit. This was the FOURTH number in this article to go wrong the same way (see below), which is why the spec now carries a standing trap for it.",
+    "BLOCKING, claim integrity: 'six characters that turn \"I don't know\" into a confident answer' — `printf '|| 5.991' | wc -c` is 8. Corrected, and rowed in the spec.",
+    "BLOCKING, claim integrity: two successive drafts quoted the length of the omitted helpers — 'forty lines', then 'fifty lines of upperGamma plus a sixteen-line gammaLn'. Measured against the committed blob the values are 33 and 13; the 50/16 pair reproduced at no revision in the file's history and came from an unformatted working tree. Rather than correct a line count for the third time, the claim was removed: the article now names the dependencies without numbering them, and the spec records that a count which moves under formatting is unfit for prose.",
+    "BLOCKING, REVIEW.md pass 1 (self-contradiction): the prose said the absence search covered six terms and the grep handed to the reader carried five, dropping `family-wise`, then equated the two results — two paragraphs after the article's own line that 'an absence is only as good as the set you searched'. Prose, reader command and spec row now carry the same six terms and all return 0.",
+    "BLOCKING, frozen identifiers: the slug was `multiple-comparisons-in-benchmarks`, which named the closing note rather than the thesis — and CLAUDE.md freezes slug, canonical_url, cover_image and social_image the instant a devto_id lands. Renamed to `significance-from-a-lookup-table` while still legal (no devto_id): article, all three chain artifacts, both cover assets, the graph node and its one inbound link moved together. The inbound link from browser-security-plugin-benchmark was retargeted to ranking-vs-measuring, which owns the multiple-comparisons concept.",
+    "BLOCKING, the article described a live defect as fixed: at the time of the first review the fix existed only in a dirty working tree — `git grep criticalValues -- 'benchmarks/suites/**'` returned 4 at HEAD, and neither chiSquaredPValue nor the stats:check script existed in any commit. Committed to fix/chi-squared-lookup-fallback (355443dab) off origin/main and opened as PR #952, all checks green. The six probes and the one stored firing are now asserted in committed code (19 assertions) rather than a throwaway script.",
+    "BLOCKING, declared form vs delivered form: frontmatter claimed tier T0 with series Foundations, but the piece carries none of that form's apparatus and runs ~1,100 words against 1,720 and 1,757 for the two published Foundations siblings. Re-tiered T1 and the series dropped; the graph node was re-tiered to match, with the reason recorded in place.",
+    "growth_hook: title 'My Benchmark's Significance Test Was a Lookup Table With a Fallback' was inert to anyone who did not already know why `||` on a critical-value table is damning. Retitled to 'My Benchmark Judged Five Models Against a Threshold Built for Three' — legible on sight, two concrete numbers, and technically exact since df = models-1, so five models is df=4 and the applied 5.991 is the df=2 (three-model) bar.",
+    "growth_hook: tags were `statistics`/`benchmarking`/`testing`/`javascript`. Measured across the 85 published articles, `statistics` and `benchmarking` have 0 prior uses and `node` has 60. Swapped the deadest tag for `node`. Deliberately did NOT add `security` (73) or `eslint` (42) despite their reach — the body contains neither, and tagging for traffic against content is the same category error the panel flagged when it told me to drop them.",
+    "reproducibility/compatibility: reading_time_minutes was 4; the repo's own computation (apps/blog/src/lib/source.ts, `reading-time` over parsed content, ceiled) gives 6 for 1,190 words. Corrected to 6.",
+    "compatibility: the article handed the reader `npm --prefix benchmarks run stats:check` without saying where it becomes obtainable — it is absent from eslint HEAD. The body now names PR #952 directly. The reader-facing grep also gained a node_modules warning alongside the lockfile one.",
+    "reproducibility: two spec Ground truth cells were prose descriptions rather than atomic commands, so nothing could auto-verify them, and the 'three unscoped phantoms' figure appeared twice in the body with no row. Both cells are now single runnable commands and the phantom count has its own row with explicit scope — verified at 3."
+  ],
+  "checked_and_found_correct": [
+    "The mathematics, recomputed independently three times by three reviewers using methods sharing no code with the implementation — a closed-form chi-squared survival recurrence seeded by erfc/exp, a 200k-interval Simpson quadrature of the pdf, and an erfc-based Q(a,x) cross-check. All six probe p-values match every printed digit (0.135888, 0.091578, 0.061099, 0.220640, 0.075235, 0.061969), and the stored firing computes to 0.00101675 against a claimed 0.001017.",
+    "The article's spine: 5.991 sits below the true alpha=0.05 critical value for every df >= 4, verified by bisection to df=15, df=30 and df=200, and the critical value is strictly increasing in df — so the claim that the error had exactly one direction, manufacturing significance and never withholding it, holds universally rather than on the sampled points.",
+    "The one real firing. `{ chiSquared: 18.43, df: 4, pValue: '< 0.05', significant: true }` exists verbatim at /summary/statistics/modelComparison in overnight-multi-model-treatment-7iter-2026-02-09.json, and is the only df>=4 verdict among 3 chi-squared verdicts in 11 stored run files. Its verdict was correct anyway — the article's 'right answer from the wrong instrument' is exact, not rhetorical.",
+    "df = models.length - 1 is correct for an M x 2 contingency table, and the article deliberately declines to allege it as a second defect. Checked before the claim was not made.",
+    "Both quoted code blocks are byte-for-byte from b40bc6781, including that `pValue: 1` and the rendered-string `pValue` are two branches of the same function.",
+    "The absence result: the scoped six-term grep returns 0, and the article's own caveat about unscoped runs matching package-lock base64 reproduces at exactly 3.",
+    "The check fails on the unfixed state. Two reviewers independently reconstructed the old predicate and confirmed the ordering assertion p(6,4) > p(6,2) goes false and the run exits 1 — proven before the fix landed, not asserted after.",
+    "Identifier freeze, cover assets and outbound links: both images exist with slug-derived stems, all four outbound links resolve to on-disk articles that are published with devto_ids, and no dead forward-reference remains.",
+    "The `sdlc:verify` findings for this slug are verifier artifacts, not false claims — detect-stale-claims.mjs digit-strips a multi-assertion runner's stdout and lib.mjs splits on unescaped `|` inside markdown table cells. Every command it reports failing was hand-run in full by two reviewers and returns the stated value."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "The title is technically exact and legible without the domain — df = models-1, so the 5.991 fallback is genuinely the three-model bar, and the mismatch reads on sight. The opening's payload travels standalone ('the one significance test I *did* have was a dictionary'), and the structure's bravest move is refusing its own best headline: 'It fired once, and got the right answer' converts the anticlimax into the thesis rather than burying it. Held below 10 because the real-world payoff is n=1 of eleven files and it was right anyway, so the stakes stay intellectual rather than consequential."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "Every number recomputed by two methods sharing no code with the implementation, agreeing to every printed digit, including the 0.001017 firing and the bisected critical values 3.841/5.991/7.815/9.488/11.070. The one-directional-error claim was verified universally rather than on samples. The only softness is phrasing rather than arithmetic: 'reproduces 3.841, 5.991 and 7.815 to three decimals' describes recovering p=0.05 from those statistics rather than computing the critical values themselves."
+    },
+    "structure_framing_voice": {
+      "score": 9.5,
+      "why": "Every H2 is load-bearing — mechanism, measured frequency, direction of the error, why it survived review, then the second call site where extending the table moved the cliff without removing it, which is the line the piece turns on. Framing is landscape-only: zero banned-vocabulary hits, no external project named, and the only instrument criticised is our own. The negation-contrast construction runs about 1 per 120 words against 1 per 180 and 1 per 270 in the two published siblings — the densest of the three, staying signature because each instance draws a real technical distinction, except in 'The fix is arithmetic' where three run in four sentences and only the last carries meaning."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "All ten required frontmatter fields present; reading_time_minutes 6 is exactly the repo's own computation over 1,190 words. Both cover assets exist with correctly slug-derived stems and the conventional ?v=b2 buster; all four outbound links resolve to published articles with devto_ids; identifier freeze is clean with the rename completed while still legal. Every code block matches committed source verbatim, and the article honestly discloses that the fix snippet is unpastable because upperGamma and gammaLn are unexported — then names PR #952 so the reader knows where it becomes obtainable."
+    },
+    "reproducibility": {
+      "score": 9.6,
+      "why": "Every Ground truth row was run from blog-public by two reviewers: the seven pinned b40bc6781 rows match byte-for-byte, the scoped absence grep returns 0, the fallback token is 8 characters, and criticalValues in benchmarks/suites returns 0 on the fix branch. Counts were taken from a clean ref rather than the working tree — 11 json files at 08dfad0b9, 3 carrying chiSquared, exactly 1 with df>=4 — and stats.selfcheck.ts was extracted into a detached worktree at 355443dab and run in isolation, 19 assertions passing, so the committed-not-local claim holds independently of any dirty tree."
+    }
+  },
+  "min": 9.5,
+  "verdict": "pass"
+}
