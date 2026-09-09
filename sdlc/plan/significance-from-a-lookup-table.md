@@ -10,7 +10,7 @@ status: draft
 | File | Change |
 | --- | --- |
 | `eslint:benchmarks/lib/stats.ts` | add `chiSquaredPValue` + regularized incomplete gamma (`gammaLn`, `upperGamma`) |
-| `eslint:benchmarks/lib/stats.selfcheck.ts` | new — 11 assertions, incl. the regression the table hid |
+| `eslint:benchmarks/lib/stats.selfcheck.ts` | new — 19 assertions, incl. the regression the table hid |
 | `eslint:benchmarks/package.json` | new script `stats:check` |
 | `eslint:benchmarks/suites/ilb-ai/run.js` | drop the table; call the computed tail; `pValue` becomes numeric |
 | `eslint:benchmarks/suites/ilb-ai/run-antigravity.js` | same, second site |
@@ -26,8 +26,8 @@ a live defect as fixed.
 1. Fix `stats.ts`, prove the self-check fails on the old predicate and passes on the new. *(done)*
 2. Rewire both call sites; confirm zero `criticalValues` remain in `suites/`. *(done)*
 3. Write the article strictly against the spec's ground-truth table. *(done)*
-4. Run the five-lens panel to 9.5; write `sdlc/review/<slug>.json` + the `quality` block. *(pending)*
-5. Generate cover + OG assets at the slug stem. *(pending)*
+4. Run the five-lens panel to 9.5; write `sdlc/review/<slug>.json` + the `quality` block. *(done)*
+5. Generate cover + OG assets at the slug stem. *(done)*
 6. Human approves the intent and the spec, then both PRs. *(pending — not mine)*
 
 ## Risks
@@ -44,7 +44,7 @@ a live defect as fixed.
 
 ## Proof of success
 
-- `npm run -w @interlace/benchmarks stats:check` → 11 assertions, exit 0.
+- `npm run -w @interlace/benchmarks stats:check` → 19 assertions, exit 0.
 - The old predicate, run against the same six pairs, exits 1 with 6 disagreements.
 - `grep -rn criticalValues benchmarks/suites/ | wc -l` → 0.
 - Five lenses ≥ 9.5; `sdlc-spec-evidence-lock` and `sdlc-quality-lock` green.
