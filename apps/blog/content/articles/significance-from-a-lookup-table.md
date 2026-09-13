@@ -7,9 +7,9 @@ social_image: "https://ofriperetz.dev/cdn/blog-cover-image/significance-from-a-l
 reading_time_minutes: 6
 published: false
 date: 2026-09-07
-tier: "T1"
+tier: "T2"
 tags:
-  - "node"
+  - "eslint"
   - "javascript"
   - "testing"
   - "benchmarking"
