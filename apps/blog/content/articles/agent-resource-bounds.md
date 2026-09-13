@@ -34,7 +34,7 @@ series: null
 
 Three rules in `eslint-plugin-vercel-ai-security` fire on a call written that way, and they map to three _different_ CWEs — 770, 400 and 404. (A CWE is a label, not a verdict — [what the taxonomy actually claims](https://ofriperetz.dev/articles/cwe-taxonomy-explained) — and counting CWEs is a [proxy metric](https://ofriperetz.dev/articles/proxy-metrics).) Same missing config object. Three separate ways to lose.
 
-A note on the bound people expect here: step count. The SDK defaults `stopWhen` to `stepCountIs(1)`, so a tool-calling loop does not run away on its own — that hole gets opened deliberately, by raising the ceiling, not by forgetting it. The three below are genuinely unbounded when you say nothing.
+A note on the bound people expect: step count. The SDK defaults `stopWhen` to `stepCountIs(1)`, so a tool-calling loop does not run away on its own — that hole gets opened deliberately, by raising the ceiling, not by forgetting it. The three below are genuinely unbounded when you say nothing.
 
 ---
 
@@ -48,7 +48,7 @@ await generateText({ model, prompt }); // no maxOutputTokens
 
 **Why it survives review:** output length reads as a _quality_ knob, not a resource bound. But this is billed per token. An unbounded output is an unbounded invoice, and nothing in the diff looks like money.
 
-Fix: set `maxOutputTokens` to the longest answer you would actually pay for — there is no correct number, only the difference between a ceiling and none. Note the rename: this was `maxTokens` in v4. Guidance written against v4 still _reads_ correct in review and bounds nothing.
+Fix: set `maxOutputTokens` to the longest answer you would pay for — there is no correct number, only the difference between a ceiling and none. Note the rename: this was `maxTokens` in v4. Guidance written against v4 still _reads_ correct in review and bounds nothing.
 
 ---
 
@@ -76,9 +76,9 @@ await generateText({ model, prompt, timeout: { totalMs: 30_000 } });
 const stream = streamText({ model, prompt }); // no abortSignal
 ```
 
-You will want to file this one under polish. Here is why that is wrong: the client is gone, and the server keeps generating — and keeps billing — for a reader who will never see a token of it.
+You will file this under polish. Here is why that is wrong: the client is gone, and the server keeps generating — and billing — for a reader who will never see a token of it.
 
-Why _shutdown_ (CWE-404) rather than consumption (400)? The resource was acquired correctly and then never released — the handle outlives the request that justified it. A release bug, not an acquisition bug.
+Why _shutdown_ (CWE-404) rather than consumption (400)? The resource was acquired correctly and never released — the handle outlives the request that justified it. A release bug, not an acquisition bug.
 
 ```ts
 const ac = new AbortController();
@@ -96,7 +96,7 @@ I don't trust an allocation whose ceiling I can't see — the same instinct that
 
 Classic resource-exhaustion review asks whether an attacker can make something loop forever. For an LLM call, the answer is worse — you don't need an attacker. A verbose model and one retry will do it, and the meter runs the entire time.
 
-This is OWASP LLM10, Unbounded Consumption — [the full top-10 mapping for this SDK](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) covers the other nine. That list is a separate taxonomy from [the web Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) — LLM10 has no A-number. For governance rather than linting, [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework) is the place to look. That is why these are security rules and not style rules. It is the move [injection across nine interpreters](https://ofriperetz.dev/articles/injection-beyond-sql) makes too: CWE-770, 400 and 404 are the same sentence in three grammars.
+This is OWASP LLM10, Unbounded Consumption — [the full top-10 mapping for this SDK](https://ofriperetz.dev/articles/100-owasp-llm-top-10-coverage-for-vercel-ai-sdk) covers the other nine. That list is a separate taxonomy from [the web Top 10](https://ofriperetz.dev/articles/owasp-top-10-explained) — LLM10 has no A-number. For governance rather than linting, see [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework). That is why these are security rules, not style rules. It is the move [injection across nine interpreters](https://ofriperetz.dev/articles/injection-beyond-sql) makes too: CWE-770, 400 and 404 are the same sentence in three grammars.
 
 ---
 
@@ -136,7 +136,7 @@ export default [
 }
 ```
 
-On oxlint, add `"jsPlugins": ["eslint-plugin-vercel-ai-security/oxlint"]` — alpha, and not under semver.
+On oxlint, add `"jsPlugins": ["eslint-plugin-vercel-ai-security/oxlint"]` — alpha, not under semver.
 
 Rule docs: [require-max-tokens](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-max-tokens.md) · [require-request-timeout](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-request-timeout.md) · [require-abort-signal](https://github.com/ofri-peretz/eslint/blob/main/packages/eslint-plugin-vercel-ai-security/docs/rules/require-abort-signal.md)
 
