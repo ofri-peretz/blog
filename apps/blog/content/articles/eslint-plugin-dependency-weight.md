@@ -1,8 +1,10 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/your-eslint-plugin-installs-205-packages-69-are-eslint-g1a"
+devto_id: 4642775
 title: "Your ESLint Plugin Installs 205 Packages. 69 Are ESLint."
 description: "I measured the install tree of 11 ESLint plugins. Direct dependency counts predict almost nothing, and every raw number hides the same 69-package baseline."
 slug: "eslint-plugin-dependency-weight"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/eslint-plugin-dependency-weight"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-dependency-weight.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-dependency-weight-og.jpg"
