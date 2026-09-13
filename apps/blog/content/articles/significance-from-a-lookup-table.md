@@ -50,7 +50,7 @@ Both predicates, on six statistics inside that gap:
 | 10.0 | 5 | significant | 0.0752 |
 | 12.0 | 6 | significant | 0.0620 |
 
-Six for six — guaranteed, because I chose points inside the gap. A probe shows the mechanism, not how often it fired. One of them has a true tail probability of **0.22** and the old predicate called it `p < 0.05`.
+Six for six — guaranteed: I chose points inside the gap. A probe shows the mechanism, not how often it fired. One of them has a true tail probability of **0.22** and the old predicate called it `p < 0.05`.
 
 ## It fired once, and got the right answer
 
@@ -61,8 +61,8 @@ of them carrying a chi-squared verdict, and exactly one lands in the gap:
 { "chiSquared": 18.43, "df": 4, "pValue": "< 0.05", "significant": true }
 ```
 
-Judged against 5.991 instead of the 9.488 its four degrees of freedom called
-for. And it was **right anyway** — the true p is 0.001017, comfortably
+Judged against 5.991 instead of the 9.488 its four degrees of freedom
+required. And it was **right anyway** — the true p is 0.001017, comfortably
 significant on any threshold.
 
 That is the whole problem in one row. The instrument was broken, the answer was
@@ -74,13 +74,13 @@ that stays.
 
 The table cannot make a real result disappear. The fallback is *lower* than every threshold it stands in for, so the mistake only ever converts noise into a finding. It never withholds one.
 
-That asymmetry is the tell. A bug that fails randomly is a bug. A bug that fails exclusively in the direction that flatters your results is a bug you were never going to notice, because every time it fired it told you what you hoped to hear.
+That asymmetry is the tell. A bug that fails randomly is a bug. A bug that fails exclusively in the direction that flatters your results is a bug you were never going to notice: every time it fired it told you what you hoped to hear.
 
 ## Why it survived review
 
 Because it looks like rigor. A table of critical values is textbook furniture, and the numbers are right — 3.841, 5.991 and 7.815 are correct for df 1, 2 and 3. Nothing in the diff is *wrong*. The defect is the `|| 5.991` — eight characters that turn "I don't know" into a confident answer.
 
-It reads as harmless. I know, because I found the same function in a second runner where someone had already met this problem and fixed it — two more rows, `4: 9.488, 5: 11.07`, behind the same `|| 5.991`. The cliff moved from df≥4 to df≥6 and got harder to see, because the table looked more complete. Extending a lookup table is not fixing a lookup table.
+It reads as harmless. I found the same function in a second runner where someone had already met this problem and fixed it — two more rows, `4: 9.488, 5: 11.07`, behind the same `|| 5.991`. The cliff moved from df≥4 to df≥6 and got harder to see, because the table looked more complete. Extending a lookup table is not fixing a lookup table.
 
 ## The fix is arithmetic, not a bigger dictionary
 
@@ -93,7 +93,7 @@ export function chiSquaredPValue(chiSq, df) {
 }
 ```
 
-That is the interface, not the implementation: `upperGamma` and a Lanczos log-gamma are not exported, so read it rather than paste it. It lives in `benchmarks/lib/stats.ts` on the branch carrying this fix ([ofri-peretz/eslint#952](https://github.com/ofri-peretz/eslint/pull/952)), and `npm --prefix benchmarks run stats:check` runs it in about a second. It reproduces 3.841, 5.991 and 7.815 to three decimals — and 9.488 and 11.07, which the table never had.
+That is the interface, not the implementation: `upperGamma` and a Lanczos log-gamma are not exported, so read it rather than paste it. It lives in `benchmarks/lib/stats.ts` on the branch carrying this fix ([ofri-peretz/eslint#952](https://github.com/ofri-peretz/eslint/pull/952)), and `npm --prefix benchmarks run stats:check` runs it in a second. It reproduces 3.841, 5.991 and 7.815 to three decimals — and 9.488 and 11.07, which the table never had.
 
 Then the check, which matters more than the fix. It asserts the *rule*, not the absence of one bad number: for a fixed statistic, more degrees of freedom must yield a **larger** p-value. That is the relationship the fallback inverted, so it fails loudly on the old code and passes on the new. A fix without a check that would have caught it is a fix you get to make twice.
 
@@ -102,5 +102,7 @@ The uncomfortable part is not that my benchmark had a bug. It is that the bug sa
 ---
 
 Foundations: [what a p-value actually claims](https://ofriperetz.dev/articles/statistical-significance-p-value), [statistical power](https://ofriperetz.dev/articles/sample-size-and-statistical-power), [composite scores](https://ofriperetz.dev/articles/composite-scores-and-weighting).
+
+More of these — [follow on dev.to](https://dev.to/ofri-peretz).
 
 _If your own harness prints a p-value, did you check it was computed rather than looked up?_
