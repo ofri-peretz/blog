@@ -7,15 +7,16 @@ import {
   PAGES,
   aggregate,
   arenaSummary,
+  goalFrom,
   mergeLeague,
   type TagTable,
   type Climb,
+  type PassLine,
 } from "@/lib/league";
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { FOOTPRINT } from "@/lib/footprint";
-import { goalFrom, type PassLine } from "@/lib/league";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
