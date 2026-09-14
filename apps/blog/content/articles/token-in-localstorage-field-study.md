@@ -59,7 +59,7 @@ That is a mechanism, not an accusation. Two of the seven — Helsinki and the UK
 
 Reading the code changes the verdict twice.
 
-`bcgov_sso-requests` uses `sessionStorage`, not `localStorage` — same XSS exposure, but the token dies with the tab instead of persisting. `betagouv_sante-psy` stores an **XSRF** token, which is a different risk class entirely: it is meant to be readable by your own page, and it is not a bearer credential. That is why the count above says *credential* and not *auth token*: eleven of the thirteen are bearer tokens, and these two are not.
+`bcgov_sso-requests` uses `sessionStorage`, not `localStorage` — same XSS exposure, but the token dies with the tab instead of persisting. `betagouv_sante-psy` stores an **XSRF** token, which is a different risk class entirely: it is meant to be readable by your own page, and it is not a bearer credential. That is why the count above says *credential* and not *auth token*: eleven of the thirteen are bearer tokens, and the two that are not are this XSRF token and a Twilio app passcode. `bcgov` is a bearer token — it is on this list for the store it chose, not for what it stores.
 
 Counting them all as "a JWT in localStorage" would have been technically defensible and substantively wrong.
 
