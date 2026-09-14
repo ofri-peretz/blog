@@ -77,9 +77,17 @@ A rule that fires on a safe default doesn't make the number bigger. It makes the
 
 ## Run it on yours {#method}
 
-```bash
-npm i -D eslint-plugin-vercel-ai-security
-npx eslint --rule '{"vercel-ai-security/require-max-tokens":"error"}' src
+```js
+// eslint.config.mjs — after `npm i -D eslint-plugin-vercel-ai-security`
+import ai from "eslint-plugin-vercel-ai-security";
+
+export default [
+  {
+    files: ["**/*.ts"],
+    plugins: { "vercel-ai-security": ai },
+    rules: { "vercel-ai-security/require-max-tokens": "error" },
+  },
+];
 ```
 
 Honest limits, because n = 14 is small. This is an adoption-scan convenience sample, not a random draw from npm, and two directories in it turned out to be the same project cloned twice — caught by content fingerprint, since every checkout reported the same `git remote`. The claim is that this is what the SDK's own ecosystem looks like. It is not a population rate.
