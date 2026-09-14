@@ -1,5 +1,5 @@
 ---
-title: "12 Repos Keep an Auth Token in Web Storage. Seven Are Governments."
+title: "13 Repos Keep a Credential in Web Storage. Seven Are Governments."
 description: "A field study of 1,423 storage call sites in 189 public repositories. The practice is rarer than the argument about it, and it concentrates somewhere specific."
 slug: "token-in-localstorage-field-study"
 canonical_url: "https://ofriperetz.dev/articles/token-in-localstorage-field-study"
@@ -34,7 +34,7 @@ series: null
 
 258,117 source files. **1,423 touch web storage** — that is the denominator, found by reading source text before any rule ran. They live in 189 public repositories.
 
-Twelve of those repositories put an authentication token in storage. **Seven of the twelve are government digital services.**
+Thirteen of those repositories put a credential in storage — eleven of them a bearer token. **Seven of the thirteen are government digital services.**
 
 | | |
 |---|---|
@@ -45,27 +45,27 @@ Twelve of those repositories put an authentication token in storage. **Seven of 
 | France · `betagouv` ×2 | `xsrfToken`, `NATIVE_TOKEN_KEY` |
 | British Columbia · `sso-requests` | `sessionStorage.setItem(TOKEN_SESSION, …)` |
 
-The other five are `cloudflare-os`, `headlamp`, `mozilla_fxa`, `solid-playground` and `wix_skills`.
+The non-government six are `cloudflare-os`, `headlamp`, `mozilla_fxa`, `solid-playground`, `wix_skills` and a Twilio app that stores a passcode.
 
 ## The rate is the boring half {#rate}
 
-Twelve out of 189 is about 6%. If you came expecting an epidemic, there isn't one — most code touching web storage keeps credentials out of it.
+Thirteen out of 189 is about 7%. If you came expecting an epidemic, there isn't one — most code touching web storage keeps credentials out of it.
 
-What makes six percent interesting is *where* it lands. Public-sector frontends are built by rotating contractors against procurement deadlines, and they inherit whatever the OIDC tutorial did. The tutorial put the token in `localStorage`.
+What makes seven percent interesting is *where* it lands. Public-sector frontends are built by rotating contractors against procurement deadlines, and they inherit whatever the OIDC tutorial did. The tutorial put the token in `localStorage`.
 
-That is a mechanism, not an accusation. Two of the seven — Helsinki and the UK ONS — store a **refresh** token beside the access token, and that is the part that matters: an access token expires in minutes, a refresh token is a long-lived credential sitting where any injected script can read it synchronously. The five non-government hits are developer tools and internal consoles, where the threat model is genuinely different.
+That is a mechanism, not an accusation. Two of the seven — Helsinki and the UK ONS — store a **refresh** token beside the access token, and that is the part that matters: an access token expires in minutes, a refresh token is a long-lived credential sitting where any injected script can read it synchronously. The six non-government hits are developer tools, playgrounds and internal consoles, where the threat model is genuinely different.
 
-## Two of the twelve are not the mistake you think {#nuance}
+## Two of the thirteen are not the mistake you think {#nuance}
 
 Reading the code changes the verdict twice.
 
-`bcgov_sso-requests` uses `sessionStorage`, not `localStorage` — same XSS exposure, but the token dies with the tab instead of persisting. `betagouv_sante-psy` stores an **XSRF** token, which is a different risk class entirely: it is meant to be readable by your own page, and it is not a bearer credential.
+`bcgov_sso-requests` uses `sessionStorage`, not `localStorage` — same XSS exposure, but the token dies with the tab instead of persisting. `betagouv_sante-psy` stores an **XSRF** token, which is a different risk class entirely: it is meant to be readable by your own page, and it is not a bearer credential. That is why the count above says *credential* and not *auth token*: eleven of the thirteen are bearer tokens, and these two are not.
 
-Counting both as "token in localStorage" would have been technically defensible and substantively wrong.
+Counting them all as "a JWT in localStorage" would have been technically defensible and substantively wrong.
 
-## My own rule is right 12 times out of 19 {#precision}
+## My own rule is right 13 times out of 19 {#precision}
 
-`no-jwt-in-storage` flagged 19 repositories. I read all 39 files. Seven repos are false positives, and all seven fail the same way — the rule matched an identifier *name* rather than proving a token:
+`no-jwt-in-storage` flagged 19 repositories. I read all 39 files. Six repos are false positives, and all six fail the same way — the rule matched an identifier *name* rather than proving a credential:
 
 ```js
 localStorage.setItem("sessionId", sessionId);      // a demo session id
@@ -73,9 +73,9 @@ sessionStorage.setItem('app_authServer', config);  // a server URL
 localStorage.setItem(AUTH_STATUS_KEY, 'success');  // the string "success"
 ```
 
-Also flagged: a co-browse session descriptor, a telemetry session, a sandbox id, and an example `user` object. That is **63% precision** on real source.
+Also flagged: a co-browse session descriptor, a telemetry session, a sandbox id, and an example `user` object. That is **68% precision** on real source.
 
-I am reporting it because the twelve are only believable if you know what the instrument does when it is wrong. A field study that publishes its hit rate and not its miss rate is a marketing page.
+I am reporting it because the thirteen are only believable if you know what the instrument does when it is wrong. A field study that publishes its hit rate and not its miss rate is a marketing page.
 
 One more, worth its own line: `no-cookie-auth-tokens` fired **zero** times across all 1,423 files. A rule that never fires in a corpus this size is telling you about the rule, not the corpus.
 
@@ -94,7 +94,7 @@ export default [
 ];
 ```
 
-Expect to read the hits rather than trust them — [ground truth is the hard half](https://ofriperetz.dev/articles/ground-truth-in-security-testing) of any audit like this. The corpus here is an adoption scan, not a random draw from GitHub, so "7 of 12" describes what I looked at. Point it at a different corpus and the mix will move.
+Expect to read the hits rather than trust them — [ground truth is the hard half](https://ofriperetz.dev/articles/ground-truth-in-security-testing) of any audit like this. The corpus here is an adoption scan, not a random draw from GitHub, so "7 of 13" describes what I looked at. Point it at a different corpus and the mix will move.
 
 ---
 

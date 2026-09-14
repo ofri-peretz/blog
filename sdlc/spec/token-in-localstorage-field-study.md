@@ -10,11 +10,11 @@ gathered: 2026-09-14
 
 The localStorage-vs-cookie argument is the one frontend developers have with
 each other most often and measure least. Across 189 public repositories that
-touch web storage, **12 put an authentication token in it — and 7 of those 12
-are government digital services.**
+touch web storage, **13 put a credential in it (11 of them bearer tokens) — and 7 of
+those 13 are government digital services.**
 
 Two numbers matter more than the headline: the practice is **rarer** than the
-discourse implies, and the linter that found it is **right 12 times out of 19**.
+discourse implies, and the linter that found it is **right 13 times out of 19**.
 
 ## Ground truth
 
@@ -32,12 +32,12 @@ discourse implies, and the linter that found it is **right 12 times out of 19**.
 | `no-cookie-auth-tokens` — findings              | 0                    | same run                                                     | browser-security 2.1.5 / eslint 9.39.5 | 2026-09-14 |
 | parse errors                                    | 16                   | same run → `parseErrors`                                     | browser-security 2.1.5 / eslint 9.39.5 | 2026-09-14 |
 | duplicate clones among the 19 flagged repos     | 0                    | `dedupe.ts` content fingerprint                              | browser-security 2.1.5 / eslint 9.39.5 | 2026-09-14 |
-| **flagged repos that really store a token**     | **12 of 19**         | manual read of all 39 files, table below                     | browser-security 2.1.5 / eslint 9.39.5 | 2026-09-14 |
-| of those 12, government digital services        | **7**                | table below                                                  | browser-security 2.1.5 / eslint 9.39.5 | 2026-09-14 |
+| **flagged repos that really store a credential** | **13 of 19**         | manual read of all 39 files, table below                     | browser-security 2.1.5 / eslint 9.39.5 | 2026-09-14 |
+| of those 13, government digital services        | **7**                | table below                                                  | browser-security 2.1.5 / eslint 9.39.5 | 2026-09-14 |
 
 ## Every finding, read
 
-**True — an authentication credential in web storage (12 repos):**
+**True — a credential in web storage (13 repos; 11 bearer tokens):**
 
 | repo | evidence | gov |
 | --- | --- | --- |
@@ -53,9 +53,10 @@ discourse implies, and the linter that found it is **right 12 times out of 19**.
 | mozilla_fxa | `localStorage.setItem(NAMESPACE, …)` in `lib/session.js` | |
 | solidjs_solid-playground | `localStorage.setItem('token', x)` | |
 | wix_skills | `window.localStorage.setItem(TOKEN_STORAGE_KEY, …)` | |
+| twilio_twilio-voice-notification-app | `sessionStorage.setItem(SESSION_STORAGE_PASSCODE_KEY, passcode)` — a credential, not a bearer token | |
 
-**False — flagged, but not a credential (7 repos).** Every one is the rule
-matching an *identifier name* rather than proving a token:
+**False — flagged, but not a credential (6 repos).** Every one is the rule
+matching an *identifier name* rather than proving a credential:
 
 | repo | what is actually stored |
 | --- | --- |
@@ -65,9 +66,8 @@ matching an *identifier name* rather than proving a token:
 | open-telemetry_opentelemetry-js | a telemetry session in `LocalStorageSessionStore` |
 | TanStack_router | an example `user` object in two auth demos |
 | vercel_examples | `{sandboxId, timestamp}` |
-| twilio_twilio-voice-notification-app | an app passcode — a credential, but not a token |
 
-That is **12/19 = 63% precision** for `no-jwt-in-storage` on real source, and the
+That is **13/19 = 68% precision** for `no-jwt-in-storage` on real source, and the
 misses are the name-inference class: `sessionId`, `authServer`, `AUTH_STATUS_KEY`.
 
 ## Instrument defect found and fixed
@@ -85,11 +85,11 @@ absence.**
 
 ## What this changes in the article
 
-**Lead with the government count, not the rate.** 12 of 189 is ~6%, which reads
-as "rare, move on". 7 of the 12 being public-sector services is the fact that
+**Lead with the government count, not the rate.** 13 of 189 is ~7%, which reads
+as "rare, move on". 7 of the 13 being public-sector services is the fact that
 makes a reader check their own repo.
 
-**Publish the 63% precision.** The article is evidence that our own rule
+**Publish the 68% precision.** The article is evidence that our own rule
 over-reports, and saying so is what makes the 12 believable. Per the dogfooding
 doctrine, a measured loss is published, not buried.
 
