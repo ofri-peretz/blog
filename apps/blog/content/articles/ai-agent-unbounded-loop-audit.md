@@ -90,7 +90,7 @@ export default [
 ];
 ```
 
-Honest limits, because n = 14 is small. This is an adoption-scan convenience sample, not a random draw from npm, and two directories in it turned out to be the same project cloned twice — caught by content fingerprint, since every checkout reported the same `git remote`. The claim is that this is what the SDK's own ecosystem looks like. It is not a population rate.
+Honest limits, because n = 14 is small — and a corpus you assembled yourself is [the hard half of any audit](https://ofriperetz.dev/articles/ground-truth-in-security-testing). This is an adoption-scan convenience sample, not a random draw from npm, and two directories in it turned out to be the same project cloned twice — caught by content fingerprint, since every checkout reported the same `git remote`. The claim is that this is what the SDK's own ecosystem looks like. It is not a population rate.
 
 The prior sweep I tried to reuse recorded findings but no denominator and no repo list, so it could not answer this at all. A count without its denominator isn't a small result. It's not a result.
 

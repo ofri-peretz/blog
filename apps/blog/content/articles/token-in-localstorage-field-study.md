@@ -53,7 +53,7 @@ Thirteen out of 189 is about 7%. If you came expecting an epidemic, there isn't 
 
 What makes seven percent interesting is *where* it lands. Public-sector frontends are built by rotating contractors against procurement deadlines, and they inherit whatever the OIDC tutorial did. The tutorial put the token in `localStorage`.
 
-That is a mechanism, not an accusation. Two of the seven — Helsinki and the UK ONS — store a **refresh** token beside the access token, and that is the part that matters: an access token expires in minutes, a refresh token is a long-lived credential sitting where any injected script can read it synchronously. The six non-government hits are developer tools, playgrounds and internal consoles, where the threat model is genuinely different.
+That is a mechanism, not an accusation. Two of the seven — Helsinki and the UK ONS — store a **refresh** token beside the access token, and that is the part that matters: an access token expires in minutes, a refresh token is a long-lived credential sitting where any injected script can read it synchronously. That is the whole argument: web storage is [a trust boundary you share with every script on the page](https://ofriperetz.dev/articles/client-storage-trust-boundary), and one [DOM sink](https://ofriperetz.dev/articles/dom-sink-taxonomy) is all it takes to cross it. The six non-government hits are developer tools, playgrounds and internal consoles, where the threat model is genuinely different.
 
 ## Two of the thirteen are not the mistake you think {#nuance}
 
