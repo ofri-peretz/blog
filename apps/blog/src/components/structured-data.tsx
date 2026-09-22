@@ -1,5 +1,10 @@
 import numbers from "@/data/interlace-numbers.json";
-import { PERSON_ID, PERSON_NAME, SITE_URL } from "@/lib/article-jsonld";
+import {
+  PERSON_ID,
+  PERSON_NAME,
+  SITE_URL,
+  serializeJsonLd,
+} from "@/lib/article-jsonld";
 
 // The description carried a hardcoded "35K+ downloads" until 2026-08-26, by
 // which point the real figure was 433,686 — a 12x understatement shipped to
@@ -76,15 +81,15 @@ export function StructuredData() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(personSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ecosystemSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(ecosystemSchema) }}
       />
     </>
   );

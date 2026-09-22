@@ -1,10 +1,9 @@
+import { SITE_URL } from "@/lib/article-jsonld";
 import type { Article } from "@/lib/source";
 import { preprocessMarkdown } from "@/lib/markdown";
 // The same strip the dev.to publish path uses — one implementation of
 // "surfaces outside our renderer show plain, post-diff code".
 import { stripNotationMarkers } from "../../scripts/devto-link-transforms.mjs";
-
-export const SITE_URL = "https://ofriperetz.dev";
 
 /**
  * One article as plain CommonMark: a provenance header, then the body.

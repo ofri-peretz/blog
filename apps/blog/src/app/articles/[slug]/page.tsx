@@ -10,7 +10,7 @@ import {
   isPublished,
 } from "@/lib/source";
 import { computeThreads } from "@/lib/corpus-links";
-import { articleJsonLd } from "@/lib/article-jsonld";
+import { articleJsonLd, serializeJsonLd } from "@/lib/article-jsonld";
 import { detectPlugins } from "@/lib/plugin-mentions";
 import pluginStats from "@/data/plugin-stats.json";
 import { ArticlePlugins } from "@/components/article-plugins";
@@ -188,7 +188,7 @@ export default async function ArticlePage(props: PageProps) {
           type="application/ld+json"
           // Deterministic JSON serialization of server-side frontmatter —
           // not user input. Standard SEO pattern.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         />
       ))}
       <Container size="prose" className="py-12">

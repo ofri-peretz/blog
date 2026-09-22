@@ -1,4 +1,5 @@
 import numbers from "@/data/interlace-numbers.json";
+import { SITE_URL } from "@/lib/article-jsonld";
 import { getAllArticles } from "@/lib/source";
 
 /**
@@ -23,8 +24,6 @@ import { getAllArticles } from "@/lib/source";
  * line an agent can quote, pointing at the canonical repo or docs.
  */
 export const dynamic = "force-static";
-
-const SITE_URL = "https://ofriperetz.dev";
 
 /**
  * One line per project. The ESLint counts come from interlace-numbers.json

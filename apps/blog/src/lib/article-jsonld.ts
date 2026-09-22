@@ -14,6 +14,26 @@ export const PERSON_ID = `${SITE_URL}/#person`;
 type JsonLd = Record<string, unknown>;
 
 /**
+ * JSON for an inline `<script type="application/ld+json">`.
+ *
+ * JSON.stringify does not escape `<`, so a frontmatter title containing
+ * `</script>` would close the element and the rest would parse as HTML
+ * (CWE-79). Frontmatter is repo-controlled, so this is latent, not live —
+ * but escaping `<`, `>`, `&` and `'` as \u escapes is still valid JSON with an
+ * identical parse, and makes every JSON-LD block on the site safe by
+ * construction instead of by review.
+ */
+export function serializeJsonLd(schema: unknown): string {
+  // One pass over one character class. `"` is deliberately absent: it is
+  // JSON's own string delimiter and must stay literal, and inside a <script>
+  // element it has no HTML meaning — only `<` can end the element.
+  return JSON.stringify(schema).replace(
+    /[<>&']/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
+/**
  * JSON-LD for an article page: the BlogPosting and its BreadcrumbList.
  *
  * Pure over frontmatter so the lock can assert on the graph without

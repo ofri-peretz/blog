@@ -1,5 +1,6 @@
 import { getAllArticles } from "@/lib/source";
-import { renderArticleMarkdown, SITE_URL } from "@/lib/article-markdown";
+import { SITE_URL } from "@/lib/article-jsonld";
+import { renderArticleMarkdown } from "@/lib/article-markdown";
 
 /**
  * /llms-full.txt — the whole published corpus as one markdown document

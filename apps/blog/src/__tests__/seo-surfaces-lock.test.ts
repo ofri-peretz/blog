@@ -22,7 +22,12 @@ import { join, resolve } from "node:path";
 
 import sitemap from "@/app/sitemap";
 import { GET as llmsTxt } from "@/app/llms.txt/route";
-import { articleJsonLd, PERSON_ID, SITE_URL } from "@/lib/article-jsonld";
+import {
+  articleJsonLd,
+  PERSON_ID,
+  SITE_URL,
+  serializeJsonLd,
+} from "@/lib/article-jsonld";
 import { getAllArticles, type ArticleFrontmatter } from "@/lib/source";
 
 const PROJECT_ROOT = resolve(__dirname, "../..");
@@ -178,6 +183,30 @@ describe("JSON-LD", () => {
       expect(Boolean(post.isPartOf), a.slug).toBe(
         Boolean(a.frontmatter.series),
       );
+    }
+  });
+
+  it("a frontmatter `</script>` cannot close the JSON-LD element", () => {
+    // Review finding on #305 (CWE-79): JSON.stringify leaves `<` alone.
+    const [post] = articleJsonLd({
+      fm: { ...base, title: "x</script><img src=x onerror=alert('1')>&" },
+      url,
+      image,
+    });
+    const out = serializeJsonLd(post);
+    expect(out).not.toMatch(/[<>&']/);
+    // Still valid JSON, and it parses back to the exact original.
+    expect(JSON.parse(out)).toEqual(post);
+  });
+
+  it("every inline JSON-LD block goes through the escaping serializer", () => {
+    for (const file of [
+      join(APP_DIR, "articles", "[slug]", "page.tsx"),
+      join(PROJECT_ROOT, "src", "components", "structured-data.tsx"),
+    ]) {
+      const src = readFileSync(file, "utf-8");
+      expect(src, file).toContain("__html: serializeJsonLd(");
+      expect(src, file).not.toContain("__html: JSON.stringify(");
     }
   });
 
