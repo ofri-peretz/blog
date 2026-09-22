@@ -27,6 +27,10 @@ import { isPublished, type ArticleFrontmatter } from "@/lib/source";
 import { GET } from "@/app/rss.xml/route";
 import { GET as llmsTxt } from "@/app/llms.txt/route";
 import {
+  GET as llmsFullTxt,
+  dynamic as llmsFullDynamic,
+} from "@/app/llms-full.txt/route";
+import {
   GET as articleMd,
   generateStaticParams as articleMdParams,
   dynamicParams as articleMdDynamicParams,
@@ -204,14 +208,79 @@ describe("agent corpus (llms.txt + .md twins)", () => {
     // would pass vacuously against a route that forgot the strip. Two
     // non-vacuous halves instead: the strip itself does its job (its
     // behavior suite lives in devto-link-transforms.test.ts), and the
-    // route SOURCE actually calls it on the body it serves.
-    const route = readFileSync(
-      join(PROJECT_ROOT, "src", "app", "md", "[slug]", "route.ts"),
+    // renderer SOURCE actually calls it on the body it serves — and both
+    // agent surfaces (the twin and llms-full.txt) go through that renderer.
+    const renderer = readFileSync(
+      join(PROJECT_ROOT, "src", "lib", "article-markdown.ts"),
       "utf-8",
     );
-    expect(route).toContain(
+    expect(renderer).toContain(
       "stripNotationMarkers(preprocessMarkdown(article.body))",
     );
+    for (const route of [
+      ["md", "[slug]", "route.ts"],
+      ["llms-full.txt", "route.ts"],
+    ]) {
+      const src = readFileSync(
+        join(PROJECT_ROOT, "src", "app", ...route),
+        "utf-8",
+      );
+      expect(src, `${route.join("/")} bypasses the shared renderer`).toContain(
+        "renderArticleMarkdown(",
+      );
+    }
+  });
+});
+
+/**
+ * /llms-full.txt is the whole corpus in one response — which makes it the
+ * single largest leak surface on the site if the published filter ever
+ * slips. Same shipped definition as every other surface, same assertions.
+ */
+describe("agent corpus (llms-full.txt)", () => {
+  it("is prerendered, never rendered on demand", () => {
+    expect(llmsFullDynamic).toBe("force-static");
+  });
+
+  it("carries every published article, in full, and no drafts", async () => {
+    const txt = await llmsFullTxt().text();
+    const { drafts, live } = partitionSlugs();
+    const boundaries = [...txt.matchAll(/^<!-- article: ([^ ]+) -->$/gm)].map(
+      (m) => m[1],
+    );
+    expect(new Set(boundaries)).toEqual(new Set(live));
+    expect(boundaries.length).toBe(live.length);
+    // Asserted on the canonical header line, not on any mention of the URL:
+    // a published body may legitimately link a queued article, but only a
+    // leaked draft gets a header of its own.
+    for (const slug of drafts) {
+      expect(
+        txt,
+        `queued draft leaked into llms-full.txt: ${slug}`,
+      ).not.toContain(`- Canonical: https://ofriperetz.dev/articles/${slug}\n`);
+    }
+  });
+
+  it("renders each article exactly as its .md twin does", async () => {
+    // Not just "the title appears": the full twin must be a substring, so a
+    // second renderer (or a forgotten strip) cannot creep in unnoticed.
+    const txt = await llmsFullTxt().text();
+    const { live } = partitionSlugs();
+    for (const slug of [live[0], live[live.length - 1]]) {
+      const twin = await (
+        await articleMd(new Request("https://ofriperetz.dev"), {
+          params: Promise.resolve({ slug }),
+        })
+      ).text();
+      expect(txt, `llms-full.txt diverges from ${slug}.md`).toContain(
+        twin.trimEnd(),
+      );
+    }
+  });
+
+  it("is linked from llms.txt", async () => {
+    const txt = await llmsTxt().text();
+    expect(txt).toContain("https://ofriperetz.dev/llms-full.txt");
   });
 });
 

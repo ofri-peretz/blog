@@ -155,6 +155,9 @@ describe("also-building says what each product actually is", () => {
       "https://www.npmjs.com/package/@interlace/serverless-devkit",
     );
     expect(SOURCE).toContain("https://github.com/ofri-peretz/burgee");
+    // The docs site is live (200 on 2026-09-22); the card linked only the
+    // repo, so a reader who wanted to evaluate burgee had to find it.
+    expect(SOURCE).toContain("https://burgee.interlace.tools");
     expect(SOURCE).not.toMatch(/npmjs\.com\/package\/burgee/);
   });
 });

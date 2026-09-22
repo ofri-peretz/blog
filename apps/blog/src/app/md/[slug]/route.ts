@@ -1,8 +1,7 @@
 import { getAllArticles, getArticleBySlug, isPublished } from "@/lib/source";
-import { preprocessMarkdown } from "@/lib/markdown";
-// The same strip the dev.to publish path uses — one implementation of
-// "surfaces outside our renderer show plain, post-diff code".
-import { stripNotationMarkers } from "../../../../scripts/devto-link-transforms.mjs";
+// Header + notation-stripped body, shared with /llms-full.txt so the two
+// agent surfaces render an article identically.
+import { renderArticleMarkdown } from "@/lib/article-markdown";
 
 /**
  * The raw-markdown twin of an article page, for AI agents and anything
@@ -21,8 +20,6 @@ import { stripNotationMarkers } from "../../../../scripts/devto-link-transforms.
 export const dynamic = "force-static";
 export const dynamicParams = false;
 
-const SITE_URL = "https://ofriperetz.dev";
-
 export function generateStaticParams(): { slug: string }[] {
   return getAllArticles().map((a) => ({ slug: a.slug }));
 }
@@ -37,27 +34,7 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  const fm = article.frontmatter;
-  const date = fm.published_at?.slice(0, 10) ?? fm.date;
-  const header = [
-    `# ${fm.title}`,
-    "",
-    `> ${fm.description}`,
-    "",
-    `- Canonical: ${SITE_URL}/articles/${slug}`,
-    ...(date ? [`- Published: ${date}`] : []),
-    ...(fm.series ? [`- Series: ${fm.series}`] : []),
-    "",
-    "---",
-    "",
-  ];
-
-  // preprocessMarkdown converts the Nuxt-MDC block directives into plain
-  // fenced markdown, and stripNotationMarkers removes Shiki `[!code ...]`
-  // render directives (dropping removed-diff lines) — agents get standard
-  // CommonMark showing the post-diff code, no house syntax.
-  return new Response(
-    header.join("\n") + stripNotationMarkers(preprocessMarkdown(article.body)),
-    { headers: { "Content-Type": "text/markdown; charset=utf-8" } },
-  );
+  return new Response(renderArticleMarkdown(article), {
+    headers: { "Content-Type": "text/markdown; charset=utf-8" },
+  });
 }

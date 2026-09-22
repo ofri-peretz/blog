@@ -1,11 +1,13 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/my-benchmark-judged-five-models-against-a-threshold-built-for-three-a0l"
+devto_id: 4674104
 title: "My Benchmark Judged Five Models Against a Threshold Built for Three"
 description: "Every degree of freedom the table did not know about borrowed the df=2 threshold. It fired once, got the right answer, and nobody noticed for four months."
 slug: "significance-from-a-lookup-table"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/significance-from-a-lookup-table.jpg?v=b2"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/significance-from-a-lookup-table-og.jpg?v=b2"
 reading_time_minutes: 6
-published: false
+published: true
 date: 2026-09-07
 tier: "T2"
 tags:

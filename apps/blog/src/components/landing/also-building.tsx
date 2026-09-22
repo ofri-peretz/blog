@@ -182,6 +182,11 @@ const PRODUCTS: Product[] = [
         label: "★ Star on GitHub",
         variant: "default",
       },
+      {
+        href: "https://burgee.interlace.tools",
+        label: "Read the docs",
+        variant: "outline",
+      },
     ],
     testId: "also-building-burgee",
   },
