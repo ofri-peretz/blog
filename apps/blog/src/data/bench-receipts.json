@@ -1,29 +1,29 @@
 {
-  "generatedAt": "2026-08-31T17:03:29.966Z",
+  "generatedAt": "2026-09-14T17:00:31.678Z",
   "repo": "shadcn-ui",
   "versions": {
     "eslint": "v9.39.4",
     "oxlint": "1.63.0",
-    "node": "v24.19.0"
+    "node": "v24.20.0"
   },
   "rows": [
     {
       "key": "ours",
       "label": "Interlace (ESLint)",
-      "coldMs": 2100.7719210000014,
-      "warmMs": 1006.2882160000008
+      "coldMs": 1554.171918,
+      "warmMs": 789.2614879999965
     },
     {
       "key": "competitor",
       "label": "Community plugins (ESLint)",
-      "coldMs": 3895.2727749999976,
-      "warmMs": 1119.8322069999995
+      "coldMs": 3033.7520729999997,
+      "warmMs": 862.1195129999978
     },
     {
       "key": "oxlintNative",
       "label": "oxlint (native)",
-      "coldMs": 1147.5359599999938,
-      "warmMs": 1143.8064909999957
+      "coldMs": 907.0055520000024,
+      "warmMs": 899.2581079999945
     }
   ]
 }
