@@ -152,7 +152,7 @@ const PRODUCTS: Product[] = [
     name: "burgee",
     mono: true,
     tagline: "An agent-native CLI framework",
-    status: "9 packages live",
+    status: "Live on npm",
     statusVariant: "secondary",
     /*
      * The mark is `burgee-flag.svg` (from the burgee repo's brand-assets,
