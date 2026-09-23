@@ -21,6 +21,12 @@ describe("only a whole backtick span is a runnable command", () => {
     expect(executable("`npm i oxc-resolver` in an empty package then `du -sk node_modules`")).toBe("");
   });
 
+  it("treats a span of only whitespace as prose, not an empty command", () => {
+    // `[^`]+` accepts spaces, and trim() then yields "": the detector's
+    // `if (!claim.command)` guard must keep reading "" as "nothing to run".
+    expect(executable("`   `")).toBe("");
+  });
+
   it("never runs a cell with no backticks at all", () => {
     expect(executable("read the heading of the page")).toBe("");
   });

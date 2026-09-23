@@ -88,6 +88,7 @@ export function parseClaims(markdown) {
  *  `npm i x … du -sk node_modules` in the repo root, and a cell quoting
  *  `npx "vercel@$VERCEL_CLI_VERSION"` ran a bare `npx vercel@` that created and
  *  deployed a Vercel project from a developer's CLI session (2026-09-23). */
+// A span of only whitespace also returns "" — callers treat "" as prose.
 export function executable(cell) {
   const match = /^`([^`]+)`$/.exec(cell.trim());
   return match ? match[1].trim() : "";
