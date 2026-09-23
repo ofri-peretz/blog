@@ -1,5 +1,5 @@
 ---
-title: "A commander Stack Installs 70 Packages. burgee's Nine Install 9, and Like for Like Weigh 2.4× More."
+title: "A commander Stack Installs 70 Packages. burgee's Nine Install 9 and, Like for Like, Weigh 2.4× More."
 description: "Part 2 of the dependency-weight method: nine CLI layers, counted. 70 packages from 25 maintainers against 9 from one, the rows where the nine weigh more, and three unmet gates."
 slug: "burgee-zero-dependency-cli-stack"
 published: false
@@ -13,7 +13,7 @@ tags:
   - "javascript"
   - "cli"
   - "webdev"
-series: "The Dependency-Weight Method"
+series: null
 author:
   name: Ofri Peretz
   avatar: https://avatars.githubusercontent.com/u/46347627
@@ -32,13 +32,13 @@ That is the flattering row. [Part 1](https://ofriperetz.dev/articles/eslint-plug
 
 ## Layer by layer {#layers}
 
-Each incumbent is the first whole package in burgee's own "Replaces" column (the terminal row lists half of ansi-escapes first; with it, 66 packages), so the stack comes from [my design surface, not a neutral sample](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat). Resolved 2026-09-23 against burgee 0.10.0 and cosmiconfig 10.0.1, one package at a time; KB is 1,024 bytes of files, whole tree included.
+Each incumbent is the first whole package in burgee's own "Replaces" column (the terminal row lists half of ansi-escapes first; with it, 66 packages), so the stack comes from [my design surface, not a neutral sample](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat). Resolved 2026-09-23 against burgee 0.10.0, flagstaff 0.3.7 and cosmiconfig 10.0.1, one package at a time; KB is 1,024 bytes of files, whole tree included.
 
 | incumbent     | pkgs | KB   | burgee family | pkgs | KB   |
 | ------------- | ---- | ---- | ------------- | ---- | ---- |
 | commander     | 1    | 203  | burgee        | 6    | 1169 |
 | chalk         | 1    | 55   | roundel       | 1    | 76   |
-| ora           | 17   | 278  | flagstaff     | 5    | 547  |
+| ora           | 17   | 278  | flagstaff     | 5    | 546  |
 | inquirer      | 27   | 1002 | caique        | 3    | 302  |
 | string-width  | 4    | 36   | linegauge     | 1    | 83   |
 | cosmiconfig   | 4    | 1789 | seniority     | 1    | 149  |
@@ -46,7 +46,7 @@ Each incumbent is the first whole package in burgee's own "Replaces" column (the
 | signal-exit   | 1    | 75   | closeout      | 1    | 100  |
 | terminal-link | 6    | 60   | paratext      | 1    | 91   |
 
-**On bytes, burgee's side is heavier in six of nine layers.** Installed together, though, the incumbents weigh 3,851 KB; burgee, 1,577. The incumbent trees overlap a little (79 summed, 70 installed); burgee's overlap completely (20 summed, 9 installed).
+**On bytes, burgee's side is heavier in six of nine layers.** Installed together, the incumbents weigh 3,851 KB; burgee, 1,577. The incumbent trees overlap a little (79 summed, 70 installed); burgee's overlap completely (20 summed, 9 installed).
 
 ## Where that byte gap comes from {#bytes}
 
@@ -56,11 +56,11 @@ Three layers carry it, none cleanly.
 - **execa has no graded drop-in.** bellpull's compat row is cross-spawn, not execa.
 - **inquirer** is graded through `@inquirer/core` (41 of 41), not `inquirer` itself.
 
-Keep only layers where burgee's drop-in scores what the incumbent scores on [its own test suite](https://burgee.interlace.tools/docs/compatibility): commander, chalk, ora, `@inquirer/core`, string-width, signal-exit (not terminal-link: 8 of 10). **28 packages, 662 KB.** burgee still installs all nine, 1,577 KB. **Like for like, burgee is 2.4× heavier on disk**, while the count stays 28 against 9 and the maintainers 14 against one.
+Keep only layers where burgee's drop-in scores what the incumbent scores on [its own suite](https://burgee.interlace.tools/docs/compatibility): commander, chalk, ora, `@inquirer/core`, string-width, signal-exit (not terminal-link: 8 of 10). **28 packages, 662 KB.** burgee still installs all nine, 1,577 KB. **Like for like, burgee is 2.4× heavier on disk**, while the count stays 28 against 9 and the maintainers 14 against one.
 
 ## The three gates burgee publishes as not met {#gates}
 
-burgee's [README](https://github.com/ofri-peretz/burgee/blob/main/README.md) states nine gates; three fail their ≤ 1.0× target. I re-ran each with burgee's own fixtures:
+burgee's [README](https://github.com/ofri-peretz/burgee/blob/7fb62c2/README.md) states nine gates; three fail their ≤ 1.0× target. I re-ran each with burgee's own fixtures:
 
 | gate                                   | published | my re-run  |
 | -------------------------------------- | --------- | ---------- |
@@ -68,13 +68,13 @@ burgee's [README](https://github.com/ofri-peretz/burgee/blob/main/README.md) sta
 | `burgee/commander` bundle vs commander | 1.514×    | 1.520×     |
 | cold start vs cac                      | 1.443×    | 1.67–2.30× |
 
-The bundle rows agree within a percent. I print my cold-start range, taken at load average above 120, because it reads worse than burgee's published figure. Either way, not met. burgee's parity rows compare it against cac, commander or yargs **plus** cosmiconfig, exit-hook and restore-cursor (0.282×, 0.468×, 0.531×). Those stacks include cosmiconfig, which my like-for-like rule excludes.
+The bundle rows agree within a percent. I print my cold-start range, taken at load average above 120, because it reads worse than burgee's published figure. Either way, not met. burgee's parity rows compare its bundle against cac, commander or yargs **plus** cosmiconfig, exit-hook and restore-cursor (0.282×, 0.468×, 0.531×). Those stacks include cosmiconfig, which my like-for-like rule excludes.
 
 ## What "zero dependencies" means here {#zero-deps}
 
-Six of the nine declare no dependencies. burgee, flagstaff and caique depend only on those six: **no dependency outside the family**, which is not zero. burgee's README table says 0 runtime dependencies; the registry lists five, all siblings.
+Six of nine declare no dependencies. burgee, flagstaff and caique depend only on those six: **no dependency outside the family**, which is not zero. burgee's README table says 0 runtime dependencies; the registry lists five, all siblings.
 
-One account is also a [concentration](https://ofriperetz.dev/articles/eslint-plugin-maintenance-signals). Mid-measurement, the registry received burgee@0.10.0 at 05:34 UTC, then the closeout and linegauge it requires at 05:39 and 05:42; for eight minutes `npm i burgee` failed with `ETARGET`. And the family declares Node 24, where the incumbent stack's floor is Node 22.18. If you support Node 22, the incumbents are your option.
+One account is also a [concentration](https://ofriperetz.dev/articles/eslint-plugin-maintenance-signals). Mid-measurement, my pipeline published burgee@0.10.0 at 05:34 UTC, then the closeout and linegauge it requires at 05:39 and 05:42; for eight minutes `npm i burgee` failed with `ETARGET`. And the family declares Node 24, where the incumbent stack's floor is Node 22.18. If you support Node 22, the incumbents are your option.
 
 ## How to check yours {#method}
 
@@ -95,5 +95,5 @@ Part 1 subtracted a 69-package ESLint baseline; here the shared baseline is Node
 _Run it on your CLI: how many npm accounts can ship code into your tree, and did you know that number before today?_
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/burgee"}
-If the method earns a place in your release review, ⭐ [star the repo](https://github.com/ofri-peretz/burgee).
+If the method earns a place in your release review, ⭐ [star burgee](https://github.com/ofri-peretz/burgee).
 ::
