@@ -2,7 +2,7 @@
 id: I-11
 slug: modernization-lint-as-codemod
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-04
 opened_by: claude
