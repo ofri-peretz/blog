@@ -55,7 +55,7 @@ for (const a of accrual.at(-2).articles) {
 }
 ```
 
-`prefer-template-literal` — 44 findings, the bulk of them:
+`prefer-template-literal` — 44 findings:
 
 ```ts
 // before
@@ -65,7 +65,7 @@ String(res.stderr || res.stdout || "claude exited " + res.status);
 String(res.stderr || res.stdout || `claude exited ${res.status}`);
 ```
 
-**Why this survives review forever:** there is no bug to find. A reviewer's job is to reject _broken_ code, and none of this is broken. `arr[arr.length - 1]` is correct in every runtime that ever existed. The only thing that can flag it is a tool that knows what year it is.
+**Why this survives review forever:** a reviewer's job is to reject _broken_ code, and none of this is broken. `arr[arr.length - 1]` is correct in every runtime that ever existed. The only thing that can flag it is a tool that knows what year it is.
 
 ## The two that found nothing {#the-silent-two}
 
@@ -75,9 +75,9 @@ A rule that never fires is not broken — it is a rule for a pattern you do not 
 
 ## Lint as codemod, not as style {#codemod}
 
-Most lint rules ask you to _decide_ something. These ask you to _apply_ something — the rewrite is mechanical, the semantics are identical, and the fixer is exact.
+Most lint rules ask you to _decide_ something. These ask you to _apply_ something — the semantics are identical and the fixer is exact.
 
-That changes the adoption path. You do not triage 55 findings — you run the fixer once, read the diff as one commit, and the rule holds the line. A migration plus a ratchet, the same shape as [an autofix turning a hardcoded secret into a one-command repair](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
+You do not triage 55 findings — you run the fixer once, read the diff as one commit, and the rule holds the line. A migration plus a ratchet, the same shape as [an autofix turning a hardcoded secret into a one-command repair](https://ofriperetz.dev/articles/hardcoded-secrets-ai-agents-autofix).
 
 Check the diff, though — "auto-fixable" means exact, not invisible, and there are two catches. `.at()` is typed `at(index: number): T | undefined`, while `arr[arr.length - 2]` is typed `T`, so a chained access can stop compiling: my `accrual.at(-2).articles` above is `TS2532: Object is possibly 'undefined'` under `--strict`. The `?? null` on the first example absorbs it; a bare chain needs a guard. And `.at()` is ES2022 — Node 18+ and any 2023+ browser are fine, older targets need a polyfill.
 
