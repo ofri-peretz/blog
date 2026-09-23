@@ -47,8 +47,9 @@ status: built
 - **A flattering denominator.** The one-per-layer stack includes layers
   where burgee's drop-in is below 100% or not graded at all. The article
   prints the graded-only stack too, where the byte comparison reverses.
-- **Timing on a loaded machine.** The local cold-start re-run was taken at a
-  load average above 100; it is printed as a direction, never as a gate value.
+- **Timing on a loaded machine.** The local cold-start re-runs were taken at
+  a 1-min load average of 84 to 168; they are printed as a range with the load,
+  never as a gate value.
 
 ## Proof of success
 
