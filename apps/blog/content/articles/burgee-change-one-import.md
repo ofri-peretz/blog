@@ -2,7 +2,7 @@
 title: "One Import Moves a commander CLI to burgee. --json Still Says null."
 description: "Swapping commander for burgee/commander kept 7 of 7 invocations byte-identical and added --schema, MCP and completions. Getting data out took a return."
 slug: "burgee-change-one-import"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/burgee-change-one-import"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/burgee-change-one-import.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/burgee-change-one-import-og.jpg"
@@ -36,11 +36,11 @@ I changed one line in a commander CLI:
 
 Help, output, errors and exit codes stayed byte-identical on seven invocations. The same file also answers `--schema`, `--mcp` and `completion <shell>`. And `--json` answers `"data":null`.
 
-One import describes the CLI to an agent; answering takes a `return`. I [maintain burgee](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat); everything below ran on `commander@15.0.0` and `burgee@0.9.2`, two defects included.
+One import describes the CLI to an agent; answering takes a `return`. I [maintain burgee](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat); everything below ran on `commander@15.0.0` and `burgee@0.11.1`.
 
 ## The program {#program}
 
-Plain commander, ESM, Node 24, as `cli.commander.js`:
+Plain commander, ESM, as `cli.commander.js`:
 
 ```js
 #!/usr/bin/env node
@@ -84,7 +84,7 @@ program.parse();
 ## The swap {#swap}
 
 ```bash
-npm install commander@15.0.0 burgee@0.9.2   # or: yarn/pnpm/bun add
+npm install commander@15.0.0 burgee@0.11.1   # or: yarn/pnpm/bun add
 npm pkg set type=module
 cp cli.commander.js cli.js
 printf 'alpha\n\nbravo charlie\ndelta echo foxtrot golf\n\nhotel\n' > sample.txt
@@ -97,11 +97,11 @@ $ diff <(node cli.commander.js --help) <(node cli.js --help) && echo identical
 identical
 ```
 
-Same for `count --help`, both commands, a missing argument and a typo. Usage errors still exit `1`; burgee's native exit `2` for "rewrite the command" does not come with the swap. What changes is outside your code: `engines.node` rises from `>=22.12.0` to `>=24`, a major. On Node 22, yarn 1 refuses the install.
+Same for `count --help`, both commands, a missing argument and a typo. Usage errors still exit `1`; burgee's native exit `2` for "rewrite the command" does not come with the swap. Once `commander` leaves `dependencies`, the declared Node range goes from `>=22.12.0` to `^20.19.0 || >=22.13.0`. The swapped file ran on Node 20 and 22; only 22.12.x drops out.
 
 ## What answers with no other edit {#free}
 
-**`--schema`**: the command tree as data, a JSON Schema per command:
+**`--schema`**: the command tree as data, [a JSON Schema per command](https://ofriperetz.dev/articles/securing-ai-agents-in-the-vercel-ai-sdk):
 
 ```console
 $ node cli.js --schema | jq -c '.commands[0].inputSchema'
@@ -123,7 +123,7 @@ $ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node cli.js --mcp | jq
 {"name":"longest","annotations":{"effects":"undeclared"}}
 ```
 
-`.effects("read_only")` on `count` yields `readOnlyHint: true`. The call is a one-way door: real commander throws a `TypeError` there.
+`.effects("read_only")` on `count` yields `readOnlyHint: true`. That call is a one-way door: real commander throws a `TypeError`.
 
 **Completions**: `completion <shell>` for bash, zsh, fish, pwsh and fig, as static output.
 
@@ -155,28 +155,26 @@ $ node cli.answering.js count sample.txt --json
 {"ok":true,"data":{"file":"sample.txt","lines":6},"meta":{"provenance":{}}}
 ```
 
-Humans still see `6 lines in sample.txt`. MCP tool calls get the same envelope. The `argv` test is crude. 0.9.2's façade has no public "machine asked?" flag yet.
+Humans still see `6 lines in sample.txt`. MCP tool calls get the same envelope. The `argv` test is crude. 0.11.1's façade has no public "machine asked?" flag yet.
 
-## Two defects in 0.9.2 {#defects}
+## Two defects, fixed in 0.11.1 {#defects}
 
-An MCP call with a multi-word option fails. The schema advertises `skipBlank` with `"flag":"--skip-blank"`; the call passes `--skipBlank`:
+Drafting on 0.9.2, I hit two defects in what the swap adds. An MCP call ignored the schema's `"flag":"--skip-blank"` and passed `--skipBlank`, which the program refused. Completions offered `--no-skip-blank` and `--no-version`, likewise refused. I fixed both in 0.11.1. The same call now answers:
 
 ```console
 $ echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"count","arguments":{"file":"sample.txt","skipBlank":true}}}' | node cli.answering.js --mcp | jq -r '.result.content[0].text'
-{"ok":false,"error":{"code":"commander.unknownOption","message":"unknown option '--skipBlank'","fix":"--skip-blank"}}
+{"ok":true,"data":{"file":"sample.txt","lines":4},"meta":{"provenance":{"skipBlank":{"source":"flag"}}}}
 ```
 
-And the completions offer `--no-skip-blank` and `--no-version`, which the program refuses.
-
-An action's throw also stays uncaught under `--json`, and burgee's docs still claim undeclared commands are hidden from MCP.
+Still open: an action's throw stays uncaught under `--json`.
 
 ## What the grade covers {#graded}
 
-[commander's own suite](https://github.com/tj/commander.js/tree/v15.0.0/tests) (v15.0.0, 110 files, unmodified apart from the import) runs against `burgee/commander` next to a control on real commander. Re-run for this article: **1360 / 1360**, control 1360 / 1360. That grade measures what you _keep_. Both defects sit in what you _gain_, which commander's tests cannot see.
+[commander's own suite](https://github.com/tj/commander.js/tree/v15.0.0/tests) (v15.0.0, 110 files, unmodified) runs against `burgee/commander` next to a control on real commander. Re-run for this article: **1360 / 1360**, control 1360 / 1360. That grade measures what you _keep_. The two defects sat in what you _gain_, which commander's tests cannot see.
 
 ## When commander alone is the right size {#size}
 
-On disk, commander 15.0.0 unpacks to 207,368 bytes; burgee 0.9.2 and the five sibling packages it installs, to 1,188,994. In a bundle, burgee's own `lighter-than-commander` gate reads **not met, 1.514×**. If no agent will call your CLI, commander is the smaller choice.
+On disk, commander 15.0.0 unpacks to 207,368 bytes; burgee 0.11.1 and the [five sibling packages](https://ofriperetz.dev/articles/burgee-zero-dependency-cli-stack) it installs, to 1,266,628. In a bundle, burgee's own `lighter-than-commander` gate reads **not met, 1.514×**. If no agent will call your CLI, commander is the smaller choice.
 
 [burgee vs commander](https://burgee.interlace.tools/docs/vs/commander) · [compatibility](https://burgee.interlace.tools/docs/compatibility) · [source](https://github.com/ofri-peretz/burgee)
 

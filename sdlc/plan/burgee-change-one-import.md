@@ -20,7 +20,8 @@ status: built
 
 1. Record the owner's approval on the intent, verbatim, with its date.
 2. Build the tutorial for real: a two-command commander CLI on
-   `commander@15.0.0`, swapped to `burgee@0.9.2`, in a scratch directory. Run
+   `commander@15.0.0`, swapped to burgee (0.9.2, then re-run on the 0.11.1 fix
+   release), in a scratch directory. Run
    every surface the intent names, on the untouched program, before writing.
 3. Re-run the compat oracle on burgee origin/main (control and target), as the
    intent requires, rather than quoting the README's rate.
@@ -38,15 +39,16 @@ status: built
 
 ## Risks
 
-- **The tutorial is about our own product and finds our own defects.** Two
-  0.9.2 defects (MCP multi-word options; completion `--no-` flags) and a docs
-  drift are disclosed in the article. Mitigation: they are measured, named,
-  and scoped; the owner can choose to fix burgee before dispatching, which
-  would shorten the defects section, not invalidate the rest.
-- **Version drift.** Every behavioural claim is pinned to `burgee@0.9.2`. A
-  later release that fixes the defects makes the article stale, not wrong; the
-  weekly detector re-runs the probes against the pinned version, so a
-  re-pin is a deliberate edit.
+- **The tutorial is about our own product and found our own defects.**
+  Two 0.9.2 defects (MCP multi-word options; completion `--no-` flags) and
+  a docs drift were fixed upstream in 0.11.1. The article re-pins to 0.11.1
+  and reports both as found and fixed, with the fixed call shown.
+- **Version drift.** Every behavioural claim is pinned to `burgee@0.11.1`.
+  The weekly detector re-runs the probes against that pin, so re-pinning is
+  a deliberate edit, done with `BURGEE_VERSION=<v> … repro.mjs all`.
+- **Open upstream.** An MCP tool call on a printing action still writes the
+  printed line to stdout; the fix is not released. The article keeps it as
+  the by-design motivation for the second edit.
 - **Word cap.** Code blocks count toward the 800-word cap in
   `publish-gate.ts`; transcripts are kept to the lines that carry the claim.
 

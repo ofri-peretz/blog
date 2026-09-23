@@ -113,3 +113,13 @@ defects in 0.9.2 surfaced on the way and are disclosed in the article rather
 than routed around: an MCP tool call passes a multi-word option camelCased
 (`--skipBlank`) and is refused, and the generated completions offer
 `--no-<flag>` spellings the program rejects.
+
+### Re-pinned to 0.11.1 (2026-09-23)
+
+Both 0.9.2 defects were fixed upstream and released in `burgee@0.11.1`. The
+whole tutorial was re-run on that version, from an empty directory, and the
+oracle was re-run at the `burgee@0.11.1` tag: 1360 / 1360 against a
+1360 / 1360 control. The article now pins 0.11.1 and reports both defects as
+found and fixed. The narrowing itself is unchanged, because it is by design: a
+commander action returns nothing, so `--json` still answers `data: null` until
+the action returns its result.

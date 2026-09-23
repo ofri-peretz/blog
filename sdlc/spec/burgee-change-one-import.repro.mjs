@@ -10,7 +10,7 @@
 //   node sdlc/spec/burgee-change-one-import.repro.mjs <probe>
 //   node sdlc/spec/burgee-change-one-import.repro.mjs all      # every probe
 //
-// First run installs commander@15.0.0 and burgee@0.9.2 into the temp dir (one
+// First run installs commander@15.0.0 and burgee@0.11.1 into the temp dir (one
 // `npm install`, network); later runs reuse it. Node >= 24, burgee's floor.
 import { execFileSync, spawnSync } from "node:child_process";
 import {
@@ -23,8 +23,8 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-// Override to re-pin: BURGEE_VERSION=0.10.0 node …repro.mjs all
-const BURGEE = process.env.BURGEE_VERSION ?? "0.9.2";
+// Override to re-pin: BURGEE_VERSION=<version> node …repro.mjs all
+const BURGEE = process.env.BURGEE_VERSION ?? "0.11.1";
 const COMMANDER = "15.0.0";
 const DIR = join(tmpdir(), `blog-burgee-change-one-import-${BURGEE}`);
 
@@ -146,6 +146,7 @@ function setup() {
         "--no-audit",
         "--no-fund",
         "--silent",
+        "--prefer-online",
         `commander@${COMMANDER}`,
         `burgee@${BURGEE}`,
       ],
@@ -287,8 +288,9 @@ const probes = {
     const reply = JSON.parse(lines(out)[1]);
     return JSON.parse(reply.result.content[0].text).data.lines;
   },
-  // Known issue: a multi-word option arrives camelCased and is refused.
-  "mcp-kebab-option-error": () => {
+  // A multi-word option over MCP: the call uses the advertised flag, so
+  // `skipBlank: true` reaches the program as --skip-blank (refused in 0.9.2).
+  "mcp-kebab-option-lines": () => {
     const out = run(
       "cli.answering.js",
       ["--mcp"],
@@ -302,7 +304,9 @@ const probes = {
       }),
     ).out;
     const reply = JSON.parse(lines(out)[1]);
-    return JSON.parse(reply.result.content[0].text).error.message;
+    const body = JSON.parse(reply.result.content[0].text);
+    // 0.9.2 and 0.10.0 refused the call: print the refusal, not a TypeError.
+    return body.ok ? body.data.lines : body.error.message;
   },
   "answering-json-lines": () =>
     JSON.parse(run("cli.answering.js", ["count", "sample.txt", "--json"]).out)
@@ -368,25 +372,11 @@ const probes = {
   "pm-matrix": () =>
     // npm is the fourth: setup() installed with it and every other probe ran on it.
     `${["yarn", "pnpm", "bun"].filter((pm) => probes[`pm-${pm}`]() === 1).length + 1}/4`,
-  // yarn 1 enforces engines: on Node 22 it refuses burgee (npm only warns).
-  // Needs a Node 22 binary: $NODE22, or the newest v22 under $NVM_DIR.
-  "yarn1-node22-exit": () => {
-    const node22 = process.env.NODE22 ?? findNode22();
-    if (!node22) throw new Error("no Node 22 binary found (set NODE22)");
-    const dir = freshDir("yarn-node22", { name: "y22", private: true });
-    // yarn's bin is `#!/usr/bin/env node`, so Node 22 has to lead PATH.
-    const r = spawnSync("npx", ["-y", "yarn@1", "add", `burgee@${BURGEE}`], {
-      cwd: dir,
-      encoding: "utf-8",
-      env: { ...process.env, PATH: `${dirname(node22)}:${process.env.PATH}` },
-      timeout: 50_000,
-    });
-    if (r.error) throw r.error;
-    // 1 only for the engines refusal itself, never for a network failure.
-    return r.status !== 0 && /engine "node" is incompatible/.test(r.stderr)
-      ? 1
-      : 0;
-  },
+  // The swapped program on Node 20 and 22 (burgee's engines: ^20.19.0 || >=22.13.0).
+  // Needs those binaries: $NODE20 / $NODE22, or the newest match under $NVM_DIR.
+  "node20-swap-runs": () =>
+    swapRunsOn(process.env.NODE20 ?? findNode("v20.19.")),
+  "node22-swap-runs": () => swapRunsOn(process.env.NODE22 ?? findNode("v22.")),
   // TypeScript: the `exports` subpath resolves under bundler/nodenext, not under
   // the legacy `node` (node10) resolver. node10 counts TS2307; the others count
   // every TS error, so a different resolution failure cannot read as 0.
@@ -430,18 +420,29 @@ function pmRuns(pm, args) {
   return r.stdout.trim() === "6 lines in sample.txt" ? 1 : 0;
 }
 
-function findNode22() {
+function findNode(prefix) {
   const root = join(
     process.env.NVM_DIR ?? join(homedir(), ".nvm"),
     "versions",
     "node",
   );
   if (!existsSync(root)) return undefined;
-  const v22 = readdirSync(root)
-    .filter((v) => v.startsWith("v22."))
+  const hit = readdirSync(root)
+    .filter((v) => v.startsWith(prefix))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     .at(-1);
-  return v22 ? join(root, v22, "bin", "node") : undefined;
+  return hit ? join(root, hit, "bin", "node") : undefined;
+}
+
+/** 1 when the swapped program prints the expected line under that node binary. */
+function swapRunsOn(node) {
+  if (!node || !existsSync(node))
+    throw new Error(`no such node binary: ${node}`);
+  const r = spawnSync(node, ["cli.js", "count", "sample.txt"], {
+    cwd: DIR,
+    encoding: "utf-8",
+  });
+  return r.status === 0 && r.stdout.trim() === "6 lines in sample.txt" ? 1 : 0;
 }
 
 /** TS2307 count (or every TS error, with code "any") for `import { Command } from "burgee/commander"` under a resolver. */
