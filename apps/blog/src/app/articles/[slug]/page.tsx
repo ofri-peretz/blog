@@ -10,6 +10,7 @@ import {
   isPublished,
 } from "@/lib/source";
 import { computeThreads } from "@/lib/corpus-links";
+import { articleJsonLd, serializeJsonLd } from "@/lib/article-jsonld";
 import { detectPlugins } from "@/lib/plugin-mentions";
 import pluginStats from "@/data/plugin-stats.json";
 import { ArticlePlugins } from "@/components/article-plugins";
@@ -174,37 +175,22 @@ export default async function ArticlePage(props: PageProps) {
     fm.cover_image ??
     `https://ofriperetz.dev/og?title=${encodeURIComponent(fm.title)}&description=${encodeURIComponent(fm.description)}`;
 
-  const blogPostingSchema = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: fm.title,
-    description: fm.description,
-    url,
-    mainEntityOfPage: { "@type": "WebPage", "@id": url },
-    image,
-    datePublished: fm.published_at,
-    dateModified: fm.edited_at ?? fm.published_at,
-    keywords: fm.tags.join(", "),
-    author: {
-      "@type": "Person",
-      name: fm.author?.name ?? "Ofri Peretz",
-      url: "https://ofriperetz.dev",
-    },
-    publisher: {
-      "@type": "Person",
-      name: "Ofri Peretz",
-      url: "https://ofriperetz.dev",
-    },
-  };
+  // BlogPosting (author -> the site Person by @id, isPartOf when the
+  // article is in a series) and its BreadcrumbList. Built in a pure helper so
+  // seo-surfaces-lock can assert the graph without rendering this page.
+  const jsonLd = articleJsonLd({ fm, url, image });
 
   return (
     <main id="main" data-slot="article-page">
-      <script
-        type="application/ld+json"
-        // The BlogPosting schema is a deterministic JSON serialization of
-        // server-side frontmatter — not user input. Standard SEO pattern.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingSchema) }}
-      />
+      {jsonLd.map((schema) => (
+        <script
+          key={String(schema["@type"])}
+          type="application/ld+json"
+          // Deterministic JSON serialization of server-side frontmatter —
+          // not user input. Standard SEO pattern.
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
+        />
+      ))}
       <Container size="prose" className="py-12">
         <nav
           aria-label="Breadcrumb"

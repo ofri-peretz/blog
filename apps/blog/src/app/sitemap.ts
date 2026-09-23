@@ -18,8 +18,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     { url: `${SITE_URL}/loom`, lastModified: new Date(), priority: 0.6 },
-    { url: `${SITE_URL}/stats`, lastModified: new Date(), priority: 0.5 },
-    { url: `${SITE_URL}/analytics`, lastModified: new Date(), priority: 0.4 },
+    // /stats and /analytics used to be listed here; both are permanent
+    // redirects to /scorecard (next.config.ts), so the sitemap advertised
+    // two 301s and omitted their destination. A sitemap entry must be a
+    // 200 the site serves — seo-surfaces-lock.test.ts pins that every
+    // static entry has a page and none is a redirect source.
+    { url: `${SITE_URL}/scorecard`, lastModified: new Date(), priority: 0.6 },
+    { url: `${SITE_URL}/npm`, lastModified: new Date(), priority: 0.5 },
+    { url: `${SITE_URL}/foundations`, lastModified: new Date(), priority: 0.5 },
   ];
 
   // getAllArticles(), NOT getAllArticleSlugs(): the slug list reads the
