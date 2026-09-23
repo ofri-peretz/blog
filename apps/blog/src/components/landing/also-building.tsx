@@ -21,8 +21,8 @@ interface AlsoBuildingProps extends React.HTMLAttributes<HTMLElement> {
  * The homepage argues for three things now — the ESLint ecosystem above, and
  * these. They are at genuinely different stages, and the section says so
  * rather than flattening them into a matched set: Serverless ships today and
- * links to what you can install; burgee has no npm page to link, so the only
- * honest ask is a star.
+ * links to what you can install, and so does burgee — nine packages on npm
+ * since 2026-09-07, though still pre-1.0, so the first ask is still a star.
  *
  * Deliberately NOT on /npm: that page is a metrics surface scoped to the
  * ESLint plugins, and a row reading "0 downloads" markets nothing. The
@@ -152,7 +152,7 @@ const PRODUCTS: Product[] = [
     name: "burgee",
     mono: true,
     tagline: "An agent-native CLI framework",
-    status: "Coming soon",
+    status: "9 packages live",
     statusVariant: "secondary",
     /*
      * The mark is `burgee-flag.svg` (from the burgee repo's brand-assets,
@@ -185,6 +185,11 @@ const PRODUCTS: Product[] = [
       {
         href: "https://burgee.interlace.tools",
         label: "Read the docs",
+        variant: "outline",
+      },
+      {
+        href: "https://www.npmjs.com/package/burgee",
+        label: "npm install burgee",
         variant: "outline",
       },
     ],
