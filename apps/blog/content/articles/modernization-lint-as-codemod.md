@@ -1,8 +1,10 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/55-places-my-code-predates-the-language-all-auto-fixed-21dd"
+devto_id: 4720793
 title: "55 Places My Code Predates the Language. All Auto-Fixed."
 description: "Four rules over 389 of my own files found 55 spots written the pre-2022 way. Every one carried a fixer, so the whole thing was one command."
 slug: "modernization-lint-as-codemod"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/modernization-lint-as-codemod"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/modernization-lint-as-codemod.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/modernization-lint-as-codemod-og.jpg"
