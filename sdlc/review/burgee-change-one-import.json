@@ -30,8 +30,8 @@
       "why": "The title still delivers what the body shows on 0.11.1: an untouched `count --json` still ends in `\"data\":null`. The thesis line opens paragraph 2, so the opening works on its own. The re-pin strengthens the arc from confession to closed loop: the reader sees the same MCP call that was refused on 0.9.2 now return `lines: 4`. The closing question is specific enough to draw war stories. Held below 10 by the frozen chassis' `getting-started` label, which undersells a piece written for maintainers."
     },
     "security_correctness": {
-      "score": 9.6,
-      "why": "A reviewer who had not seen earlier drafts re-derived every claim against the 0.11.1 tarball and tag source: every transcript byte-exact, and each causal explanation matched to the façade code. That covers the null envelope, the print still reaching the MCP stream, the fixed flag mapping, the exit-code split, and the absence of a public 'machine asked?' flag. The two loose phrases it found (the engines wording, 'unmodified apart from the import') were tightened."
+      "score": 9.5,
+      "why": "A second independent reviewer re-derived every claim on 0.11.1 (repro all green, every transcript byte-exact, oracle 1360/1360 at 192a5f06f6) and found one stale number: the bundle gate read 1.514×, which predates D-134's +171 bytes; burgee's own weight.ts at the burgee@0.11.1 tag records 1.524. It scored 9.4 and named that number as the only thing holding it below 9.5. Corrected after publication (article, spec row now reads weight.ts at the tag); recorded at 9.5, not the earlier 9.6, because the two reviews disagreed and the stricter one was right."
     },
     "structure_framing_voice": {
       "score": 9.6,
