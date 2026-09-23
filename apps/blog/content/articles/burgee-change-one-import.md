@@ -23,7 +23,7 @@ quality:
   spec: sdlc/spec/burgee-change-one-import.md
   lenses:
     growth_hook: 9.6
-    security_correctness: 9.6
+    security_correctness: 9.5
     structure_framing_voice: 9.6
     compatibility: 9.6
     reproducibility: 9.6
@@ -176,7 +176,7 @@ Still open: an action's throw stays uncaught under `--json`.
 
 ## When commander alone is the right size {#size}
 
-On disk, commander 15.0.0 unpacks to 207,368 bytes; burgee 0.11.1 and the [five sibling packages](https://ofriperetz.dev/articles/burgee-zero-dependency-cli-stack) it installs, to 1,266,628. In a bundle, burgee's own `lighter-than-commander` gate reads **not met, 1.514×**. If no agent will call your CLI, commander is the smaller choice.
+On disk, commander 15.0.0 unpacks to 207,368 bytes; burgee 0.11.1 and the [five sibling packages](https://ofriperetz.dev/articles/burgee-zero-dependency-cli-stack) it installs, to 1,266,628. In a bundle, burgee's own `lighter-than-commander` gate measures **not met, 1.524×**. If no agent will call your CLI, commander is the smaller choice.
 
 [burgee vs commander](https://burgee.interlace.tools/docs/vs/commander) · [compatibility](https://burgee.interlace.tools/docs/compatibility) · [source](https://github.com/ofri-peretz/burgee)
 

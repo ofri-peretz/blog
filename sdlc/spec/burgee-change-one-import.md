@@ -97,7 +97,7 @@ or from nvm.
 | oracle: `burgee/commander` passed / reference (control re-run below) | 1360/1360             | `node -e "const j=JSON.parse(require('child_process').execSync('git -C ../burgee show burgee@0.11.1:packages/compat-oracle/baseline/commander.json'));console.log(j.passed+'/'+j.reference)"`                                                                    | burgee tag burgee@0.11.1        | 2026-09-23 |
 | vendored commander suite: release                                    | 15.0.0                | `node -e "const j=JSON.parse(require('child_process').execSync('git -C ../burgee show burgee@0.11.1:packages/compat-oracle/vendor/commander/.source.json'));console.log(j.version)"`                                                                             | burgee tag burgee@0.11.1        | 2026-09-23 |
 | vendored commander suite: files                                      | 110                   | `node -e "const j=JSON.parse(require('child_process').execSync('git -C ../burgee show burgee@0.11.1:packages/compat-oracle/vendor/commander/.source.json'));console.log(j.files)"`                                                                               | burgee tag burgee@0.11.1        | 2026-09-23 |
-| `lighter-than-commander` bundle gate, measured ratio (not met)       | 1.514                 | `node -e "const r=String(require('child_process').execSync('git -C ../burgee show burgee@0.11.1:README.md'));console.log(r.match(/lighter-than-commander\x60 \x7c ([\d.]+)/)[1])"`                                                                               | burgee tag burgee@0.11.1        | 2026-09-23 |
+| `lighter-than-commander` bundle gate, measured ratio at 0.11.1 (not met; the README row, 1.514, predates D-134's +171 B) | 1.524 | `git -C ../burgee show burgee@0.11.1:benchmarks/axes/weight.ts | grep -o 'measured 1.524'` | burgee tag burgee@0.11.1 | 2026-09-23 |
 | commander unpacked size, bytes                                       | 207368                | `npm view commander@15.0.0 dist.unpackedSize`                                                                                                                                                                                                                    | commander 15.0.0                | 2026-09-23 |
 | burgee plus the five packages it installs, unpacked bytes            | 1266628               | `node -e "Promise.all(['burgee/0.11.1','bellpull/0.3.1','closeout/0.5.1','linegauge/0.5.1','roundel/0.5.1','seniority/0.5.1'].map(p=>fetch('https://registry.npmjs.org/'+p).then(r=>r.json()))).then(a=>console.log(a.reduce((t,m)=>t+m.dist.unpackedSize,0)))"` | burgee 0.11.1                   | 2026-09-23 |
 | burgee's runtime dependencies (all from its own repo)                | 5                     | `node -e "console.log(Object.keys(JSON.parse(require('child_process').execSync('npm view burgee@0.11.1 dependencies --json'))).length)"`                                                                                                                         | burgee 0.11.1                   | 2026-09-23 |
@@ -202,7 +202,7 @@ changes, and the repro script builds the full file.
    refused flags; runtime throw (_0 bytes_).
 7. What the grade covers: _1360/1360_, _15.0.0_, _110 files_.
 8. When commander alone is the right size: _207368_, _1266628_, _5 deps_,
-   _1.514_.
+   _1.524_.
 
 ## Framing check
 
