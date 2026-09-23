@@ -2,17 +2,17 @@
 id: I-26
 slug: burgee-change-one-import
 stage: intent
-status: proposed
+status: approved
 visibility: public
 opened: 2026-09-22
 opened_by: claude
-approved_by:
+approved_by: 'ofri, 2026-09-23, in chat: "ok perfect lets proceed" (replying to "Reply ''approve I-26 and I-27''")'
 ---
 
 > Drafted by an agent from the burgee repository's own files. Every path below
 > is relative to `github.com/ofri-peretz/burgee` (local checkout
-> `ofriperetz.dev/burgee`), read at commit `2d78af239e`. Nothing here is
-> approved; stage 2 may not begin until `approved_by` is filled by a human.
+> `ofriperetz.dev/burgee`), read at commit `2d78af239e`. Approved by Ofri in
+> chat on 2026-09-23; the verbatim reply is in `approved_by`.
 
 ## Claim
 
@@ -90,3 +90,36 @@ spec supplies them from a command.
 ## Tier
 
 TUTORIAL
+
+## Stage 2 outcome (2026-09-23)
+
+Re-scoped, not killed — the kill criteria's own "re-scope to a narrower claim"
+branch. The tutorial program was actually run on `commander@15.0.0` and on
+`burgee@0.9.2`; every figure is in `sdlc/spec/burgee-change-one-import.md`.
+
+- **Criterion 2 held.** The oracle re-run on burgee `6377897aaf` grades
+  `burgee/commander` 1360 / 1360 against a control of 1360 / 1360.
+- **Criterion 3 held for `--schema`, MCP `tools/list` and completions**, on
+  the unmodified program.
+- **Criterion 1 fired for the half of `--json` and `--mcp` that returns
+  data.** A commander action prints and returns nothing, so `--json` answers
+  `data: null` after the printed line, and an MCP `tools/call` writes that line
+  onto the JSON-RPC stream. The fix is a second edit per command (return the
+  result, keep prose off stdout for a machine).
+
+So the claim is narrower than the title candidates above: one import makes the
+program _describe_ itself to an agent; _answering_ one takes a `return`. Two
+defects in 0.9.2 surfaced on the way and are disclosed in the article rather
+than routed around: an MCP tool call passes a multi-word option camelCased
+(`--skipBlank`) and is refused, and the generated completions offer
+`--no-<flag>` spellings the program rejects.
+
+### Re-pinned to 0.11.1 (2026-09-23)
+
+Both 0.9.2 defects were fixed upstream and released in `burgee@0.11.1`. The
+whole tutorial was re-run on that version, from an empty directory, and the
+oracle was re-run at the `burgee@0.11.1` tag: 1360 / 1360 against a
+1360 / 1360 control. The article now pins 0.11.1 and reports both defects as
+found and fixed. The narrowing itself is unchanged, because it is by design: a
+commander action returns nothing, so `--json` still answers `data: null` until
+the action returns its result.
