@@ -1,6 +1,10 @@
 import numbers from "@/data/interlace-numbers.json";
-
-const SITE_URL = "https://ofriperetz.dev";
+import {
+  PERSON_ID,
+  PERSON_NAME,
+  SITE_URL,
+  serializeJsonLd,
+} from "@/lib/article-jsonld";
 
 // The description carried a hardcoded "35K+ downloads" until 2026-08-26, by
 // which point the real figure was 433,686 — a 12x understatement shipped to
@@ -13,7 +17,11 @@ const SITE_URL = "https://ofriperetz.dev";
 const personSchema = {
   "@context": "https://schema.org",
   "@type": "Person",
-  name: "Ofri Peretz",
+  // The node every other schema on the site points at. Without an @id each
+  // BlogPosting carried its own anonymous Person, and a consumer had no
+  // basis for treating ninety authors named "Ofri Peretz" as one entity.
+  "@id": PERSON_ID,
+  name: PERSON_NAME,
   url: SITE_URL,
   image: `${SITE_URL}/ofri-profile.webp`,
   jobTitle: "Engineering Leader",
@@ -52,7 +60,7 @@ const websiteSchema = {
   url: SITE_URL,
   description:
     "Personal portfolio of Ofri Peretz — Engineering Leader & Open Source Creator",
-  author: { "@type": "Person", name: "Ofri Peretz" },
+  author: { "@id": PERSON_ID },
 };
 
 const ecosystemSchema = {
@@ -63,7 +71,7 @@ const ecosystemSchema = {
   operatingSystem: "Cross-platform",
   description:
     `A collection of ${numbers.plugins.total} production-ready ESLint plugins with ${numbers.rules.total} rules designed for the AI/Agentic era.`,
-  author: { "@type": "Person", name: "Ofri Peretz", url: SITE_URL },
+  author: { "@id": PERSON_ID },
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   url: "https://github.com/ofri-peretz/eslint",
 };
@@ -73,15 +81,15 @@ export function StructuredData() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(personSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ecosystemSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(ecosystemSchema) }}
       />
     </>
   );

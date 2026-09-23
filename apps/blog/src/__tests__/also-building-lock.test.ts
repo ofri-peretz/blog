@@ -143,8 +143,8 @@ describe("also-building says what each product actually is", () => {
   });
 
   it("links only to things that exist", () => {
-    // burgee has no npm page yet, so a star is the only honest ask; the
-    // serverless plugins are published, so they link to what you can install.
+    // Both burgee and the serverless plugins are published, so both link to
+    // what you can install.
     expect(SOURCE).toContain("https://serverless.interlace.tools");
     expect(SOURCE).toContain("https://interlace.tools");
     expect(SOURCE).toContain("https://storybook.interlace.tools");
@@ -155,6 +155,11 @@ describe("also-building says what each product actually is", () => {
       "https://www.npmjs.com/package/@interlace/serverless-devkit",
     );
     expect(SOURCE).toContain("https://github.com/ofri-peretz/burgee");
-    expect(SOURCE).not.toMatch(/npmjs\.com\/package\/burgee/);
+    // The docs site is live (200 on 2026-09-22); the card linked only the
+    // repo, so a reader who wanted to evaluate burgee had to find it.
+    expect(SOURCE).toContain("https://burgee.interlace.tools");
+    // burgee@0.9.0 is on npm (verified 2026-09-22); the card said "no npm
+    // page" for a week after it was not true.
+    expect(SOURCE).toContain("https://www.npmjs.com/package/burgee");
   });
 });

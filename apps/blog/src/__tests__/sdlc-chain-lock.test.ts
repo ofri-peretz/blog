@@ -145,6 +145,39 @@ describe("stage 1 — intents are well-formed", () => {
   });
 });
 
+describe("stage 1 — an intent's status follows its article to dev.to", () => {
+  // Found 2026-09-22: three articles were live on dev.to while their intents
+  // still read `approved` (two) and `proposed` (one). Nothing tied an intent's
+  // status to the publish, so the chain's audit trail said "not shipped" about
+  // articles readers could already open. `devto_id` is the fact — it is written
+  // back by the publisher, and it is the same signal isPublished() trusts.
+  it("every intent whose article has a devto_id is shipped", () => {
+    const bySlug = new Map(
+      corpus.map((a) => [
+        (a.data.slug as string) ?? a.name.replace(/\.md$/, ""),
+        a,
+      ]),
+    );
+    const drifted = intents
+      .filter((i) => bySlug.get(String(i.data.slug))?.data.devto_id != null)
+      .filter((i) => i.data.status !== "shipped")
+      .map((i) => `${i.name} (status: ${i.data.status})`);
+    expect(
+      drifted,
+      `live on dev.to but the intent is not shipped:\n  ${drifted.join("\n  ")}`,
+    ).toEqual([]);
+  });
+
+  it("the check is not vacuous — at least one intent maps to a live article", () => {
+    const live = new Set(
+      corpus
+        .filter((a) => a.data.devto_id != null)
+        .map((a) => (a.data.slug as string) ?? a.name.replace(/\.md$/, "")),
+    );
+    expect(intents.some((i) => live.has(String(i.data.slug)))).toBe(true);
+  });
+});
+
 describe("stage 2 — every number in a spec carries its command", () => {
   it.each(
     specs.length

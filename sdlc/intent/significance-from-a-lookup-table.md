@@ -2,11 +2,11 @@
 id: I-000
 slug: significance-from-a-lookup-table
 stage: intent
-status: proposed # proposed | approved | killed | shipped
+status: shipped
 visibility: public # public | internal  (internal lives in the private agents repo)
 opened: 2026-09-08
 opened_by: claude
-approved_by: # required before stage 2 may begin
+approved_by: ofri
 ---
 
 > **Order-of-work disclosure.** This intent was written *after* the evidence in
@@ -16,9 +16,17 @@ approved_by: # required before stage 2 may begin
 > defect in the same file; the defect was fixed; then this chain was opened
 > retroactively. The claim below is therefore not a bet — it is already
 > settled. Recorded rather than disguised, because a rationalisation that
-> announces itself can at least be discounted. **Not yet approved: the
-> `approved_by` field is a human's, and the agent that gathered the evidence
-> does not get to sign off on it.**
+> announces itself can at least be discounted. The `approved_by` field is a
+> human's, and the agent that gathered the evidence does not get to sign off
+> on it.
+>
+> **Status backfill, 2026-09-22.** Ofri merged the article (#290, then #292, #294, #295)
+> and dispatched its publish: it went live on dev.to on 2026-09-17 as
+> `devto_id: 4674104`. `approved_by: ofri` records that decision, the same
+> way the `eslint-in-the-browser-live-lint-playground` backfill does; it is
+> not an agent signing on his behalf. The status had stayed `proposed` because
+> nothing tied an intent's status to its article's publish —
+> `sdlc-chain-lock.test.ts` now does.
 
 ## Claim
 

@@ -2,7 +2,7 @@
 id: I-13
 slug: eslint-plugin-maintenance-signals
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-04
 opened_by: claude
