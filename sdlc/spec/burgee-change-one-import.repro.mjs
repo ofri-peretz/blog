@@ -335,9 +335,9 @@ const probes = {
     const out = run(
       "cli.js",
       ["--mcp"],
-      rpc({ id: 2, method: "tools/list" }),
+      rpc(INIT, { id: 2, method: "tools/list" }),
     ).out;
-    return JSON.parse(lines(out)[0]).result.tools.filter(
+    return JSON.parse(lines(out)[1]).result.tools.filter(
       (t) => t.annotations?.effects === "undeclared",
     ).length;
   },
@@ -345,9 +345,9 @@ const probes = {
     const out = run(
       "cli.effects.js",
       ["--mcp"],
-      rpc({ id: 2, method: "tools/list" }),
+      rpc(INIT, { id: 2, method: "tools/list" }),
     ).out;
-    const count = JSON.parse(lines(out)[0]).result.tools.find(
+    const count = JSON.parse(lines(out)[1]).result.tools.find(
       (t) => t.name === "count",
     );
     return String(count.annotations.readOnlyHint);
@@ -355,8 +355,10 @@ const probes = {
   // `.effects()` is burgee's: the same file no longer runs on real commander.
   "effects-on-commander-exit": () =>
     run("cli.effects.commander.js", ["count", "sample.txt"]).code,
+  // The first stdout line only: the envelope after it is the untouched-program
+  // shape already pinned by json-untouched-*, and its digits must not leak in here.
   "cjs-require": () =>
-    run("cli.cjs", ["count", "sample.txt", "--json"]).out.trim(),
+    lines(run("cli.cjs", ["count", "sample.txt", "--json"]).out)[0],
   "native-usage-exit": () => run("native.js", []).code,
   // yarn, pnpm and bun each install burgee into a wiped dir and run the swap;
   // one probe per manager so each fits the detector's 60s budget.
