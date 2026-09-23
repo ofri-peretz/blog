@@ -1,0 +1,64 @@
+{
+  "slug": "burgee-zero-dependency-cli-stack",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/burgee-zero-dependency-cli-stack.md",
+  "reviewed": "2026-09-23",
+  "round": 6,
+  "panel": "Six rounds, each by a fresh reviewer agent that did not draft the article and had not seen earlier rounds. Scores per round (growth / correctness / structure-framing-voice / compatibility / reproducibility): r1 9.5 / 9.1 / 9.4 / 9.6 / 9.4; r2 9.1 / 9.4 / 9.4 / 9.6 / 9.4; r3 9.5 / 9.7 / 9.3 / 9.6 / 9.3; r4 9.6 / 9.7 / 9.6 / 9.5 / 9.4; r5 9.4 / 9.4 / 9.6 / 9.5 / 9.3; r6 9.6 / 9.7 / 9.6 / 9.5 / 9.5, zero blockers. The lens scores below are round 6's, taken on the text before three word-neutral edits it proposed (pinned versions in the table cells, 'the cold-start re-runs' instead of 'my', @inquirer/core@12.0.3); those edits only add traceability, and the scores are not raised for them. The nine-reviewer devto-review.ts gate also ran three times: PASS with zero blockers (r1), FAIL on two linkability blockers (r2, fixed), PASS with zero blockers at gate score 9.4 (r3).",
+  "findings_fixed_this_round": [
+    "BLOCKING, claim integrity (r1): 'Each incumbent is the first name in burgee's own \"Replaces\" column' was false for the terminal row, which lists 'ansi-escapes (OSC half)' first. Now 'first whole package', and the other reading is measured and printed (66 packages, 25 accounts).",
+    "BLOCKING, claim integrity (r1): 'burgee, flagstaff and caique depend only on each other' was false; none depends on another of the three. Now 'depend only on those six'.",
+    "BLOCKING, claim integrity (r1): 1.443x was called burgee's 'CI figure'; no committed results file carries it (CI runs on 2026-09-22 read 1.431 to 1.508). Now 'published figure'.",
+    "BLOCKING, method block (r1, r2): the maintainer one-liner swallowed fetch failures and non-OK responses, so it could print a smaller number silently. It now reports how many packages it could not fetch.",
+    "BLOCKING against the spec (r1): the bundle and cold-start re-runs cited scripts that lived only in scratch; both are inline in the spec now.",
+    "BLOCKING, cover (r2): '70 vs 9 / the 9 weigh 2.4x more' said the nine outweigh the 70, which is false (0.41x). The 2.4x is against the 28-package like-for-like stack; the cover now reads '28 vs 9'.",
+    "BLOCKING, framing (r2): terminal-link left the like-for-like stack silently; the exclusion is now stated with its grade (8 of 10).",
+    "BLOCKING, reproducibility (r2, r3, r4): the family released a patch wave at 07:02-07:10 UTC after the first measurement. Re-measured at 07:16: only flagstaff moved a printed figure (547 to 546 KB). Every family command in the spec now pins all nine siblings, and the article tells readers the caret ranges float.",
+    "BLOCKING, structure (r3): series set only on this article would have rendered part 1 as 'Part 1 of 1' and, sorting by slug without published_at, made this article part 1. Back to series: null; the owner's publish step covers wiring the series on both.",
+    "ETARGET wording (r1, r3): attributed to closeout then linegauge with both publish times, and 'my pipeline published' instead of 'the registry received'.",
+    "Parity rows (r1, r3, r4) named as bundle ratios, 'its bundles' for the three entry points, and tied to the like-for-like rule that excludes cosmiconfig.",
+    "Title (r2, r3): no longer says 'burgee installs 9 packages' (burgee alone installs 6); leads with the like-for-like 2.4x.",
+    "Links (devto-review r2): the design-surface disclosure, burgee's compatibility grades at the measured commit, and the maintainer-concentration point now link out; every URL returns 200 except the two cover assets, which ship in this PR.",
+    "Cold-start range (r3, r5): now the six 42-round runs only, 1.67-2.31x at 1-min load 84-168 (four mine, two by reviewers); a 12-round reviewer run (2.74x) is excluded by name as a different shape from burgee's B2.",
+    "BLOCKING, method safety (r5): `mkdir /tmp/w && cd /tmp/w` fails for anyone who ran part 1's identical block, and a pasted block then runs `npm i` and `npm ci` in the reader's current project. Now `cd \"$(mktemp -d)\"`. Part 1 has the same hazard; flagged for the owner, not edited here.",
+    "Title (r5): 'burgee's Nine Install 9' read as a tautology; now names the family. Node floor stated as 22.18 (commander >=22.12.0, inquirer ^22.13.0, cosmiconfig ^22.18).",
+    "After round 6 (its improvements, no blockers): every table cell now names the resolved version, so 'pin all nine as tabled' is actionable without a link that would 404 before merge; cold-start runs attributed as 're-runs' since two are reviewers'; the spec's Node-floor row gains a lockfile scan proving cosmiconfig's ^22.18 is the highest floor in the 70-package tree."
+  ],
+  "checked_and_found_correct": [
+    "The three method one-liners, run verbatim against the installed trees: 70 / 3,943,599 B / 25 accounts (one per layer), 28 / 677,694 B / 14 (like for like), 9 / 1,614,350 B / 1 (family), 66 / 3,913,359 B / 25 (ansi-escapes reading); every maintainer run 'unfetched 0'.",
+    "All 18 per-package KB cells are bytes / 1,024 rounded; 3,851, 1,577, 662 and 1,702 KB; 2.38 printed as 2.4x; 79 vs 70 and 20 vs 9; six of nine layers heavier on burgee's side.",
+    "Compat grades against compatibility.mdx at 7fb62c2: cosmiconfig 186/243, inquirer-core 41/41, terminal-link 8/10, cross-spawn 68/68, commander 1360/1360, chalk 58/58, ora 99/99, string-width 229/229, signal-exit 134/135 against a 134/135 control.",
+    "Gates against burgee's README at 7fb62c2: nine stated, three not met (2.636, 1.514, 1.443), parity rows 0.282 / 0.468 / 0.531. Bundle re-run 27,815 / 10,452 and 59,421 / 39,084 (2.661, 1.520), identical across the patch wave.",
+    "Registry: six of nine family packages declare no dependencies, the other three only siblings; all nine declare node >=24; the highest incumbent floor is cosmiconfig's ^22.18 || >=24. Publish times 05:34:36, 05:39:56, 05:42:49 UTC.",
+    "pnpm 10.17.0, yarn 1.22.22 and bun 1.4.2 lockfiles resolve the same 70 / 28 / 9."
+  ],
+  "not_re_verified": [
+    "Cold start is load-bound: six 42-round runs at 1-min load average 84-168 read 1.67-2.31x, and the article prints that range with the load. Every run is above the <= 1 target; none reproduces burgee's published 1.443x, which the spec records as a disagreement.",
+    "The spec's measurement commands run in a scratch directory holding the inline measure.mjs, so the stale-claim detector cannot execute them from the repo root (the corpus-wide class tracked by fix-unverifiable-spec-commands-2026-09-07)."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "The title follows the formula with a named target and two counts, then gives away its own weak point: like for like the family weighs 2.4x more. 'That is the flattering row' earns trust in the second paragraph, and the closing question sends the reader to count the accounts that can ship into their own tree. The cover reads '28 vs 9 / the 9 weigh 2.4x more', which is the like-for-like row and true; an earlier cover that paired 2.4x with 70 was false and was replaced in round 2."
+    },
+    "security_correctness": {
+      "score": 9.7,
+      "why": "Read as measurement correctness. Every tree, byte and maintainer figure re-ran from the article's own method lines, all 36 table cells are bytes / 1,024 rounded, and the derived figures (79 vs 70, 20 vs 9, six of nine, 2.38, 1,702 KB, +0.95% / +0.40%) check. Registry facts (sibling-only dependencies, node >=24, the 22.18 incumbent floor across the whole tree, publish times) and burgee's own figures at 7fb62c2 match. Five rounds of fixes got it here: four statements in the first draft were false, including the one the headline rested on."
+    },
+    "structure_framing_voice": {
+      "score": 9.6,
+      "why": "Landscape throughout and it concedes more than it has to: six layers where the incumbent installs fewer bytes, 2.4x on bytes like for like, Node 22.18 support, all three of burgee's unmet gates with re-runs, and an ETARGET window caused by the author's own release pipeline. The design surface is disclosed and linked, and 'no dependency outside the family, which is not zero' is exact. Small clarity costs remain: 'burgee' names both the engine package and the family, and the terminal-row aside is terse."
+    },
+    "compatibility": {
+      "score": 9.5,
+      "why": "Nothing is installed on the reader's behalf, so pass 3's matrix binds only loosely, and this goes past part 1's npm-only method: pnpm, yarn 1 and bun lockfiles resolve the same 70 / 28 / 9, with a spec row. Node minimums are stated for both sides. Held at the floor because the method block is npm-only and the article does not say that yarn 1 refuses the family below Node 24 where npm only warns."
+    },
+    "reproducibility": {
+      "score": 9.5,
+      "why": "The method block is safe to paste (a fresh mktemp directory, --ignore-scripts) and reproduces every figure; the spec carries measure.mjs, maintainers.mjs, bundle.mjs and cold.mjs inline, pins every family sibling, and records each disagreement with burgee's published figures instead of choosing one. Scored at the floor on the text before the versions went into the table; the family released twice during measurement, which is handled but is the reason drift is the article's live risk."
+    }
+  },
+  "min": 9.5,
+  "verdict": "clear"
+}
