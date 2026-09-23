@@ -2,11 +2,11 @@
 id: I-27
 slug: burgee-zero-dependency-cli-stack
 stage: intent
-status: proposed
+status: approved
 visibility: public
 opened: 2026-09-22
 opened_by: claude
-approved_by:
+approved_by: 'ofri, 2026-09-23, in chat: "ok perfect lets proceed" (replying to "Reply ''approve I-26 and I-27''")'
 ---
 
 > Drafted by an agent from the burgee repository's own files. Every path below
