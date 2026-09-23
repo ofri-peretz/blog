@@ -2,7 +2,7 @@
 id: I-27
 slug: burgee-zero-dependency-cli-stack
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-22
 opened_by: claude
