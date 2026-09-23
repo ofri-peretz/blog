@@ -1,6 +1,6 @@
 ---
 title: "A commander Stack Installs 70 Packages. burgee's Nine Install 9 and, Like for Like, Weigh 2.4× More."
-description: "Part 2 of the dependency-weight method: nine CLI layers, counted. 70 packages from 25 maintainers against 9 from one, the rows where the nine weigh more, and three unmet gates."
+description: "Part 2 of the dependency-weight method: nine CLI layers, counted. 70 packages from 25 npm accounts against 9 from one, the rows where the nine weigh more, and three unmet gates."
 slug: "burgee-zero-dependency-cli-stack"
 published: false
 canonical_url: "https://ofriperetz.dev/articles/burgee-zero-dependency-cli-stack"
@@ -32,7 +32,7 @@ That is the flattering row. [Part 1](https://ofriperetz.dev/articles/eslint-plug
 
 ## Layer by layer {#layers}
 
-Each incumbent is the first whole package in burgee's own "Replaces" column (the terminal row lists half of ansi-escapes first; with it, 66 packages), so the stack comes from [my design surface, not a neutral sample](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat). Resolved 2026-09-23 against burgee 0.10.0, flagstaff 0.3.7 and cosmiconfig 10.0.1, one package at a time; KB is 1,024 bytes of files, whole tree included.
+Each incumbent is the first whole package in burgee's own "Replaces" column (the terminal row lists half of ansi-escapes first; with it, 66 packages), so the stack comes from [my design surface, not a neutral sample](https://ofriperetz.dev/articles/i-built-what-i-benchmark-heres-how-i-try-not-to-cheat). Resolved 2026-09-23 (cosmiconfig 10.0.1), one package at a time; KB is 1,024 bytes of files, whole tree included.
 
 | incumbent     | pkgs | KB   | burgee family | pkgs | KB   |
 | ------------- | ---- | ---- | ------------- | ---- | ---- |
@@ -56,7 +56,7 @@ Three layers carry it, none cleanly.
 - **execa has no graded drop-in.** bellpull's compat row is cross-spawn, not execa.
 - **inquirer** is graded through `@inquirer/core` (41 of 41), not `inquirer` itself.
 
-Keep only layers where burgee's drop-in scores what the incumbent scores on [its own suite](https://burgee.interlace.tools/docs/compatibility): commander, chalk, ora, `@inquirer/core`, string-width, signal-exit (not terminal-link: 8 of 10). **28 packages, 662 KB.** burgee still installs all nine, 1,577 KB. **Like for like, burgee is 2.4× heavier on disk**, while the count stays 28 against 9 and the maintainers 14 against one.
+Keep only layers where burgee's drop-in scores what the incumbent scores on [its own suite](https://github.com/ofri-peretz/burgee/blob/7fb62c2/apps/docs/content/docs/compatibility.mdx): commander, chalk, ora, `@inquirer/core`, string-width, signal-exit (not terminal-link: 8 of 10). **28 packages, 662 KB.** burgee still installs all nine, 1,577 KB. **Like for like, burgee is 2.4× heavier on disk**, while the count stays 28 against 9, maintainers 14 against one.
 
 ## The three gates burgee publishes as not met {#gates}
 
@@ -68,7 +68,7 @@ burgee's [README](https://github.com/ofri-peretz/burgee/blob/7fb62c2/README.md) 
 | `burgee/commander` bundle vs commander | 1.514×    | 1.520×     |
 | cold start vs cac                      | 1.443×    | 1.67–2.30× |
 
-The bundle rows agree within a percent. I print my cold-start range, taken at load average above 120, because it reads worse than burgee's published figure. Either way, not met. burgee's parity rows compare its bundle against cac, commander or yargs **plus** cosmiconfig, exit-hook and restore-cursor (0.282×, 0.468×, 0.531×). Those stacks include cosmiconfig, which my like-for-like rule excludes.
+The bundle rows agree within a percent. I print my cold-start range (load average above 120) because it reads worse than burgee's published figure. Either way, not met. burgee's parity rows compare its bundles against cac, commander or yargs **plus** cosmiconfig, exit-hook and restore-cursor (0.282×, 0.468×, 0.531×). Those stacks include cosmiconfig, which my like-for-like rule excludes.
 
 ## What "zero dependencies" means here {#zero-deps}
 
@@ -88,7 +88,7 @@ npm ci --ignore-scripts && node -e "let t=0;const f=require('fs'),w=d=>f.readdir
 node -e "const l=require('./package-lock.json').packages,m=new Set(),u=[];Promise.all(Object.keys(l).filter(k=>k.startsWith('node_modules/')).map(k=>fetch('https://registry.npmjs.org/'+k.split('node_modules/').pop().replace('/','%2F')).then(r=>r.ok?r.json():Promise.reject()).then(d=>(d.maintainers||[]).forEach(x=>m.add(x.name))).catch(()=>u.push(k)))).then(()=>console.log(m.size,'unfetched',u.length))"
 ```
 
-Part 1 subtracted a 69-package ESLint baseline; here the shared baseline is Node, zero packages. pnpm, yarn 1 and bun resolve the same counts.
+Part 1 subtracted a 69-package ESLint baseline; here the shared baseline is Node, zero packages. pnpm, yarn 1 and bun resolve the same counts. The family ships often and its caret ranges float: pin all nine, or expect drift.
 
 ---
 
