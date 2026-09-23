@@ -1,0 +1,62 @@
+{
+  "slug": "burgee-change-one-import",
+  "stage": "review",
+  "panel_version": "1.0.0",
+  "spec": "sdlc/spec/burgee-change-one-import.md",
+  "reviewed": "2026-09-23",
+  "round": 3,
+  "findings_fixed_this_round": [
+    "Round 1, BLOCKING, reproducibility: a stranger could not follow the tutorial. `sample.txt` was never given and `cli.commander.js`, `cli.js` and `cli.answering.js` appeared only inside commands. The program block is now named, and the install block writes `sample.txt` with a `printf` that is byte-identical to the repro's fixture.",
+    "Round 1, BLOCKING, reproducibility: the `pm-matrix` spec row took 82s on a cold cache, over the stage-6 detector's 60s `execSync` limit. It is now split into `pm-yarn`, `pm-pnpm` and `pm-bun`, each installing into a wiped directory under a 50s install timeout.",
+    "Round 1, BLOCKING, structure: the same missing file roles, raised independently from the voice side.",
+    "Round 1, BLOCKING, growth: the opening had no line that worked on its own. 'One import describes the CLI to an agent; answering takes a `return`.' now opens paragraph 2.",
+    "Round 1, BLOCKING, compatibility: the Node floor rise (commander `>=22.12.0` to burgee `>=24`) was stated without its consequence. On Node 22.22.0, yarn 1 refuses the install (probe `yarn1-node22-exit`). The article now calls it a major for your users.",
+    "Round 1, BLOCKING, compatibility: TypeScript was not mentioned, and `burgee/commander` is an `exports`-only subpath, so the legacy `node` resolver fails with TS2307 where `commander` resolves. The article now says so (probe `ts-node10-ts2307`). `bundler` and `nodenext` compile with zero errors of any kind.",
+    "Round 2, BLOCKING, reproducibility: from an empty directory the install block did not reproduce. commander was not installed, and without `\"type\": \"module\"` Node 24 printed a warning that made stderr differ on the parity argv. The block now installs `commander@15.0.0 burgee@0.9.2` and runs `npm pkg set type=module`. Re-run from an empty directory, all seven argv match on stdout, stderr and exit code.",
+    "Pinned the install to `burgee@0.9.2`. `burgee@0.10.0` reached npm `latest` at 05:34Z while the panel ran. Every behavioural probe returns the same on 0.10.0 (`BURGEE_VERSION=0.10.0 node sdlc/spec/burgee-change-one-import.repro.mjs all`), but the size row would move, so the pin stays and the spec records the re-pin path.",
+    "correctness: 'this swap buys you nothing' overstated the case, since completions help human users too. That clause is gone. 'Static scripts' became 'static output', because fig emits a JSON spec. The size section now separates on-disk bytes (207,368 vs 1,188,994) from the bundle ratio (1.514×, not met), which a reader could otherwise have read as contradicting each other.",
+    "The anchor 'commander's own suite' pointed at an ESLint article. It now points at commander's `v15.0.0/tests`, the tag the oracle vendors.",
+    "Tags: `cli` swapped for `webdev`. The 9-reviewer devto panel flagged `cli` as unmeasured and `webdev` as the broad tag with measured returns."
+  ],
+  "checked_and_found_correct": [
+    "Every console transcript was re-run byte-for-byte by three reviewers on Node 24.18.0, commander@15.0.0 and burgee@0.9.2. The program block is byte-identical to the file the repro writes.",
+    "The causal chain behind `\"data\":null` was checked against the façade source. `_emitResult` writes `data: value ?? null`, and commander actions return nothing. Under `--mcp`, the tool-call invoke captures `writeOut` but not `console.log`, so the prose line reaches the JSON-RPC stream (1 non-JSON line before the second edit, 0 after).",
+    "The MCP defect has its root cause read, not inferred. `optionArgs` in `packages/burgee/src/mcp.ts` pushes `--${name}` (the camelCased key) and ignores the advertised `flag`. The file is unchanged between tag `burgee@0.9.2` and origin/main.",
+    "Compat oracle re-run twice, independently, at burgee `6377897aaf`: `burgee/commander` 1360 / 1360 against a control of 1360 / 1360 (1 skipped on this OS). The vendored suite is commander v15.0.0, 110 files.",
+    "Exit codes: the façade keeps commander's `1` for usage errors because burgee's E1 mapping applies only when `exit` is injected. The native syntax exits `2`, verified with a `defineCommand` that declares `effects`.",
+    "The second-edit recipe works for MCP. Tool calls re-enter through `root.parseAsync(argvOf(...))`, but the server process's own argv carries `--mcp`, so `machine` is true for every call. The only misfire anyone could construct is a contrived `count -- --json`, and the article already calls the check crude.",
+    "Install matrix: npm, yarn 1, yarn 4 (PnP), pnpm 10 and 12, bun, `require()` on Node 24, `import { program }`, and a `bin` install with a shebang. All of them run the swapped program.",
+    "All 43 spec rows pass the stage-6 detector's own parser, digit comparison and 60s timeout. `yarn1-node22-exit` throws when no Node 22 binary exists, so on a bare runner it reports as a failed command rather than passing vacuously.",
+    "Framing: no banned vocabulary. The article quotes burgee's own unmet `lighter-than-commander` gate, discloses that `.effects()` is a one-way door, and names the case where commander alone is the smaller choice.",
+    "The 9-reviewer devto-review gate passed in both rounds with zero blockers (gate score 8.9, then 9.0; Technical 9.5, Checklist 10.0 both rounds).",
+    "Cover: `validate-hooks` has 0 errors, `verify-hook-facts` has 0 numbers missing from the body (1360 found), and `cover-check` passes mechanically (1 mark rendering, 0 glyphs clipped by the 1200×630 crop). Both crops were inspected."
+  ],
+  "lenses": {
+    "growth_hook": {
+      "score": 9.6,
+      "why": "The title fits the formula at 67 characters: named target, concrete count, and a true claim against the author's own tool. The body delivers exactly that. Paragraph 2 now carries the thesis on its own ('One import describes the CLI to an agent; answering takes a `return`'), so a reader who stops after the diff still leaves with the idea. The cover's `data: null` over '1360 of 1360 tests green' states the paradox that the grade section resolves. The closing question about regex-scraped output is specific enough to draw war stories. Held below 10 by the chassis' fixed `getting-started` label, which undersells a piece written for maintainers."
+    },
+    "security_correctness": {
+      "score": 9.6,
+      "why": "Read as technical correctness, since there is no security claim. Every transcript was re-derived, and every causal explanation matches the façade source: the null envelope, the leaked prose line, the camelCased MCP argument, and the exit-code split. The TypeScript and Node-22 additions were probed and hold. The remaining notes are wording, not substance: the TS sentence leaves out that `node16` works in an ESM package, and the article says 'cannot see the subpath' rather than enumerating every resolver that can."
+    },
+    "structure_framing_voice": {
+      "score": 9.6,
+      "why": "All seven H2s serve one argument. The null opens the piece, 'Where one import stops' pays it off, and 'What the grade covers' names the line it turns on: the grade measures what you keep, and both defects sit in what you gain. The framing toward commander would survive its maintainers reading it: the unmet gate is quoted against ourselves, the lock-in is disclosed, and there is a closing case for commander alone. After round 1 the tutorial can be followed end to end. A semicolon-splice rhythm was flagged and thinned."
+    },
+    "compatibility": {
+      "score": 9.6,
+      "why": "The matrix a commander maintainer would hit is now covered, and each part was verified independently: four package managers (plus yarn 4 PnP and pnpm 12), `require()`, TypeScript resolution, and the Node floor with its real consequence (yarn 1 refuses on Node 22, npm only warns). The install is pinned to the version measured, and the 0.10.0 re-pin is recorded. All ten frontmatter keys are present, `reading_time_minutes` matches the repo's own computation, cover stems derive from the slug, and every outbound link returns 2xx. The ESLint and Oxlint rows of pass 3 do not apply to a CLI library."
+    },
+    "reproducibility": {
+      "score": 9.6,
+      "why": "All 43 spec rows re-ran green under the detector's parser and timeout. Each behavioural row is a single probe of a committed script that builds the article's exact program. A stranger starting from an empty directory can now reproduce every transcript from the article alone: the install block creates package.json, both dependencies, the ESM flag and the fixture. The compat oracle was re-run, not quoted. The remaining gaps are environmental and house-wide: the `../burgee` rows and the Node-22 row need a sibling checkout and a Node 22 binary on the weekly runner."
+    }
+  },
+  "min": 9.6,
+  "verdict": "pass",
+  "notes": [
+    "Growth, correctness, structure and compatibility returned their 9.6 on the round-2 text. Round 3 applied only their own non-blocking suggestions: semicolon splices to full stops, the corrected link target, the TypeScript sentence reworded to the claim its probe backs, and the `.effects` appositive. It also applied the reproducibility blocker to the install block. The reproducibility reviewer scored the round-3 text.",
+    "Defects found in burgee 0.9.2 while writing, for the owner. Disclosed in the article: MCP tool calls pass multi-word options camelCased (`mcp.ts` `optionArgs`); completions offer `--no-<flag>` spellings the program refuses. Found but not in the article: the `burgee` bin (`dist/cli.js`) ships without a shebang, so `npx burgee migrate` fails in the shell; the README 'Start here' example omits `effects`, and `defineCommand` throws on it in 0.9.2; `agent-surfaces.mdx`, `vs/commander.mdx` and the package README FAQ still say undeclared commands are not served over MCP."
+  ]
+}
