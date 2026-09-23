@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/a-commander-stack-installs-70-packages-burgees-family-9-like-for-like-the-family-weighs-24x-aed"
+devto_id: 4722817
 title: "A commander Stack Installs 70 Packages, burgee's Family 9. Like for Like, the Family Weighs 2.4× More."
 description: "Part 2 of the dependency-weight method: nine CLI layers, counted. 70 packages from 25 npm accounts against 9 from one, the rows where the nine weigh more, and three unmet gates."
 slug: "burgee-zero-dependency-cli-stack"
