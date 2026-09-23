@@ -2,7 +2,7 @@
 id: I-26
 slug: burgee-change-one-import
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-22
 opened_by: claude

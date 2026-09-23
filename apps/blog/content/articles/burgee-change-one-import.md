@@ -1,4 +1,6 @@
 ---
+devto_url: "https://dev.to/ofri-peretz/one-import-moves-a-commander-cli-to-burgee-json-still-says-null-6h8"
+devto_id: 4726357
 title: "One Import Moves a commander CLI to burgee. --json Still Says null."
 description: "Swapping commander for burgee/commander kept 7 of 7 invocations byte-identical and added --schema, MCP and completions. Getting data out took a return."
 slug: "burgee-change-one-import"
