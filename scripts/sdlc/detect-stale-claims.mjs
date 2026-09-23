@@ -14,14 +14,22 @@ import { execSync } from "node:child_process";
 import { specs, ROOT, isNumericValue } from "./lib.mjs";
 
 const findings = [];
+let manual = 0;
 
 for (const spec of specs()) {
   for (const claim of spec.claims) {
-    if (!claim.command || !isNumericValue(claim.value)) continue;
+    if (!isNumericValue(claim.value)) continue;
+    // A prose procedure is evidence for a reviewer, never input for a shell.
+    if (!claim.command) {
+      if (claim.evidence) manual += 1;
+      continue;
+    }
 
     let actual;
     try {
-      actual = execSync(claim.command, {
+      // `set -u`: an unset variable aborts the command instead of expanding to
+      // "" — `npx "vercel@$VERCEL_CLI_VERSION"` must fail, not run `npx vercel@`.
+      actual = execSync(`set -u; ${claim.command}`, {
         cwd: ROOT,
         encoding: "utf-8",
         timeout: 60_000,
@@ -71,6 +79,11 @@ console.log(
     ? `\n${findings.length} stale claim(s). Each affects every article built on that spec.`
     : "All spec claims still hold.",
 );
+if (manual) {
+  console.log(
+    `${manual} claim(s) record a prose procedure rather than one runnable command; they are not re-run here.`,
+  );
+}
 
 process.stdout.write(
   `\n::detector-json::${JSON.stringify({ detector: "stale-claim", findings })}\n`,

@@ -70,12 +70,28 @@ export function parseClaims(markdown) {
     rows.push({
       claim,
       value,
-      command: command.replace(/^`|`$/g, "").trim(),
+      command: executable(command),
+      evidence: command,
       version,
       verified,
     });
   }
   return rows;
+}
+
+/** The command a cell asks to be RUN, or "" when the cell is prose.
+ *
+ *  Only a cell that is exactly one backtick span — `like this` — is a command.
+ *  A cell like ``npm i x` in an empty package then `du -sk node_modules`` is a
+ *  procedure for a human: stripping only its outer backticks used to hand the
+ *  shell the inner ones as command substitution, so the detector ran
+ *  `npm i x … du -sk node_modules` in the repo root, and a cell quoting
+ *  `npx "vercel@$VERCEL_CLI_VERSION"` ran a bare `npx vercel@` that created and
+ *  deployed a Vercel project from a developer's CLI session (2026-09-23). */
+// A span of only whitespace also returns "" — callers treat "" as prose.
+export function executable(cell) {
+  const match = /^`([^`]+)`$/.exec(cell.trim());
+  return match ? match[1].trim() : "";
 }
 
 /** A value is "numeric" if the article could get it wrong by a digit — those
