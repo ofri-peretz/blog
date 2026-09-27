@@ -10,12 +10,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const layout = readFileSync(resolve(__dirname, "../app/layout.tsx"), "utf-8");
+const block = layout.match(/formatDetection:\s*\{([^}]*)\}/)?.[1] ?? "";
 
 describe("root metadata format detection", () => {
   it.each(["telephone", "date", "address", "email"])(
     "disables the %s detector",
     (detector) => {
-      const block = layout.match(/formatDetection:\s*\{([^}]*)\}/)?.[1] ?? "";
       expect(block).toMatch(new RegExp(`\\b${detector}:\\s*false\\b`));
     },
   );
