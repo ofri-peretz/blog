@@ -55,6 +55,15 @@ export const metadata: Metadata = {
   },
   authors: [{ name: "Ofri Peretz" }],
   robots: { index: true, follow: true },
+  // iOS Safari data detectors wrap phone-, date-, address- and email-shaped
+  // text (CVE ids, article dates) in <a> tags before React hydrates, so the
+  // client finds an element where the server sent text: React error #418.
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
