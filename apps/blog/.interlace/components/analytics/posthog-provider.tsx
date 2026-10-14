@@ -190,10 +190,11 @@ function PageviewTracker() {
 
   useEffect(() => {
     if (!pathname) return;
-    const url = searchParams?.toString()
-      ? `${pathname}?${searchParams.toString()}`
-      : pathname;
-    posthog.capture("$pageview", { $current_url: url });
+    // Absolute, never `pathname?search`: PostHog's heatmap step parses this
+    // with `new URL()`, so a relative path throws and drops the scroll-depth
+    // payload (invalid_heatmap_data). It also keeps `$pageview` URLs in the
+    // same shape as `$pageleave`.
+    posthog.capture("$pageview", { $current_url: window.location.href });
   }, [pathname, searchParams]);
 
   return null;
