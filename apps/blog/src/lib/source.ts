@@ -117,8 +117,8 @@ function loadArticle(filename: string): Article {
   const raw = readFileSync(path.join(getArticlesDir(), filename), "utf-8");
   const parsed = matter(raw);
   const fm = normalize(parsed.data);
-  // Lazy on purpose: readingTime() was ~90% of a corpus parse, and the
-  // homepage re-parses the whole corpus on every ISR render to show six cards.
+  // Lazy on purpose: readingTime() dominates the corpus parse that the
+  // homepage repeats on every ISR render.
   return {
     slug,
     frontmatter: fm,
