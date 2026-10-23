@@ -117,12 +117,14 @@ function loadArticle(filename: string): Article {
   const raw = readFileSync(path.join(getArticlesDir(), filename), "utf-8");
   const parsed = matter(raw);
   const fm = normalize(parsed.data);
-  const computed = readingTime(parsed.content);
+  // Lazy on purpose: readingTime() dominates the corpus parse that the
+  // homepage repeats on every ISR render.
   return {
     slug,
     frontmatter: fm,
     body: parsed.content,
-    readingTimeMinutes: fm.reading_time_minutes ?? Math.ceil(computed.minutes),
+    readingTimeMinutes:
+      fm.reading_time_minutes ?? Math.ceil(readingTime(parsed.content).minutes),
   };
 }
 
