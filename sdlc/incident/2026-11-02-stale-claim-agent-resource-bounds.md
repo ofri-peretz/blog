@@ -521,6 +521,8 @@ significance-from-a-lookup-table — Self-check assertions after adding the prob
 
 A claim that was true when written and is false now. No review pass can catch this class — nothing in the article changed. If this recurs for the same spec, the spec's command is not specific enough, and that is an eval gap rather than an author mistake.
 
+Seen before, against the same articles: [2026-09-07](./2026-09-07-stale-claim-agent-resource-bounds.md) and [2026-09-08](./2026-09-08-stale-claim-agent-resource-bounds.md). The 2026-09-08 analysis split claim drift from eval gaps; triage should make the same split here. Most `now` values above are `ENOENT` / missing `node_modules` (the runner had no sibling checkouts), which reads as an eval gap, not drift.
+
 ## Triage
 
 _Pending. Rewrite | retire | ignore — and why._
