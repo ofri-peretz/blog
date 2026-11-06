@@ -113,4 +113,6 @@ inside. The document read perfectly well. It was internally consistent, it cited
 its source by filename, and every number in it looked like the kind of number
 that comes out of a benchmark. It just did not.
 
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+
 _Take the last number you published about your own work. Can you point at the file it came from?_

@@ -156,4 +156,6 @@ And a zero that means "read nothing" corrupts the one cell every other metric
 is derived from — the true-negative box of [the confusion
 matrix](https://ofriperetz.dev/articles/confusion-matrix-tp-fp-fn-tn).
 
+_Part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_
+
 _What's the last clean report you got — and would you know if the tool had read nothing?_
