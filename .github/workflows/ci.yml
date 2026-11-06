@@ -4,6 +4,12 @@ on:
   pull_request:
   push:
     branches: [main]
+  # The refresh and SDLC bots open PRs with GITHUB_TOKEN, whose events never
+  # start `pull_request` runs (GitHub's recursion guard), so their PRs sat
+  # BLOCKED on required checks that could not arrive (blog#277). Dispatch is
+  # the one event GITHUB_TOKEN may raise; those bots dispatch this workflow on
+  # their branch and the check runs land on the PR's head commit.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -113,9 +119,10 @@ jobs:
         env:
           # turbo --affected intermittently fails to resolve the base ref
           # ('fatal: ambiguous argument main') on PR checkouts. Pin the diff
-          # base to the PR base SHA (present with fetch-depth: 0); empty on
-          # push, where turbo falls back to its default.
-          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
+          # base to the PR base SHA (present with fetch-depth: 0); origin/main
+          # on a bot's dispatch run; empty on push, where turbo falls back to
+          # its default.
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || (github.event_name == 'workflow_dispatch' && 'origin/main') || '' }}
 
   oxlint:
     runs-on: ubuntu-latest
@@ -132,6 +139,7 @@ jobs:
         env:
           # turbo --affected intermittently fails to resolve the base ref
           # ('fatal: ambiguous argument main') on PR checkouts. Pin the diff
-          # base to the PR base SHA (present with fetch-depth: 0); empty on
-          # push, where turbo falls back to its default.
-          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
+          # base to the PR base SHA (present with fetch-depth: 0); origin/main
+          # on a bot's dispatch run; empty on push, where turbo falls back to
+          # its default.
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || (github.event_name == 'workflow_dispatch' && 'origin/main') || '' }}
