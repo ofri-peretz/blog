@@ -1,5 +1,4 @@
 /**
-
 // ⟨vendored⟩
 // VENDORED from the Interlace DS (canonical: interlace repo
 // packages/ui/src/primitives/skeleton.tsx — replaces the old shadcn
@@ -61,17 +60,18 @@
  * | R26  | A11y                             | `role="status"` + `aria-busy="true"` + visually-hidden text |
  */
 
-import * as React from "react";
+import * as React from 'react';
 
 import { cn } from "@/lib/utils";
 import {
   SKELETON_VARIANT_CLASSES,
   type SkeletonVariant,
-} from "./skeleton-variants";
+} from './skeleton-variants';
 
 export const MIN_VIEWPORT = 320 as const;
 
-interface SkeletonProps extends Omit<React.ComponentProps<"div">, "role"> {
+interface SkeletonProps
+  extends Omit<React.ComponentProps<'div'>, 'role'> {
   /**
    * Silhouette to paint. Defaults to `'rect'` — a generic full-width line
    * placeholder. Use the matching primitive/pattern name for a
@@ -106,41 +106,41 @@ interface SkeletonProps extends Omit<React.ComponentProps<"div">, "role"> {
  * that can't happen twice.
  */
 const COMPOSITE_VARIANTS = new Set<SkeletonVariant>([
-  "article-card",
-  "author-byline",
-  "data-table",
-  "newsletter-form",
-  "page-header",
-  "prev-next-post",
-  "stat-card",
-  "card",
-  "code-block",
+  'article-card',
+  'author-byline',
+  'data-table',
+  'newsletter-form',
+  'page-header',
+  'prev-next-post',
+  'stat-card',
+  'card',
+  'code-block',
   // Form family — both are containers of repeating rows, so their
   // silhouette is structural rather than a single painted box.
-  "form",
-  "radio-group",
+  'form',
+  'radio-group',
   // Overlay / nav surfaces (wave 1.2).
-  "breadcrumb",
-  "menu",
-  "pagination",
-  "tabs",
-  "toc",
+  'breadcrumb',
+  'menu',
+  'pagination',
+  'tabs',
+  'toc',
   // Charts (wave 5). `metric-table` is the only composite of the three: its
   // silhouette is a header row plus repeating rows, which a single painted box
   // cannot express. `chart` and `sparkline` are honest rectangles.
-  "metric-table",
+  'metric-table',
   // Absence vocabulary (wave 10). Both are composites: a strip is label/value
   // pairs across a grid and a meter is a label row above a track, and neither
   // silhouette can be expressed as a single painted box.
-  "meter",
-  "stat-strip",
+  'meter',
+  'stat-strip',
 ]);
 
 function Skeleton({
   className,
-  variant = "rect",
+  variant = 'rect',
   count = 1,
-  label = "Loading…",
+  label = 'Loading…',
   ref,
   ...props
 }: SkeletonProps) {
@@ -154,7 +154,7 @@ function Skeleton({
         role="status"
         aria-busy="true"
         aria-live="polite"
-        className={cn("flex flex-col gap-sm", className)}
+        className={cn('flex flex-col gap-sm', className)}
         {...props}
       >
         {Array.from({ length: count }).map((_, i) => (
@@ -189,12 +189,12 @@ function Skeleton({
       className={cn(
         // `max-w-full` because every width utility a caller reaches for is in
         // REM, and rem scales with the root font-size. At text 200% a
-        // `w-48` skeleton is 384px on a 320px viewport and scrolled the whole
-        // document — WCAG 1.4.10. The repo has w-96 and w-80 skeletons too,
-        // which would be 768px and 640px there, so this belongs on the base
-        // rather than at each call site. `className` still wins if a caller
-        // genuinely needs to exceed its container.
-        "max-w-full animate-pulse bg-muted",
+        // `w-48` skeleton is 384px on a 320px viewport and scrolls the whole
+        // document — WCAG 1.4.10. There are `w-96` and `w-80` skeletons in
+        // use too, which would be 768px and 640px there, so this belongs on
+        // the base rather than at each call site. `className` still wins if a
+        // caller genuinely needs to exceed its container.
+        'max-w-full animate-pulse bg-muted',
         SKELETON_VARIANT_CLASSES[variant],
         className,
       )}
@@ -212,11 +212,11 @@ function Skeleton({
  * (compile-time enum check) + the outer-shape class in
  * `SKELETON_VARIANT_CLASSES` (used as the root container).
  * ──────────────────────────────────────────────────────────────── */
-type CompositeSkeletonProps = Omit<SkeletonProps, "count">;
+type CompositeSkeletonProps = Omit<SkeletonProps, 'count'>;
 
 function CompositeSkeleton({
-  variant = "rect",
-  label = "Loading…",
+  variant = 'rect',
+  label = 'Loading…',
   className,
   ref,
   ...props
@@ -231,11 +231,16 @@ function CompositeSkeleton({
       aria-busy="true"
       aria-live="polite"
       className={cn(
-        // Same reflow cap as the base above — a `w-80` skeleton at text 200%
-        // is 640px on a 320px viewport, which scrolls the document.
-        "max-w-full animate-pulse bg-muted",
+        // `max-w-full` because every width utility a caller reaches for is in
+        // REM, and rem scales with the root font-size. At text 200% a
+        // `w-48` skeleton is 384px on a 320px viewport and scrolls the whole
+        // document — WCAG 1.4.10. There are `w-96` and `w-80` skeletons in
+        // use too, which would be 768px and 640px there, so this belongs on
+        // the base rather than at each call site. `className` still wins if a
+        // caller genuinely needs to exceed its container.
+        'max-w-full animate-pulse bg-muted',
         SKELETON_VARIANT_CLASSES[variant],
-        "flex flex-col",
+        'flex flex-col',
         className,
       )}
       {...props}
@@ -248,7 +253,7 @@ function CompositeSkeleton({
 
 function CompositeBody({ variant }: { variant: SkeletonVariant }) {
   switch (variant) {
-    case "article-card":
+    case 'article-card':
       // Image (top) + 3 stacked content lines + meta row.
       return (
         <>
@@ -264,7 +269,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           </div>
         </>
       );
-    case "author-byline":
+    case 'author-byline':
       return (
         <div className="flex items-center gap-sm p-xs">
           <div className="bg-muted-foreground/10 size-10 rounded-full" />
@@ -274,7 +279,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           </div>
         </div>
       );
-    case "newsletter-form":
+    case 'newsletter-form':
       return (
         <div className="flex flex-col gap-sm p-md">
           <div className="bg-muted-foreground/10 h-4 w-1/2 rounded-sm" />
@@ -284,24 +289,24 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           </div>
         </div>
       );
-    case "page-header":
+    case 'page-header':
       return (
         <div className="flex flex-col gap-xs p-md">
           <div className="bg-muted-foreground/10 h-6 w-1/2 rounded-sm" />
           <div className="bg-muted-foreground/10 h-4 w-3/4 rounded-sm" />
         </div>
       );
-    case "prev-next-post":
+    case 'prev-next-post':
       // Two bordered link cards, each a kicker line over a title line —
       // and the same `grid-cols-1 md:grid-cols-2` cadence the real block
       // uses, so the article footer doesn't reflow when the pair arrives.
       return (
         <div className="grid grid-cols-1 gap-md md:grid-cols-2">
-          {["items-start", "items-end"].map((align) => (
+          {['items-start', 'items-end'].map((align) => (
             <div
               key={align}
               className={cn(
-                "flex flex-col gap-1 rounded-lg border border-border p-md",
+                'flex flex-col gap-1 rounded-lg border border-border p-md',
                 align,
               )}
             >
@@ -311,14 +316,14 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           ))}
         </div>
       );
-    case "stat-card":
+    case 'stat-card':
       return (
         <div className="flex flex-col gap-xs p-md">
           <div className="bg-muted-foreground/10 h-3 w-16 rounded-sm" />
           <div className="bg-muted-foreground/10 h-8 w-24 rounded-md" />
         </div>
       );
-    case "card":
+    case 'card':
       return (
         <div className="flex flex-col gap-sm p-md">
           <div className="bg-muted-foreground/10 h-5 w-1/3 rounded-sm" />
@@ -326,7 +331,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           <div className="bg-muted-foreground/10 h-4 w-2/3 rounded-sm" />
         </div>
       );
-    case "form":
+    case 'form':
       // Three label+control rows and a submit button — the resting shape
       // of <Form><Field>…</Field></Form> so the page doesn't jump when
       // the real fields hydrate.
@@ -341,7 +346,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           <div className="bg-muted-foreground/10 h-9 w-24 rounded-md" />
         </div>
       );
-    case "radio-group":
+    case 'radio-group':
       // Three option rows at the primitive's own `gap-2` pitch: a 16px
       // dot plus its label.
       return (
@@ -354,7 +359,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           ))}
         </div>
       );
-    case "code-block":
+    case 'code-block':
       // 6 monospace lines of varying width.
       return (
         <div className="flex flex-col gap-xs p-md">
@@ -367,7 +372,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           ))}
         </div>
       );
-    case "breadcrumb":
+    case 'breadcrumb':
       // Trail of crumbs + separators — the resting Breadcrumb silhouette.
       return (
         <div className="flex items-center gap-sm px-xs">
@@ -378,7 +383,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           <div className="bg-muted-foreground/10 h-3 w-12 rounded-sm" />
         </div>
       );
-    case "menu":
+    case 'menu':
       // DropdownMenu / ContextMenu popup: 4 item rows + a separator.
       return (
         <div className="flex flex-col gap-xs p-xs">
@@ -389,7 +394,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           <div className="bg-muted-foreground/10 h-6 w-4/5 rounded-sm" />
         </div>
       );
-    case "pagination":
+    case 'pagination':
       // Prev + 3 page pills + Next, centred like the real nav.
       return (
         <div className="flex items-center justify-center gap-xs">
@@ -400,7 +405,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           <div className="bg-muted-foreground/10 h-8 w-20 rounded-md" />
         </div>
       );
-    case "tabs":
+    case 'tabs':
       // Tab list row + the panel body underneath.
       return (
         <div className="flex flex-col gap-sm p-xs">
@@ -413,7 +418,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           <div className="bg-muted-foreground/10 h-4 w-3/4 rounded-sm" />
         </div>
       );
-    case "toc":
+    case 'toc':
       // Heading rail: h2 lines flush, h3 lines indented.
       return (
         <div className="flex flex-col gap-xs p-sm">
@@ -424,7 +429,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           <div className="bg-muted-foreground/10 ml-md h-3 w-3/5 rounded-sm" />
         </div>
       );
-    case "data-table":
+    case 'data-table':
       // Header row plus five body rows at the DataTable's own cadence: a
       // narrow leading cell for the selection checkbox, a wide first column
       // (the row header), then three data columns. Five rows because the
@@ -452,7 +457,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           ))}
         </div>
       );
-    case "metric-table":
+    case 'metric-table':
       // Header row plus four metric rows. The trailing narrow cells stand in
       // for the sparkline and delta columns, so the row width the data will
       // occupy is reserved before it arrives.
@@ -474,7 +479,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           ))}
         </div>
       );
-    case "meter":
+    case 'meter':
       // Label row (name left, value right) above the track — the exact
       // geometry Meter settles into, so the swap is CLS-neutral.
       return (
@@ -486,7 +491,7 @@ function CompositeBody({ variant }: { variant: SkeletonVariant }) {
           <div className="bg-muted-foreground/10 h-2.5 w-full rounded-full" />
         </div>
       );
-    case "stat-strip":
+    case 'stat-strip':
       // Four label/value pairs on the strip's own two-track mobile grid, so
       // the placeholder reflows at exactly the breakpoints the real strip does.
       return (
@@ -516,11 +521,11 @@ function SkeletonLabel({ children }: { children: React.ReactNode }) {
   return (
     <span
       className={cn(
-        "sr-only",
+        'sr-only',
         // Belt-and-suspenders sr-only in case the consumer's Tailwind
         // preset strips the utility — kept absolute positioning + tiny
         // size so it stays out of the visual flow on every renderer.
-        "pointer-events-none absolute size-px overflow-hidden whitespace-nowrap",
+        'pointer-events-none absolute size-px overflow-hidden whitespace-nowrap',
       )}
     >
       {children}
@@ -530,4 +535,7 @@ function SkeletonLabel({ children }: { children: React.ReactNode }) {
 
 export { Skeleton };
 export type { SkeletonProps };
-export { SKELETON_VARIANTS, type SkeletonVariant } from "./skeleton-variants";
+export {
+  SKELETON_VARIANTS,
+  type SkeletonVariant,
+} from './skeleton-variants';
