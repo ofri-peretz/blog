@@ -4,7 +4,7 @@ detected: 2026-11-02
 detector: stale-claim
 severity: 3sigma
 articles: ["agent-resource-bounds", "ai-agent-unbounded-loop-audit", "ai-agents-rebranded-my-oss-ecosystem-two-pipelines-were-dead", "burgee-change-one-import", "burgee-zero-dependency-cli-stack", "eslint-in-the-browser-live-lint-playground", "eslint-plugin-cold-start-optimization", "lint-harness-measured-nothing", "migrate-renamed-plugin-packages", "rule-yield-distribution-own-plugin", "significance-from-a-lookup-table"]
-intent: 
+intent: sdlc/intent/fix-stale-claim-agent-resource-bounds.md
 status: open
 ---
 
