@@ -150,6 +150,12 @@ for (const [vendored, canonical] of Object.entries(VENDORED)) {
   const raw = readFileSync(path.join("apps/blog/src", vendored), "utf-8");
   let local = normalizeVendored(raw, canonical);
   for (const [mine, theirs] of DECLARED_DELTAS[vendored] ?? []) {
+    // Same trap as the cn check below: a lost delta reverses to a no-op and
+    // would compare clean.
+    if (!raw.includes(mine)) {
+      console.error(`DECLARED DELTA NOT APPLIED: ${vendored} should contain "${mine}"`);
+      drifted.add(vendored);
+    }
     local = local.replaceAll(mine, theirs);
   }
   const res = await fetch(`${RAW}/${canonical}`);
