@@ -12,11 +12,16 @@
 # refresh, and the PR waits for a human approval as before.
 set -uo pipefail
 SHA=$(git rev-parse HEAD)
-# The runs appear a few seconds after the PR does.
+held() {
+  gh run list --commit "$SHA" --event pull_request --status action_required \
+    --json databaseId --jq '.[].databaseId' 2>/dev/null
+}
+# The runs appear a few seconds after the PR does, and not together: CI and
+# Claude Code Review are both pull_request workflows. Once the first shows,
+# give the rest a moment and list again.
 for _ in $(seq 1 12); do
-  IDS=$(gh run list --commit "$SHA" --event pull_request --status action_required \
-    --json databaseId --jq '.[].databaseId' 2>/dev/null)
-  [ -n "$IDS" ] && break
+  IDS=$(held)
+  [ -n "$IDS" ] && { sleep 15; IDS=$(held); break; }
   sleep 10
 done
 if [ -z "${IDS:-}" ]; then
