@@ -4,11 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
-  # The refresh and SDLC bots open PRs with GITHUB_TOKEN, whose events never
-  # start `pull_request` runs (GitHub's recursion guard), so their PRs sat
-  # BLOCKED on required checks that could not arrive (blog#277). Dispatch is
-  # the one event GITHUB_TOKEN may raise; those bots dispatch this workflow on
-  # their branch and the check runs land on the PR's head commit.
+  # Manual runs on any branch. Not the bot-PR path: dispatched check runs are
+  # not credited to a PR by branch protection (blog#277, #325) — the bots
+  # approve their PR's held runs instead (scripts/approve-bot-pr-runs.sh).
   workflow_dispatch:
 
 concurrency:
