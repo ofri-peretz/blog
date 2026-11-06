@@ -48,6 +48,18 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 /**
+ * Deliberate local deltas, as [local, canonical] pairs, reversed before
+ * comparing. A delta declared only in a file header is invisible to this
+ * script, so it reported dialog.tsx as drifted every week (blog#272, #299).
+ */
+const DECLARED_DELTAS = {
+  "components/ui/dialog.tsx": [
+    // 65ch dialog width instead of the 52ch reading measure — see the header.
+    ["sm:max-w-(--container-dialog)", "sm:max-w-(--container-prose)"],
+  ],
+};
+
+/**
  * Reverse the vendor recipe: drop the provenance block, restore cn.
  *
  * Sibling-import restoration is canonical-directory-aware: a vendored
@@ -88,6 +100,7 @@ function normalizeVendored(src, canonical) {
     return joined
       .replaceAll("} from './skeleton';", "} from '../primitives/skeleton.js';")
       .replaceAll("} from './data-state';", "} from '../primitives/data-state.js';")
+      .replaceAll("} from './delta';", "} from './delta.js';")
       .replaceAll("from './scale';", "from './scale.js';")
       .replaceAll("from './series-table';", "from './series-table.js';")
       .replaceAll("from './time-series';", "from './time-series.js';");
@@ -135,7 +148,16 @@ for (const [vendored, canonical] of Object.entries(VENDORED)) {
   // delta check below needs the raw text too. Two reads of the same file in
   // one iteration is a redundant syscall and a TOCTOU window for no gain.
   const raw = readFileSync(path.join("apps/blog/src", vendored), "utf-8");
-  const local = normalizeVendored(raw, canonical);
+  let local = normalizeVendored(raw, canonical);
+  for (const [mine, theirs] of DECLARED_DELTAS[vendored] ?? []) {
+    // Same trap as the cn check below: a lost delta reverses to a no-op and
+    // would compare clean.
+    if (!raw.includes(mine)) {
+      console.error(`DECLARED DELTA NOT APPLIED: ${vendored} should contain "${mine}"`);
+      drifted.add(vendored);
+    }
+    local = local.replaceAll(mine, theirs);
+  }
   const res = await fetch(`${RAW}/${canonical}`);
   if (!res.ok) {
     console.error(`FETCH FAILED (${res.status}): ${canonical}`);

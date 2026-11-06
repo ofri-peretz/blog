@@ -33,6 +33,11 @@ describe("every refresh workflow can actually deliver", () => {
       expect(body).toContain(`gh pr merge --squash --auto "${branch}"`);
     });
 
+    it(`${file} dispatches CI on its branch so the required checks run`, () => {
+      expect(body).toContain(`gh workflow run ci.yml --ref ${branch}`);
+      expect(body).toMatch(/^\s+actions: write\b/m);
+    });
+
     it(`${file} also enables it when the PR is ALREADY open`, () => {
       // The workflows push to a fixed branch, so a still-open PR from last
       // week sends `gh pr create` down its "already exists" path. Auto-merge
@@ -47,6 +52,21 @@ describe("every refresh workflow can actually deliver", () => {
       ).toBe(2);
     });
   }
+
+  it("ci.yml accepts the dispatch the bots send", () => {
+    // GITHUB_TOKEN events start no `pull_request` run, so a bot PR got ZERO
+    // check runs and sat BLOCKED forever, which reads as "no failures" to
+    // anything that counts failures (blog#277).
+    const ci = readFileSync(path.join(WF, "ci.yml"), "utf-8");
+    const triggers = ci.slice(ci.indexOf("\non:\n"), ci.indexOf("\njobs:\n"));
+    expect(triggers).toContain("\n  workflow_dispatch:");
+  });
+
+  it("sdlc-maintain.yml dispatches CI on the PR branch it opens", () => {
+    const body = readFileSync(path.join(WF, "sdlc-maintain.yml"), "utf-8");
+    expect(body).toContain('gh workflow run ci.yml --ref "$BRANCH"');
+    expect(body).toMatch(/^\s+actions: write\b/m);
+  });
 
   it("covers every *-refresh.yml on disk — a fourth must be added here too", () => {
     /*
