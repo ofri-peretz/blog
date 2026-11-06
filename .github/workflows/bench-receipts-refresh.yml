@@ -13,6 +13,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write # dispatch CI on the branch (blog#277)
 
 jobs:
   refresh:
@@ -36,6 +37,10 @@ jobs:
           git add apps/blog/src/data/bench-receipts.json
           git commit -m "chore(blog): weekly bench-receipts refresh $(date -u +%F)"
           git push --force origin HEAD:chore/bench-receipts-refresh
+          # GITHUB_TOKEN pushes and PRs start no `pull_request` run, so the
+          # required checks would never arrive (blog#277). Dispatch CI on the
+          # branch; its check runs land on this commit, which is the PR head.
+          gh workflow run ci.yml --ref chore/bench-receipts-refresh
           # No tee-pipe: it would mask gh failures with tee's exit 0
           # (CWE-390). Capture, print, and only tolerate the
           # branch-already-has-a-PR case.
