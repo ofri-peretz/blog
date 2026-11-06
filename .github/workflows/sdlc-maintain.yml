@@ -21,7 +21,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  actions: write # dispatch CI on the branch (blog#277)
+  actions: write # approve the PR's held CI runs (blog#277)
 
 concurrency:
   group: sdlc-maintain
@@ -84,10 +84,7 @@ jobs:
           Stage 6 of the artifact chain. Each intent is \`proposed\` — a
           detector may open one, only a human approves it into stage 2."
           git push -u origin "$BRANCH"
-          # GITHUB_TOKEN pushes and PRs start no `pull_request` run, so the
-          # required checks would never arrive (blog#277). Dispatch CI on the
-          # branch; its check runs land on this commit, which is the PR head.
-          gh workflow run ci.yml --ref "$BRANCH"
           gh pr create --base main --head "$BRANCH" \
             --title "chore(sdlc): detector findings for triage" \
             --body "$(cat "$RUNNER_TEMP/detect.log")"
+          scripts/approve-bot-pr-runs.sh

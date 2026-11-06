@@ -33,8 +33,8 @@ describe("every refresh workflow can actually deliver", () => {
       expect(body).toContain(`gh pr merge --squash --auto "${branch}"`);
     });
 
-    it(`${file} dispatches CI on its branch so the required checks run`, () => {
-      expect(body).toContain(`gh workflow run ci.yml --ref ${branch}`);
+    it(`${file} approves its PR's held CI runs so the required checks run`, () => {
+      expect(body).toContain("scripts/approve-bot-pr-runs.sh");
       expect(body).toMatch(/^\s+actions: write\b/m);
     });
 
@@ -53,18 +53,11 @@ describe("every refresh workflow can actually deliver", () => {
     });
   }
 
-  it("ci.yml accepts the dispatch the bots send", () => {
-    // GITHUB_TOKEN events start no `pull_request` run, so a bot PR got ZERO
-    // check runs and sat BLOCKED forever, which reads as "no failures" to
-    // anything that counts failures (blog#277).
-    const ci = readFileSync(path.join(WF, "ci.yml"), "utf-8");
-    const triggers = ci.slice(ci.indexOf("\non:\n"), ci.indexOf("\njobs:\n"));
-    expect(triggers).toContain("\n  workflow_dispatch:");
-  });
-
-  it("sdlc-maintain.yml dispatches CI on the PR branch it opens", () => {
+  it("sdlc-maintain.yml approves the held CI runs of the PR it opens", () => {
+    // GITHUB_TOKEN-opened PRs get their pull_request runs held for approval,
+    // so a bot PR had no required checks and sat BLOCKED (blog#277).
     const body = readFileSync(path.join(WF, "sdlc-maintain.yml"), "utf-8");
-    expect(body).toContain('gh workflow run ci.yml --ref "$BRANCH"');
+    expect(body).toContain("scripts/approve-bot-pr-runs.sh");
     expect(body).toMatch(/^\s+actions: write\b/m);
   });
 
