@@ -100,7 +100,7 @@ describe("homepage composition lock", () => {
 
   it("anchors the hero CTA with a Button-variant link (R12 / CTA)", () => {
     expect(HOMEPAGE).toContain("buttonVariants(");
-    expect(HOMEPAGE).toContain("Explore the docs");
+    expect(HOMEPAGE).toContain("Explore Interlace");
   });
 
   it("gates the animation cluster on prefers-reduced-motion", () => {
