@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s — Ofri Peretz",
   },
   description:
-    "Engineering leader building the trust layer for machine-written software. Creator of the Interlace ESLint Ecosystem.",
+    "Engineering leader building the trust layer for machine-written software. Creator of Interlace: open-source tools that check what coding agents ship.",
   metadataBase: new URL("https://ofriperetz.dev"),
   alternates: {
     canonical: "https://ofriperetz.dev",
