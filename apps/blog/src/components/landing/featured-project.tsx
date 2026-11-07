@@ -45,9 +45,9 @@ export function FeaturedProject({
           </h2>
           <p className="mt-3 max-w-2xl text-muted-foreground">
             {numbers.plugins.total} specialized plugins. {numbers.rules.total}{" "}
-            rules. 100% OWASP Top 10 coverage. Built for the AI/Agentic era — LLM-friendly error messages
-            mean Claude / Cursor / Copilot can fix vulnerabilities without
-            context.
+            rules that catch the security bugs AI coding tools write. Every rule
+            maps to a CWE, and the messages tell Claude, Cursor or Copilot how to
+            fix it. Runs on ESLint 8–10 and Oxlint.
           </p>
           {(stars !== undefined || downloads !== undefined) && (
             <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-sm">

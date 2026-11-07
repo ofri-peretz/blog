@@ -41,8 +41,15 @@ const PROJECTS: { name: string; url: string; summary: string }[] = [
     url: "https://github.com/ofri-peretz/burgee",
     summary:
       "agent-native CLI framework, drop-in for commander and yargs; one " +
-      "declaration → help, --json, --schema, MCP, completions; nine " +
-      "packages, zero external dependencies. Docs: https://burgee.interlace.tools",
+      "declaration → help, --json, --schema, MCP, completions; zero " +
+      "external dependencies. Docs: https://burgee.interlace.tools",
+  },
+  {
+    name: "oxmutate",
+    url: "https://oxmutate.interlace.tools",
+    summary:
+      "mutation testing for JavaScript and TypeScript; agrees with Stryker on " +
+      "99.9% of mutants and hands an agent 326 bytes per surviving mutant instead of 4,094",
   },
   {
     name: "Interlace Serverless",

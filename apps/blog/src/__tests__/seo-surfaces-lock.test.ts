@@ -94,6 +94,9 @@ describe("llms.txt projects", () => {
     );
     expect(projects).toContain("https://burgee.interlace.tools");
     expect(projects).toMatch(/drop-in for commander and yargs/);
+    expect(projects).toContain(
+      "[oxmutate](https://oxmutate.interlace.tools)",
+    );
   });
 
   it("keeps the article index it had before", async () => {
