@@ -1,81 +1,81 @@
 {
-  "generatedAt": "2026-11-06",
+  "generatedAt": "2026-11-09",
   "plugins": {
     "eslint-plugin-secure-coding": {
-      "version": "5.6.5",
-      "weeklyDownloads": 7695
+      "version": "6.0.2",
+      "weeklyDownloads": 6758
     },
     "eslint-plugin-browser-security": {
-      "version": "2.2.3",
-      "weeklyDownloads": 4521
+      "version": "3.0.1",
+      "weeklyDownloads": 4480
     },
     "eslint-plugin-node-security": {
-      "version": "5.8.4",
-      "weeklyDownloads": 5564
+      "version": "6.0.3",
+      "weeklyDownloads": 5807
     },
     "eslint-plugin-jwt": {
       "version": "2.2.14",
-      "weeklyDownloads": 119
+      "weeklyDownloads": 152
     },
     "eslint-plugin-express-security": {
-      "version": "3.3.2",
-      "weeklyDownloads": 3074
+      "version": "4.0.1",
+      "weeklyDownloads": 3290
     },
     "eslint-plugin-lambda-security": {
-      "version": "2.2.2",
-      "weeklyDownloads": 1656
+      "version": "3.0.1",
+      "weeklyDownloads": 1883
     },
     "eslint-plugin-mongodb-security": {
-      "version": "9.2.2",
-      "weeklyDownloads": 1654
+      "version": "10.0.1",
+      "weeklyDownloads": 1864
     },
     "eslint-plugin-nestjs-security": {
-      "version": "3.2.2",
-      "weeklyDownloads": 12715
+      "version": "4.0.1",
+      "weeklyDownloads": 13104
     },
     "eslint-plugin-vercel-ai-security": {
-      "version": "2.4.1",
-      "weeklyDownloads": 2547
+      "version": "3.0.2",
+      "weeklyDownloads": 2935
     },
     "eslint-plugin-pg": {
       "version": "1.4.14",
-      "weeklyDownloads": 100
+      "weeklyDownloads": 116
     },
     "eslint-plugin-maintainability": {
-      "version": "3.3.1",
-      "weeklyDownloads": 1747
+      "version": "4.0.1",
+      "weeklyDownloads": 1983
     },
     "eslint-plugin-reliability": {
-      "version": "4.2.1",
-      "weeklyDownloads": 1327
+      "version": "5.0.1",
+      "weeklyDownloads": 1651
     },
     "eslint-plugin-modernization": {
-      "version": "3.2.1",
-      "weeklyDownloads": 1294
+      "version": "4.0.1",
+      "weeklyDownloads": 1667
     },
     "eslint-plugin-conventions": {
-      "version": "6.1.1",
-      "weeklyDownloads": 1366
+      "version": "7.0.1",
+      "weeklyDownloads": 1764
     },
     "eslint-plugin-modularity": {
-      "version": "2.6.1",
-      "weeklyDownloads": 1194
+      "version": "3.0.1",
+      "weeklyDownloads": 1577
     },
     "eslint-plugin-operability": {
-      "version": "4.2.1",
-      "weeklyDownloads": 1335
+      "version": "5.0.1",
+      "weeklyDownloads": 1690
     },
     "eslint-plugin-react-a11y": {
-      "version": "2.6.1",
-      "weeklyDownloads": 2593
+      "version": "3.0.1",
+      "weeklyDownloads": 3092
     },
     "eslint-plugin-react-features": {
-      "version": "1.8.1",
-      "weeklyDownloads": 1643
+      "version": "2.0.1",
+      "weeklyDownloads": 1845
     },
     "eslint-plugin-import-next": {
-      "version": "2.9.4",
-      "weeklyDownloads": 4214
+      "version": "3.0.1",
+      "weeklyDownloads": 4968
     }
   }
 }
