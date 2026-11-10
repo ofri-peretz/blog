@@ -19,6 +19,12 @@
  *
  * Silent no-op without a token, so local `next dev`, forks, and preview builds
  * behave exactly as they do today.
+ *
+ * Also a no-op when `OTEL_SDK_DISABLED=true` (the standard OTel switch). The
+ * build always carries the committed fallback token, so without this switch
+ * CI's `next start` exports spans to the production project as `service.name
+ * = blog`. CI has no Supabase credentials, so /api/homepage-stats answers 503
+ * there by design, and those 503s read as a production error rate.
  */
 import { SeverityNumber, logs } from '@opentelemetry/api-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
@@ -58,6 +64,7 @@ export let loggerProvider: LoggerProvider | undefined;
 
 export function register(): void {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  if (process.env.OTEL_SDK_DISABLED?.trim().toLowerCase() === 'true') return;
 
   const token = projectToken();
   if (!token) return;
