@@ -8,10 +8,11 @@
 //   4. EngagementGrid     — how the world responds.
 //
 // Each section is a separate async server component with its own `await`s
-// against the cached scorecard fetchers from @interlace/docs-baseline. Reads
-// dedupe across sections (`react/cache`), so we still hit Supabase at most
-// once per view per render — but each `<Suspense>` boundary streams in as
-// soon as ITS data resolves. No section is ever blocked by another.
+// against the cached scorecard fetchers in @/lib/scorecard-cache. Reads
+// dedupe across sections (`react/cache`) and across requests (Vercel Data
+// Cache, tag `ratchet`), so a warm request does not hit Supabase at all —
+// and each `<Suspense>` boundary streams in as soon as ITS data resolves.
+// No section is ever blocked by another.
 //
 // Skeletons are shape-matched so the swap-in is zero-CLS. They live in
 // @interlace/docs-baseline so every consumer (blog, future apps) reuses
@@ -67,14 +68,14 @@ import {
   getCachedTrends,
   getCachedAnomalies,
   getCachedNorthStarHistory,
-} from "#interlace/lib/scorecard-data";
+} from "@/lib/scorecard-cache";
 import { getCachedGitHubStats } from "@/lib/github-live-stats";
 
 // Render per-request, not at build time. The fetchers throw when
 // SUPABASE_URL / SUPABASE_ANON_KEY are missing, so we can't safely
 // statically prerender in environments (CI, local) where the env may be
-// absent. Vercel's edge layer still caches each rendered response;
-// regeneration happens on the next visit after the cache expires.
+// absent. The render is per-request, so the Supabase reads behind it must
+// be cached across requests — see @/lib/scorecard-cache.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
