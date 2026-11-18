@@ -48,6 +48,7 @@ function loadPlugin(ns) {
 
 function loadTsParser() {
   try {
+    // eslint-disable-next-line import-next/no-extraneous-dependencies -- optional, inside try/catch; provided by eslint-config-next's typescript-eslint
     return require("@typescript-eslint/parser");
   } catch {
     return null;

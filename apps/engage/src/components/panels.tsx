@@ -315,6 +315,7 @@ export function Threads({
   return (
     <article
       onMouseDown={onFocus}
+      // eslint-disable-next-line react-features/no-unknown-property -- onFocusCapture is React's capture-phase onFocus (ofri-peretz/eslint#1568)
       onFocusCapture={onFocus}
       className={`rounded-xl border bg-[var(--card)] p-6 ${focused ? "border-[var(--primary)]" : "border-[var(--border)]"}`}
     >

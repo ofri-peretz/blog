@@ -20,13 +20,13 @@ import nextTs from "eslint-config-next/typescript";
 import { configs as browserSecurityCfg } from "eslint-plugin-browser-security";
 import { configs as conventionsCfg } from "eslint-plugin-conventions";
 import { configs as importNextCfg } from "eslint-plugin-import-next";
-import maintainability from "eslint-plugin-maintainability";
+import { configs as maintainabilityCfg } from "eslint-plugin-maintainability";
 import { configs as modernizationCfg } from "eslint-plugin-modernization";
 import { configs as modularityCfg } from "eslint-plugin-modularity";
 import { configs as nodeSecurityCfg } from "eslint-plugin-node-security";
-import operability from "eslint-plugin-operability";
+import { configs as operabilityCfg } from "eslint-plugin-operability";
 import { configs as reactA11yCfg } from "eslint-plugin-react-a11y";
-import reactFeatures from "eslint-plugin-react-features";
+import { configs as reactFeaturesCfg } from "eslint-plugin-react-features";
 import { configs as reliabilityCfg } from "eslint-plugin-reliability";
 import { configs as secureCodingCfg } from "eslint-plugin-secure-coding";
 import { defineConfig, globalIgnores } from "eslint/config";
@@ -62,39 +62,13 @@ const eslintConfig = defineConfig([
     files: ["**/*.tsx"],
   },
 
-  // ── Hand-wired: maintainability + operability (broken published recommended)
-  {
-    plugins: { maintainability, operability },
-    rules: {
-      "maintainability/cognitive-complexity": "warn",
-      "maintainability/identical-functions": "warn",
-      "maintainability/max-parameters": "warn",
-      "operability/no-console-log": "warn",
-      "operability/no-debug-code-in-production": "error",
-      "operability/no-verbose-error-messages": "warn",
-    },
-  },
+  maintainabilityCfg.recommended,
+  operabilityCfg.recommended,
 
-  // ── Hand-wired: react-features (broken published recommended), TSX only ────
-  {
-    files: ["**/*.tsx"],
-    plugins: { "react-features": reactFeatures },
-    rules: {
-      "react-features/jsx-key": "error",
-      "react-features/no-children-prop": "warn",
-      "react-features/no-danger": "warn",
-      "react-features/no-string-refs": "error",
-      "react-features/no-unknown-property": "warn",
-      "react-features/hooks-exhaustive-deps": "warn",
-      "react-features/jsx-no-target-blank": "error",
-      "react-features/jsx-no-script-url": "error",
-      "react-features/jsx-no-duplicate-props": "error",
-      "react-features/no-danger-with-children": "error",
-      "react-features/no-deprecated": "warn",
-      "react-features/no-unnecessary-rerenders": "warn",
-      "react-features/react-render-optimization": "warn",
-    },
-  },
+  // react-features: the recommended React rules, plus the componentApi floor
+  // (data-slot, no inline style, no raw colours …), both TSX only.
+  { ...reactFeaturesCfg.recommended, files: ["**/*.tsx"] },
+  { ...reactFeaturesCfg.componentApi, files: ["**/*.tsx"] },
 
   // ── Baseline (non-blocking) ───────────────────────────────────────────────
   // First lint of a 152-file app that had never been linted: 5,614 findings,
@@ -121,55 +95,33 @@ const eslintConfig = defineConfig([
       "secure-coding/no-improper-sanitization": "warn",
       // 12
       "browser-security/no-clickjacking": "warn",
-      /*
-       * 5 — SUSPECTED FALSE POSITIVE, not a finding. Every one is a numeric
-       * `reduce` accumulator: `pairs.reduce((s, p) => s + p[0], 0)` inside
-       * `pearson()`, a correlation coefficient. There is no XPath, no XML and
-       * no sink call anywhere near them, and the rule reports CVSS 9.8.
-       *
-       * Baselined rather than disabled so it stays visible, and filed against
-       * the plugin with the exact lines. If it is confirmed a bug, this entry
-       * disappears with the fix rather than being silently kept.
-       */
-      "secure-coding/no-xpath-injection": "warn",
+      // Was 5 false positives on numeric `reduce` accumulators in pearson();
+      // 0 on secure-coding 6, so back to error.
+      "secure-coding/no-xpath-injection": "error",
     },
   },
 
   // ── The last fifteen, each named ─────────────────────────────────────────
-  // Small enough to list, so none of them hides in a count. Three are
-  // suspected false positives and are filed as such; the rest are real and
-  // are the ratchet's first targets.
+  // Small enough to list, so none of them hides in a count. The three that
+  // were false positives report nothing on the current majors and are back at
+  // error; the rest are real and are the ratchet's first targets.
   {
     rules: {
-      /*
-       * REAL, and accepted for now. `api/spawn/route.ts` shells out via
-       * `execFileSync("osascript", [...])` to open a Claude session from the
-       * board. engage is LOCAL-ONLY — no Vercel project, no vercel.json, in
-       * no deploy workflow — and the route takes its repo from a fixed
-       * allowlist and passes argv rather than a shell string. If engage is
-       * ever deployed, this becomes remote code execution and must be gated
-       * on the environment first.
-       */
-      "node-security/detect-child-process": "warn",
+      // 0 on node-security 6: `api/spawn/route.ts` passes argv to execFileSync
+      // from a fixed allowlist, which the rule now accepts. engage is LOCAL-ONLY;
+      // if it is ever deployed, that route must be gated on the environment first.
+      "node-security/detect-child-process": "error",
       /*
        * REAL. Two `existsSync` → read races in control-bands.mjs and
        * prs/update. Local tooling, low consequence, worth fixing.
        */
       "node-security/no-toctou-vulnerability": "warn",
-      /*
-       * SUSPECTED FALSE POSITIVE. Both hits are `http://` inside a STRING in
-       * a node script — control-bands.mjs and smoke.mjs — not a resource a
-       * browser loads. "Mixed content" is a browser concept and these files
-       * never reach one.
-       */
-      "browser-security/detect-mixed-content": "warn",
-      /*
-       * SUSPECTED FALSE POSITIVE. `queue/page.tsx` line 16 is
-       * `const TONE: Record<Gate, string> = { pass: "text-[var(--success)]" }`
-       * — a Tailwind class map. The rule appears to match the KEY `pass` as
-       * in password, and reports CVSS 9.8 on a colour token.
-       */
-      "secure-coding/no-hardcoded-credentials": "warn",
+      // Was 2 false positives on `http://` strings in node scripts; 0 on
+      // browser-security 3, so back to error.
+      "browser-security/detect-mixed-content": "error",
+      // Was a false positive on the Tailwind class map key `pass`; 0 on
+      // secure-coding 6, so back to error.
+      "secure-coding/no-hardcoded-credentials": "error",
       /*
        * REAL. `require("node:sqlite")` in an ESM route, deliberate because
        * the module is still experimental — worth a comment and a disable at
@@ -204,9 +156,9 @@ const eslintConfig = defineConfig([
       // 82 across three rules — GENUINE keyboard-accessibility bugs: click
       // handlers with no key handler, interactive elements not focusable.
       // The highest-value group in this baseline and the first to ratchet.
-      "react-a11y/interactive-supports-focus": "warn",
+      "react-a11y/interactive-supports-focus": "error",
       "react-a11y/click-events-have-key-events": "warn",
-      "react-a11y/role-supports-aria-props": "warn",
+      "react-a11y/role-supports-aria-props": "error",
       // 8
       "react-features/jsx-key": "warn",
       /*
@@ -225,6 +177,23 @@ const eslintConfig = defineConfig([
 
       // Two apostrophes in copy.
       "react/no-unescaped-entities": "warn",
+    },
+  },
+  // ── Current-major ratchet (2026-11-18) ───────────────────────────────────
+  {
+    rules: {
+      // `@/` is this app's tsconfig path alias, not a package (ofri-peretz/eslint#1551).
+      "import-next/no-extraneous-dependencies": [
+        "error",
+        { allowPatterns: ["^@/"] },
+      ],
+      // 38, every one a `catch { /* why */ }` with the reason written down. The
+      // rule's allowWithComment accepts only a fixed keyword list, so reasoned
+      // comments still report (ofri-peretz/eslint#1554). Held at warn until it ships.
+      "reliability/no-silent-errors": "warn",
+      // 5, real in the strict sense: overlapping quantifiers in regexes run over
+      // GitHub titles and PR bodies. Local-only tool, bounded input; fix one by one.
+      "secure-coding/no-redos-vulnerable-regex": "warn",
     },
   },
 ]);
