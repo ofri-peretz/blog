@@ -895,6 +895,7 @@ export default function Page() {
         ) : item ? (
           <article
             onMouseDown={() => setFocus("queue")}
+            // eslint-disable-next-line react-features/no-unknown-property -- onFocusCapture is React's capture-phase onFocus (ofri-peretz/eslint#1568)
             onFocusCapture={() => setFocus("queue")}
             className={`rounded-xl border bg-[var(--card)] p-6 ${focus === "queue" ? "border-[var(--primary)]" : "border-[var(--border)]"}`}
           >

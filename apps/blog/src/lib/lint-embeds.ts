@@ -65,7 +65,7 @@ export function verifySession(token, secret) {
     slug: "getting-started-eslint-plugin-node-security",
     title: "Try the plugin before you install it",
     invite:
-      "Three of the 42 rules, live — path traversal, command injection, and eval, all in one upload handler. Edit the code, or paste your own, and see exactly what a finding looks like before it ever reaches your CI.",
+      "Three of the 43 rules, live — path traversal, command injection, and eval, all in one upload handler. Edit the code, or paste your own, and see exactly what a finding looks like before it ever reaches your CI.",
     pluginId: "node-security",
     rules: {
       "node-security/detect-eval-with-expression": "error",

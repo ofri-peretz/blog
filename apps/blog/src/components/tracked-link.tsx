@@ -47,7 +47,7 @@ export function TrackedLink<N extends BlogEvent["name"]>({
     // focusable by definition — but the rules can't see through the
     // component boundary. The plain-<a> branch above is (correctly) not
     // flagged, which is the proof of the FP.
-    // eslint-disable-next-line react-a11y/click-events-have-key-events, react-a11y/interactive-supports-focus
+    // eslint-disable-next-line react-a11y/click-events-have-key-events
     <Link href={href} className={className} onClick={onClick} {...rest}>
       {children}
     </Link>
