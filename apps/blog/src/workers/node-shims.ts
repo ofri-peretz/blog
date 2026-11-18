@@ -23,5 +23,5 @@ export const readFileSync = noop,
   tmpdir = noop,
   inspect = noop,
   format = noop,
-  createRequire = noop,
+  createRequire = () => noop,
   EOL = "\n";
