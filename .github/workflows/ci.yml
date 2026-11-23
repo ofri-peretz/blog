@@ -121,6 +121,7 @@ jobs:
           # on a bot's dispatch run; empty on push, where turbo falls back to
           # its default.
           TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || (github.event_name == 'workflow_dispatch' && 'origin/main') || '' }}
+      - run: npm run lint:guidance
 
   oxlint:
     runs-on: ubuntu-latest

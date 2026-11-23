@@ -1,0 +1,12 @@
+{
+  ".claude/skills/write-an-article/SKILL.md": {
+    "conventions/enforced-rule-in-prose": {
+      "count": 1
+    }
+  },
+  "CLAUDE.md": {
+    "conventions/enforced-rule-in-prose": {
+      "count": 1
+    }
+  }
+}

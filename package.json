@@ -27,11 +27,15 @@
     "sdlc:new": "node scripts/sdlc/new.mjs",
     "prepare": "[ -d .git ] && lefthook install || true",
     "hook:staged": "sh scripts/hook-staged.sh",
-    "hook:verify": "turbo run lint test --output-logs=errors-only"
+    "hook:verify": "turbo run lint test --output-logs=errors-only && npm run lint:guidance",
+    "lint:guidance": "eslint --config eslint.guidance.config.mjs --no-warn-ignored --suppressions-location .guidance-suppressions.json ."
   },
   "devDependencies": {
     "@commitlint/cli": "20.5.3",
     "@commitlint/config-conventional": "20.5.3",
+    "@eslint/markdown": "7.5.1",
+    "eslint": "9.39.5",
+    "eslint-plugin-conventions": "7.1.0",
     "lefthook": "2.2.2",
     "prettier": "^3.5.3",
     "turbo": "^2.5.0"
