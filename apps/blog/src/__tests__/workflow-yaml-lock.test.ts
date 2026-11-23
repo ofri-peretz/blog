@@ -79,6 +79,17 @@ describe("workflow YAML", () => {
       const jobs = doc?.jobs ?? {};
       expect(Object.keys(jobs).length, `${file}: no jobs`).toBeGreaterThan(0);
       for (const [name, job] of Object.entries<Record<string, unknown>>(jobs)) {
+        // A job that calls a reusable workflow (`uses: owner/repo/.github/workflows/x.yml@ref`)
+        // has its steps in the called file, and GitHub refuses `steps` beside `uses`.
+        if (typeof job.uses === "string") {
+          expect(
+            job.uses,
+            `${file}: job "${name}" calls no workflow file`,
+          ).toMatch(
+            /^[\w.-]+\/[\w.-]+\/\.github\/workflows\/[\w.-]+\.ya?ml@\S+$/,
+          );
+          continue;
+        }
         const steps = job.steps as unknown[] | undefined;
         expect(
           Array.isArray(steps) && steps.length > 0,
