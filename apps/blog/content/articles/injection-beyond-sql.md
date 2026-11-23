@@ -2,7 +2,7 @@
 title: "Everyone Greps for SQL Injection. Nobody Greps for the Other Eight."
 description: "SQL injection has a name everyone knows. Eight more injections aim the same defect at parsers nobody audits: GraphQL, LDAP, XPath, XXE, template and more."
 slug: "injection-beyond-sql"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/injection-beyond-sql"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/injection-beyond-sql.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/injection-beyond-sql-og.jpg"
