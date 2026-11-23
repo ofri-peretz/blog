@@ -8,6 +8,7 @@ skill (frontmatter, framing, titles, numbers, components).
 Everything else is a check whose message names the fix: the quality ratchet
 (`sdlc-quality-lock.test.ts`), banned framing words (`sdlc-chain-lock.test.ts`), publish scope
 (`devto-publish-scope-lock.test.ts`), skipped hooks and CI polling (`.claude/hooks/guard-bash.mjs`).
+Commands: `npm run build|test|lint|format`; stage detectors: `npm run sdlc:detect`.
 
 ## The rule that matters most
 
