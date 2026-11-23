@@ -81,5 +81,5 @@ Which interpreter is live in your stack right now that you have never grepped fo
 More on how these classes get named and ranked: [the CWE taxonomy](/articles/cwe-taxonomy-explained) and [the OWASP Top 10](/articles/owasp-top-10-explained). I write these at [dev.to/ofri-peretz](https://dev.to/ofri-peretz).
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star the repo if you would rather your linter knew about the other eight interpreters too.
+The rules are in the repo, if you would rather your linter knew about the other eight interpreters too.
 ::
