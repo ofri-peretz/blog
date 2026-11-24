@@ -8,7 +8,8 @@ skill (frontmatter, framing, titles, numbers, components).
 
 Everything else is a check whose message names the fix: the quality ratchet
 (`sdlc-quality-lock.test.ts`), banned framing words (`sdlc-chain-lock.test.ts`), publish scope
-(`devto-publish-scope-lock.test.ts`), skipped hooks and CI polling (`.claude/hooks/guard-bash.mjs`).
+(`devto-publish-scope-lock.test.ts`), a published article's permalink fields
+(`.claude/hooks/freeze-identifiers.mjs`), skipped hooks and CI polling (`.claude/hooks/guard-bash.mjs`).
 Commands: `npm run build|test|lint|format`; stage detectors: `npm run sdlc:detect`.
 
 ## The rule that matters most
@@ -16,12 +17,6 @@ Commands: `npm run build|test|lint|format`; stage detectors: `npm run sdlc:detec
 **Nothing publishes below 9.5 on all five review lenses.** If a draft cannot reach the floor,
 rewrite it or pick a different article. Do not ship it and do not argue the score down.
 (judgment: the lock checks the block exists, not that the scores are honest)
-
-## Frozen identifiers
-
-Once an article has a `devto_id`, `slug · devto_id · devto_url · canonical_url · cover_image ·
-social_image` never change. dev.to permalinks cannot be renamed; retitling changes `title` and
-the body only. `.claude/hooks/freeze-identifiers.mjs` blocks these edits.
 
 ## Shipping
 
