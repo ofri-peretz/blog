@@ -2,8 +2,11 @@
 title: "Six Rules Found Nothing. Only Five of Them Were Waiting."
 description: "A lint rule sitting at zero is one of three different things, and reading the rule list will not tell you which. Asking each rule to fire on its own test fixture takes ten seconds — and on six silent rules it found one that could never have fired at all."
 slug: "zero-yield-rules-dead-or-waiting"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/zero-yield-rules-dead-or-waiting"
+devto_url: "https://dev.to/ofri-peretz/six-rules-found-nothing-only-five-of-them-were-waiting-2h1a"
+devto_id: 4854730
+published_at: "2026-10-15T07:28:49Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/zero-yield-rules-dead-or-waiting.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/zero-yield-rules-dead-or-waiting-og.jpg"
 tier: "T3"

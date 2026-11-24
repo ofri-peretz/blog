@@ -2,8 +2,11 @@
 title: "My Plugin Has 14 Rules. Two of Them Found 60% of Everything."
 description: "I pointed my own React plugin at a public codebase and counted per rule. 308 findings, and two rules produced 184 of them. Six rules produced nothing at all — and the reason that is not a bug is the whole article."
 slug: "rule-yield-distribution-own-plugin"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/rule-yield-distribution-own-plugin"
+devto_url: "https://dev.to/ofri-peretz/my-plugin-has-14-rules-two-of-them-found-60-of-everything-o3j"
+devto_id: 4939680
+published_at: "2026-10-29T08:43:29Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/rule-yield-distribution-own-plugin.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/rule-yield-distribution-own-plugin-og.jpg"
 tier: "T3"
