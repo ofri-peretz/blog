@@ -1,7 +1,8 @@
 # CLAUDE.md — agent context for ofri-peretz/blog
 
 This repo is the **canonical, public** home of the blog. `agents/apps/blog/` and the archived
-`ofriperetz-dev` repo hold legacy copies: **never edit articles there**. The lifecycle is
+`ofriperetz-dev` repo hold legacy copies (agents' `legacy-blog-articles` pre-commit hook
+refuses edits there). The lifecycle is
 [sdlc/README.md](./sdlc/README.md); writing or editing an article loads the `write-an-article`
 skill (frontmatter, framing, titles, numbers, components).
 

@@ -50,16 +50,9 @@ Every numeric claim comes from `sdlc/spec/<slug>.md`, with the command that
 produced it. The five recurring fabrication classes are listed in
 [REVIEW.md](../../../REVIEW.md) pass 1 — read them before writing, not after.
 
-Rule counts specifically: `node scripts/sdlc/pkg-rule-count.mjs <package>[@version]` counts
-from a clean install of the published package. By hand:
-
-```bash
-node -p "Object.keys(require('eslint-plugin-<name>').rules).length"
-```
-
-Never `ls src/rules/` (counts helpers and `__tests__`), never `grep -v index`
-(silently drops rules whose names contain "index", e.g.
-`no-sensitive-indexeddb`).
+Rule counts: `node scripts/sdlc/pkg-rule-count.mjs <package>[@version]` counts from a clean
+install of the published package; `sdlc-chain-lock.test.ts` rejects a spec that counted any
+other way.
 
 ## Components available in article markdown
 
