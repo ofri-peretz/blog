@@ -2,8 +2,11 @@
 title: "Rename the Variable, Change the Security Verdict"
 description: "One of my own rules flags a Zod schema containing no XPath, and stays silent on textbook XPath injection. Both come from the same heuristic: it decides whether a value is attacker-controlled by substring-matching the variable's name."
 slug: "rule-that-reads-variable-names"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/rule-that-reads-variable-names"
+devto_url: "https://dev.to/ofri-peretz/rename-the-variable-change-the-security-verdict-5a25"
+devto_id: 4876191
+published_at: "2026-10-19T07:36:46Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/rule-that-reads-variable-names.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/rule-that-reads-variable-names-og.jpg"
 tier: "T3"
@@ -131,7 +134,7 @@ the predicate is in
 Both are open, which is the only reason this article can be specific.
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star the repo if you would rather find your linter's blind spots in an article than in an incident.
+The rules are in the repo, if you would rather find your linter's blind spots in an article than in an incident.
 ::
 
 _[eslint-plugin-secure-coding](https://www.npmjs.com/package/eslint-plugin-secure-coding) is part of the [Interlace ESLint ecosystem](https://eslint.interlace.tools). Source on [GitHub](https://github.com/ofri-peretz/eslint) · Follow: [Dev.to/ofri-peretz](https://dev.to/ofri-peretz)_

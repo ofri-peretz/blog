@@ -2,8 +2,11 @@
 title: "The Most Precise Plugin in My Benchmark Scored 10.8%"
 description: "Six ESLint security plugins, one labelled corpus, same harness, same day — F1 from 10.5% to 100%. I wrote the corpus, which is the most important sentence in the article and changes how every row should be read."
 slug: "labelled-corpus-f1-leaderboard"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/labelled-corpus-f1-leaderboard"
+devto_url: "https://dev.to/ofri-peretz/the-most-precise-plugin-in-my-benchmark-scored-108-p64"
+devto_id: 4992513
+published_at: "2026-11-07T07:59:36Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/labelled-corpus-f1-leaderboard.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/labelled-corpus-f1-leaderboard-og.jpg"
 tier: "T2"
