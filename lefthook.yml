@@ -5,6 +5,9 @@
 #   commit-msg  commitlint
 #   pre-commit  npm run hook:staged -- <staged files>   eslint + oxlint on the staged files, per app
 #   pre-push    npm run hook:verify                     turbo lint + test (the locks)
+#   pre-push    npm run hook:test-integrity             truepass diff --base origin/main: an assertion
+#                                                       moved to a weaker matcher, or a snapshot changed
+#                                                       with no `Snapshot: <why>` commit line, fails
 remotes:
   - git_url: https://github.com/ofri-peretz/burgee
     ref: hookset@0.3.0
