@@ -6,10 +6,7 @@ refuses edits there). The lifecycle is
 [sdlc/README.md](./sdlc/README.md); writing or editing an article loads the `write-an-article`
 skill (frontmatter, framing, titles, numbers, components).
 
-Everything else is a check whose message names the fix: the quality ratchet
-(`sdlc-quality-lock.test.ts`), banned framing words (`sdlc-chain-lock.test.ts`), publish scope
-(`devto-publish-scope-lock.test.ts`), a published article's permalink fields
-(`.claude/hooks/freeze-identifiers.mjs`), skipped hooks and CI polling (`.claude/hooks/guard-bash.mjs`).
+Everything else is a check whose message names the fix.
 Commands: `npm run build|test|lint|format`; stage detectors: `npm run sdlc:detect`.
 
 ## The rule that matters most
