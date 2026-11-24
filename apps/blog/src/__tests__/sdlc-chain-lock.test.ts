@@ -63,6 +63,10 @@ function markdownIn(dir: string) {
     });
 }
 
+/** Rule-count commands that have shipped wrong numbers (see scripts/sdlc/pkg-rule-count.mjs). */
+const RULE_COUNT_TRAPS =
+  /\bls\s+(?:\S+\/)?src\/rules\b|grep\s+-v\s+['"]?index\b/;
+
 const SEPARATOR_ROW = /^\|[\s|:-]+\|$/;
 // | claim | value | command | version | verified |
 const EVIDENCE_COLUMNS = 5;
@@ -212,6 +216,28 @@ describe("stage 2 — every number in a spec carries its command", () => {
         .map((c) => c.claim)
         .join(", ")}`,
     ).toEqual([]);
+
+    // A count (a value with a digit) from either has shipped wrong in articles: `ls src/rules/` counts
+    // helpers and __tests__, `grep -v index` drops rules like no-sensitive-indexeddb.
+    const miscounted = claims
+      .filter((c) => /\d/.test(c.value))
+      .filter((c) => RULE_COUNT_TRAPS.test(c.command));
+    expect(
+      miscounted.map((c) => c.claim),
+      `${spec.name}: count rules with \`node scripts/sdlc/pkg-rule-count.mjs <package>\`, not ls src/rules or grep -v index`,
+    ).toEqual([]);
+  });
+
+  it("the rule-count trap check is live", () => {
+    expect(RULE_COUNT_TRAPS.test("ls src/rules/ | wc -l")).toBe(true);
+    expect(RULE_COUNT_TRAPS.test("ls src/rules | grep -v index | wc -l")).toBe(
+      true,
+    );
+    expect(
+      RULE_COUNT_TRAPS.test(
+        "node -p \"Object.keys(require('eslint-plugin-pg').rules).length\"",
+      ),
+    ).toBe(false);
   });
 });
 
