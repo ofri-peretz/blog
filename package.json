@@ -31,7 +31,7 @@
     "hook:verify": "turbo run lint test --output-logs=errors-only && npm run lint:guidance",
     "lint:guidance": "eslint --config eslint.guidance.config.mjs --no-warn-ignored --suppressions-location .guidance-suppressions.json .",
     "hook:provedone": "provedone gate --mode enforce",
-    "hook:triggerlist": "git cat-file -e origin/main:.sdlc/checklist.yaml 2>/dev/null || { echo 'triggerlist: no checklist on origin/main yet, protect skipped'; exit 0; }; triggerlist protect origin/main"
+    "hook:triggerlist": "triggerlist protect origin/main"
   },
   "devDependencies": {
     "@commitlint/cli": "20.5.3",
@@ -41,8 +41,8 @@
     "eslint-plugin-conventions": "7.1.0",
     "lefthook": "2.2.2",
     "prettier": "^3.5.3",
-    "provedone": "0.3.1",
-    "triggerlist": "0.3.0",
+    "provedone": "1.0.0",
+    "triggerlist": "1.0.0",
     "truepass": "1.0.0",
     "turbo": "^2.5.0"
   },
