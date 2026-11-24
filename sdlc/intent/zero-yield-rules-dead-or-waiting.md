@@ -2,7 +2,7 @@
 id: I-18
 slug: zero-yield-rules-dead-or-waiting
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-07
 opened_by: claude
