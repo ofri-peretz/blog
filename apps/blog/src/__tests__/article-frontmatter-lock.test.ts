@@ -69,5 +69,4 @@ describe("article frontmatter", () => {
       `scored articles missing required frontmatter:\n  ${offenders.join("\n  ")}`,
     ).toEqual([]);
   });
-
 });
