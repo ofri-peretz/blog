@@ -97,8 +97,7 @@ if (changed.length) {
         .join("\n") +
       `\n\ndev.to permalinks cannot be renamed — changing one 404s every inbound ` +
       `link.\nTo retitle, change the frontmatter \`title\` and the body only. A ` +
-      `stale number\ninside a slug is accepted debt, not a bug to fix.\n` +
-      `See CLAUDE.md > "Frozen identifiers".\n`,
+      `stale number\ninside a slug is accepted debt, not a bug to fix.\n`,
   );
 }
 

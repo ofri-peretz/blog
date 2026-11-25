@@ -9,11 +9,6 @@
  * row collection, the fence/idempotency guarantees, and the heading/jump-nav
  * strip.
  */
-/* eslint-disable conventions/utm-taxonomy --
- * utm_source=devto is load-bearing: the /go/ resolver routes by
- * short_links.platforms[utm_source] and the whole pipeline standardized on
- * 'devto'. The taxonomy's 'dev_to' is the outlier, reconciled in
- * UTM_PHILOSOPHY.md, not here. */
 import { describe, expect, it } from "vitest";
 
 import {

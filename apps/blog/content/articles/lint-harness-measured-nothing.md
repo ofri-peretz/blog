@@ -2,8 +2,11 @@
 title: "My Harness Reported 0 Findings on 100 Files. All 100 Were Ignored."
 description: "Three separate mechanisms make an ESLint run report zero while reading nothing — and every one of them exits 0 with an empty stderr. A clean bill of health and a file nobody opened are the same output."
 slug: "lint-harness-measured-nothing"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/lint-harness-measured-nothing"
+devto_url: "https://dev.to/ofri-peretz/my-harness-reported-0-findings-on-100-files-all-100-were-ignored-1okn"
+devto_id: 4965984
+published_at: "2026-11-03T02:15:06Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/lint-harness-measured-nothing.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/lint-harness-measured-nothing-og.jpg"
 tier: "T2"

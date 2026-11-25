@@ -12,12 +12,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- a few casts feed
  * deliberately malformed params (undefined key, non-date expiry) to exercise
  * fallback branches that the types otherwise forbid. */
-/* eslint-disable conventions/utm-taxonomy --
- * utm_source="devto" is load-bearing, not a free choice: the /go/ handler
- * routes on short_links.platforms[utm_source] and the whole pipeline
- * standardized on 'devto'. The taxonomy's 'dev_to' is the outlier and needs
- * reconciling in UTM_PHILOSOPHY.md, not here (same rationale as the sibling
- * devto-link-transforms.test.ts). */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -781,17 +775,9 @@ describe("resolveIngestHost — the guard that ended the 20-day outage", () => {
     expect(resolveIngestHost("https://eu.i.posthog.com")).toBe(
       "https://eu.i.posthog.com",
     );
-    /* eslint-disable browser-security/detect-mixed-content --
-     * Our own rule, and a true positive in browser code: an http:// asset on
-     * an https:// page IS mixed content. This is a SERVER-side ingest origin
-     * — no page, no browser, no mixed-content context — and http://localhost
-     * is the legitimate shape for a self-hosted PostHog in local dev, which
-     * is precisely the branch being asserted. Narrowing the guard to https
-     * would break that case to satisfy a rule that does not apply here. */
     expect(resolveIngestHost("http://localhost:8000")).toBe(
       "http://localhost:8000",
     );
-    /* eslint-enable browser-security/detect-mixed-content */
   });
 
   it("strips a trailing slash, which would post to //i/v0/e/", () => {

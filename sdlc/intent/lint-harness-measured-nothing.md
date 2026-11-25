@@ -2,7 +2,7 @@
 id: I-19
 slug: lint-harness-measured-nothing
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-07
 opened_by: claude

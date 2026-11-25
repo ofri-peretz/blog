@@ -4,17 +4,12 @@ import nextTs from "eslint-config-next/typescript";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Interlace ecosystem — à-la-carte dogfooding. Each plugin is wired separately
-// via its OWN `recommended` preset (NOT the @interlace/eslint-config meta-config).
-//
-// Nine plugins expose a working flat `configs.recommended` that we spread as-is:
-//   security: browser-security, secure-coding, node-security
-//   quality:  conventions, import-next, modernization, modularity, reliability
-//   a11y:     react-a11y (scoped to **/*.tsx)
-//
-// Three plugins ship a BROKEN `recommended` on npm (doubled-namespace /
-// categorized rule names flat-config can't resolve), so they are hand-wired
-// below with explicit flat rule names:
-//   maintainability, operability (default imports), react-features (TSX only).
+// via its OWN `recommended` preset (NOT the @interlace/eslint-config meta-config),
+// on the current majors, where every preset loads as published:
+//   security — browser-security, secure-coding, node-security
+//   quality —  conventions, import-next, maintainability, modernization,
+//             modularity, operability, reliability
+//   react —    react-a11y, react-features (+ componentApi), TSX only
 // ────────────────────────────────────────────────────────────────────────────
 import { configs as browserSecurityCfg } from "eslint-plugin-browser-security";
 import { configs as secureCodingCfg } from "eslint-plugin-secure-coding";
@@ -25,20 +20,11 @@ import { configs as modernizationCfg } from "eslint-plugin-modernization";
 import { configs as modularityCfg } from "eslint-plugin-modularity";
 import { configs as reliabilityCfg } from "eslint-plugin-reliability";
 import { configs as reactA11yCfg } from "eslint-plugin-react-a11y";
-import maintainability from "eslint-plugin-maintainability";
-import operability from "eslint-plugin-operability";
-import reactFeatures from "eslint-plugin-react-features";
+import { configs as maintainabilityCfg } from "eslint-plugin-maintainability";
+import { configs as operabilityCfg } from "eslint-plugin-operability";
+import { configs as reactFeaturesCfg } from "eslint-plugin-react-features";
+import { configs as truepass } from "truepass/eslint";
 
-/**
- * STR-1 status: `eslint-plugin-react-features` `componentApi` preset is
- * NOT wired here yet — the rules (R5/R6/R8/R11/R12/R18/R19) ship in the
- * local `eslint/` monorepo's `dist/` but the published npm v1.1.4 does
- * not yet expose them. Re-enable after the plugin publishes the
- * `componentApi/*` rules.
- *
- * Regression coverage in the meantime: `src/__tests__/interlace-floor-lock.test.ts`
- * runs the same grep-based checks at test time.
- */
 const eslintConfig = defineConfig([
   // ── Next.js (KEEP FIRST) ──────────────────────────────────────────────────
   ...nextVitals,
@@ -79,39 +65,13 @@ const eslintConfig = defineConfig([
     files: ["**/*.tsx"],
   },
 
-  // ── Hand-wired: maintainability + operability (broken published recommended)
-  {
-    plugins: { maintainability, operability },
-    rules: {
-      "maintainability/cognitive-complexity": "warn",
-      "maintainability/identical-functions": "warn",
-      "maintainability/max-parameters": "warn",
-      "operability/no-console-log": "warn",
-      "operability/no-debug-code-in-production": "error",
-      "operability/no-verbose-error-messages": "warn",
-    },
-  },
+  maintainabilityCfg.recommended,
+  operabilityCfg.recommended,
 
-  // ── Hand-wired: react-features (broken published recommended), TSX only ────
-  {
-    files: ["**/*.tsx"],
-    plugins: { "react-features": reactFeatures },
-    rules: {
-      "react-features/jsx-key": "error",
-      "react-features/no-children-prop": "warn",
-      "react-features/no-danger": "warn",
-      "react-features/no-string-refs": "error",
-      "react-features/no-unknown-property": "warn",
-      "react-features/hooks-exhaustive-deps": "warn",
-      "react-features/jsx-no-target-blank": "error",
-      "react-features/jsx-no-script-url": "error",
-      "react-features/jsx-no-duplicate-props": "error",
-      "react-features/no-danger-with-children": "error",
-      "react-features/no-deprecated": "warn",
-      "react-features/no-unnecessary-rerenders": "warn",
-      "react-features/react-render-optimization": "warn",
-    },
-  },
+  // react-features: the recommended React rules, plus the componentApi floor
+  // (data-slot, no inline style, no raw colours …), both TSX only.
+  { ...reactFeaturesCfg.recommended, files: ["**/*.tsx"] },
+  { ...reactFeaturesCfg.componentApi, files: ["**/*.tsx"] },
 
   // ── Baseline (non-blocking) ───────────────────────────────────────────────
   // First-run Interlace backlog stays at `warn` so PRs aren't blocked on
@@ -121,16 +81,16 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "modularity/no-external-api-calls-in-utils": "warn",
-      "node-security/detect-non-literal-fs-filename": "warn",
-      "node-security/no-arbitrary-file-access": "warn",
-      "node-security/no-ssrf": "warn",
-      "operability/no-debug-code-in-production": "warn",
+      "node-security/detect-non-literal-fs-filename": "error",
+      "node-security/no-arbitrary-file-access": "error",
+      "node-security/no-ssrf": "error",
+      "operability/no-debug-code-in-production": "error",
       "reliability/require-network-timeout": "warn",
-      "secure-coding/no-ldap-injection": "warn",
+      "secure-coding/no-ldap-injection": "error",
       // Pre-existing: INSTALL_RE in markdown.ts uses negated char class flagged conservatively.
       "secure-coding/no-redos-vulnerable-regex": "warn",
       // Pre-existing: test file uses new RegExp(str) without escaping for dynamic pattern matching.
-      "secure-coding/no-unsafe-regex-construction": "warn",
+      "secure-coding/no-unsafe-regex-construction": "error",
       // Pre-existing: empty catch in scorecard/error.tsx (error boundary intentionally suppresses).
       "reliability/no-silent-errors": "warn",
       "conventions/no-raw-cross-property-href": "warn",
@@ -142,9 +102,20 @@ const eslintConfig = defineConfig([
   {
     files: ["**/*.tsx"],
     rules: {
-      "react-a11y/role-supports-aria-props": "warn",
+      "react-a11y/role-supports-aria-props": "error",
       "react-features/jsx-key": "warn",
     },
+  },
+
+  // ── truepass: tests that cannot pass by checking less ────────────────────
+  // A focused test, a skip with no reason, a fixed sleep or a retry fails lint,
+  // at error. Zero findings when it was turned on, so there is no backlog to
+  // baseline. Its other half, `truepass diff` (an assertion moved to a weaker
+  // matcher), runs on pre-push as `hook:test-integrity`. Locked by
+  // src/__tests__/truepass-lock.test.ts.
+  {
+    ...truepass.recommended,
+    files: ["src/__tests__/**/*.test.{ts,tsx}", "vitest.config.mts"],
   },
 
   // ── Covers must go through next/image ─────────────────────────────────────
@@ -173,8 +144,19 @@ const eslintConfig = defineConfig([
     files: ["scripts/**"],
     rules: {
       "secure-coding/no-redos-vulnerable-regex": "warn",
-      "secure-coding/no-unsafe-regex-construction": "warn",
+      "secure-coding/no-unsafe-regex-construction": "error",
       "reliability/no-silent-errors": "warn",
+    },
+  },
+  // ── Current-major ratchet (2026-11-18) ───────────────────────────────────
+  // `@/` is this app's tsconfig path alias, not a package (ofri-peretz/eslint#1551);
+  // with it allowed, the rule reports 0 here.
+  {
+    rules: {
+      "import-next/no-extraneous-dependencies": [
+        "error",
+        { allowPatterns: ["^@/"] },
+      ],
     },
   },
 ]);

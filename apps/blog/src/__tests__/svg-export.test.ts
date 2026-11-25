@@ -12,7 +12,6 @@ import { describe, expect, it } from "vitest";
 import { inlineSvgStyles } from "../lib/svg-export";
 
 const SVG_NS =
-  // eslint-disable-next-line browser-security/detect-mixed-content, browser-security/no-http-urls -- XML NAMESPACE identifier (createElementNS), never fetched; http:// is its spec-frozen spelling
   "http://www.w3.org/2000/svg";
 
 const chart = (): SVGSVGElement => {

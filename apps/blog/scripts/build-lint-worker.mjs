@@ -46,6 +46,10 @@ buildSync({
     "node:os": shims,
     util: shims,
     "node:util": shims,
+    // eslint-devkit 2.x reaches for createRequire in a guarded parser fallback
+    // for cross-file value following; in the browser that path has no files.
+    module: shims,
+    "node:module": shims,
     // The devkit's resolver is never exercised by playground rules;
     // with oxc-resolver installed for the repo's own linting, its
     // native/wasm bindings would otherwise ride into the bundle.

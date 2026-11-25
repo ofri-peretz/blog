@@ -63,7 +63,6 @@ describe("quota safety — visitors never touch an upstream API", () => {
     const offenders: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        // eslint-disable-next-line node-security/no-zip-slip -- not an archive: entry names come from readdirSync of our own src tree, and the resolve+startsWith containment below bounds every read to it
         const full = path.join(dir, entry.name);
         // Locks may NAME the module; only app source is policed.
         if (entry.isDirectory() && entry.name === "__tests__") continue;
