@@ -2,7 +2,7 @@
 title: "Everyone Greps for SQL Injection. Nobody Greps for the Other Eight."
 description: "SQL injection has a name everyone knows. Eight more injections aim the same defect at parsers nobody audits: GraphQL, LDAP, XPath, XXE, template and more."
 slug: "injection-beyond-sql"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/injection-beyond-sql"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/injection-beyond-sql.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/injection-beyond-sql-og.jpg"
@@ -81,5 +81,5 @@ Which interpreter is live in your stack right now that you have never grepped fo
 More on how these classes get named and ranked: [the CWE taxonomy](/articles/cwe-taxonomy-explained) and [the OWASP Top 10](/articles/owasp-top-10-explained). I write these at [dev.to/ofri-peretz](https://dev.to/ofri-peretz).
 
 ::dev-to-cta{url="https://github.com/ofri-peretz/eslint"}
-⭐ Star the repo if you would rather your linter knew about the other eight interpreters too.
+The rules are in the repo, if you would rather your linter knew about the other eight interpreters too.
 ::

@@ -2,7 +2,7 @@
 id: I-12
 slug: eslint-plugin-cold-start-optimization
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-04
 opened_by: claude

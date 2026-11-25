@@ -46,11 +46,18 @@ const BANNED_WORDS = [
 // no-redos-vulnerable-regex rule should not ship an alternation that trips it,
 // and this is both faster and exact on word boundaries.
 const BANNED = new Set(BANNED_WORDS);
+const competitiveWords = (text: string) => [
+  ...new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z]+/)
+      .filter((word) => BANNED.has(word)),
+  ),
+];
 const usesCompetitiveFraming = (text: string) =>
-  text
-    .toLowerCase()
-    .split(/[^a-z]+/)
-    .some((word) => BANNED.has(word));
+  competitiveWords(text).length > 0;
+const FRAMING_FIX =
+  "describe coverage scope, specialisation, or what a tool is best paired with";
 
 function markdownIn(dir: string) {
   if (!existsSync(dir)) return [];
@@ -62,6 +69,10 @@ function markdownIn(dir: string) {
       return { name: f, file, data, content };
     });
 }
+
+/** Rule-count commands that have shipped wrong numbers (see scripts/sdlc/pkg-rule-count.mjs). */
+const RULE_COUNT_TRAPS =
+  /\bls\s+(?:\S+\/)?src\/rules\b|grep\s+-v\s+['"]?index\b/;
 
 const SEPARATOR_ROW = /^\|[\s|:-]+\|$/;
 // | claim | value | command | version | verified |
@@ -212,6 +223,28 @@ describe("stage 2 — every number in a spec carries its command", () => {
         .map((c) => c.claim)
         .join(", ")}`,
     ).toEqual([]);
+
+    // A count (a value with a digit) from either has shipped wrong in articles: `ls src/rules/` counts
+    // helpers and __tests__, `grep -v index` drops rules like no-sensitive-indexeddb.
+    const miscounted = claims
+      .filter((c) => /\d/.test(c.value))
+      .filter((c) => RULE_COUNT_TRAPS.test(c.command));
+    expect(
+      miscounted.map((c) => c.claim),
+      `${spec.name}: count rules with \`node scripts/sdlc/pkg-rule-count.mjs <package>\`, not ls src/rules or grep -v index`,
+    ).toEqual([]);
+  });
+
+  it("the rule-count trap check is live", () => {
+    expect(RULE_COUNT_TRAPS.test("ls src/rules/ | wc -l")).toBe(true);
+    expect(RULE_COUNT_TRAPS.test("ls src/rules | grep -v index | wc -l")).toBe(
+      true,
+    );
+    expect(
+      RULE_COUNT_TRAPS.test(
+        "node -p \"Object.keys(require('eslint-plugin-pg').rules).length\"",
+      ),
+    ).toBe(false);
   });
 });
 
@@ -226,11 +259,12 @@ describe("stage 5 — landscape framing on everything through the chain", () => 
           (l) => !/never|banned|blocking vocabulary|framing check/i.test(l),
         )
         .join("\n");
-      if (usesCompetitiveFraming(prose)) offenders.push(doc.name);
+      const hits = competitiveWords(prose);
+      if (hits.length) offenders.push(`${doc.name} (${hits.join(", ")})`);
     }
     expect(
       offenders,
-      `competitive framing in: ${offenders.join(", ")}`,
+      `competitive framing in: ${offenders.join(", ")}; ${FRAMING_FIX}`,
     ).toEqual([]);
   });
 
@@ -238,10 +272,10 @@ describe("stage 5 — landscape framing on everything through the chain", () => 
     const offenders = corpus
       .filter((a) => a.data.quality) // legacy corpus is intent I-7
       .filter((a) => usesCompetitiveFraming(a.content))
-      .map((a) => a.name);
+      .map((a) => `${a.name} (${competitiveWords(a.content).join(", ")})`);
     expect(
       offenders,
-      `competitive framing in scored articles: ${offenders.join(", ")}`,
+      `competitive framing in scored articles: ${offenders.join(", ")}; ${FRAMING_FIX}`,
     ).toEqual([]);
   });
 });

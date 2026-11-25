@@ -1,0 +1,83 @@
+# The review checklist (triggerlist). Each item fires only when its trigger matches the diff, so a
+# reviewer reads the handful that apply, never the whole list. CI reads this file from the base
+# branch: a pull request cannot change the checks it is held to.
+# REVIEW.md is the hand-written rubric (sdlc/intent/i5-review-passes.md) and is not compiled
+# from this file: `triggerlist compile` would overwrite it.
+
+# Files that judge code. A pull request changing one of these and other files together is flagged
+# by `triggerlist protect` (the pre-push hook:triggerlist).
+gates:
+  - REVIEW.md
+  - .sdlc/checklist.yaml
+  - lefthook.yml
+  - commitlint.config.mjs
+  - .claude/hooks/*.mjs
+  - apps/blog/src/__tests__/*lock.test.ts
+  - apps/blog/src/__tests__/*lock.test.tsx
+  - .github/workflows/claude-code-review.yml
+  - .github/workflows/hooks.yml
+
+items:
+  - id: frozen-identifiers
+    trigger:
+      paths: ["apps/blog/content/articles/*.md"]
+      pattern: '^-?\s*(slug|devto_id|devto_url|canonical_url|cover_image|social_image):'
+    question: Does the diff change a frozen identifier (slug, devto_id, devto_url, canonical_url, cover_image, social_image) of an article that already has a devto_id?
+    check: git diff origin/main -- apps/blog/content/articles | grep -E '^[-+](slug|devto_id|devto_url|canonical_url|cover_image|social_image):'
+    sources: [.claude/hooks/freeze-identifiers.mjs, CLAUDE.md]
+
+  - id: publish-scope
+    trigger:
+      paths:
+        [
+          ".github/workflows/publish-devto.yml",
+          "apps/blog/scripts/publish-to-devto.mjs",
+        ]
+    question: Can a merge or a default dispatch now publish to dev.to, or publish more than one article, instead of a manual dry-run-by-default dispatch of one?
+    check: npx vitest run --root apps/blog src/__tests__/devto-publish-scope-lock.test.ts
+    sources: [apps/blog/src/__tests__/devto-publish-scope-lock.test.ts]
+
+  - id: publishing-floor
+    trigger:
+      paths: ["apps/blog/content/articles/*.md", "sdlc/review/*.json"]
+      pattern: 'published:\s*true|"score"'
+    question: Does an article go live, or its review change, without 9.5 or more on all five review lenses?
+    check: npx vitest run --root apps/blog src/__tests__/sdlc-quality-lock.test.ts
+    sources: [apps/blog/src/__tests__/sdlc-quality-lock.test.ts, CLAUDE.md]
+
+  - id: landscape-framing
+    trigger:
+      paths:
+        [
+          "apps/blog/content/articles/*.md",
+          "sdlc/spec/*.md",
+          "sdlc/intent/*.md",
+        ]
+      pattern: '\b([Bb]eat(s|ing)?|[Ww]inners?|[Ww]ins|[Cc]rush(es|ed)?|[Dd]estroy(s|ed)?|[Mm]oat|[Cc]ompetitors?)\b'
+    question: Does new prose use competitive framing (beat, win, crush, destroy, moat, competitor) instead of coverage scope and "best paired with"?
+    check: npx vitest run --root apps/blog src/__tests__/sdlc-chain-lock.test.ts
+    sources: [apps/blog/src/__tests__/sdlc-chain-lock.test.ts, REVIEW.md]
+
+  - id: csp-image-host
+    trigger:
+      paths: ["apps/blog/content/articles/*.md", "apps/blog/next.config.ts"]
+      pattern: 'https?://[^\s)"]+\.(png|jpe?g|gif|svg|webp)|img-src|remotePatterns'
+    question: Does an article embed an image from a host the CSP img-src does not allow, or does the change loosen the CSP with a wildcard?
+    check: npx vitest run --root apps/blog src/__tests__/csp-image-hosts-lock.test.ts
+    sources: [apps/blog/src/__tests__/csp-image-hosts-lock.test.ts]
+
+  - id: claude-args-comment
+    trigger:
+      paths: [".github/workflows/*.yml"]
+      pattern: "claude_args|claude-args"
+    question: Does a workflow still parse, and does a claude_args block stay free of `#` lines (which the CLI reads as arguments and turns into a green no-op review)?
+    check: npx vitest run --root apps/blog src/__tests__/workflow-yaml-lock.test.ts
+    sources: [apps/blog/src/__tests__/workflow-yaml-lock.test.ts]
+
+  - id: hooks-bypassed
+    trigger:
+      paths: ["**"]
+      pattern: "--no-verify|LEFTHOOK=0"
+    question: Does the change bypass or teach bypassing the git hooks, which are the gate?
+    check: read the lines that fired; the hooks may never be skipped
+    sources: [.claude/hooks/guard-bash.mjs]

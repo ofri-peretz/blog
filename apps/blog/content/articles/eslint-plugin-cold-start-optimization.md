@@ -2,8 +2,11 @@
 title: "Every Plugin I Shipped Installed a TypeScript Compiler"
 description: "A peer I forgot to mark optional put 24MB of tsc under every plugin I publish. Cutting it took ~30MB off every install tree."
 slug: "eslint-plugin-cold-start-optimization"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/eslint-plugin-cold-start-optimization"
+devto_url: "https://dev.to/ofri-peretz/every-plugin-i-shipped-installed-a-typescript-compiler-34h2"
+devto_id: 5044326
+published_at: "2026-11-16T02:19:22Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-cold-start-optimization.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/eslint-plugin-cold-start-optimization-og.jpg"
 tier: "T3"

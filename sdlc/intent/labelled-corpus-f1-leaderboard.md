@@ -2,7 +2,7 @@
 id: I-22
 slug: labelled-corpus-f1-leaderboard
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-07
 opened_by: claude

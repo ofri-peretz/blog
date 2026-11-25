@@ -2,7 +2,7 @@
 id: I-25
 slug: numbers-in-prose-rot
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-07
 opened_by: claude

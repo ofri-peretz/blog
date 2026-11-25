@@ -23,6 +23,7 @@ const PLUGINS: Record<PlaygroundPluginId, unknown> = {
 
 const linter = new Linter();
 
+// eslint-disable-next-line browser-security/require-postmessage-origin-check -- a dedicated worker; only the page that created it can post here, and its MessageEvent.origin is empty (ofri-peretz/eslint#1569)
 self.onmessage = (event: MessageEvent<LintRequest>) => {
   const { id, code, pluginId, rules } = event.data;
   try {
