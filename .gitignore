@@ -32,3 +32,5 @@ coverage/
 *.log
 .vercel
 .env*.local
+# MCP server indexes, rebuilt per session by .claude/hooks (hookset)
+.codegraph/
