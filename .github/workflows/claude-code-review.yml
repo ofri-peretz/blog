@@ -83,7 +83,7 @@ jobs:
       # realistically sees. claude-args is a command-line string, not YAML: keep comments here.
       - name: Claude Code Review
         if: steps.rules.outputs.present == 'true'
-        uses: ofri-peretz/burgee/.github/actions/triggerlist-review@hookset@1.1.0
+        uses: ofri-peretz/burgee/.github/actions/triggerlist-review@hookset@1.1.1
         with:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           triggerlist: npx --yes triggerlist@0.3.0
