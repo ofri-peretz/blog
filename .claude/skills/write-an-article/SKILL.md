@@ -1,6 +1,6 @@
 ---
 name: write-an-article
-description: Frontmatter, framing, title formula, number sourcing and article components for this blog. Use when writing, editing, retitling or reviewing an article under apps/blog.
+description: Frontmatter, framing, titles, numbers and components for an article under apps/blog.
 ---
 
 # Writing an article
