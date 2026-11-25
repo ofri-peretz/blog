@@ -11,11 +11,9 @@ identifiers, banned framing words, publish scope) fail with their own message.
 
 ## Article frontmatter
 
-Required: `title`, `description`, `slug`, `canonical_url`, `tier`,
-`cover_image`, `social_image`, `reading_time_minutes`, `tags`, `author`.
-Published articles also carry `devto_url`, `devto_id`, `published_at`.
-
-New articles additionally carry the stage-4 artifact:
+`article-frontmatter-lock.test.ts` holds the required fields and the tier list, and names what is
+missing. `publish-to-devto.mjs` writes the dev.to fields. New articles also carry the stage-4
+artifact:
 
 ```yaml
 quality:
@@ -30,14 +28,12 @@ quality:
     reproducibility: 9.6
 ```
 
-`tier` is one of `T0 T1 T2 T3 TOPIC TUTORIAL`. `series` is optional; when
-present the article opens with the series-nav block.
+`series` is optional; when present the article opens with the series-nav block.
 
 ## Framing
 
-Landscape, never competitive. Never _beat / win / winner / crush / destroy /
-moat / competitor / threat_. Use coverage scope, specialisation, "best paired
-with". Comparison articles disclose that fixtures span our own design surface
+Landscape, never competitive: describe coverage scope, specialisation, and what each tool is
+"best paired with". Comparison articles disclose that fixtures span our own design surface
 and show a case the neighbour handles well.
 
 Titles follow the validated formula — named target + concrete number +

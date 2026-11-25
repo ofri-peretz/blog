@@ -46,11 +46,18 @@ const BANNED_WORDS = [
 // no-redos-vulnerable-regex rule should not ship an alternation that trips it,
 // and this is both faster and exact on word boundaries.
 const BANNED = new Set(BANNED_WORDS);
+const competitiveWords = (text: string) => [
+  ...new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z]+/)
+      .filter((word) => BANNED.has(word)),
+  ),
+];
 const usesCompetitiveFraming = (text: string) =>
-  text
-    .toLowerCase()
-    .split(/[^a-z]+/)
-    .some((word) => BANNED.has(word));
+  competitiveWords(text).length > 0;
+const FRAMING_FIX =
+  "describe coverage scope, specialisation, or what a tool is best paired with";
 
 function markdownIn(dir: string) {
   if (!existsSync(dir)) return [];
@@ -252,11 +259,12 @@ describe("stage 5 — landscape framing on everything through the chain", () => 
           (l) => !/never|banned|blocking vocabulary|framing check/i.test(l),
         )
         .join("\n");
-      if (usesCompetitiveFraming(prose)) offenders.push(doc.name);
+      const hits = competitiveWords(prose);
+      if (hits.length) offenders.push(`${doc.name} (${hits.join(", ")})`);
     }
     expect(
       offenders,
-      `competitive framing in: ${offenders.join(", ")}`,
+      `competitive framing in: ${offenders.join(", ")}; ${FRAMING_FIX}`,
     ).toEqual([]);
   });
 
@@ -264,10 +272,10 @@ describe("stage 5 — landscape framing on everything through the chain", () => 
     const offenders = corpus
       .filter((a) => a.data.quality) // legacy corpus is intent I-7
       .filter((a) => usesCompetitiveFraming(a.content))
-      .map((a) => a.name);
+      .map((a) => `${a.name} (${competitiveWords(a.content).join(", ")})`);
     expect(
       offenders,
-      `competitive framing in scored articles: ${offenders.join(", ")}`,
+      `competitive framing in scored articles: ${offenders.join(", ")}; ${FRAMING_FIX}`,
     ).toEqual([]);
   });
 });
