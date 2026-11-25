@@ -1,13 +1,8 @@
 # CLAUDE.md — agent context for ofri-peretz/blog
 
-This repo is the **canonical, public** home of the blog. `agents/apps/blog/` and the archived
-`ofriperetz-dev` repo hold legacy copies (agents' `legacy-blog-articles` pre-commit hook
-refuses edits there). The lifecycle is
-[sdlc/README.md](./sdlc/README.md); writing or editing an article loads the `write-an-article`
-skill (frontmatter, framing, titles, numbers, components).
-
-Everything else is a check whose message names the fix.
-Commands: `npm run build|test|lint|format`; stage detectors: `npm run sdlc:detect`.
+This repo is the **canonical, public** home of the blog; `agents/apps/blog/` and the archived
+`ofriperetz-dev` repo are legacy copies. The lifecycle is [sdlc/README.md](./sdlc/README.md);
+stage detectors: `npm run sdlc:detect`. Everything else is a check whose message names the fix.
 
 ## The rule that matters most
 
@@ -17,6 +12,6 @@ rewrite it or pick a different article. Do not ship it and do not argue the scor
 
 ## Shipping
 
-Branch → PR → green (`build-test`, `eslint`, `oxlint`) → squash-merge. **Merging publishes
-nothing.** dev.to publishing is a manual `publish-devto.yml` dispatch, `dry_run` true by default,
-one article at a time. When you fix a bug a lock could have caught, add the lock in the same PR.
+Squash-merge a green PR. **Merging publishes nothing.** dev.to publishing is a manual
+`publish-devto.yml` dispatch, `dry_run` true by default, one article at a time. When you fix a
+bug a lock could have caught, add the lock in the same PR.
