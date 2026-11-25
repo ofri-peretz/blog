@@ -2,7 +2,7 @@
 id: I-23
 slug: rule-that-reads-variable-names
 stage: intent
-status: approved
+status: shipped
 visibility: public
 opened: 2026-09-07
 opened_by: claude
