@@ -2,8 +2,11 @@
 title: "Three of My Planned Articles Cited Numbers That Do Not Exist"
 description: "I audited twelve planned pieces against the benchmark JSON they cite. Two figures appear in no result file anywhere, one contradicts the source it names, and one real number is attached to the wrong set. Nothing caught it, because nothing recomputes prose."
 slug: "numbers-in-prose-rot"
-published: false
+published: true
 canonical_url: "https://ofriperetz.dev/articles/numbers-in-prose-rot"
+devto_url: "https://dev.to/ofri-peretz/three-of-my-planned-articles-cited-numbers-that-do-not-exist-3n00"
+devto_id: 5020121
+published_at: "2026-11-12T02:20:22Z"
 cover_image: "https://ofriperetz.dev/cdn/blog-cover-image/numbers-in-prose-rot.jpg"
 social_image: "https://ofriperetz.dev/cdn/blog-cover-image/numbers-in-prose-rot-og.jpg"
 tier: "T2"
