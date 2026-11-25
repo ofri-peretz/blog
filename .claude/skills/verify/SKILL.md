@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Run the blog or the engage control room locally and read the page you changed as a reader would, at 390px and desktop. Use before committing a page, component or article change.
+description: Run the blog locally and read the changed page at 390px and desktop, before committing.
 ---
 
 # Verify a change by running it
