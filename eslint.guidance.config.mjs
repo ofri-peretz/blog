@@ -38,7 +38,7 @@ export default [
       // shrink; raise one only by decision.
       "conventions/guidance-budget": [
         "error",
-        { memoryBytes: 1000, descriptionChars: 200 },
+        { memoryBytes: 600, descriptionChars: 200 },
       ],
     },
   },
