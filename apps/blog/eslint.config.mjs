@@ -6,10 +6,10 @@ import nextTs from "eslint-config-next/typescript";
 // Interlace ecosystem — à-la-carte dogfooding. Each plugin is wired separately
 // via its OWN `recommended` preset (NOT the @interlace/eslint-config meta-config),
 // on the current majors, where every preset loads as published:
-//   security: browser-security, secure-coding, node-security
-//   quality:  conventions, import-next, maintainability, modernization,
+//   security — browser-security, secure-coding, node-security
+//   quality —  conventions, import-next, maintainability, modernization,
 //             modularity, operability, reliability
-//   react:    react-a11y, react-features (+ componentApi), TSX only
+//   react —    react-a11y, react-features (+ componentApi), TSX only
 // ────────────────────────────────────────────────────────────────────────────
 import { configs as browserSecurityCfg } from "eslint-plugin-browser-security";
 import { configs as secureCodingCfg } from "eslint-plugin-secure-coding";
@@ -23,6 +23,7 @@ import { configs as reactA11yCfg } from "eslint-plugin-react-a11y";
 import { configs as maintainabilityCfg } from "eslint-plugin-maintainability";
 import { configs as operabilityCfg } from "eslint-plugin-operability";
 import { configs as reactFeaturesCfg } from "eslint-plugin-react-features";
+import { configs as truepass } from "truepass/eslint";
 
 const eslintConfig = defineConfig([
   // ── Next.js (KEEP FIRST) ──────────────────────────────────────────────────
@@ -104,6 +105,17 @@ const eslintConfig = defineConfig([
       "react-a11y/role-supports-aria-props": "error",
       "react-features/jsx-key": "warn",
     },
+  },
+
+  // ── truepass: tests that cannot pass by checking less ────────────────────
+  // A focused test, a skip with no reason, a fixed sleep or a retry fails lint,
+  // at error. Zero findings when it was turned on, so there is no backlog to
+  // baseline. Its other half, `truepass diff` (an assertion moved to a weaker
+  // matcher), runs on pre-push as `hook:test-integrity`. Locked by
+  // src/__tests__/truepass-lock.test.ts.
+  {
+    ...truepass.recommended,
+    files: ["src/__tests__/**/*.test.{ts,tsx}", "vitest.config.mts"],
   },
 
   // ── Covers must go through next/image ─────────────────────────────────────
