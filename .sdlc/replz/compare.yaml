@@ -1,0 +1,8 @@
+# replz compare: the dev.to render of fixed articles (apps/blog/scripts/devto-link-transforms.mjs),
+# run on the PR's base and on its head. Each input is a frozen article copy, so an article edit
+# never shows here: only a change to the transform does. A changed body or link row fails the PR
+# until it is approved below with a reason.
+command: >-
+  node --no-warnings --input-type=module -e "const t=await import(process.cwd()+'/apps/blog/scripts/devto-link-transforms.mjs');let s='';for await(const c of process.stdin)s+=c;const m=/^---\n([\s\S]*?)\n---\n/.exec(s);const slug=(m&&/^slug:\s*\"?([^\"\n]+)/m.exec(m[1])||[])[1]||'fixture';const body=m?s.slice(m[0].length):s;console.log(t.transformBodyForDevto(body,slug));console.log('--- links');for(const row of t.collectDevtoLinks(body,slug))console.log(JSON.stringify(row))"
+inputs: .sdlc/replz/compare-inputs
+approved: []
