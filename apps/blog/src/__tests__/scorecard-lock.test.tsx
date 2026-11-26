@@ -263,3 +263,35 @@ describe("ratchet-card whole-card link (PR #41 polish lock)", () => {
     expect(RATCHET_CARD).toMatch(/data-slot="ratchet-card-provenance"[\s\S]{0,500}<span>source<\/span>/);
   });
 });
+
+describe("scorecard Supabase reads are cached across requests (p95 regression lock)", () => {
+  // The route is force-dynamic, so React `cache()` alone dedupes only within
+  // one render: every request paid five live Supabase view reads (~1 s each).
+  // The page must read through the Data Cache wrapper, never the raw
+  // per-render fetchers from the generated scorecard-data module.
+  const SCORECARD_CACHE = readFileSync(
+    path.resolve(__dirname, "..", "lib", "scorecard-cache.ts"),
+    "utf-8",
+  );
+
+  it("page imports its fetchers from @/lib/scorecard-cache", () => {
+    expect(SCORECARD_PAGE).toContain('from "@/lib/scorecard-cache"');
+    expect(SCORECARD_PAGE).not.toContain("#interlace/lib/scorecard-data");
+  });
+
+  it("wraps every view read in unstable_cache with a TTL and the ratchet tag", () => {
+    const VIEWS = [
+      "v_ratchet_breakdown",
+      "v_ratchet_deltas",
+      "v_ratchet_trends",
+      "v_ratchet_anomalies",
+      "v_north_star_history",
+    ];
+    expect(SCORECARD_CACHE).toMatch(/revalidate:\s*SCORECARD_REVALIDATE_SECONDS/);
+    expect(SCORECARD_CACHE).toMatch(/tags:\s*\[TAG_RATCHET\]/);
+    for (const view of VIEWS) {
+      expect(SCORECARD_CACHE).toContain(`["scorecard", "${view}"]`);
+    }
+    expect(SCORECARD_CACHE.match(/unstable_cache\(/g)).toHaveLength(VIEWS.length);
+  });
+});
