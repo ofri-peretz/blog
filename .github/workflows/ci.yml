@@ -58,6 +58,11 @@ jobs:
       - run: npm install --no-audit --no-fund --include=optional
       - run: npm run build
       - name: Serve the production build
+        # The build carries the PostHog token, so without this the CI server
+        # exports its spans to the production project. Its Supabase-less 503s
+        # then show up as production errors (see src/instrumentation.ts).
+        env:
+          OTEL_SDK_DISABLED: "true"
         run: |
           (cd apps/blog && npx next start -p 3000 &)
           for i in $(seq 1 60); do
