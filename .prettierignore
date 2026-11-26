@@ -4,3 +4,6 @@
 /.claude/hooks/stop-after-3.mjs
 /.claude/hooks/codegraph.mjs
 /.claude/hooks/worktree-sweep.mjs
+
+# Frozen inputs for replz compare: kept byte-for-byte so the base and head read the same text.
+/.sdlc/replz/compare-inputs/
